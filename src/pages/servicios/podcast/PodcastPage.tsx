@@ -1414,8 +1414,8 @@ function ReservasTable({ reservas, onEdit, onDelete, onRegistrarPago, onSelect }
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-b from-gray-50 to-gray-100/80">
-                {["Fecha", "Hora", "Paquete", "Cliente", "Encargado", "Estado", "Pago", "Total", ""].map(h => (
-                  <th key={h} className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 border-r last:border-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{h}</th>
+                {["Fecha", "Hora", "Paquete", "Cliente", "Encargado", "Estado", "Pago", "Total", ""].map((h, i) => (
+                  <th key={`podcast-h-${i}`} className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 border-r last:border-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{h}</th>
                 ))}
               </tr>
             </thead>

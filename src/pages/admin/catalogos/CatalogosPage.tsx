@@ -59,7 +59,7 @@ export function CatalogosPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [uploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Estados para confirmación de eliminación
@@ -100,6 +100,10 @@ export function CatalogosPage() {
   }
 
   const closeModal = () => {
+    // Limpiar blob URL local si existe
+    if (form.imagen?.startsWith("blob:")) {
+      URL.revokeObjectURL(form.imagen)
+    }
     setModal({ open: false, editingId: null })
     setForm(emptyForm)
     setTouched({})
@@ -113,20 +117,17 @@ export function CatalogosPage() {
     }))
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setUploading(true)
-    try {
-      const url = await cursosService.uploadImagenCatalogo(file)
-      setForm((prev) => ({ ...prev, imagen: url, imagenFile: file }))
-      toast.success("Imagen subida")
-    } catch {
-      toast.error("Error al subir la imagen")
-    } finally {
-      setUploading(false)
+    // Limpiar preview local anterior
+    if (form.imagen?.startsWith("blob:")) {
+      URL.revokeObjectURL(form.imagen)
     }
+
+    const previewUrl = URL.createObjectURL(file)
+    setForm((prev) => ({ ...prev, imagen: previewUrl, imagenFile: file }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,11 +142,18 @@ export function CatalogosPage() {
 
     setSaving(true)
     try {
+      let imagenUrl = form.imagen
+
+      // Subir imagen solo al guardar, si hay archivo pendiente
+      if (form.imagenFile) {
+        imagenUrl = await cursosService.uploadImagenCatalogo(form.imagenFile)
+      }
+
       const payload = {
         nombre: form.nombre,
         descripcion: form.descripcion || undefined,
         categoria: form.categoria,
-        imagen: form.imagen || undefined,
+        imagen: imagenUrl?.startsWith("blob:") ? undefined : imagenUrl || undefined,
       }
 
       if (modal.editingId) {
@@ -379,7 +387,7 @@ export function CatalogosPage() {
       {modal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md">
           <div
-            className="bg-white rounded-[2rem] w-full max-w-6xl max-h-[92dvh] overflow-y-auto modal-scroll border shadow-2xl"
+            className="bg-white rounded-[2rem] w-full max-w-[95vw] 2xl:max-w-[1500px] max-h-[90dvh] overflow-y-auto modal-scroll border shadow-2xl"
             style={{
               borderColor: "color-mix(in srgb, white 75%, rgba(0,0,0,0.08))",
               boxShadow: `0 40px 100px -30px ${categoriaStyles[form.categoria].accent}30, 0 30px 60px -20px rgba(15,23,42,0.25)`,
@@ -388,205 +396,138 @@ export function CatalogosPage() {
             <style>{`.modal-scroll::-webkit-scrollbar{width:4px}.modal-scroll::-webkit-scrollbar-track{background:transparent}.modal-scroll::-webkit-scrollbar-thumb{background:oklch(0.85 0 0);border-radius:4px}.modal-scroll::-webkit-scrollbar-thumb:hover{background:oklch(0.75 0 0)}`}</style>
 
             {/* ─── HEADER ─── */}
-            <div className="sticky top-0 z-20 overflow-hidden border-b" style={{ borderColor: "color-mix(in srgb, white 65%, rgba(0,0,0,0.08))" }}>
-              <div
-                className="absolute inset-0 transition-all duration-500"
-                style={{ background: `linear-gradient(135deg, ${categoriaStyles[form.categoria].accent}18 0%, ${categoriaStyles[form.categoria].accent}08 42%, white 100%)` }}
-              />
-              <div className="relative flex flex-col gap-4 px-6 py-5 sm:px-8 sm:py-6 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex items-start gap-4 min-w-0">
+            <div className="sticky top-0 z-20 border-b backdrop-blur-sm" style={{ borderColor: "color-mix(in srgb, white 65%, rgba(0,0,0,0.08))", backgroundColor: `${categoriaStyles[form.categoria].accent}06` }}>
+              <div className="flex items-center justify-between px-6 py-3 sm:px-8">
+                <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className="size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all duration-300"
-                    style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}18`, color: categoriaStyles[form.categoria].accent }}
+                    className="size-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}14`, color: categoriaStyles[form.categoria].accent }}
                   >
-                    <HugeiconsIcon icon={Edit01Icon} size={22} />
+                    <HugeiconsIcon icon={Edit01Icon} size={18} />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-0.5">
                       <span
-                        className="text-[10px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded-full transition-all duration-300"
+                        className="text-[9px] font-bold uppercase tracking-[0.18em] px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}14`, color: categoriaStyles[form.categoria].accent }}
                       >
-                        Catálogo de cursos
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full" style={{ backgroundColor: "oklch(0.97 0 0)", color: COLORS.TEXT_MUTED }}>
-                        {form.categoria === "regular" ? "Formación base" : form.categoria === "taller" ? "Sesiones prácticas" : "A medida"}
+                        Catálogo
                       </span>
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: COLORS.CHARCOAL }}>
+                    <h2 className="text-lg sm:text-xl font-semibold tracking-tight" style={{ color: COLORS.CHARCOAL }}>
                       {modal.editingId ? "Editar catálogo" : "Nuevo catálogo"}
                     </h2>
-                    <p className="mt-1 text-sm sm:text-[15px] max-w-2xl" style={{ color: COLORS.TEXT_MUTED }}>
-                      {modal.editingId
-                        ? "Ajusta el nombre, la categoría y la imagen de portada para mantener la plantilla del curso clara y consistente."
-                        : "Crea una plantilla visual y fácil de reconocer para organizar mejor tus cursos y talleres."}
-                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 self-end lg:self-start">
-                  <div
-                    className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-2xl border bg-white/80 backdrop-blur transition-all duration-300"
-                    style={{ borderColor: `${categoriaStyles[form.categoria].accent}20` }}
-                  >
-                    <div className="size-2.5 rounded-full transition-all duration-300" style={{ backgroundColor: categoriaStyles[form.categoria].accent }} />
-                    <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
-                      {form.categoria === "regular" ? "Curso estándar" : form.categoria === "taller" ? "Taller práctico" : "A la medida"}
-                    </span>
-                  </div>
-                  <button onClick={closeModal} className="p-2.5 rounded-full transition-colors hover:bg-white/80" style={{ color: COLORS.TEXT_MUTED }}>
-                    <X size={20} />
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline text-[11px] font-medium px-2.5 py-1 rounded-lg" style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}10`, color: categoriaStyles[form.categoria].accent }}>
+                    {categoriaStyles[form.categoria].label}
+                  </span>
+                  <button onClick={closeModal} className="p-2 rounded-full transition-colors hover:bg-black/5" style={{ color: COLORS.TEXT_MUTED }}>
+                    <X size={18} />
                   </button>
                 </div>
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-8">
-              <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_1.45fr] gap-6 xl:gap-8 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 lg:gap-8">
 
-                {/* ─── LEFT SIDEBAR ─── */}
-                <aside className="space-y-5">
-                  {/* ─── IMAGE UPLOAD ─── */}
+                {/* ─── LEFT — IMAGE ─── */}
+                <aside className="flex flex-col">
                   <div
-                    className="rounded-[1.6rem] p-5 border overflow-hidden transition-all duration-300"
+                    className="flex-1 rounded-[1.6rem] border overflow-hidden flex flex-col transition-all duration-300"
                     style={{
                       borderColor: `${categoriaStyles[form.categoria].accent}20`,
                       background: `linear-gradient(180deg, ${categoriaStyles[form.categoria].accent}08 0%, white 100%)`,
                     }}
                   >
-                    <div className="flex items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center justify-between gap-3 px-6 pt-5 pb-3">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: COLORS.TEXT_MUTED }}>Portada</p>
-                        <p className="text-sm font-semibold mt-1" style={{ color: COLORS.CHARCOAL }}>Hazlo visual desde el inicio</p>
+                        <p className="text-sm font-semibold mt-0.5" style={{ color: COLORS.CHARCOAL }}>Imagen del catálogo</p>
                       </div>
                       <span
-                        className="text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full transition-all duration-300"
+                        className="text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full"
                         style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}12`, color: categoriaStyles[form.categoria].accent }}
                       >
                         Opcional
                       </span>
                     </div>
 
-                    {form.imagen ? (
-                      <div className="relative rounded-[1.25rem] overflow-hidden border bg-white shadow-sm" style={{ borderColor: `${categoriaStyles[form.categoria].accent}30` }}>
-                        <img src={form.imagen} alt="Preview" className="w-full h-56 object-cover" />
-                        <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur text-[10px] font-bold uppercase tracking-wider shadow-sm" style={{ color: categoriaStyles[form.categoria].accent }}>
-                          <span className="size-1.5 rounded-full" style={{ backgroundColor: categoriaStyles[form.categoria].accent }} />
-                          Portada
+                    <div className="flex-1 min-h-0 px-6 pb-5">
+                      {form.imagen ? (
+                        <div className="relative rounded-[1.25rem] overflow-hidden border bg-white shadow-sm h-full" style={{ borderColor: `${categoriaStyles[form.categoria].accent}30` }}>
+                          <img src={form.imagen} alt="Preview" className="w-full h-full object-cover" />
+                          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent" />
+                          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur text-[10px] font-bold uppercase tracking-wider shadow-sm" style={{ color: categoriaStyles[form.categoria].accent }}>
+                            <span className="size-1.5 rounded-full" style={{ backgroundColor: categoriaStyles[form.categoria].accent }} />
+                            Portada
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (form.imagen?.startsWith("blob:")) URL.revokeObjectURL(form.imagen)
+                              setForm({ ...form, imagen: "", imagenFile: null })
+                            }}
+                            className="absolute top-3 right-3 size-9 flex items-center justify-center rounded-full bg-white/90 backdrop-blur transition-colors hover:bg-white"
+                            style={{ color: COLORS.TEXT_MUTED }}
+                          >
+                            <X size={16} />
+                          </button>
                         </div>
+                      ) : (
                         <button
                           type="button"
-                          onClick={() => setForm({ ...form, imagen: "", imagenFile: null })}
-                          className="absolute top-3 right-3 size-9 flex items-center justify-center rounded-full bg-white/90 backdrop-blur transition-colors hover:bg-white"
-                          style={{ color: COLORS.TEXT_MUTED }}
+                          onClick={() => fileRef.current?.click()}
+                          disabled={uploading}
+                          className="w-full h-full flex flex-col items-center justify-center gap-3 rounded-[1.25rem] border-2 border-dashed transition-all duration-200 active:scale-[0.98]"
+                          style={{
+                            borderColor: `${categoriaStyles[form.categoria].accent}30`,
+                            color: COLORS.TEXT_MUTED,
+                            opacity: uploading ? 0.6 : 1,
+                            background: `linear-gradient(180deg, ${categoriaStyles[form.categoria].accent}06 0%, white 100%)`,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!uploading) {
+                              e.currentTarget.style.borderColor = categoriaStyles[form.categoria].accent
+                              e.currentTarget.style.transform = "translateY(-1px)"
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = `${categoriaStyles[form.categoria].accent}30`
+                            e.currentTarget.style.transform = "translateY(0)"
+                          }}
                         >
-                          <X size={16} />
+                          {uploading ? (
+                            <>
+                              <div className="size-10 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: categoriaStyles[form.categoria].accent, borderRightColor: categoriaStyles[form.categoria].accent }} />
+                              <span className="text-sm font-medium">Subiendo imagen...</span>
+                            </>
+                          ) : (
+                            <>
+                              <div
+                                className="size-14 rounded-2xl flex items-center justify-center shadow-sm transition-all duration-300"
+                                style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}14`, color: categoriaStyles[form.categoria].accent }}
+                              >
+                                <Upload size={24} />
+                              </div>
+                              <div className="text-center space-y-1">
+                                <span className="text-sm font-semibold block" style={{ color: COLORS.CHARCOAL }}>Subir imagen de portada</span>
+                                <span className="text-xs block" style={{ color: COLORS.TEXT_MUTED }}>PNG, JPG o WebP. Máx 2MB</span>
+                              </div>
+                            </>
+                          )}
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileRef.current?.click()}
-                        disabled={uploading}
-                        className="w-full flex flex-col items-center justify-center gap-3 py-12 rounded-[1.25rem] border-2 border-dashed transition-all duration-200 active:scale-[0.98]"
-                        style={{
-                          borderColor: `${categoriaStyles[form.categoria].accent}30`,
-                          color: COLORS.TEXT_MUTED,
-                          opacity: uploading ? 0.6 : 1,
-                          background: `linear-gradient(180deg, ${categoriaStyles[form.categoria].accent}06 0%, white 100%)`,
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!uploading) {
-                            e.currentTarget.style.borderColor = categoriaStyles[form.categoria].accent
-                            e.currentTarget.style.transform = "translateY(-1px)"
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = `${categoriaStyles[form.categoria].accent}30`
-                          e.currentTarget.style.transform = "translateY(0)"
-                        }}
-                      >
-                        {uploading ? (
-                          <>
-                            <div className="size-10 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: categoriaStyles[form.categoria].accent, borderRightColor: categoriaStyles[form.categoria].accent }} />
-                            <span className="text-sm font-medium">Subiendo imagen...</span>
-                          </>
-                        ) : (
-                          <>
-                            <div
-                              className="size-14 rounded-2xl flex items-center justify-center shadow-sm transition-all duration-300"
-                              style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}14`, color: categoriaStyles[form.categoria].accent }}
-                            >
-                              <Upload size={24} />
-                            </div>
-                            <div className="text-center space-y-1">
-                              <span className="text-sm font-semibold block" style={{ color: COLORS.CHARCOAL }}>Subir imagen de portada</span>
-                              <span className="text-xs block" style={{ color: COLORS.TEXT_MUTED }}>PNG, JPG o WebP. Máx 2MB</span>
-                            </div>
-                          </>
-                        )}
-                      </button>
-                    )}
+                      )}
+                    </div>
                     <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} className="hidden" />
-                  </div>
-
-                  {/* ─── LIVE PREVIEW ─── */}
-                  <div
-                    className="rounded-[1.6rem] p-5 border transition-all duration-300"
-                    style={{
-                      borderColor: `${categoriaStyles[form.categoria].accent}20`,
-                      background: `linear-gradient(180deg, ${categoriaStyles[form.categoria].accent}06 0%, white 100%)`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: COLORS.TEXT_MUTED }}>Vista rápida</p>
-                        <p className="text-sm font-semibold mt-1" style={{ color: COLORS.CHARCOAL }}>Así se verá tu catálogo</p>
-                      </div>
-                      <span
-                        className="size-9 rounded-xl flex items-center justify-center transition-all duration-300"
-                        style={{ backgroundColor: categoriaStyles[form.categoria].soft, color: categoriaStyles[form.categoria].accent }}
-                      >
-                        <Plus size={16} />
-                      </span>
-                    </div>
-
-                    {/* Preview card */}
-                    <div className="rounded-2xl border-2 overflow-hidden transition-all duration-300" style={{ borderColor: `${categoriaStyles[form.categoria].accent}20` }}>
-                      <div
-                        className="h-20 flex items-center justify-center transition-all duration-300"
-                        style={{ background: `linear-gradient(135deg, ${categoriaStyles[form.categoria].accent}20 0%, ${categoriaStyles[form.categoria].accent}08 100%)` }}
-                      >
-                        {form.imagen && (
-                          <img src={form.imagen} alt="" className="w-full h-full object-cover" />
-                        )}
-                        {!form.imagen && (
-                          <span className="text-3xl font-bold" style={{ color: `${categoriaStyles[form.categoria].accent}25` }}>
-                            {form.categoria.slice(0, 1).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-4 space-y-2 bg-white">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all" style={{ backgroundColor: categoriaStyles[form.categoria].soft, color: categoriaStyles[form.categoria].accent }}>
-                          <span className="size-1.5 rounded-full" style={{ backgroundColor: categoriaStyles[form.categoria].accent }} />
-                          {categoriaStyles[form.categoria].label}
-                        </div>
-                        <p className="text-sm font-semibold leading-snug" style={{ color: form.nombre ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
-                          {form.nombre || "Nombre del curso"}
-                        </p>
-                        {form.descripcion && (
-                          <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: COLORS.TEXT_MUTED }}>
-                            {form.descripcion}
-                          </p>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </aside>
 
-                {/* ─── RIGHT SECTION ─── */}
+                {/* ─── RIGHT — FORM ─── */}
                 <section
-                  className="space-y-6 rounded-[1.6rem] p-5 sm:p-6 border transition-all duration-300"
+                  className="space-y-5 rounded-[1.6rem] p-6 border transition-all duration-300"
                   style={{
                     borderColor: `${categoriaStyles[form.categoria].accent}18`,
                     backgroundColor: "white",
@@ -595,11 +536,11 @@ export function CatalogosPage() {
                 >
                   {/* ─── CATEGORY SELECTOR ─── */}
                   <div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-2.5">
                       <span className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: COLORS.TEXT_MUTED }}>Tipo de curso</span>
                       <span className="text-xs text-red-500">*</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex flex-wrap gap-1.5">
                       {(["regular", "taller", "personalizado"] as Categoria[]).map((cat) => {
                         const s = categoriaStyles[cat]
                         const active = form.categoria === cat
@@ -608,43 +549,14 @@ export function CatalogosPage() {
                             key={cat}
                             type="button"
                             onClick={() => handleCategoriaChange(cat)}
-                            className="relative px-4 py-5 rounded-[1.15rem] text-left transition-all duration-200 border-2 overflow-hidden active:scale-[0.98]"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 border active:scale-[0.97]"
                             style={{
-                              backgroundColor: active ? s.soft : "white",
-                              color: active ? s.accent : COLORS.TEXT_MUTED,
+                              backgroundColor: active ? s.accent : "white",
+                              color: active ? "white" : COLORS.TEXT_MUTED,
                               borderColor: active ? s.accent : COLORS.BORDER_SUBTLE,
-                              boxShadow: active ? `0 8px 25px -12px ${s.accent}` : "none",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!active) {
-                                e.currentTarget.style.borderColor = s.accent
-                                e.currentTarget.style.backgroundColor = s.soft
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!active) {
-                                e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-                                e.currentTarget.style.backgroundColor = "white"
-                              }
                             }}
                           >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1.5">
-                                  <div className="size-2.5 rounded-full" style={{ backgroundColor: active ? s.accent : COLORS.BORDER_SUBTLE }} />
-                                  <p className="text-sm font-bold capitalize">{s.label}</p>
-                                </div>
-                                <p className="text-[11px] leading-snug" style={{ opacity: active ? 0.85 : 0.6 }}>{s.description}</p>
-                              </div>
-                              <div
-                                className="size-4 rounded-full border-2 mt-1 shrink-0 transition-all duration-200"
-                                style={{
-                                  borderColor: active ? s.accent : COLORS.BORDER_SUBTLE,
-                                  backgroundColor: active ? s.accent : "transparent",
-                                  boxShadow: active ? `inset 0 0 0 2px white` : "none",
-                                }}
-                              />
-                            </div>
+                            {s.label}
                           </button>
                         )
                       })}
@@ -652,7 +564,7 @@ export function CatalogosPage() {
                   </div>
 
                   {/* ─── FORM FIELDS ─── */}
-                  <div className="grid grid-cols-1 gap-5">
+                  <div className="space-y-3.5">
                     <ValidatedInput
                       label="Nombre del curso"
                       value={form.nombre}
@@ -672,66 +584,21 @@ export function CatalogosPage() {
                       error={fieldErrors.descripcion}
                       touched={touched.descripcion}
                       placeholder="Describe el contenido y objetivos del curso..."
-                      rows={4}
+                      rows={3}
                       helperText="(opcional)"
                     />
                   </div>
 
-                  {/* ─── TIP ─── */}
-                  <div
-                    className="rounded-[1.25rem] p-4 sm:p-5 border transition-all duration-300"
-                    style={{
-                      borderColor: `${categoriaStyles[form.categoria].accent}25`,
-                      background: `linear-gradient(135deg, ${categoriaStyles[form.categoria].accent}08 0%, white 65%)`,
-                    }}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-                      <div className="flex items-start gap-3">
-                        <div
-                          className="size-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                          style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}14`, color: categoriaStyles[form.categoria].accent }}
-                        >
-                          <HugeiconsIcon icon={Edit01Icon} size={14} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>
-                            {form.categoria === "regular" ? "Sugerencia para cursos" : form.categoria === "taller" ? "Tips para talleres" : "Nota sobre personalizados"}
-                          </p>
-                          <p className="text-xs mt-1 max-w-2xl leading-relaxed" style={{ color: COLORS.TEXT_MUTED }}>
-                            {form.categoria === "regular"
-                              ? "Usa un nombre claro y una descripción que detalle los objetivos de aprendizaje. Una buena imagen de portada ayuda a identificar el curso rápidamente."
-                              : form.categoria === "taller"
-                                ? "Los talleres funcionan mejor con títulos cortos y descripciones que resalten la duración y el formato práctico. Agrega una imagen representativa."
-                                : "Los cursos personalizados se crean a medida del cliente. Describe brevemente el perfil del público objetivo y los temas clave a cubrir."}
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-full shrink-0 transition-all duration-300"
-                        style={{ backgroundColor: `${categoriaStyles[form.categoria].accent}12`, color: categoriaStyles[form.categoria].accent }}
-                      >
-                        <span className="size-2 rounded-full" style={{ backgroundColor: categoriaStyles[form.categoria].accent }} />
-                        {form.categoria === "regular" ? "Visible en tarjetas" : form.categoria === "taller" ? "Formato corto" : "A medida"}
-                      </div>
-                    </div>
-                  </div>
-
                   {/* ─── FOOTER BUTTONS ─── */}
-                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
+                  <div className="flex items-center justify-end gap-3 pt-1">
                     <button
                       type="button"
                       onClick={closeModal}
-                      className="px-5 py-3 rounded-xl text-sm font-medium transition-all duration-200 border active:scale-[0.98]"
+                      className="px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border active:scale-[0.98]"
                       style={{
                         backgroundColor: "white",
                         color: COLORS.TEXT_MUTED,
                         borderColor: COLORS.BORDER_SUBTLE,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "white"
                       }}
                     >
                       Cancelar
@@ -739,11 +606,10 @@ export function CatalogosPage() {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-200 active:scale-[0.97] hover:translate-y-[-1px]"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 active:scale-[0.97]"
                       style={{
                         background: `linear-gradient(135deg, ${categoriaStyles[form.categoria].accent} 0%, color-mix(in srgb, ${categoriaStyles[form.categoria].accent} 78%, black) 100%)`,
                         opacity: saving ? 0.65 : 1,
-                        boxShadow: `0 18px 40px -24px ${categoriaStyles[form.categoria].accent}`,
                       }}
                     >
                       {saving ? (
@@ -752,15 +618,9 @@ export function CatalogosPage() {
                           Guardando...
                         </>
                       ) : modal.editingId ? (
-                        <>
-                          <Plus size={16} />
-                          Actualizar catálogo
-                        </>
+                        <>Actualizar catálogo</>
                       ) : (
-                        <>
-                          <Plus size={16} />
-                          Crear catálogo
-                        </>
+                        <>Crear catálogo</>
                       )}
                     </button>
                   </div>

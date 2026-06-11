@@ -92,43 +92,42 @@ export function CursoDetailPage() {
     <div className="min-h-[100dvh] flex flex-col">
       <main className="flex-1">
         {/* Header con gradient */}
-        <div >
+        <div style={{ background: `linear-gradient(to bottom, ${COLORS.ACCENT}04, transparent)`, borderBottom: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
           <div className="max-w-[1100px] mx-auto px-6 py-8 relative">
             <button onClick={() => navigate("/cursos")}
-              className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 opacity-80 hover:opacity-100 transition-opacity"
-              style={{ color: "black" }}>
+              className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 opacity-60 hover:opacity-100 transition-opacity"
+              style={{ color: COLORS.TEXT_MUTED }}>
               <HugeiconsIcon icon={ArrowLeftIcon} size={14} />Volver a cursos
             </button>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider" style={{ backgroundColor: "rgba(255,255,255,0.2)", color: "black" }}>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 12%, transparent)`, color: COLORS.ACCENT }}>
                     {curso.tipo}
                   </span>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider" style={{ backgroundColor: "rgba(255,255,255,0.15)", color: "black" }}>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider" style={{ backgroundColor: "rgba(0,0,0,0.05)", color: COLORS.TEXT_MUTED }}>
                     {curso.modalidad}
                   </span>
                 </div>
-                <h1 className="text-3xl font-bold text-black" style={{ color: "rgba(0, 0, 0, 0.8)" }}>{curso.nombre}</h1>
-                <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: "rgba(0, 0, 0, 0.8)" }}>
+                <h1 className="text-3xl font-bold" style={{ color: COLORS.CHARCOAL }}>{curso.nombre}</h1>
+                <div className="flex flex-wrap items-center gap-3 text-sm" style={{ color: COLORS.TEXT_MUTED }}>
                   <span className="inline-flex items-center gap-1">
                     <HugeiconsIcon icon={UserIcon} size={14} />
                     {curso.instructor}
                   </span>
-                  <span className="opacity-50">·</span>
+                  <span className="opacity-40">·</span>
                   <span className="inline-flex items-center gap-1">
                     <HugeiconsIcon icon={LocationIcon} size={14} />
                     {curso.ciudad}
                   </span>
-                  <span className="opacity-50">·</span>
+                  <span className="opacity-40">·</span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: est.bg, color: est.text }}>
                     {est.label}
                   </span>
                 </div>
               </div>
               <button onClick={() => setShowDeleteConfirm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                style={{ backgroundColor: "rgba(255,255,255,0.15)", color: "black" }}>
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-black/5 text-charcoal/60 hover:bg-red-50 hover:text-red-600 active:scale-95">
                 <Trash2 size={14} />Eliminar
               </button>
             </div>
@@ -160,8 +159,8 @@ export function CursoDetailPage() {
               </div>
 
                {/* Módulos progreso */}
-               <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                 <h3 className="text-sm font-semibold mb-1" style={{ color: COLORS.CHARCOAL }}>Progreso de módulos</h3>
+               <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
+                  <h3 className="text-sm font-semibold mb-1" style={{ color: COLORS.CHARCOAL }}>Progreso de módulos</h3>
                  <div className="flex items-center gap-3 mt-3">
                    <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${curso.totalModulos > 0 ? (curso.moduloActual / curso.totalModulos) * 100 : 0}%`, backgroundColor: COLORS.ACCENT }} />
@@ -172,7 +171,7 @@ export function CursoDetailPage() {
 
                {/* Horarios y días */}
                {curso.horario && (
-                 <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
                    <h3 className="text-sm font-semibold mb-3" style={{ color: COLORS.CHARCOAL }}>Horarios</h3>
                    <div className="space-y-2">
                      <div className="flex items-center gap-2">
@@ -198,7 +197,7 @@ export function CursoDetailPage() {
 
               {/* Observaciones */}
               {curso.observaciones && (
-                <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
                   <div className="flex items-center gap-2 mb-2">
                     <HugeiconsIcon icon={NoteIcon} size={16} style={{ color: COLORS.TEXT_MUTED }} />
                     <h3 className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Observaciones</h3>
@@ -221,14 +220,15 @@ export function CursoDetailPage() {
                  modulos.map((mod: any, idx: number) => {
                    const estado = calcularEstadoModulo(mod.fecha_inicio, mod.fecha_fin)
                    return (
-                     <div key={mod.id} className="p-5 rounded-xl border hover:shadow-sm transition-shadow" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                       <div className="flex items-center gap-3 mb-4">
-                         <div className="size-8 rounded-lg flex items-center justify-center text-xs font-bold text-black" style={{ backgroundColor: COLORS.ACCENT }}>
+                      <div key={mod.id} className="p-5 rounded-xl border hover:shadow-sm transition-shadow" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="size-8 rounded-lg flex items-center justify-center text-xs font-bold" style={{ backgroundColor: COLORS.ACCENT, color: "white" }}>
                            {mod.numero_orden || idx + 1}
                          </div>
-                         <div className="flex-1">
-                           <ModuleField label="Nombre" value={mod.nombre_modulo} modId={mod.id} field="nombre_modulo" onUpdate={updateModulo} />
-                         </div>
+                        <div className="flex-1">
+                            <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Nombre</span>
+                            <p className="text-sm font-semibold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{mod.nombre_modulo || "Sin definir"}</p>
+                          </div>
                          <span className="text-xs px-2.5 py-1 rounded-full font-medium" 
                            style={{ 
                              backgroundColor: `color-mix(in srgb, ${estadoConfig[estado].text} 12%, transparent)`,
@@ -334,6 +334,7 @@ function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; lab
       <p className="text-xs mb-0.5" style={{ color: COLORS.TEXT_MUTED }}>{label}</p>
       <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{value}</p>
       {subtitle && <p className="text-[10px] mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>{subtitle}</p>}
+      <div className="mt-3 h-0.5 w-8 rounded-full" style={{ backgroundColor: COLORS.ACCENT }} />
     </div>
   )
 }
@@ -352,7 +353,7 @@ function ModuleField({ label, value, modId, field, type = "text", onUpdate }: {
       {editing ? (
         <div className="flex gap-2">
           <input type={type} value={val} onChange={e => setVal(e.target.value)}
-            className="flex-1 px-2.5 py-2 border rounded-lg text-sm outline-none focus:ring-2" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+            className="flex-1 px-2.5 py-2 border rounded-lg text-sm outline-none focus:ring-2" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL, backgroundColor: "white", colorScheme: "light" }} />
           <button type="button" onClick={() => { onUpdate(modId, { [field]: val || null }); setEditing(false) }}
             className="px-3 py-2 rounded-lg text-xs font-medium text-black" style={{ backgroundColor: COLORS.ACCENT }}>Guardar</button>
           <button type="button" onClick={() => { setEditing(false); setVal(value || "") }}

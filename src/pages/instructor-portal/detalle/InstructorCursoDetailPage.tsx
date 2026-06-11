@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -8,7 +8,6 @@ import {
   BookOpen01Icon,
   CheckListIcon,
   AssignmentsIcon,
-  ChartBarLineIcon,
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -50,28 +49,6 @@ export function InstructorCursoDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const stats = useMemo(() => {
-    if (estudiantes.length === 0) {
-      return { avgAttendance: 0, projectedApproved: 0, atRisk: 0 }
-    }
-    const totalAttendance = estudiantes.reduce(
-      (sum, e) => sum + (e.porcentaje_asistencia ?? 0),
-      0,
-    )
-    const avgAttendance =
-      Math.round((totalAttendance / estudiantes.length) * 10) / 10
-    const projectedApproved = estudiantes.filter((e) => {
-      const avg =
-        e.notas.length > 0
-          ? e.notas.reduce((s, n) => s + n.calificacion, 0) / e.notas.length
-          : 0
-      return (e.porcentaje_asistencia ?? 0) >= 70 && avg >= 6.5
-    }).length
-    const atRisk = estudiantes.filter(
-      (e) => (e.porcentaje_asistencia ?? 0) < 70,
-    ).length
-    return { avgAttendance, projectedApproved, atRisk }
-  }, [estudiantes])
 
   if (loading)
     return (
@@ -150,13 +127,12 @@ export function InstructorCursoDetailPage() {
           </div>
         </div>
 
-        <nav className="flex gap-1 px-6 pt-4 border-b overflow-x-auto" style={{ borderColor: "#f1f3f5" }}>
+        <nav className="flex gap-1 px-6 pt-4 border-b overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderColor: "#f1f3f5" }}>
           {[
             { id: "info", label: "Información", icon: BookOpen01Icon },
             { id: "students", label: "Estudiantes", icon: UserGroupIcon },
             { id: "attendance", label: "Asistencia", icon: CheckListIcon },
             { id: "grades", label: "Notas", icon: AssignmentsIcon },
-            { id: "stats", label: "Estadísticas", icon: ChartBarLineIcon },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -400,40 +376,7 @@ export function InstructorCursoDetailPage() {
             </div>
           )}
 
-          {activeTab === "stats" && (
-            <div className="grid md:grid-cols-3 gap-5">
-              <div className="p-6 rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ border: "1px solid #f1f3f5" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="size-2 rounded-full" style={{ backgroundColor: COLORS.ACCENT }} />
-                  <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Asistencia Promedio</span>
-                </div>
-                <div className="text-4xl font-black tracking-tight" style={{ color: COLORS.CHARCOAL }}>
-                  {stats.avgAttendance}
-                  <span className="text-xl font-bold ml-0.5" style={{ color: COLORS.TEXT_MUTED }}>%</span>
-                </div>
-              </div>
-              <div className="p-6 rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ border: "1px solid #f1f3f5" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="size-2 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Aprobados Proyectados</span>
-                </div>
-                <div className="text-4xl font-black tracking-tight" style={{ color: "#059669" }}>
-                  {stats.projectedApproved}
-                  <span className="text-base font-semibold ml-1.5" style={{ color: COLORS.TEXT_MUTED }}>de {estudiantes.length}</span>
-                </div>
-              </div>
-              <div className="p-6 rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ border: "1px solid #f1f3f5" }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="size-2 rounded-full bg-red-500" />
-                  <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>En Riesgo</span>
-                </div>
-                <div className="text-4xl font-black tracking-tight" style={{ color: "#dc2626" }}>
-                  {stats.atRisk}
-                  <span className="text-base font-semibold ml-1.5" style={{ color: COLORS.TEXT_MUTED }}>estudiante{stats.atRisk !== 1 ? "s" : ""}</span>
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
     </div>

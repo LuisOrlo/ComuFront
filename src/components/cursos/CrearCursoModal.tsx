@@ -877,6 +877,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                                 style={{ 
                                   ...borderS,
                                   borderColor: getError(`modulo_${i}_inicio`) ? "#ef4444" : COLORS.BORDER_SUBTLE,
+                                  colorScheme: "light",
                                 }}
                               />
                               {getError(`modulo_${i}_inicio`) && (
@@ -893,6 +894,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                                 style={{ 
                                   ...borderS,
                                   borderColor: getError(`modulo_${i}_fin`) ? "#ef4444" : COLORS.BORDER_SUBTLE,
+                                  colorScheme: "light",
                                 }}
                               />
                               {getError(`modulo_${i}_fin`) && (

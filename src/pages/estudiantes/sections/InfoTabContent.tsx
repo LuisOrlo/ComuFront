@@ -42,7 +42,7 @@ export function InfoTabContent({ data, loading }: InfoTabContentProps) {
   ] : []
 
   const fechasRows = [
-    { label: "Registrado", value: data.creado_en ? new Date(data.creado_en).toLocaleString('es-ES') : '—' },
+    { label: "Registrado", value: data.creado_en ? new Date(data.creado_en).toLocaleString('es-ES') : (perfil?.primera_matricula ? new Date(perfil.primera_matricula + 'T12:00:00').toLocaleString('es-ES') : '—') },
     { label: "Ultima actualizacion", value: data.actualizado_en ? new Date(data.actualizado_en).toLocaleString('es-ES') : '—' },
   ]
 

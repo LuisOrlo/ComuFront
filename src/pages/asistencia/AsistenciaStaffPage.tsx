@@ -129,8 +129,8 @@ export function AsistenciaStaffPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    {["Persona", "Fecha", "Entrada", "Salida", "Actividades", ""].map(h => (
-                      <th key={h} className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>{h}</th>
+                    {["Persona", "Fecha", "Entrada", "Salida", "Actividades", ""].map((h, i) => (
+                      <th key={`asistencia-h-${i}`} className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>{h}</th>
                     ))}
                   </tr>
                 </thead>

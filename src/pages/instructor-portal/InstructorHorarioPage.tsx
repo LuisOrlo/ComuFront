@@ -5,6 +5,8 @@ import {
   BookOpen01Icon,
   Clock01Icon,
   Home02Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { instructorService, type InstructorCurso } from "@/services/instructor.service"
@@ -29,6 +31,8 @@ interface AgendaItem {
   horaInicio: string
   horaFin: string
   color: string
+  fechaInicio: string
+  fechaFin: string
 }
 
 const COURSE_COLORS = [
@@ -51,6 +55,11 @@ export function InstructorHorarioPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCursoId, setSelectedCursoId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"week" | "month">("week")
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
 
   const loadHorario = () => {
     setError(null)
@@ -116,6 +125,8 @@ export function InstructorHorarioPage() {
           horaInicio: h.hora_inicio!,
           horaFin: h.hora_fin!,
           color: COURSE_COLORS[idx % COURSE_COLORS.length],
+          fechaInicio: curso.fecha_inicio,
+          fechaFin: curso.fecha_fin,
         })
       })
     })
@@ -146,6 +157,52 @@ export function InstructorHorarioPage() {
     agendaItems.forEach((i) => set.add(i.dia))
     return DAYS.filter((d) => set.has(d.num))
   }, [agendaItems])
+
+  const monthDays = useMemo(() => {
+    if (viewMode !== "month") return []
+    const year = currentMonth.getFullYear()
+    const month = currentMonth.getMonth()
+    const firstDayOfMonth = new Date(year, month, 1)
+    const lastDayOfMonth = new Date(year, month + 1, 0)
+
+    const startPad = firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1
+    const endPad = lastDayOfMonth.getDay() === 0 ? 0 : 7 - lastDayOfMonth.getDay()
+
+    const days: Array<{
+      date: Date; dayNumber: number; isCurrentMonth: boolean; isToday: boolean
+      courses: AgendaItem[]
+    }> = []
+
+    for (let i = startPad; i > 0; i--) {
+      const d = new Date(year, month, 1 - i)
+      days.push({ date: d, dayNumber: d.getDate(), isCurrentMonth: false, isToday: false, courses: [] })
+    }
+
+    for (let d = 1; d <= lastDayOfMonth.getDate(); d++) {
+      const date = new Date(year, month, d)
+      const dow = date.getDay() === 0 ? 7 : date.getDay()
+      const today = new Date()
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`
+      days.push({
+        date, dayNumber: d, isCurrentMonth: true,
+        isToday: date.toDateString() === today.toDateString(),
+        courses: agendaItems.filter(i => {
+          if (i.dia !== dow) return false
+          const start = (i.fechaInicio || "").split("T")[0].split(" ")[0]
+          const end = (i.fechaFin || "").split("T")[0].split(" ")[0]
+          if (!start || !end) return false
+          return dateStr >= start && dateStr <= end
+        }),
+      })
+    }
+
+    for (let i = 1; i <= endPad; i++) {
+      const d = new Date(year, month + 1, i)
+      days.push({ date: d, dayNumber: d.getDate(), isCurrentMonth: false, isToday: false, courses: [] })
+    }
+
+    return days
+  }, [viewMode, currentMonth, agendaItems])
 
   if (loading) {
     return (
@@ -191,18 +248,43 @@ export function InstructorHorarioPage() {
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
-            Mi Horario Semanal
-          </h1>
-          <p style={{ color: COLORS.TEXT_MUTED }} className="text-sm">
-            Agenda con tus clases programadas por dia y hora
-          </p>
+      <header className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          {viewMode === "month" && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                className="size-8 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors" style={{ color: COLORS.TEXT_MUTED }}>
+                <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
+              </button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                className="size-8 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors" style={{ color: COLORS.TEXT_MUTED }}>
+                <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+              </button>
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
+              {viewMode === "week" ? "Horario Semanal" : currentMonth.toLocaleDateString("es-EC", { month: "long", year: "numeric" })}
+            </h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-          <span className="size-2 rounded-full" style={{ backgroundColor: COLORS.ACCENT }} />
-          {cursos.length} curso{cursos.length !== 1 ? "s" : ""} asignado{cursos.length !== 1 ? "s" : ""}
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <button onClick={() => setViewMode("week")}
+              className="px-4 py-2 text-xs font-bold transition-colors"
+              style={{ backgroundColor: viewMode === "week" ? COLORS.CHARCOAL : "transparent", color: viewMode === "week" ? "white" : COLORS.TEXT_MUTED }}>
+              Semana
+            </button>
+            <button onClick={() => setViewMode("month")}
+              className="px-4 py-2 text-xs font-bold transition-colors"
+              style={{ backgroundColor: viewMode === "month" ? COLORS.CHARCOAL : "transparent", color: viewMode === "month" ? "white" : COLORS.TEXT_MUTED }}>
+              Mes
+            </button>
+          </div>
+          <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+            <span className="size-2 rounded-full" style={{ backgroundColor: COLORS.ACCENT }} />
+            {cursos.length} curso{cursos.length !== 1 ? "s" : ""} asignado{cursos.length !== 1 ? "s" : ""}
+          </div>
         </div>
       </header>
 
@@ -264,7 +346,50 @@ export function InstructorHorarioPage() {
         </div>
       )}
 
-      {agendaItems.length === 0 ? (
+      {viewMode === "month" ? (
+        <div className="bg-white rounded-2xl overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}>
+          <div className="grid grid-cols-7 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            {DAYS.map(day => (
+              <div key={day.num} className="p-2 md:p-3 text-center border-l first:border-l-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:block" style={{ color: COLORS.TEXT_MUTED }}>
+                  {day.full}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider sm:hidden" style={{ color: COLORS.TEXT_MUTED }}>
+                  {day.short}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {monthDays.map((day, idx) => (
+              <div key={idx}
+                className="min-h-[70px] md:min-h-[90px] p-1 border-b border-l" style={{
+                  borderColor: COLORS.BORDER_SUBTLE,
+                  opacity: day.isCurrentMonth ? 1 : 0.25,
+                }}
+              >
+                <span className={`text-[11px] md:text-xs font-semibold inline-flex items-center justify-center size-5 md:size-6 rounded-full ${day.isToday ? 'text-white' : ''}`}
+                  style={day.isToday ? { backgroundColor: COLORS.ACCENT } : { color: COLORS.CHARCOAL }}
+                >
+                  {day.dayNumber}
+                </span>
+                <div className="mt-0.5 md:mt-1 space-y-0.5">
+                  {day.courses.map((course, ci) => (
+                    <div key={ci}
+                      className="rounded-sm md:rounded px-0.5 md:px-1 py-0.5 text-[6px] md:text-[8px] font-semibold text-white truncate leading-tight"
+                      style={{ backgroundColor: course.color }}
+                      title={`${course.nombre} (${formatTime(course.horaInicio)} - ${formatTime(course.horaFin)})`}
+                    >
+                      <span className="hidden sm:inline">{course.nombre}</span>
+                      <span className="sm:hidden inline-block size-1.5 rounded-full bg-white/80" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : agendaItems.length === 0 ? (
         cursos.length === 0 ? (
           <div
             className="bg-white rounded-2xl p-16 text-center"

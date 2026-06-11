@@ -426,7 +426,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                   style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "white", color: COLORS.CHARCOAL }}>
                   <option value="">Todas</option>
                   {Array.from(new Set(catalogos.map(c => c.categoria))).map(cat => (
-                    <option key={cat} value={cat}>{cat === "regular" ? "Regular" : cat === "taller" ? "Taller" : "Personalizado"}</option>
+                    <option key={cat || "sin-categoria"} value={cat}>{cat === "regular" ? "Regular" : cat === "taller" ? "Taller" : "Personalizado"}</option>
                   ))}
                 </select>
               </div>

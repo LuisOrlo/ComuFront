@@ -337,7 +337,7 @@ export function AprobacionMatriculasPage() {
              </div>
               <div className="flex gap-1 rounded-xl border p-0.5 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 {[{ value: "", label: "Todos" }, { value: "pendiente_validacion", label: "Pendientes" }, { value: "matricula_creada", label: "Aprobadas" }, { value: "rechazado", label: "Rechazados" }].map(f => (
-                  <button key={f.value} onClick={() => { setFiltroEstado(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
+                  <button key={f.value || "todos"} onClick={() => { setFiltroEstado(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                     style={{ backgroundColor: filtroEstado === f.value ? COLORS.CHARCOAL : "transparent", color: filtroEstado === f.value ? "white" : COLORS.TEXT_MUTED }}>
                     {f.label}

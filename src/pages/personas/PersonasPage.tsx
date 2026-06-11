@@ -107,7 +107,7 @@ export function PersonasPage() {
                 { label: "Admin", value: "admin" },
               ].map(({ label, value }) => (
                 <button
-                  key={value}
+                  key={value || "todos"}
                   onClick={() => setFiltroTipo(value)}
                   className="px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-180"
                   style={{

@@ -51,7 +51,7 @@ export function CatalogosConCursosPage() {
   const [catalogoTouched, setCatalogoTouched] = useState<Record<string, boolean>>({})
   const [catalogoFieldErrors, setCatalogoFieldErrors] = useState<Record<string, string>>({})
   const [catalogoSaving, setCatalogoSaving] = useState(false)
-  const [catalogoUploading, setCatalogoUploading] = useState(false)
+  const [catalogoUploading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [catalogoToDelete, setCatalogoToDelete] = useState<{ id: string; nombre: string } | null>(null)
   const [deletingCatalogo, setDeletingCatalogo] = useState(false)
@@ -143,6 +143,9 @@ export function CatalogosConCursosPage() {
   }
 
   const closeCatalogoModal = () => {
+    if (catalogoForm.imagen?.startsWith("blob:")) {
+      URL.revokeObjectURL(catalogoForm.imagen)
+    }
     setCatalogoModal({ open: false, editingId: null })
     setCatalogoForm(emptyForm)
     setCatalogoTouched({})
@@ -153,20 +156,16 @@ export function CatalogosConCursosPage() {
     setCatalogoForm((prev) => ({ ...prev, categoria: cat }))
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setCatalogoUploading(true)
-    try {
-      const url = await cursosService.uploadImagenCatalogo(file)
-      setCatalogoForm((prev) => ({ ...prev, imagen: url, imagenFile: file }))
-      toast.success("Imagen subida")
-    } catch {
-      toast.error("Error al subir la imagen")
-    } finally {
-      setCatalogoUploading(false)
+    if (catalogoForm.imagen?.startsWith("blob:")) {
+      URL.revokeObjectURL(catalogoForm.imagen)
     }
+
+    const previewUrl = URL.createObjectURL(file)
+    setCatalogoForm((prev) => ({ ...prev, imagen: previewUrl, imagenFile: file }))
   }
 
   const handleSubmitCatalogo = async (e: React.FormEvent) => {
@@ -181,11 +180,17 @@ export function CatalogosConCursosPage() {
 
     setCatalogoSaving(true)
     try {
+      let imagenUrl = catalogoForm.imagen
+
+      if (catalogoForm.imagenFile) {
+        imagenUrl = await cursosService.uploadImagenCatalogo(catalogoForm.imagenFile)
+      }
+
       const payload = {
         nombre: catalogoForm.nombre,
         descripcion: catalogoForm.descripcion || undefined,
         categoria: catalogoForm.categoria,
-        imagen: catalogoForm.imagen || undefined,
+        imagen: imagenUrl?.startsWith("blob:") ? undefined : imagenUrl || undefined,
       }
 
       if (catalogoModal.editingId) {
@@ -628,121 +633,136 @@ export function CatalogosConCursosPage() {
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                  className="relative bg-white rounded-[2.5rem] max-w-lg w-full overflow-hidden shadow-2xl"
+                  className="relative bg-white rounded-[2.5rem] max-w-[90vw] xl:max-w-[960px] w-full max-h-[90vh] overflow-hidden shadow-2xl"
                 >
-                  <div className="p-8 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <div className="space-y-1">
-                      <h3 className="text-2xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>
+                  <div className="p-5 sm:p-6 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <div>
+                      <h3 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>
                         {catalogoModal.editingId ? "Refinar Catálogo" : "Nuevo Catálogo"}
                       </h3>
-                      <p className="text-xs font-medium opacity-50">Define los parámetros base de la oferta académica</p>
+                      <p className="text-xs font-medium opacity-50 mt-0.5">Define los parámetros base de la oferta académica</p>
                     </div>
-                    <button 
-                      onClick={closeCatalogoModal} 
-                      className="size-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors"
-                    >
-                      <X size={20} />
+                    <button onClick={closeCatalogoModal} className="size-9 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors">
+                      <X size={18} />
                     </button>
                   </div>
 
-                  <form onSubmit={handleSubmitCatalogo} className="p-8 space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Identificador Nominal
-                      </label>
-                      <input
-                        type="text"
-                        value={catalogoForm.nombre}
-                        onChange={(e) => setCatalogoForm({ ...catalogoForm, nombre: e.target.value })}
-                        placeholder="Ej: Master en Cinematografía"
-                        className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                        style={{ borderColor: catalogoFieldErrors.nombre ? "#ef4444" : COLORS.BORDER_SUBTLE }}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Narrativa del Curso
-                      </label>
-                      <textarea
-                        value={catalogoForm.descripcion}
-                        onChange={(e) => setCatalogoForm({ ...catalogoForm, descripcion: e.target.value })}
-                        placeholder="Describe el impacto y alcance de este catálogo..."
-                        rows={3}
-                        className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5 resize-none"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Clasificación Operativa
-                      </label>
-                      <div className="flex gap-2">
-                        {(["regular", "taller", "personalizado"] as const).map((cat) => (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => handleCategoriaChange(cat)}
-                            className={cn(
-                              "flex-1 py-3 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all",
-                              catalogoForm.categoria === cat 
-                                ? "bg-tomato text-white shadow-lg shadow-tomato/20" 
-                                : "bg-black/5 text-charcoal/60 hover:bg-black/10"
-                            )}
-                          >
-                            {cat}
-                          </button>
-                        ))}
+                  <form onSubmit={handleSubmitCatalogo}>
+                    <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] min-h-[360px] max-h-[70vh]">
+                      {/* LEFT: Image */}
+                      <div className="p-5 sm:p-6 border-r flex flex-col" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <label className="text-xs font-bold uppercase tracking-widest opacity-50 mb-3 block">
+                          Identidad Visual
+                        </label>
+                        <div className="flex-1 min-h-0">
+                          {catalogoForm.imagen ? (
+                            <div className="relative rounded-2xl overflow-hidden border aspect-[4/3]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                              <img src={catalogoForm.imagen} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
+                              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (catalogoForm.imagen?.startsWith("blob:")) URL.revokeObjectURL(catalogoForm.imagen)
+                                  setCatalogoForm({ ...catalogoForm, imagen: "", imagenFile: null })
+                                }}
+                                className="absolute top-3 right-3 size-9 flex items-center justify-center rounded-full bg-white/90 backdrop-blur transition-colors hover:bg-white"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => fileRef.current?.click()}
+                              disabled={catalogoUploading}
+                              className="w-full h-full min-h-[220px] flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed transition-all hover:bg-gray-50 active:scale-[0.98]"
+                              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                            >
+                              <div className="size-14 rounded-2xl flex items-center justify-center bg-black/5">
+                                <Upload size={24} />
+                              </div>
+                              <div className="text-center">
+                                <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Subir imagen de portada</p>
+                                <p className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>PNG, JPG o WebP</p>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                        <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                       </div>
-                    </div>
 
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Identidad Visual
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <button
-                          type="button"
-                          onClick={() => fileRef.current?.click()}
-                          disabled={catalogoUploading}
-                          className="flex-1 py-4 px-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-3 text-sm font-bold transition-all hover:bg-gray-50 active:scale-95"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
-                        >
-                          <Upload size={18} />
-                          {catalogoUploading ? "Cargando..." : "Adjuntar Media"}
-                        </button>
-                        <input
-                          ref={fileRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleFileChange}
-                          className="hidden"
-                        />
-                        {catalogoForm.imagen && (
-                          <div className="size-14 rounded-2xl overflow-hidden border-2 border-white shadow-md">
-                            <img src={catalogoForm.imagen} alt="preview" className="w-full h-full object-cover" />
+                      {/* RIGHT: Form */}
+                      <div className="p-5 sm:p-6 space-y-5">
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-widest opacity-50 mb-2 block">
+                            Clasificación Operativa
+                          </label>
+                          <div className="flex gap-1.5">
+                            {(["regular", "taller", "personalizado"] as const).map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => handleCategoriaChange(cat)}
+                                className={cn(
+                                  "flex-1 py-2.5 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all active:scale-[0.97]",
+                                  catalogoForm.categoria === cat 
+                                    ? "text-white shadow-lg" 
+                                    : "bg-black/5 text-charcoal/60 hover:bg-black/10"
+                                )}
+                                style={catalogoForm.categoria === cat ? { backgroundColor: COLORS.ACCENT } : {}}
+                              >
+                                {cat}
+                              </button>
+                            ))}
                           </div>
-                        )}
-                      </div>
-                    </div>
+                        </div>
 
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="submit"
-                        disabled={catalogoSaving}
-                        className="flex-[2] py-4 rounded-2xl text-sm font-bold text-white transition-all shadow-xl shadow-tomato/20 active:scale-95"
-                        style={{ backgroundColor: COLORS.ACCENT, opacity: catalogoSaving ? 0.6 : 1 }}
-                      >
-                        {catalogoSaving ? "Sincronizando..." : "Confirmar Cambios"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={closeCatalogoModal}
-                        className="flex-1 py-4 rounded-2xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10 transition-all active:scale-95"
-                      >
-                        Descartar
-                      </button>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
+                            Identificador Nominal
+                          </label>
+                          <input
+                            type="text"
+                            value={catalogoForm.nombre}
+                            onChange={(e) => setCatalogoForm({ ...catalogoForm, nombre: e.target.value })}
+                            placeholder="Ej: Master en Cinematografía"
+                            className="w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
+                            style={{ borderColor: catalogoFieldErrors.nombre ? "#ef4444" : COLORS.BORDER_SUBTLE }}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
+                            Narrativa del Curso
+                          </label>
+                          <textarea
+                            value={catalogoForm.descripcion}
+                            onChange={(e) => setCatalogoForm({ ...catalogoForm, descripcion: e.target.value })}
+                            placeholder="Describe el impacto y alcance de este catálogo..."
+                            rows={3}
+                            className="w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5 resize-none"
+                            style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                          />
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                          <button
+                            type="submit"
+                            disabled={catalogoSaving}
+                            className="flex-[2] py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+                            style={{ backgroundColor: COLORS.ACCENT, opacity: catalogoSaving ? 0.6 : 1 }}
+                          >
+                            {catalogoSaving ? "Sincronizando..." : "Confirmar Cambios"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeCatalogoModal}
+                            className="flex-1 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10 transition-all active:scale-95"
+                          >
+                            Descartar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </form>
                 </motion.div>

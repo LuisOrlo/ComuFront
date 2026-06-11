@@ -25,9 +25,9 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
           <thead>
             <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               {["Nombre del curso", "Tipo", "Modalidad / Ciudad", "Instructor", "Progreso", "Estudiantes", "Estado", ""].map(
-                (h) => (
+                (h, i) => (
                   <th
-                    key={h}
+                    key={`course-table-h-${i}`}
                     className="py-3 px-4 text-xs font-semibold uppercase tracking-wider"
                     style={{ color: COLORS.TEXT_MUTED }}
                   >

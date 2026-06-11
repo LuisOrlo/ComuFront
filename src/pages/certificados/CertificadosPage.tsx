@@ -242,8 +242,8 @@ export function CertificadosPage() {
             className="px-4 py-2 rounded-xl border bg-gray-50 text-xs outline-none"
             style={{ borderColor: COLORS.BORDER_SUBTLE }}
           >
-            {FILTRO_MATRICULA.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {FILTRO_MATRICULA.map((o, i) => (
+              <option key={o.value || `matricula-${i}`} value={o.value}>{o.label}</option>
             ))}
           </select>
           <button
@@ -262,7 +262,7 @@ export function CertificadosPage() {
         <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
           {FILTRO_CERT.map(t => (
             <button
-              key={t.value}
+              key={t.value || "todos-cert"}
                 onClick={() => { setFiltroCert(t.value); setPage(1) }}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",

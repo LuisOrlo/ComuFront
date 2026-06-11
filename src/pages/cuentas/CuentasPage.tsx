@@ -121,8 +121,8 @@ export function CuentasPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    {["Persona", "Tipo", "Usuario", "", ""].map(h => (
-                      <th key={h} className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>{h}</th>
+                    {["Persona", "Tipo", "Usuario", "admin", "staff"].map((h, i) => (
+                      <th key={`${h}-${i}`} className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>{i < 3 ? h : ""}</th>
                     ))}
                   </tr>
                 </thead>
