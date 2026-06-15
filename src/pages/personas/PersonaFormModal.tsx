@@ -104,10 +104,11 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarCiudades()
     setFieldErrors({})
     if (editingId) cargarPersona()
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId])
 
   const parseErrors = (errorsObj: Record<string, string[]>) => {

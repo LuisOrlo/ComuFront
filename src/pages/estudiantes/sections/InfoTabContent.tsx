@@ -1,11 +1,27 @@
-import type { Estudiante } from "@/services/estudiantes.service"
+import { useState } from "react"
+import type { Estudiante, AcademicProfile } from "@/services/estudiantes.service"
+import { TransferCursoModal } from "@/components/estudiantes/TransferCursoModal"
+import { COLORS } from "@/lib/constants"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowDataTransferHorizontalIcon } from "@hugeicons/core-free-icons"
 
 interface InfoTabContentProps {
   data: Estudiante | null
+  academicData: AcademicProfile | null
   loading: boolean
+  onRefresh: () => void
 }
 
-export function InfoTabContent({ data, loading }: InfoTabContentProps) {
+export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoTabContentProps) {
+  const [transferMatricula, setTransferMatricula] = useState<{
+    id: string
+    curso: string
+    fecha_inscripcion: string
+    promedio: number | null
+    notas: Array<{ modulo: string; calificacion: number; aprobado: boolean }>
+    porcentaje_asistencia: number
+  } | null>(null)
+
   if (loading) {
     return (
       <div className="text-center py-20">
@@ -45,6 +61,8 @@ export function InfoTabContent({ data, loading }: InfoTabContentProps) {
     { label: "Registrado", value: data.creado_en ? new Date(data.creado_en).toLocaleString('es-ES') : (perfil?.primera_matricula ? new Date(perfil.primera_matricula + 'T12:00:00').toLocaleString('es-ES') : '—') },
     { label: "Ultima actualizacion", value: data.actualizado_en ? new Date(data.actualizado_en).toLocaleString('es-ES') : '—' },
   ]
+
+  const matriculasActivas = academicData?.matriculas.filter((m) => m.estado === "activo") ?? []
 
   return (
     <div>
@@ -89,6 +107,51 @@ export function InfoTabContent({ data, loading }: InfoTabContentProps) {
           ))}
         </div>
       </div>
+
+      {matriculasActivas.length > 0 && (
+        <div className="mt-8 pt-6 border-t">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+            Matrículas Activas ({matriculasActivas.length})
+          </h3>
+          <div className="divide-y divide-gray-50">
+            {matriculasActivas.map((matricula) => (
+              <div key={matricula.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-900 truncate">{matricula.curso}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {matricula.notas.length} módulo{matricula.notas.length !== 1 ? "s" : ""}
+                    {matricula.promedio !== null && (
+                      <>
+                        <span className="mx-1.5">·</span>
+                        Promedio: {matricula.promedio}
+                      </>
+                    )}
+                    <span className="mx-1.5">·</span>
+                    Asistencia: {matricula.porcentaje_asistencia}%
+                  </p>
+                </div>
+                <button
+                  onClick={() => setTransferMatricula(matricula)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all hover:scale-[0.97] active:scale-[0.95] shrink-0"
+                  style={{ backgroundColor: COLORS.ACCENT }}
+                >
+                  <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} size={13} />
+                  Transferir
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {transferMatricula && (
+        <TransferCursoModal
+          isOpen={!!transferMatricula}
+          onClose={() => setTransferMatricula(null)}
+          onSuccess={onRefresh}
+          matricula={transferMatricula}
+        />
+      )}
     </div>
   )
 }

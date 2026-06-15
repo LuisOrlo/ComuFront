@@ -42,11 +42,6 @@ export function CursosPage() {
   // Filtros
   const [filtros, setFiltros] = useState<CursoFilters>({})
 
-  // Cargar cursos cuando cambian página o filtros
-  useEffect(() => {
-    cargarCursos()
-  }, [currentPage, filtros])
-
   const cargarCursos = async () => {
     try {
       setLoading(true)
@@ -65,6 +60,13 @@ export function CursosPage() {
       setLoading(false)
     }
   }
+
+  // Cargar cursos cuando cambian página o filtros
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargarCursos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, filtros])
 
   const handleFilterChange = (nuevosFiltros: CursoFilters) => {
     setFiltros(nuevosFiltros)
@@ -99,7 +101,7 @@ export function CursosPage() {
       setShowDeleteConfirm(false)
       setCursoToDelete(null)
       cargarCursos()
-    } catch (err) {
+    } catch {
       toast.error("Error al eliminar el curso")
     } finally {
       setDeletingCurso(false)
@@ -119,7 +121,7 @@ export function CursosPage() {
   const paginasBotones: number[] = []
   const maxBotones = 5
   let desde = Math.max(1, currentPage - Math.floor(maxBotones / 2))
-  let hasta = Math.min(totalPages, desde + maxBotones - 1)
+  const hasta = Math.min(totalPages, desde + maxBotones - 1)
 
   if (hasta - desde + 1 < maxBotones) {
     desde = Math.max(1, hasta - maxBotones + 1)

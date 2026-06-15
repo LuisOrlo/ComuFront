@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ViewIcon, Edit01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { type CSSProperties } from "react"
 import { StatusBadge } from "./StatusBadge"
 import type { Curso } from "@/services/cursos.service"
 
@@ -37,7 +38,7 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
               )}
             </tr>
           </thead>
-          <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as any}>
+          <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
             {cursos.map((c) => {
               const pct = Math.round((c.estudiantes / c.capacidad) * 100)
               return (
@@ -48,7 +49,10 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
-                  <td className="py-3 px-4 text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>
+                  <td className="py-3 px-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
+                    {c.colorCatalogo && (
+                      <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: c.colorCatalogo }} />
+                    )}
                     {c.nombre}
                   </td>
                   <td className="py-3 px-4 text-sm" style={{ color: COLORS.TEXT_MUTED }}>

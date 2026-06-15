@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, type CSSProperties } from "react"
 import { Search, KeyRound, X, Check, Eye, EyeOff, User, ShieldCheck } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { personasService, type Persona } from "@/services/personas.service"
@@ -26,8 +26,6 @@ export function CuentasPage() {
   const [saving, setSaving] = useState(false)
   const [editPassword, setEditPassword] = useState(false)
 
-  useEffect(() => { cargar() }, [search])
-
   const cargar = async () => {
     setLoading(true)
     try {
@@ -36,6 +34,11 @@ export function CuentasPage() {
     } catch { toast.error("Error al cargar") }
     finally { setLoading(false) }
   }
+
+  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
 
   const openCreate = (p: Persona) => {
     setSelectedPersona(p)
@@ -83,8 +86,9 @@ export function CuentasPage() {
       }
       closeModal()
       cargar()
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Error al guardar cuenta")
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || "Error al guardar cuenta")
     } finally { setSaving(false) }
   }
 
@@ -126,7 +130,7 @@ export function CuentasPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as any}>
+                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
                   {personas.map(p => {
                     const ts = TIPO_STYLES[p.tipo] || TIPO_STYLES.instructor
                     return (

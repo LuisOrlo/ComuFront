@@ -127,7 +127,7 @@ export function PodcastPage() {
     try {
       const res = await personasService.getPersonas({ page: 1 })
       setPersonas(res.data)
-    } catch { }
+    } catch { /* empty */ }
   }
 
   const loadClientes = async (search?: string) => {
@@ -135,7 +135,7 @@ export function PodcastPage() {
       setLoadingClientes(true)
       const res = await clientesService.getClientes({ search, per_page: 50 })
       setClientes(res.data)
-    } catch { }
+    } catch { /* empty */ }
     finally { setLoadingClientes(false) }
   }
 
@@ -165,12 +165,15 @@ export function PodcastPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     Promise.all([loadPaquetes(), loadPersonas(), loadClientes()]).finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReservas()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroEstado])
 
   useEffect(() => {
@@ -178,6 +181,7 @@ export function PodcastPage() {
       const timer = setTimeout(() => loadClientes(clienteSearch), 300)
       return () => clearTimeout(timer)
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadClientes()
     }
   }, [clienteSearch])

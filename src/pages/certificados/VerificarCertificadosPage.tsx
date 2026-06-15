@@ -135,7 +135,12 @@ export function VerificarCertificadosPage() {
                         <Copy size={12} />
                       </button>
                     </div>
-                    <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}> {cert.catalogo_curso?.nombre || "Curso"}</p>
+                    <p className="text-sm font-medium flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
+                      {cert.catalogo_curso?.color && (
+                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: cert.catalogo_curso.color }} />
+                      )}
+                      {cert.catalogo_curso?.nombre || "Curso"}
+                    </p>
                     <div className="flex items-center gap-3 text-xs opacity-50">
                       <span>Emisión: {new Date(cert.fecha_emision).toLocaleDateString("es-ES")}</span>
                       <span className={cn("inline-block px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_STYLES[cert.estado])}>

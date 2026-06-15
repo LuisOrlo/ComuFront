@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef, useMemo } from "react"
 import axios from "axios"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -25,11 +26,9 @@ import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services
 import { toast } from "sonner"
 
 export function AprobacionMatriculasPage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selected, setSelected] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [filtroEstado, setFiltroEstado] = useState("pendiente_validacion")
@@ -78,7 +77,9 @@ export function AprobacionMatriculasPage() {
   }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { cargarSolicitudes() }, [filtroEstado])
+  useEffect(() => { cargarSolicitudes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroEstado])
 
   useEffect(() => {
     if (filtroEstado === "matricula_creada") {
@@ -115,12 +116,9 @@ export function AprobacionMatriculasPage() {
     if (!selectedId || !editField || editVal === "") return
     setSavingEdit(true)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = {}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data[editField] = editVal
       await cursosService.actualizarEstudiante(selectedId, data)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSelected((prev: any) => {
         if (!prev) return prev
         const updated = { ...prev }
@@ -152,7 +150,6 @@ export function AprobacionMatriculasPage() {
       const res = await axios.post(`${base}/academic/solicitudes-inscripcion/${selectedId}/cedula`, form, {
         headers: { Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" },
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_url: res.data.data.cedula_url } } }))
       toast.success("Cédula subida")
     } catch { toast.error("Error al subir cédula") }
@@ -163,7 +160,6 @@ export function AprobacionMatriculasPage() {
     if (!selectedId || !editPagoField) return
     setSavingPagoEdit(true)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = {}
       if (editPagoField === "pago_monto") {
         data.monto_solicitado = parseFloat(editPagoVal)
@@ -173,7 +169,6 @@ export function AprobacionMatriculasPage() {
         data.tipo_pago = editPagoVal
       }
       await cursosService.actualizarPago(selectedId, data)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSelected((prev: any) => {
         if (!prev?.pago) return prev
         const updated = { ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago.comprobante } } }
@@ -197,9 +192,7 @@ export function AprobacionMatriculasPage() {
     setSavingCursoEdit(true)
     try {
       await cursosService.actualizarCurso(selectedId, { curso_abierto_id: editCursoVal })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cursoNombre = cursosAbiertosList.find((c: any) => c.id === editCursoVal)?.catalogo?.nombre || editCursoVal
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSelected((prev: any) => {
         if (!prev) return prev
         return { ...prev, curso: { ...prev.curso, nombre: cursoNombre, id: editCursoVal } }
@@ -217,7 +210,6 @@ export function AprobacionMatriculasPage() {
   const loadCursosAbiertos = async () => {
     try {
       const res = await cursosService.getCursos({}, 1)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setCursosAbiertosList((res as any).data || [])
     } catch { /* silent */ }
   }
@@ -234,7 +226,6 @@ export function AprobacionMatriculasPage() {
       const res = await axios.post(`${base}/academic/solicitudes-inscripcion/${selectedId}/comprobante`, form, {
         headers: { Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" },
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, url: res.data.data.comprobante_url } } }))
       toast.success("Comprobante subido")
     } catch { toast.error("Error al subir comprobante") }
@@ -407,7 +398,10 @@ export function AprobacionMatriculasPage() {
                               <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
                                 {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
                               </p>
-                              <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                              <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
+                                {s.curso_abierto?.catalogo?.color && (
+                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.curso_abierto.catalogo.color }} />
+                                )}
                                 {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
                               </p>
                               <div className="flex items-center gap-2 mt-2">
@@ -451,9 +445,8 @@ export function AprobacionMatriculasPage() {
                                            </div>
                                            <select value={editCursoVal} onChange={e => setEditCursoVal(e.target.value)}
                                              className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingCursoEdit}>
-                                             <option value="">Seleccionar...</option>
-                                             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                            {cursosAbiertosList.map((c: any) => (
+                                              <option value="">Seleccionar...</option>
+                                             {cursosAbiertosList.map((c: any) => (
                                                <option key={c.id} value={c.id}>{c.catalogo?.nombre || c.id} {c.fecha_inicio ? `(${c.fecha_inicio.split("T")[0]})` : ""}</option>
                                              ))}
                                            </select>
@@ -654,7 +647,10 @@ export function AprobacionMatriculasPage() {
                         <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
                           {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
                         </p>
-                        <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                        <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
+                          {s.curso_abierto?.catalogo?.color && (
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.curso_abierto.catalogo.color }} />
+                          )}
                           {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -703,9 +699,8 @@ export function AprobacionMatriculasPage() {
                                      </div>
                                      <select value={editCursoVal} onChange={e => setEditCursoVal(e.target.value)}
                                        className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingCursoEdit}>
-                                       <option value="">Seleccionar...</option>
-                                       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                                            {cursosAbiertosList.map((c: any) => (
+                                        <option value="">Seleccionar...</option>
+                                             {cursosAbiertosList.map((c: any) => (
                                          <option key={c.id} value={c.id}>{c.catalogo?.nombre || c.id} {c.fecha_inicio ? `(${c.fecha_inicio.split("T")[0]})` : ""}</option>
                                        ))}
                                      </select>

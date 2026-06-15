@@ -82,6 +82,7 @@ export function InstructorHorarioPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHorario()
   }, [])
 
@@ -109,7 +110,7 @@ export function InstructorHorarioPage() {
       const diasArray = Array.isArray(rawDias) ? rawDias : [rawDias]
       
       const dias = diasArray
-        .map((d: any) => {
+        .map((d: { dia_semana?: number }) => {
           if (typeof d === "number") return d;
           return d?.dia_semana;
         })
@@ -324,7 +325,10 @@ export function InstructorHorarioPage() {
                     >
                       {curso.nombre_instancia}
                     </p>
-                    <p className="text-[10px] truncate" style={{ color: COLORS.TEXT_MUTED }}>
+                    <p className="text-[10px] truncate flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
+                      {curso.catalogo?.color && (
+                        <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
+                      )}
                       {curso.catalogo?.nombre}
                     </p>
                   </div>

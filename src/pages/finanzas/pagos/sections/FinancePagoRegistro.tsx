@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { 
@@ -37,10 +38,6 @@ export function FinancePagoRegistro({ cuentaId, onBack, onSuccess }: FinancePago
   const [modalImage, setModalImage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    loadDetalle()
-  }, [cuentaId])
-
   const loadDetalle = async () => {
     try {
       const res = await financeService.getCuentaDetalle(cuentaId)
@@ -56,6 +53,12 @@ export function FinancePagoRegistro({ cuentaId, onBack, onSuccess }: FinancePago
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDetalle()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cuentaId])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

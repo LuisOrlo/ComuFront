@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { 
@@ -15,10 +16,6 @@ export function FinanceValidacion() {
   const [verifying, setVerifying] = useState<string | null>(null)
   const [modalImage, setModalImage] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadPendientes()
-  }, [])
-
   const loadPendientes = async () => {
     try {
       const res = await financeService.getTransacciones({ estado_verificacion: "pendiente" })
@@ -29,6 +26,11 @@ export function FinanceValidacion() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPendientes()
+  }, [])
 
   const handleVerificar = async (id: string, estado: "aprobado" | "rechazado") => {
     setVerifying(id)

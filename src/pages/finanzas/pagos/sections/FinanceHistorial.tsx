@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
@@ -7,10 +8,6 @@ import { Invoice02Icon } from "@hugeicons/core-free-icons"
 export function FinanceHistorial() {
   const [loading, setLoading] = useState(true)
   const [transacciones, setTransacciones] = useState<any[]>([])
-
-  useEffect(() => {
-    loadHistorial()
-  }, [])
 
   const loadHistorial = async () => {
     try {
@@ -22,6 +19,11 @@ export function FinanceHistorial() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadHistorial()
+  }, [])
 
   if (loading) return <div className="p-20 text-center text-gray-400">Cargando historial...</div>
 

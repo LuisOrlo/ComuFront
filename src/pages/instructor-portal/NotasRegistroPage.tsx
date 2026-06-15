@@ -158,7 +158,10 @@ export function NotasRegistroPage() {
             <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
               {modulo.nombre_modulo}
             </h1>
-            <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+            <p className="text-sm flex items-center gap-1.5" style={{ color: COLORS.TEXT_MUTED }}>
+              {curso?.catalogo?.color && (
+                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
+              )}
               {curso?.catalogo?.nombre ?? "Curso"} - {curso?.nombre_instancia ?? ""}
             </p>
           </div>

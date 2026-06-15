@@ -31,6 +31,17 @@ import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorar
 import { MisEstudiantesPage } from "@/pages/instructor-portal/MisEstudiantesPage"
 import { FinancePagosPage } from "@/pages/finanzas/pagos/FinancePagosPage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
+import {
+  SecretariaDashboardPage,
+  SecretariaPagosPage,
+  SecretariaCursosPage,
+  SecretariaCertificadosPage,
+  SecretariaAsistenciaPage,
+  SecretariaPodcastPage,
+  SecretariaEdicionVideoPage,
+  SecretariaAlquileresPage,
+  SecretariaSolicitudesPage,
+} from "@/pages/secretaria"
 import { EstudiantePerfilAcademicoPage } from "@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"
 import { CertificadosPage } from "@/pages/certificados/CertificadosPage"
 import { CargaMasivaCertificadosPage } from "@/pages/certificados/CargaMasivaCertificadosPage"
@@ -62,7 +73,7 @@ function AppLayout() {
       </div>
 
       <div className="hidden lg:block shrink-0">
-        <Sidebar collapsed={collapsed} />
+        <Sidebar collapsed={collapsed} onToggleClick={() => setCollapsed(!collapsed)} />
       </div>
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -99,6 +110,19 @@ function AppLayout() {
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 
+            {/* Secretaria routes */}
+            <Route path="/secretaria" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaDashboardPage /></RoleGuard>} />
+            <Route path="/secretaria/estudiantes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
+            <Route path="/secretaria/cursos" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
+            <Route path="/secretaria/talleres" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
+            <Route path="/secretaria/pagos" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaPagosPage /></RoleGuard>} />
+            <Route path="/secretaria/certificados" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCertificadosPage /></RoleGuard>} />
+            <Route path="/secretaria/asistencia" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaAsistenciaPage /></RoleGuard>} />
+            <Route path="/secretaria/podcast" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaPodcastPage /></RoleGuard>} />
+            <Route path="/secretaria/edicion-video" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaEdicionVideoPage /></RoleGuard>} />
+            <Route path="/secretaria/alquileres" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaAlquileresPage /></RoleGuard>} />
+            <Route path="/secretaria/solicitudes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaSolicitudesPage /></RoleGuard>} />
+
             {/* Instructor portal (Admin + Instructor) */}
             <Route path="/instructor/cursos" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursosPage /></RoleGuard>} />
             <Route path="/instructor/cursos/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursoDetailPage /></RoleGuard>} />
@@ -128,7 +152,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function RoleGuard({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const { user } = useAuth()
-  const userRoles: string[] = (user as any)?.roles || []
+  const userRoles: string[] = user?.roles || []
 
   const hasRole = roles.some((r) => userRoles.includes(r))
   if (!hasRole) {

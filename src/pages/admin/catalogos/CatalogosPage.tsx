@@ -16,6 +16,7 @@ interface FormData {
   categoria: Categoria
   imagen: string
   imagenFile: File | null
+  color: string
 }
 
 const emptyForm: FormData = {
@@ -24,6 +25,7 @@ const emptyForm: FormData = {
   categoria: "regular",
   imagen: "",
   imagenFile: null,
+  color: "#3B82F6",
 }
 
 const categoriaStyles: Record<Categoria, { label: string; accent: string; soft: string; description: string }> = {
@@ -67,10 +69,6 @@ export function CatalogosPage() {
   const [catalogoToDelete, setCatalogoToDelete] = useState<{ id: string; nombre: string } | null>(null)
   const [deletingCatalogo, setDeletingCatalogo] = useState(false)
 
-  useEffect(() => {
-    cargarCatalogos()
-  }, [search])
-
   const cargarCatalogos = async () => {
     setLoading(true)
     try {
@@ -82,6 +80,12 @@ export function CatalogosPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargarCatalogos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
 
   const openCreate = () => {
     setForm(emptyForm)
@@ -95,6 +99,7 @@ export function CatalogosPage() {
       categoria: cat.categoria as Categoria,
       imagen: cat.imagen || "",
       imagenFile: null,
+      color: cat.color || "#3B82F6",
     })
     setModal({ open: true, editingId: cat.id })
   }
@@ -154,10 +159,11 @@ export function CatalogosPage() {
         descripcion: form.descripcion || undefined,
         categoria: form.categoria,
         imagen: imagenUrl?.startsWith("blob:") ? undefined : imagenUrl || undefined,
+        color: form.color || undefined,
       }
 
       if (modal.editingId) {
-        await cursosService.actualizarCatalogo(modal.editingId, payload as any)
+        await cursosService.actualizarCatalogo(modal.editingId, payload as Record<string, unknown>)
         toast.success("Catálogo actualizado")
       } else {
         await cursosService.crearCatalogo(payload)
@@ -166,8 +172,9 @@ export function CatalogosPage() {
 
       closeModal()
       cargarCatalogos()
-    } catch (error: any) {
-      const errors = error.response?.data?.errors
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { errors?: Record<string, string[]>; mensaje?: string } } }
+      const errors = axiosError.response?.data?.errors
       if (errors) {
         const parsed: Record<string, string> = {}
         for (const [key, msgs] of Object.entries(errors)) {
@@ -175,7 +182,7 @@ export function CatalogosPage() {
         }
         setFieldErrors(parsed)
       } else {
-        toast.error(error.response?.data?.mensaje || "Error al guardar el catálogo")
+        toast.error(axiosError.response?.data?.mensaje || "Error al guardar el catálogo")
       }
     } finally {
       setSaving(false)
@@ -337,12 +344,17 @@ export function CatalogosPage() {
 
                   {/* Card content */}
                   <div className="p-4">
-                    <h3
-                      className="text-sm font-semibold mb-1 line-clamp-2"
-                      style={{ color: COLORS.CHARCOAL }}
-                    >
-                      {cat.nombre}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      {cat.color && (
+                        <span className="size-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                      )}
+                      <h3
+                        className="text-sm font-semibold line-clamp-2"
+                        style={{ color: COLORS.CHARCOAL }}
+                      >
+                        {cat.nombre}
+                      </h3>
+                    </div>
                     {cat.descripcion && (
                       <p className="text-xs line-clamp-2" style={{ color: COLORS.TEXT_MUTED }}>
                         {cat.descripcion}
@@ -587,6 +599,29 @@ export function CatalogosPage() {
                       rows={3}
                       helperText="(opcional)"
                     />
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: COLORS.TEXT_MUTED }}>
+                        Color identificador
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={form.color}
+                          onChange={(e) => setForm({ ...form, color: e.target.value })}
+                          className="size-10 rounded-lg border cursor-pointer"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                        />
+                        <input
+                          type="text"
+                          value={form.color}
+                          onChange={(e) => setForm({ ...form, color: e.target.value })}
+                          placeholder="#3B82F6"
+                          className="flex-1 px-3 py-2 rounded-lg border bg-white text-sm font-mono font-medium outline-none transition-all focus:ring-2"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* ─── FOOTER BUTTONS ─── */}

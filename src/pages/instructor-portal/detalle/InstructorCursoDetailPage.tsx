@@ -100,6 +100,9 @@ export function InstructorCursoDetailPage() {
               <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: "oklch(0.88 0.02 50)" }}>
                 <span className="flex items-center gap-1.5">
                   <HugeiconsIcon icon={BookOpen01Icon} size={15} />
+                  {curso.catalogo?.color && (
+                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
+                  )}
                   {curso.catalogo?.nombre ?? "Sin nombre"}
                 </span>
                 <span className="flex items-center gap-1.5">

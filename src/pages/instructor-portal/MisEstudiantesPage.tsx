@@ -28,7 +28,8 @@ export function MisEstudiantesPage() {
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData() }, [])
 
   const filtered = useMemo(() => {
     return estudiantes.filter(e => {

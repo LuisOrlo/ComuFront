@@ -174,7 +174,10 @@ export function AsistenciaRegistroPage() {
             <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
               Pase de Lista
             </h1>
-            <p style={{ color: COLORS.TEXT_MUTED }} className="text-sm">
+            <p style={{ color: COLORS.TEXT_MUTED }} className="text-sm flex items-center gap-1.5">
+              {curso.catalogo?.color && (
+                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
+              )}
               {curso.catalogo?.nombre ?? "Curso"} - {curso.nombre_instancia}
             </p>
             {clase && (

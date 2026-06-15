@@ -62,6 +62,35 @@ export interface AcademicProfile {
   }>
 }
 
+export interface CursoAlternativo {
+  id: string
+  nombre_instancia: string
+  modalidad: string
+  precio_base: number
+  capacidad_maxima: number
+  espacios_disponibles: number
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  ciudad: string | null
+  horario: {
+    nombre_referencial: string
+    hora_inicio: string
+    hora_fin: string
+    dias: number[]
+  } | null
+}
+
+export interface TransferirResponse {
+  success: boolean
+  message: string
+  data: {
+    cambio_horario_id: string
+    matricula_nueva_id: string
+    notas_migradas: number
+    diferencia_precio: number
+  }
+}
+
 export interface FinancialAccount {
   id: string
   origen: string
@@ -262,6 +291,16 @@ export const estudiantesService = {
       headers: { "Content-Type": "multipart/form-data" }
     })
     return response.data.datos
+  },
+
+  async getAlternativos(matriculaId: string): Promise<CursoAlternativo[]> {
+    const response = await api.get(`/academic/matriculas/${matriculaId}/alternativos`)
+    return response.data.datos ?? response.data
+  },
+
+  async transferirCurso(matriculaId: string, data: { curso_abierto_nuevo_id: string; motivo?: string }): Promise<TransferirResponse> {
+    const response = await api.post(`/academic/matriculas/${matriculaId}/transferir`, data)
+    return response.data
   },
 
   async exportStudents(params: {

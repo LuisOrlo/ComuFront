@@ -6,6 +6,7 @@ export interface InstructorCurso {
     id: string
     nombre: string
     descripcion?: string
+    color?: string
   }
   nombre_instancia: string
   estado: string

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, type CSSProperties } from "react"
 import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -19,6 +19,20 @@ import { toast } from "sonner"
 
 type Tab = "info" | "modulos" | "estudiantes"
 
+interface ModuloData {
+  id: string
+  nombre_modulo: string
+  fecha_inicio: string
+  fecha_fin: string
+  numero_orden?: number
+  horas_academicas?: number
+  cupo?: number
+}
+interface DiaHorario {
+  id?: string
+  dia_semana: number
+}
+
 const estadoConfig: Record<string, { bg: string; text: string; label: string }> = {
   pendiente: { bg: "oklch(0.55 0.12 90 / 0.12)", text: "oklch(0.55 0.12 90)", label: "Pendiente" },
   en_progreso: { bg: "oklch(0.50 0.10 240 / 0.12)", text: "oklch(0.50 0.12 240)", label: "En progreso" },
@@ -29,14 +43,12 @@ export function CursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [curso, setCurso] = useState<Curso | null>(null)
-  const [modulos, setModulos] = useState<any[]>([])
+  const [modulos, setModulos] = useState<ModuloData[]>([])
   const [matriculas, setMatriculas] = useState<MatriculaDetallada[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("info")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => { if (id) cargarTodo() }, [id])
 
   const cargarTodo = async () => {
     if (!id) return
@@ -48,14 +60,19 @@ export function CursoDetailPage() {
         cursosService.getMatriculasCurso(id),
       ])
       setCurso(c)
-      setModulos(mods)
+      setModulos(mods as unknown as ModuloData[])
       setMatriculas(mats)
     } catch {
       toast.error("Error al cargar curso")
     } finally { setLoading(false) }
   }
 
-  const updateModulo = async (moduloId: string, data: any) => {
+  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (id) cargarTodo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  const updateModulo = async (moduloId: string, data: Record<string, unknown>) => {
     try {
       await cursosService.actualizarModulo(moduloId, data)
       toast.success("Actualizado")
@@ -182,9 +199,9 @@ export function CursoDetailPage() {
                        <div className="flex items-start gap-2">
                          <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Días:</span>
                          <div className="flex flex-wrap gap-1.5">
-                            {curso.horario.diasSemana.map((dia: any) => (
-                              <span key={dia.id} className="text-xs px-2 py-1 rounded-full font-medium" 
-                                style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
+                              {curso.horario.diasSemana.map((dia: DiaHorario) => (
+                               <span key={dia.id} className="text-xs px-2 py-1 rounded-full font-medium" 
+                                 style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
                                 {getDiaNombre(dia.dia_semana)}
                               </span>
                             ))}
@@ -217,7 +234,7 @@ export function CursoDetailPage() {
                   <p className="text-sm font-medium">Sin módulos asignados</p>
                 </div>
                ) : (
-                 modulos.map((mod: any, idx: number) => {
+                   modulos.map((mod, idx: number) => {
                    const estado = calcularEstadoModulo(mod.fecha_inicio, mod.fecha_fin)
                    return (
                       <div key={mod.id} className="p-5 rounded-xl border hover:shadow-sm transition-shadow" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
@@ -267,7 +284,7 @@ export function CursoDetailPage() {
                         <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Inscripción</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as any}>
+                    <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
                       {matriculas.map((m) => (
                         <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-5 py-3.5 font-medium" style={{ color: COLORS.CHARCOAL }}>
@@ -340,7 +357,7 @@ function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; lab
 }
 
 function ModuleField({ label, value, modId, field, type = "text", onUpdate }: {
-  label: string; value?: string; modId: string; field: string; type?: string; onUpdate: (id: string, data: any) => void
+  label: string; value?: string; modId: string; field: string; type?: string; onUpdate: (id: string, data: Record<string, unknown>) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value || "")

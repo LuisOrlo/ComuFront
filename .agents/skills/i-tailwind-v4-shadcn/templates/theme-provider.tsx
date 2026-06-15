@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
@@ -32,7 +33,7 @@ export function ThemeProvider({
       return (localStorage.getItem(storageKey) as Theme) ||
              (sessionStorage.getItem(storageKey) as Theme) ||
              defaultTheme
-    } catch (e) {
+    } catch {
       // Storage unavailable (incognito/privacy mode) - use default
       return defaultTheme
     }
@@ -62,11 +63,11 @@ export function ThemeProvider({
       // Try to persist to localStorage, fall back to sessionStorage
       try {
         localStorage.setItem(storageKey, theme)
-      } catch (e) {
+      } catch {
         // localStorage unavailable (incognito) - use sessionStorage
         try {
           sessionStorage.setItem(storageKey, theme)
-        } catch (err) {
+        } catch {
           // Both unavailable - just update state without persistence
           console.warn('Storage unavailable, theme preference will not persist')
         }

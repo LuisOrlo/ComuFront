@@ -44,7 +44,9 @@ export function SolicitudInscripcionDetallePage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (id) cargarDetalle()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const handleAprobar = async () => {
@@ -220,7 +222,10 @@ export function SolicitudInscripcionDetallePage() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Nombre</p>
-                    <p className="text-sm mt-1 font-medium" style={{ color: COLORS.CHARCOAL }}>
+                    <p className="text-sm mt-1 font-medium flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
+                      {solicitud.cursoAbierto?.catalogo?.color && (
+                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: solicitud.cursoAbierto.catalogo.color }} />
+                      )}
                       {solicitud.cursoAbierto?.catalogo?.nombre || "N/A"}
                     </p>
                   </div>

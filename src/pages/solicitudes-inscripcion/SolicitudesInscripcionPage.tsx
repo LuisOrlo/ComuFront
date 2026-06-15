@@ -58,7 +58,9 @@ export function SolicitudesInscripcionPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarSolicitudes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtros, paginacion.currentPage])
 
   const getEstadoBadgeStyle = (estado: string) => {
@@ -226,7 +228,10 @@ export function SolicitudesInscripcionPage() {
                             {getSolicitanteEmail(solicitud)}
                           </p>
                           {solicitud.cursoAbierto?.catalogo && (
-                            <p className="text-xs mt-1 font-medium" style={{ color: COLORS.CHARCOAL }}>
+                            <p className="text-xs mt-1 font-medium flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
+                              {solicitud.cursoAbierto.catalogo.color && (
+                                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: solicitud.cursoAbierto.catalogo.color }} />
+                              )}
                               {solicitud.cursoAbierto.catalogo.nombre}
                             </p>
                           )}

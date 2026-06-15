@@ -52,10 +52,6 @@ export function CiudadesPage() {
   const [filterRegion, setFilterRegion] = useState<Region | null>(null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    cargarCiudades()
-  }, [search])
-
   const cargarCiudades = async () => {
     try {
       setLoading(true)
@@ -67,6 +63,12 @@ export function CiudadesPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    cargarCiudades()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
 
   const handleCreate = async (nombre: string) => {
     if (!nombre.trim()) return

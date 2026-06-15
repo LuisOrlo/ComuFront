@@ -44,6 +44,7 @@ interface NavItemData {
 interface SidebarProps {
   collapsed: boolean
   onClose?: () => void
+  onToggleClick?: () => void
 }
 
 function NavItem({
@@ -124,9 +125,10 @@ export function Sidebar({ collapsed, onClose }: SidebarProps) {
     }
   }, [initialize])
 
-  const roles = (user as any)?.roles || []
+  const roles = user?.roles || []
   const isAdmin = roles.includes("Administrador")
   const isInstructor = roles.includes("Instructor")
+  const isSecretaria = roles.includes("Secretaria")
 
   const menuGroups = useMemo(() => {
     const groups: { label: string; items: NavItemData[] }[] = [
@@ -147,6 +149,47 @@ export function Sidebar({ collapsed, onClose }: SidebarProps) {
           { icon: CalendarIcon, label: "Mi Horario", path: "/instructor/horario" },
         ],
       })
+    }
+
+    if (isSecretaria) {
+      groups.push(
+        {
+          label: "Principal",
+          items: [
+            { icon: LayoutDashboard, label: "Dashboard", path: "/secretaria" },
+          ],
+        },
+        {
+          label: "Académico",
+          items: [
+            { icon: UserIcon, label: "Estudiantes", path: "/secretaria/estudiantes" },
+            { icon: GraduationCapIcon, label: "Cursos", path: "/secretaria/cursos" },
+            { icon: BookOpenIcon, label: "Talleres", path: "/secretaria/talleres" },
+            { icon: CertificateIcon, label: "Certificados", path: "/secretaria/certificados" },
+          ],
+        },
+        {
+          label: "Cobranzas",
+          items: [
+            { icon: MoneyIcon, label: "Pagos y abonos", path: "/secretaria/pagos" },
+          ],
+        },
+        {
+          label: "Servicios",
+          items: [
+            { icon: Microphone, label: "Podcast", path: "/secretaria/podcast" },
+            { icon: VideoIcon, label: "Edición de Video", path: "/secretaria/edicion-video" },
+            { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/secretaria/alquileres" },
+          ],
+        },
+        {
+          label: "Operaciones",
+          items: [
+            { icon: CalendarIcon, label: "Asistencia", path: "/secretaria/asistencia" },
+            { icon: UserCheckIcon, label: "Solicitudes", path: "/secretaria/solicitudes" },
+          ],
+        },
+      )
     }
 
     if (isAdmin) {
@@ -205,7 +248,7 @@ export function Sidebar({ collapsed, onClose }: SidebarProps) {
     }
 
     return groups
-  }, [isAdmin, isInstructor])
+  }, [isAdmin, isInstructor, isSecretaria])
 
   return (
     <aside
@@ -296,7 +339,7 @@ export function TopBar({
   collapsed: boolean
 }) {
   const { user } = useAuth()
-  const roleLabel = (user as any)?.roles?.[0] || "Usuario"
+  const roleLabel = user?.roles?.[0] || "Usuario"
 
   return (
     <header

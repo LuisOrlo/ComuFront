@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const response = await authService.getProfile()
           setUser(response.datos)
-        } catch (err) {
+        } catch {
           authService.logout()
           setUser(null)
         }

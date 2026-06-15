@@ -15,6 +15,7 @@ export interface CatalogoCurso {
   es_activo: boolean
   categoria: "regular" | "taller" | "personalizado"
   imagen?: string
+  color?: string
   created_at?: string
   updated_at?: string
 }
@@ -73,6 +74,7 @@ export interface CursoAbierto {
     nombre: string
     descripcion: string
     categoria: "regular" | "taller" | "personalizado"
+    color?: string
     creditos: number
     horas_totales: number
     modulos_default: number
@@ -126,6 +128,7 @@ export interface Curso {
   horaFin: string
   precioBase: number
   observaciones: string
+  colorCatalogo?: string
   horario?: {
     id: string
     hora_inicio: string
@@ -239,6 +242,7 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     horaFin: typed.horario?.hora_fin?.substring(0, 5) || "",
     precioBase: Number(typed.precio_base) || 0,
     observaciones: typed.observaciones || "",
+    colorCatalogo: typed.catalogo?.color,
     horario: typed.horario ? {
       id: typed.horario.id,
       hora_inicio: typed.horario.hora_inicio?.substring(0, 5) || "",

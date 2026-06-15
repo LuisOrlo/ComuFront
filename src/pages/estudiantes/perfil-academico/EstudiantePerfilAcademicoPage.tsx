@@ -27,6 +27,7 @@ export function EstudiantePerfilAcademicoPage() {
     setActiveTab,
     updateStudentInfo,
     saving,
+    refreshData,
   } = useStudentProfile(id)
 
   if (loading) {
@@ -116,7 +117,7 @@ export function EstudiantePerfilAcademicoPage() {
 
         <div className="p-6">
           {activeTab === "informacion" && (
-            <InfoTabContent data={studentData} loading={loading} />
+            <InfoTabContent data={studentData} academicData={academicData} loading={loading} onRefresh={refreshData} />
           )}
           {activeTab === "resumen" && (
             <OverviewTabContent

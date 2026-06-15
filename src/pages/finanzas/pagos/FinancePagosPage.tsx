@@ -22,15 +22,11 @@ type FinanceTab = "resumen" | "cuentas" | "validacion" | "historial"
 export function FinancePagosPage() {
   const [activeTab, setActiveTab] = useState<FinanceTab>("resumen")
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<any>(null)
-  const [cuentas, setCuentas] = useState<any[]>([])
-  
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
+  const [cuentas, setCuentas] = useState<Record<string, unknown>[]>([])
+
   // Para flujo de registro de pago
   const [selectedCuentaId, setSelectedCuentaId] = useState<string | null>(null)
-
-  useEffect(() => {
-    loadData()
-  }, [])
 
   const loadData = async () => {
     setLoading(true)
@@ -47,6 +43,11 @@ export function FinancePagosPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+  }, [])
 
   const tabs = [
     { id: "resumen", label: "Resumen", icon: ChartBarLineIcon },

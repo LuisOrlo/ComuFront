@@ -101,11 +101,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCatalogos()
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCursos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogoFilter, categoriaFilter, ciudadFilter])
 
   const curso = cursosAbiertos.find(c => c.id === selectedCourseId)
@@ -244,6 +247,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       if (isPublic) {
         onSuccess?.()
       } else if (localStorage.getItem("auth_token")) {
+        // eslint-disable-next-line react-hooks/immutability
         window.location.href = "/matriculas"
       }
     } catch (err) {
@@ -470,11 +474,17 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                     }}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-sm font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>
+                        <h3 className="text-sm font-semibold truncate flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
+                          {ca.catalogo?.color && (
+                            <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: ca.catalogo.color }} />
+                          )}
                           {ca.nombre_instancia || ca.catalogo?.nombre || "Curso"}
                         </h3>
                         {ca.catalogo?.nombre && ca.nombre_instancia && (
-                          <p className="text-[11px] truncate" style={{ color: COLORS.TEXT_MUTED }}>
+                          <p className="text-[11px] truncate flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
+                            {ca.catalogo.color && (
+                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: ca.catalogo.color }} />
+                            )}
                             {ca.catalogo.nombre}
                           </p>
                         )}
@@ -669,7 +679,12 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             </div>
             <div className="flex justify-between text-xs" style={{ color: COLORS.TEXT_MUTED }}>
               <span>Curso</span>
-              <span style={{ color: COLORS.CHARCOAL }}>{curso?.nombre_instancia || curso?.catalogo?.nombre || "—"}</span>
+              <span style={{ color: COLORS.CHARCOAL }} className="flex items-center gap-1.5">
+                {curso?.catalogo?.color && (
+                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
+                )}
+                {curso?.nombre_instancia || curso?.catalogo?.nombre || "—"}
+              </span>
             </div>
             <div className="flex justify-between text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>
               <span>Costo Total</span>

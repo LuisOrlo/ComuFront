@@ -35,7 +35,9 @@ export function PersonasPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarPersonas()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filtroTipo])
 
   const handleDelete = async (id: string, nombre: string) => {

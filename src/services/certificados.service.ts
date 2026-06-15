@@ -25,6 +25,7 @@ export interface Certificado {
   catalogo_curso?: {
     id: string
     nombre: string
+    color?: string
   }
   curso_abierto?: {
     id: string

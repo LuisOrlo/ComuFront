@@ -104,7 +104,10 @@ export function InstructorCursosPage() {
               >
                 {curso.nombre_instancia}
               </h3>
-              <p className="text-sm mb-5" style={{ color: COLORS.TEXT_MUTED }}>
+              <p className="text-sm mb-5 flex items-center gap-1.5" style={{ color: COLORS.TEXT_MUTED }}>
+                {curso.catalogo?.color && (
+                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
+                )}
                 {curso.catalogo?.nombre ?? "Sin catálogo"}
               </p>
 

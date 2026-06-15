@@ -88,16 +88,20 @@ export function EdicionVideoPage() {
     try {
       const res = await personasService.getPersonas({ page: 1 })
       setPersonas(res.data)
-    } catch { }
+    } catch { /* empty */ }
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     Promise.all([loadTrabajos(), loadPersonas()]).finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadTrabajos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
   const grouped = useMemo(() => {

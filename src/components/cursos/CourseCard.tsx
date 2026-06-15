@@ -59,10 +59,13 @@ export function CourseCard({ curso }: { curso: Curso }) {
         </div>
 
         <h3
-          className="text-sm font-semibold mb-1 line-clamp-2 transition-colors duration-180 ease-out"
+          className="text-sm font-semibold mb-1 line-clamp-2 transition-colors duration-180 ease-out flex items-start gap-1.5"
           style={{ color: COLORS.CHARCOAL }}
         >
-          {curso.nombre}
+          {curso.colorCatalogo && (
+            <span className="size-2.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: curso.colorCatalogo }} />
+          )}
+          <span className="line-clamp-2">{curso.nombre}</span>
         </h3>
         <p className="text-xs mb-4" style={{ color: COLORS.TEXT_MUTED }}>
           {curso.instructor}

@@ -97,7 +97,12 @@ export function MatriculasListPage() {
                 {selectedCatalogo && (
                   <>
                     <span>/</span>
-                    <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{selectedCatalogo.nombre}</span>
+                    <span className="font-medium flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
+                      {selectedCatalogo.color && (
+                        <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: selectedCatalogo.color }} />
+                      )}
+                      {selectedCatalogo.nombre}
+                    </span>
                   </>
                 )}
                 {selectedCurso && (

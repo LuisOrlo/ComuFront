@@ -17,6 +17,7 @@ export interface SolicitudInscripcionResumen {
   cursoAbierto?: {
     catalogo?: {
       nombre: string
+      color?: string
     }
     precio_base?: number
   }
@@ -60,6 +61,7 @@ export interface SolicitudInscripcionDetallada extends SolicitudInscripcionResum
       id: string
       nombre: string
       descripcion: string
+      color?: string
     }
   }
   validador?: {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, type CSSProperties } from "react"
 import { Plus, Trash2, X, Search, Edit } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { asistenciaService, type AsistenciaStaff } from "@/services/asistencia.service"
@@ -24,9 +24,6 @@ export function AsistenciaStaffPage() {
     observaciones: "",
   })
 
-  useEffect(() => { cargarStaff() }, [])
-  useEffect(() => { cargarRegistros() }, [fecha])
-
   const cargarStaff = async () => {
     try {
       const res = await personasService.getPersonas({ tipo: "staff", page: 1 })
@@ -42,6 +39,13 @@ export function AsistenciaStaffPage() {
     } catch { toast.error("Error al cargar") }
     finally { setLoading(false) }
   }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { cargarStaff() }, [])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { cargarRegistros()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fecha])
 
   const openNew = () => {
     setEditing(null)
@@ -134,7 +138,7 @@ export function AsistenciaStaffPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as any}>
+                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
                   {registros.map(r => (
                     <tr key={r.id} className="hover:bg-gray-50/50">
                       <td className="px-4 py-3 text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
