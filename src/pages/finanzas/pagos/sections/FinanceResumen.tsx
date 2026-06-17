@@ -2,15 +2,16 @@
 import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { 
-  Coins01Icon, 
-  AlertCircleIcon, 
+import {
+  Coins01Icon,
+  AlertCircleIcon,
   CheckmarkCircle02Icon,
-  LibraryIcon,
   InvoiceIcon,
+  LibraryIcon,
   SchoolIcon,
   AiFolderIcon,
-  ArrowDown01Icon
+  ArrowDown01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
 
 interface FinanceResumenProps {
@@ -24,91 +25,102 @@ const ORIGEN_CONFIG: Record<string, { label: string; desc: string; icon: any; co
   servicios:  { label: "Servicios",  desc: "Aulas, podcast, equipos",          icon: AiFolderIcon,   color: "#7c3aed" },
 }
 
+function getNombrePersona(cuenta: any): string {
+  const s = cuenta.solicitud_inscripcion
+  const m = cuenta.matricula
+  const it = cuenta.inscripcionTaller
+  if (m?.estudiante) return `${m.estudiante.nombres || ""} ${m.estudiante.apellidos || ""}`.trim()
+  if (s?.estudiante) return `${s.estudiante.nombres || ""} ${s.estudiante.apellidos || ""}`.trim()
+  if (s?.participante_externo) return `${s.participante_externo.nombres || ""} ${s.participante_externo.apellidos || ""}`.trim()
+  if (it?.participante) return `${it.participante.nombres || ""} ${it.participante.apellidos || ""}`.trim()
+  return "—"
+}
+
+function getCuentaType(cuenta: any): string {
+  if (cuenta.matricula || cuenta.matricula_id) return "cursos"
+  if (cuenta.inscripcionTaller || cuenta.inscripcion_taller_id) return "talleres"
+  if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id) return "servicios"
+  return "cursos"
+}
+
+function getCuentaName(cuenta: any): string {
+  if (cuenta.matricula?.curso_abierto?.nombre_instancia) return cuenta.matricula.curso_abierto.nombre_instancia
+  if (cuenta.matricula?.curso_abierto?.catalogo?.nombre) return cuenta.matricula.curso_abierto.catalogo.nombre
+  if (cuenta.inscripcionTaller?.taller?.nombre) return cuenta.inscripcionTaller.taller.nombre
+  if (cuenta.inscripcion_taller_id) return "Taller"
+  return cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre || "Curso"
+}
+
 export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const [filter, setFilter] = useState<string>("todos")
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // Calcular total cobrado localmente basado en las cuentas
   const totalCobradoLocal = useMemo(() => {
-    return cuentas.reduce((sum, cuenta) => sum + Number(cuenta.monto_abonado || 0), 0);
-  }, [cuentas]);
+    return cuentas.reduce((sum, cuenta) => sum + Number(cuenta.monto_abonado || 0), 0)
+  }, [cuentas])
 
   const cards = [
     {
-      title: "Total Pendiente",
+      title: "Pendiente",
       value: `$${Number(stats?.total_pendiente || 0).toLocaleString()}`,
       icon: AlertCircleIcon,
       color: "oklch(0.5 0.15 20)",
-      bg: "bg-red-50"
+      bg: "bg-red-50",
     },
     {
-      title: "Total Cobrado",
+      title: "Cobrado",
       value: `$${totalCobradoLocal.toLocaleString()}`,
       icon: CheckmarkCircle02Icon,
       color: "oklch(0.55 0.15 150)",
-      bg: "bg-green-50"
+      bg: "bg-green-50",
     },
     {
-      title: "Pendientes Verificación",
+      title: "Por Verificar",
       value: stats?.pendientes_verificacion || 0,
       icon: InvoiceIcon,
       color: "oklch(0.65 0.15 75)",
-      bg: "bg-amber-50"
+      bg: "bg-amber-50",
     },
     {
-      title: "Cuentas con Deuda",
+      title: "Con Deuda",
       value: stats?.cuentas_con_deuda || 0,
       icon: Coins01Icon,
       color: "oklch(0.5 0.1 240)",
-      bg: "bg-blue-50"
-    }
+      bg: "bg-blue-50",
+    },
   ]
 
+  // Build groups with individual entries
   const processedData = useMemo(() => {
-    if (!cuentas || cuentas.length === 0) return { cursos: { label: "Cursos", items: {} }, talleres: { label: "Talleres", items: {} }, servicios: { label: "Servicios", items: {} } };
-    
     const groups: Record<string, any> = {
-      cursos: { label: "Cursos", items: {} },
-      talleres: { label: "Talleres", items: {} },
+      cursos:    { label: "Cursos",    items: {} },
+      talleres:  { label: "Talleres",  items: {} },
       servicios: { label: "Servicios", items: {} },
     }
 
     cuentas.forEach((cuenta) => {
-      if (!cuenta) return;
-      
-      let type = ""
-      let name = "Desconocido"
+      if (!cuenta) return
+      const type = getCuentaType(cuenta)
+      const name = getCuentaName(cuenta)
+      if (!groups[type]?.items) return
 
-      if (cuenta.matricula) {
-        type = "cursos"
-        // Acceder usando snake_case según la estructura real del objeto
-        name = cuenta.matricula.curso_abierto?.nombre_instancia || 
-               cuenta.matricula.curso_abierto?.catalogo?.nombre || "Curso"
-      } else if (cuenta.inscripcionTaller) {
-        type = "talleres"
-        name = cuenta.inscripcionTaller.taller?.nombre || "Taller"
-      } else if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id) {
-        type = "servicios"
-        name = "Servicio"
-      }
-
-      if (type && groups[type]) {
-        if (!groups[type].items[name]) {
-          groups[type].items[name] = {
-            total: 0,
-            saldo: 0,
-            cobrado: 0, // Nuevo campo
-            personas: 0,
-            deudores: 0,
-          }
+      if (!groups[type].items[name]) {
+        groups[type].items[name] = {
+          total: 0,
+          saldo: 0,
+          cobrado: 0,
+          personas: 0,
+          deudores: 0,
+          entries: [],
         }
-        const item = groups[type].items[name]
-        item.total += Number(cuenta.monto_total || 0)
-        item.saldo += Number(cuenta.saldo_pendiente || 0)
-        item.cobrado += Number(cuenta.monto_abonado || 0) // Sumar abonado
-        item.personas += 1
-        if (Number(cuenta.saldo_pendiente || 0) > 0) item.deudores += 1
       }
+      const item = groups[type].items[name]
+      item.total += Number(cuenta.monto_total || 0)
+      item.saldo += Number(cuenta.saldo_pendiente || 0)
+      item.cobrado += Number(cuenta.monto_abonado || 0)
+      item.personas += 1
+      if (Number(cuenta.saldo_pendiente || 0) > 0) item.deudores += 1
+      item.entries.push(cuenta)
     })
 
     return groups
@@ -120,81 +132,190 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   }, [filter, processedData])
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="space-y-6">
+      {/* Compact summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {cards.map((card, idx) => (
           <motion.div
             key={idx}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all"
+            transition={{ delay: idx * 0.06 }}
+            className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
           >
-            <div className={`size-12 rounded-2xl ${card.bg} flex items-center justify-center mb-4`}>
-              <HugeiconsIcon icon={card.icon} size={24} style={{ color: card.color }} />
+            <div className="flex items-center gap-3">
+              <div className={`size-8 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
+                <HugeiconsIcon icon={card.icon} size={16} style={{ color: card.color }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{card.title}</p>
+                <p className="text-sm font-black text-gray-900 truncate">{card.value}</p>
+              </div>
             </div>
-            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">{card.title}</p>
-            <h3 className="text-2xl font-black text-gray-900">{card.value}</h3>
           </motion.div>
         ))}
       </div>
 
-      <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-black text-gray-900">Distribución Detallada</h3>
-          <div className="flex gap-2">
-            {["todos", "cursos", "talleres", "servicios"].map((f) => (
+      {/* Distribution detail — primary section */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">Distribución Detallada</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{cuentas.length} cuenta{cuentas.length !== 1 ? "s" : ""} registradas</p>
+          </div>
+          <div className="flex gap-1.5">
+            {[
+              { key: "todos", label: "Todo" },
+              { key: "cursos", label: "Cursos" },
+              { key: "talleres", label: "Talleres" },
+              { key: "servicios", label: "Servicios" },
+            ].map((f) => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase ${filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                  filter === f.key ? "bg-gray-900 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
               >
-                {f}
+                {f.label}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {Object.entries(filteredData).map(([type, group]) => (
-            <div key={type} className="space-y-2">
-              <h4 className="font-bold text-gray-500 uppercase text-xs tracking-widest">{group.label}</h4>
+            <div key={type}>
+              <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-widest mb-1.5 ml-1">
+                {group.label}
+              </h4>
               {Object.entries(group.items).map(([name, item]: [string, any]) => {
                 const id = `${type}-${name}`
                 const hasDebtors = item.deudores > 0
+                const isExpanded = expandedId === id
                 return (
-                  <div key={id} className="border border-gray-100 rounded-2xl overflow-hidden">
-                    <button 
-                      onClick={() => setExpandedId(expandedId === id ? null : id)}
-                      className={`w-full p-4 flex items-center justify-between ${hasDebtors ? "bg-red-50" : "bg-white"}`}
+                  <div key={id} className="border border-gray-100 rounded-xl overflow-hidden mb-1.5">
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : id)}
+                      className={`w-full px-4 py-3 flex items-center justify-between text-left transition-colors ${
+                        hasDebtors ? "bg-red-50/50" : "bg-white hover:bg-gray-50/50"
+                      }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`size-8 rounded-lg flex items-center justify-center ${hasDebtors ? "bg-red-100" : "bg-blue-100"}`}>
-                          <HugeiconsIcon icon={ORIGEN_CONFIG[type].icon} size={16} color={hasDebtors ? "#ef4444" : ORIGEN_CONFIG[type].color} />
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`size-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          hasDebtors ? "bg-red-100" : "bg-blue-100"
+                        }`}>
+                          <HugeiconsIcon
+                            icon={ORIGEN_CONFIG[type]?.icon || LibraryIcon}
+                            size={14}
+                            color={hasDebtors ? "#ef4444" : (ORIGEN_CONFIG[type]?.color || "#4f46e5")}
+                          />
                         </div>
-                        <span className="font-bold text-gray-900">{name}</span>
+                        <div className="min-w-0">
+                          <span className="text-sm font-bold text-gray-900 truncate block">{name}</span>
+                          <span className="text-[10px] text-gray-400">{item.personas} persona{item.personas !== 1 ? "s" : ""}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-right">
-                        <div>
-                          <p className="text-xs text-gray-400">Valor a tener</p>
-                          <p className="font-black">${item.total.toLocaleString()}</p>
+                      <div className="flex items-center gap-4 text-right shrink-0">
+                        <div className="hidden sm:block">
+                          <p className="text-[10px] text-gray-400">Total</p>
+                          <p className="text-sm font-black">${item.total.toLocaleString()}</p>
                         </div>
-                        <HugeiconsIcon icon={ArrowDown01Icon} size={16} className={`transition-transform ${expandedId === id ? "rotate-180" : ""}`} />
+                        <div className="hidden sm:block">
+                          <p className="text-[10px] text-gray-400">Pendiente</p>
+                          <p className={`text-sm font-black ${hasDebtors ? "text-red-600" : "text-gray-900"}`}>
+                            ${item.saldo.toLocaleString()}
+                          </p>
+                        </div>
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="text-gray-400" />
+                        </motion.div>
                       </div>
                     </button>
+
                     <AnimatePresence>
-                      {expandedId === id && (
-                        <motion.div 
+                      {isExpanded && (
+                        <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="bg-gray-50 p-4 border-t border-gray-100 text-xs text-gray-600"
+                          transition={{ duration: 0.2 }}
+                          className="border-t border-gray-100 overflow-hidden"
                         >
-                          <div className="grid grid-cols-4 gap-4">
-                            <p>Personas: <span className="font-bold text-gray-900">{item.personas}</span></p>
-                            <p>Deudores: <span className={`font-bold ${hasDebtors ? "text-red-600" : "text-gray-900"}`}>{item.deudores}</span></p>
-                            <p>Cobrado: <span className="font-bold text-green-600">${item.cobrado.toLocaleString()}</span></p>
-                            <p>Pendiente: <span className="font-bold text-red-600">${item.saldo.toLocaleString()}</span></p>
+                          <div className="bg-gray-50/70 px-4 py-3 border-b border-gray-100">
+                            <div className="grid grid-cols-4 gap-3 text-xs">
+                              <div>
+                                <p className="text-[10px] text-gray-400">Valor Total</p>
+                                <p className="font-bold text-gray-900">${item.total.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400">Cobrado</p>
+                                <p className="font-bold text-green-600">${item.cobrado.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400">Pendiente</p>
+                                <p className="font-bold text-red-600">${item.saldo.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-400">{hasDebtors ? "Deudores" : "Pagado"}</p>
+                                <p className={`font-bold ${hasDebtors ? "text-red-600" : "text-green-600"}`}>
+                                  {item.deudores}/{item.personas}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Individual entries */}
+                          <div className="divide-y divide-gray-100">
+                            {item.entries.length === 0 ? (
+                              <div className="p-4 text-xs text-gray-400 text-center">Sin registros</div>
+                            ) : (
+                              item.entries.map((cuenta: any) => {
+                                const nombre = getNombrePersona(cuenta)
+                                const pendiente = Number(cuenta.saldo_pendiente || 0)
+                                const abonado = Number(cuenta.monto_abonado || 0)
+                                const total = Number(cuenta.monto_total || 0)
+                                return (
+                                  <div key={cuenta.id} className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-white/50 transition-colors">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="size-6 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                                        <HugeiconsIcon icon={UserIcon} size={12} className="text-gray-500" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-gray-900 truncate">{nombre}</p>
+                                        <p className="text-[10px] text-gray-400">
+                                          Total: <span className="font-medium">${total.toLocaleString()}</span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                      <div className="text-right">
+                                        <p className="text-[10px] text-gray-400">Abonado</p>
+                                        <p className="text-xs font-bold text-green-600">${abonado.toLocaleString()}</p>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-[10px] text-gray-400">Saldo</p>
+                                        <p className={`text-xs font-bold ${pendiente > 0 ? "text-red-600" : "text-gray-900"}`}>
+                                          ${pendiente.toLocaleString()}
+                                        </p>
+                                      </div>
+                                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                                        pendiente === 0
+                                          ? "bg-green-100 text-green-700"
+                                          : abonado > 0
+                                            ? "bg-amber-100 text-amber-700"
+                                            : "bg-red-100 text-red-700"
+                                      }`}>
+                                        {pendiente === 0 ? "Pagado" : abonado > 0 ? "Parcial" : "Deuda"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                              })
+                            )}
                           </div>
                         </motion.div>
                       )}

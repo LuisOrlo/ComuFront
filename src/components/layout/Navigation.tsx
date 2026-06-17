@@ -149,6 +149,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
         label: "Portal Instructor",
         items: [
           { icon: BookOpenIcon, label: "Mis Cursos", path: "/instructor/cursos" },
+          { icon: AiFolderIcon, label: "Mis Talleres", path: "/instructor/talleres" },
           { icon: UserGroupIcon, label: "Mis Estudiantes", path: "/instructor/estudiantes" },
           { icon: CalendarIcon, label: "Mi Horario", path: "/instructor/horario" },
         ],

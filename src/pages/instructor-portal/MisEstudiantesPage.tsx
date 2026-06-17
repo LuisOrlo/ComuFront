@@ -162,7 +162,7 @@ export function MisEstudiantesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center gap-3 ">
-                        {e.estudianteId && (
+                        {!!e.estudianteId && (
                           <Link
                             to={`/instructor/estudiantes/${e.estudianteId}`}
                             className="inline-flex items-center gap-1 text-xs font-semibold"
@@ -171,7 +171,6 @@ export function MisEstudiantesPage() {
                             Ver perfil
                           </Link>
                         )}
-                       
                       </div>
                     </td>
                   </tr>

@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { LoginPage } from "@/pages/login/LoginPage"
 import { HomePage } from "@/pages/home/HomePage"
 import { CursosPage } from "@/pages/cursos/CursosPage"
+import { CursoFormPage } from "@/pages/cursos/CursoFormPage"
 import { CursoDetailPage } from "@/pages/cursos/detalle/CursoDetailPage"
 import { CatalogosConCursosPage } from "@/pages/catalogos/CatalogosConCursosPage"
 import { CiudadesPage } from "@/pages/admin/ciudades/CiudadesPage"
@@ -49,6 +50,14 @@ import {
   SecretariaSolicitudesPage,
 } from "@/pages/secretaria"
 import { EstudiantePerfilAcademicoPage } from "@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"
+import {
+  TalleresPage,
+  TallerFormPage,
+  TallerDetallePage,
+  InstructorTalleresPage,
+  AsistenciaTallerPage,
+  ParticipantesTallerPage,
+} from "@/pages/admin/talleres"
 import { CertificadosPage } from "@/pages/certificados/CertificadosPage"
 import { CargaMasivaCertificadosPage } from "@/pages/certificados/CargaMasivaCertificadosPage"
 import { VerificarCertificadosPage } from "@/pages/certificados/VerificarCertificadosPage"
@@ -118,6 +127,8 @@ function AppLayout() {
 
             {/* Admin-only routes */}
             <Route path="/cursos" element={<RoleGuard roles={["Administrador"]}><CursosPage /></RoleGuard>} />
+            <Route path="/cursos/nuevo" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
+            <Route path="/cursos/:id/editar" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
             <Route path="/cursos/:id" element={<RoleGuard roles={["Administrador"]}><CursoDetailPage /></RoleGuard>} />
             <Route path="/catalogos" element={<RoleGuard roles={["Administrador"]}><CatalogosConCursosPage /></RoleGuard>} />
             <Route path="/ciudades" element={<RoleGuard roles={["Administrador"]}><CiudadesPage /></RoleGuard>} />
@@ -142,6 +153,12 @@ function AppLayout() {
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 
+            {/* Talleres admin */}
+            <Route path="/talleres" element={<RoleGuard roles={["Administrador"]}><TalleresPage /></RoleGuard>} />
+            <Route path="/talleres/nuevo" element={<RoleGuard roles={["Administrador"]}><TallerFormPage /></RoleGuard>} />
+            <Route path="/talleres/:id" element={<RoleGuard roles={["Administrador"]}><TallerDetallePage /></RoleGuard>} />
+            <Route path="/talleres/:id/editar" element={<RoleGuard roles={["Administrador"]}><TallerFormPage /></RoleGuard>} />
+
             {/* Secretaria routes */}
             <Route path="/secretaria" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaDashboardPage /></RoleGuard>} />
             <Route path="/secretaria/estudiantes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaEstudiantesPage /></RoleGuard>} />
@@ -164,6 +181,11 @@ function AppLayout() {
             <Route path="/instructor/estudiantes" element={<RoleGuard roles={["Administrador", "Instructor"]}><MisEstudiantesPage /></RoleGuard>} />
             <Route path="/instructor/estudiantes/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><DetalleEstudiantePage /></RoleGuard>} />
             <Route path="/instructor/horario" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorHorarioPage /></RoleGuard>} />
+
+            {/* Instructor talleres */}
+            <Route path="/instructor/talleres" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorTalleresPage /></RoleGuard>} />
+            <Route path="/instructor/talleres/:id/asistencia" element={<RoleGuard roles={["Administrador", "Instructor"]}><AsistenciaTallerPage /></RoleGuard>} />
+            <Route path="/instructor/talleres/:id/participantes" element={<RoleGuard roles={["Administrador", "Instructor"]}><ParticipantesTallerPage /></RoleGuard>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

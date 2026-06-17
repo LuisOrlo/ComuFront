@@ -759,6 +759,14 @@ export const cursosService = {
     return response.data
   },
 
+  async exportarParticipantesCurso(id: string, formato: "csv" | "pdf" = "csv"): Promise<Blob> {
+    const response = await api.get(`/academic/cursos-abiertos/${id}/exportar`, {
+      params: { formato },
+      responseType: "blob",
+    })
+    return response.data
+  },
+
   // ========================================================================
   // NOTIFICACIONES
   // ========================================================================

@@ -36,7 +36,7 @@ export function NuevaMatriculaPublicaPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col overflow-hidden bg-gray-50/50">
       <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-3xl mx-auto px-6 py-8">
+        <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="size-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)` }}>
               <HugeiconsIcon icon={BookOpenIcon} size={20} style={{ color: COLORS.ACCENT }} />

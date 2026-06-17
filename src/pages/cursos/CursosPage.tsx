@@ -12,7 +12,6 @@ import { COLORS } from "@/lib/constants"
 import { FilterBar } from "@/components/cursos/FilterBar"
 import { CourseTable, type Curso } from "@/components/cursos/CourseTable"
 import { CourseCardGrid } from "@/components/cursos/CourseCardGrid"
-import { CrearCursoModal } from "@/components/cursos/CrearCursoModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type CursoFilters } from "@/services/cursos.service"
 import { toast } from "sonner"
@@ -25,8 +24,6 @@ export function CursosPage() {
   const [cursos, setCursos] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showCrearCursoModal, setShowCrearCursoModal] = useState(false)
-  const [editingCursoId, setEditingCursoId] = useState<string | null>(null)
   
   // Estados para confirmación de eliminación
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -78,13 +75,7 @@ export function CursosPage() {
   }
 
   const handleEditCurso = (id: string) => {
-    setEditingCursoId(id)
-    setShowCrearCursoModal(true)
-  }
-
-  const handleCloseModal = () => {
-    setShowCrearCursoModal(false)
-    setEditingCursoId(null)
+    navigate(`/cursos/${id}/editar`)
   }
 
   const handleDeleteCurso = (id: string, nombre: string) => {
@@ -144,10 +135,7 @@ export function CursosPage() {
               
             </div>
             <button
-              onClick={() => {
-                setEditingCursoId(null)
-                setShowCrearCursoModal(true)
-              }}
+              onClick={() => navigate("/cursos/nuevo")}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all duration-200 active:scale-[0.97] select-none"
               style={{
                 backgroundColor: COLORS.ACCENT,
@@ -312,13 +300,6 @@ export function CursosPage() {
           )}
         </div>
       </main>
-
-      <CrearCursoModal
-        isOpen={showCrearCursoModal}
-        onClose={handleCloseModal}
-        onSuccess={cargarCursos}
-        editingId={editingCursoId}
-      />
 
       <ConfirmationModal
         isOpen={showDeleteConfirm}

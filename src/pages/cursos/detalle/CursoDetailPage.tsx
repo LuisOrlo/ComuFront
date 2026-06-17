@@ -10,6 +10,7 @@ import {
   MoneyIcon,
   NoteIcon,
   CapIcon,
+  Download01Icon,
 } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -268,6 +269,37 @@ export function CursoDetailPage() {
           {/* Tab: Estudiantes */}
           {tab === "estudiantes" && (
             <div className="space-y-4">
+              {matriculas.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{matriculas.length} estudiante{matriculas.length !== 1 ? "s" : ""}</p>
+                  <div className="flex gap-2">
+                    <button onClick={async () => {
+                      try {
+                        const blob = await cursosService.exportarParticipantesCurso(id!, "csv")
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement("a"); a.href = url; a.download = `participantes_${id}.csv`; a.click()
+                        URL.revokeObjectURL(url)
+                        toast.success("CSV descargado")
+                      } catch { toast.error("Error al exportar") }
+                    }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                      <HugeiconsIcon icon={Download01Icon} size={14} />CSV
+                    </button>
+                    <button onClick={async () => {
+                      try {
+                        const blob = await cursosService.exportarParticipantesCurso(id!, "pdf")
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement("a"); a.href = url; a.download = `participantes_${id}.pdf`; a.click()
+                        URL.revokeObjectURL(url)
+                        toast.success("PDF descargado")
+                      } catch { toast.error("Error al exportar") }
+                    }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                      <HugeiconsIcon icon={Download01Icon} size={14} />PDF
+                    </button>
+                  </div>
+                </div>
+              )}
               {matriculas.length === 0 ? (
                 <div className="p-12 text-center border rounded-xl border-dashed" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
                   <HugeiconsIcon icon={UserIcon} size={32} className="mx-auto mb-2 opacity-40" />

@@ -165,7 +165,7 @@ export const instructorService = {
           : 0
         todos.push({
           matriculaId: e.id,
-          estudianteId: e.estudiante?.id,
+          estudianteId: p.id,
           nombres: p.nombres,
           apellidos: p.apellidos || "",
           cedula: p.cedula || "—",

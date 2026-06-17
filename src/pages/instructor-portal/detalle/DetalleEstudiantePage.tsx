@@ -90,7 +90,7 @@ export function DetalleEstudiantePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || id === "undefined") return
     instructorService.getDetalleEstudiante(id)
       .then(setEstudiante)
       .catch(() => toast.error("Error al cargar datos del estudiante"))

@@ -1,0 +1,6 @@
+export { TalleresPage } from "./TalleresPage"
+export { TallerFormPage } from "./TallerFormPage"
+export { TallerDetallePage } from "./TallerDetallePage"
+export { InstructorTalleresPage } from "./InstructorTalleresPage"
+export { AsistenciaTallerPage } from "./AsistenciaTallerPage"
+export { ParticipantesTallerPage } from "./ParticipantesTallerPage"
