@@ -86,7 +86,7 @@ export function FinanceValidacion() {
                     <p className="font-bold text-gray-900">{getNombreEstudiante(t)}</p>
                     <p className="text-[10px] text-gray-400 uppercase font-bold mt-0.5">{new Date(t.fecha_pago).toLocaleString()}</p>
                   </td>
-                  <td className="px-6 py-5 font-black text-blue-600">$${t.monto}</td>
+                  <td className="px-6 py-5 font-black text-blue-600">${t.monto}</td>
                   <td className="px-6 py-5 capitalize text-sm font-medium text-gray-600">{t.metodo_pago}</td>
                   <td className="px-6 py-5 text-center">
                     {t.comprobante_url ? (

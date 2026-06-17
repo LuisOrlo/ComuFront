@@ -211,6 +211,32 @@ export function SolicitudInscripcionDetallePage() {
                       </p>
                     </div>
                   )}
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Ocupación</p>
+                      <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
+                        {solicitud.participanteExterno?.ocupacion || solicitud.estudiante?.perfil_estudiante?.ocupacion || '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Estado Civil</p>
+                      <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
+                        {solicitud.participanteExterno?.estado_civil || solicitud.estudiante?.perfil_estudiante?.estado_civil || '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Edad</p>
+                      <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
+                        {solicitud.participanteExterno?.edad ?? solicitud.estudiante?.perfil_estudiante?.edad ?? '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Dirección</p>
+                      <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
+                        {solicitud.participanteExterno?.direccion || solicitud.estudiante?.perfil_estudiante?.direccion || '—'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

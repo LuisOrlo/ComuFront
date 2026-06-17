@@ -5,10 +5,8 @@ import {
   AddCircleIcon,
   Calendar03Icon,
   Calendar02Icon,
-  Edit01Icon,
   SearchIcon,
   Money01Icon,
-  UserGroupIcon,
   InformationCircleIcon,
   UserIcon,
   Tick02Icon,
@@ -20,14 +18,16 @@ import {
   Mail01Icon,
   CallIcon,
   IdentificationIcon,
+  PackageIcon,
 } from "@hugeicons/core-free-icons"
-import { Trash2, X, Plus, UserPlus, Users } from "lucide-react"
+import { X, Plus, UserPlus, Users } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { toast } from "sonner"
+import { AulasKPIs } from "./components/AulasKPIs"
 
 type VistaModo = "semanal" | "diaria" | "lista"
 
@@ -78,12 +78,6 @@ export function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAula, setSelectedAula] = useState<Aula | null>(null)
-  
-  // Modal de Aula (CRUD)
-  const [aulaModalOpen, setAulaModalOpen] = useState(false)
-  const [aulaForm, setAulaForm] = useState<Partial<Aula>>({
-    nombre: "", capacidad: 10, precio_hora: 0, caracteristicas: ""
-  })
   
   // Reservas
   const [reservas, setReservas] = useState<ReservaAula[]>([])
@@ -216,33 +210,6 @@ export function AulasPage() {
   const isFirstHour = (r: ReservaAula, h: number) => h === parseInt(r.hora_inicio.split(":")[0])
   const reservaSpan = (r: ReservaAula) => Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0]))
 
-  const handleSaveAula = async () => {
-    try {
-      if (aulaForm.id) {
-        await aulasService.updateAula(aulaForm.id, aulaForm)
-        toast.success("Aula actualizada")
-      } else {
-        await aulasService.createAula(aulaForm)
-        toast.success("Aula creada")
-      }
-      setAulaModalOpen(false)
-      loadAulas()
-    } catch {
-      toast.error("Error al guardar aula")
-    }
-  }
-
-  const handleDeleteAula = async (id: string) => {
-    if (!confirm("¿Está seguro de eliminar esta aula?")) return
-    try {
-      await aulasService.deleteAula(id)
-      toast.success("Aula eliminada")
-      if (selectedAula?.id === id) setSelectedAula(null)
-      loadAulas()
-    } catch {
-      toast.error("Error al eliminar aula")
-    }
-  }
   const handleSelectAula = (aula: Aula) => {
     setSelectedAula(aula)
     loadReservas(aula.id)
@@ -253,6 +220,7 @@ export function AulasPage() {
     loadAulas()
     loadPersonas()
     loadClientes()
+    loadReservasGenerales()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -307,150 +275,96 @@ export function AulasPage() {
     }
   }
 
-  // Helper para verificar disponibilidad actual
-  const isAulaOccupiedNow = (aulaId: string) => {
-    const now = new Date()
-    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-    const date = now.toISOString().split('T')[0]
-    
-    // Si es el aula seleccionada, podemos usar las reservas cargadas
-    if (selectedAula?.id === aulaId) {
-       return reservas.some(r => r.fecha_reserva === date && time >= r.hora_inicio && time < r.hora_fin)
-    }
-    return false // Fallback simplificado
-  }
-
   const hours = Array.from({ length: 14 }, (_, i) => i + 7)
 
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
-      {/* Header Refinado */}
+      {/* Header */}
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>
-              Servicios Académicos
-              <span className="size-1 rounded-full bg-current opacity-50" />
-              Infraestructura
+              Servicios <span className="size-1 rounded-full bg-current opacity-50" /> Infraestructura
             </div>
             <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
               Alquiler de Aulas
             </h1>
           </div>
           
-          <button
-            onClick={() => {
-              setAulaForm({ nombre: "", capacidad: 10, precio_hora: 0, caracteristicas: "" })
-              setAulaModalOpen(true)
-            }}
-            className="group inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-tomato/20"
-            style={{ backgroundColor: COLORS.ACCENT }}
+          <a
+            href="/servicios/aulas/gestion"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
+            style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.95 0 0)" }}
           >
-            <Plus size={18} strokeWidth={2.5} color="white" />
-            Registrar Nueva Aula
-          </button>
+            <HugeiconsIcon icon={PackageIcon} size={14} />
+            Gestionar Aulas
+          </a>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col p-6 lg:p-8 gap-6">
-        {/* Top: Aulas horizontal scrollable row */}
-        <section className="shrink-0 flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center py-12 animate-pulse font-medium opacity-30">
-              Sincronizando espacios...
-            </div>
-          ) : aulas.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 rounded-[2.5rem] border-4 border-dashed text-center space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-               <HugeiconsIcon icon={InformationCircleIcon} className="size-12 opacity-20" style={{ color: COLORS.CHARCOAL }} />
-               <p className="text-sm font-bold opacity-30" style={{ color: COLORS.CHARCOAL }}>No se han configurado aulas aún.</p>
-            </div>
-          ) : (
-            <div className="flex gap-4 min-w-max">
-              {aulas.map((aula, index) => {
-                const isOccupied = isAulaOccupiedNow(aula.id)
-                return (
-                  <motion.div
-                    key={aula.id}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => handleSelectAula(aula)}
-                    className={cn(
-                      "relative p-5 rounded-[1.5rem] border-2 transition-all duration-300 cursor-pointer group flex-shrink-0 w-[250px]",
-                      selectedAula?.id === aula.id
-                        ? "bg-white shadow-2xl shadow-black/5 scale-[1.02]"
-                        : "bg-white/40 hover:bg-white hover:border-black/10"
-                    )}
-                    style={{
-                      borderColor: selectedAula?.id === aula.id ? COLORS.ACCENT : COLORS.BORDER_SUBTLE
-                    }}
-                  >
-                    {selectedAula?.id === aula.id && (
-                      <motion.div
-                        layoutId="active-aula-glow"
-                        className="absolute top-0 right-0 w-32 h-32 blur-3xl opacity-5 pointer-events-none rounded-full"
-                        style={{ backgroundColor: COLORS.ACCENT }}
-                      />
-                    )}
-
-                    <div className="flex justify-between items-start mb-3 relative z-10">
-                      <div className="space-y-0.5">
-                        <h3 className="text-base font-bold tracking-tight truncate max-w-[160px]" style={{ color: COLORS.CHARCOAL }}>{aula.nombre}</h3>
-                        <div className="flex items-center gap-1.5">
-                          <div className={cn("size-2 rounded-full", isOccupied ? "bg-red-500 animate-pulse" : "bg-emerald-500")} />
-                          <span className="text-[8px] font-black uppercase tracking-widest opacity-60">
-                            {isOccupied ? "Ocupado" : "Disponible"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setAulaForm(aula); setAulaModalOpen(true); }}
-                          className="size-7 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors"
-                          style={{ color: COLORS.CHARCOAL }}
-                        >
-                          <HugeiconsIcon icon={Edit01Icon} size={12} />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteAula(aula.id); }}
-                          className="size-7 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100 transition-colors"
-                          style={{ color: "#ef4444" }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="flex items-center gap-1.5">
-                        <div className="size-7 rounded-lg bg-black/5 flex items-center justify-center">
-                          <HugeiconsIcon icon={UserGroupIcon} size={12} style={{ color: COLORS.CHARCOAL }} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cap.</span>
-                          <span className="text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>{aula.capacidad} PAX</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="size-7 rounded-lg bg-tomato/10 flex items-center justify-center">
-                          <HugeiconsIcon icon={Money01Icon} size={12} style={{ color: COLORS.ACCENT }} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Tarifa</span>
-                          <span className="text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>${aula.precio_hora}/hr</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {aula.caracteristicas && (
-                      <p className="mt-3 pt-3 border-t border-black/5 text-[9px] font-medium opacity-40 truncate leading-tight">{aula.caracteristicas}</p>
-                    )}
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
+        {/* Aula selector tabs */}
+        <section className="shrink-0">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            {loading ? (
+              <div className="flex items-center gap-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-9 w-28 rounded-xl bg-white border animate-pulse" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                ))}
+              </div>
+            ) : aulas.length === 0 ? (
+              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border-2 border-dashed" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <HugeiconsIcon icon={InformationCircleIcon} size={16} className="opacity-30" />
+                <span className="text-xs font-bold opacity-30">No hay aulas configuradas</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {aulas.map((aula, i) => {
+                  const isSelected = selectedAula?.id === aula.id
+                  const now = new Date()
+                  const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+                  const date = now.toISOString().split('T')[0]
+                  const occupied = reservasGenerales.some(r =>
+                    r.aula_id === aula.id && r.fecha_reserva === date &&
+                    r.estado !== "cancelado" && time >= r.hora_inicio && time < r.hora_fin
+                  )
+                  return (
+                    <motion.button
+                      key={aula.id}
+                      layout
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.04, type: "spring", stiffness: 400, damping: 30 }}
+                      onClick={() => handleSelectAula(aula)}
+                      className={cn(
+                        "relative flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap active:scale-[0.97]",
+                        isSelected
+                          ? "bg-white shadow-sm border-2"
+                          : "bg-white/50 hover:bg-white border-2 border-transparent hover:border-black/10"
+                      )}
+                      style={{
+                        borderColor: isSelected ? COLORS.ACCENT : undefined,
+                        color: COLORS.CHARCOAL,
+                      }}
+                    >
+                      {isSelected && (
+                        <motion.div
+                          layoutId="active-aula-tab"
+                          className="absolute inset-0 rounded-xl"
+                          style={{ backgroundColor: `${COLORS.ACCENT}08` }}
+                        />
+                      )}
+                      <span className="relative z-10">{aula.nombre}</span>
+                      <div className={cn("relative z-10 size-2 rounded-full shrink-0", occupied ? "bg-red-500" : "bg-emerald-500")} />
+                    </motion.button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </section>
+
+        <AulasKPIs aulas={aulas} reservas={reservasGenerales} />
 
         {/* Bottom: Cronograma */}
         <main className="flex-1 bg-white rounded-[2.5rem] border shadow-2xl shadow-black/5 flex flex-col min-h-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -562,110 +476,7 @@ export function AulasPage() {
         </main>
       </div>
 
-      {/* Modal Aula High-End */}
-      <AnimatePresence>
-        {aulaModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setAulaModalOpen(false)}
-              className="absolute inset-0 bg-charcoal/60 backdrop-blur-md" 
-            />
-            
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl"
-            >
-              <div className="p-8 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div className="space-y-1">
-                  <h2 className="text-3xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>
-                    {aulaForm.id ? "Refinar Espacio" : "Nueva Locación"}
-                  </h2>
-                  <p className="text-xs font-medium opacity-50">Configuración de parámetros de infraestructura</p>
-                </div>
-                <button onClick={() => setAulaModalOpen(false)} className="size-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Identificador Nominal</label>
-                      <input
-                        type="text"
-                        value={aulaForm.nombre}
-                        onChange={e => setAulaForm({ ...aulaForm, nombre: e.target.value })}
-                        className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        placeholder="Ej. Estudio de Producción A"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Aforo Máximo</label>
-                        <input
-                          type="number"
-                          value={aulaForm.capacidad}
-                          onChange={e => setAulaForm({ ...aulaForm, capacidad: parseInt(e.target.value) || 0 })}
-                          className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Tarifa Horaria ($)</label>
-                        <input
-                          type="number"
-                          value={aulaForm.precio_hora}
-                          onChange={e => setAulaForm({ ...aulaForm, precio_hora: parseFloat(e.target.value) || 0 })}
-                          className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Equipamiento y Notas</label>
-                    <textarea
-                      value={aulaForm.caracteristicas}
-                      onChange={e => setAulaForm({ ...aulaForm, caracteristicas: e.target.value })}
-                      className="w-full h-[calc(100%-28px)] px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5 resize-none"
-                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                      placeholder="Describe el equipamiento técnico..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-8 py-6 bg-gray-50/50 border-t flex justify-end gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <button
-                  onClick={() => setAulaModalOpen(false)}
-                  className="px-8 py-4 rounded-2xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10 transition-all active:scale-[0.98]"
-                >
-                  Descartar
-                </button>
-                <button
-                  type="submit"
-                  onClick={handleSaveAula}
-                  className="px-12 py-4 rounded-2xl text-sm font-bold text-white transition-all shadow-xl shadow-tomato/20 active:scale-[0.98]"
-                  style={{ backgroundColor: COLORS.ACCENT }}
-                >
-                  Sincronizar Cambios
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal Reserva High-End */}
+      {/* Modal Reserva */}
       <AnimatePresence>
         {reservaModalOpen && selectedAula && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

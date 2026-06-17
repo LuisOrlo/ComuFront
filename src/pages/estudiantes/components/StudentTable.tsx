@@ -89,13 +89,6 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
                 </td>
                 <td className="px-6 py-5">
                   <div className="text-sm text-gray-600 font-mono bg-gray-50 px-3 py-1 rounded-lg inline-block">{e.cedula || '—'}</div>
-                  <div className="mt-1.5">
-                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                      e.tipo_estudiante === 'interno' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'
-                    }`}>
-                      {e.tipo_estudiante}
-                    </span>
-                  </div>
                 </td>
                 <td className="px-6 py-5 text-center">
                   <FinancialStatusBadge status={e.estado_pago} />

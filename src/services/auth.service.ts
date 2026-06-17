@@ -20,7 +20,6 @@ api.interceptors.request.use((config) => {
 export const apiMultipart = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: {
-    "Content-Type": "multipart/form-data",
     Accept: "application/json",
   },
 })

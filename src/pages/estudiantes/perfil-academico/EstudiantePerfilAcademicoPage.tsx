@@ -85,7 +85,6 @@ export function EstudiantePerfilAcademicoPage() {
           cedula: studentData?.cedula || academicData?.estudiante.cedula || '',
           correo: studentData?.correo || academicData?.estudiante.correo || '',
           celular: studentData?.celular,
-          tipo_estudiante: studentData?.tipo_estudiante,
           ciudad: studentData?.ciudad?.nombre,
           fecha_nacimiento: studentData?.perfil_estudiante?.fecha_nacimiento,
         }}

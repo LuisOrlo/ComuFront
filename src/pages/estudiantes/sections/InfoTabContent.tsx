@@ -47,6 +47,10 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
     { label: "Cedula", value: data.cedula || '—' },
     { label: "Correo", value: data.correo || '—' },
     { label: "Celular", value: data.celular || '—' },
+    { label: "Edad", value: perfil?.edad != null ? String(perfil.edad) : '—' },
+    { label: "Ocupacion", value: perfil?.ocupacion || '—' },
+    { label: "Estado Civil", value: perfil?.estado_civil || '—' },
+    { label: "Direccion", value: perfil?.direccion || '—' },
   ]
 
   const perfilRows = perfil ? [

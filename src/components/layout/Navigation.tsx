@@ -29,6 +29,8 @@ import {
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
+
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown"
 import "overlayscrollbars/overlayscrollbars.css"
 import { useOverlayScrollbars } from "overlayscrollbars-react"
 
@@ -109,7 +111,7 @@ function NavItem({
   )
 }
 
-export function Sidebar({ collapsed, onClose }: SidebarProps) {
+export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
   const { logout, user } = useAuth()
   const navRef = useRef<HTMLDivElement>(null)
   const [initialize] = useOverlayScrollbars({
@@ -131,14 +133,16 @@ export function Sidebar({ collapsed, onClose }: SidebarProps) {
   const isSecretaria = roles.includes("Secretaria")
 
   const menuGroups = useMemo(() => {
-    const groups: { label: string; items: NavItemData[] }[] = [
-      {
+    const groups: { label: string; items: NavItemData[] }[] = []
+
+    if (!isSecretaria) {
+      groups.push({
         label: "Principal",
         items: [
           { icon: LayoutDashboard, label: "Dashboard", path: "/" },
         ],
-      },
-    ]
+      })
+    }
 
     if (isInstructor) {
       groups.push({
@@ -201,7 +205,7 @@ export function Sidebar({ collapsed, onClose }: SidebarProps) {
             { icon: AiFolderIcon, label: "Catálogos", path: "/catalogos" },
             { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
             { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
-            { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: "12" },
+            { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
             { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
           ],
         },
@@ -237,18 +241,12 @@ export function Sidebar({ collapsed, onClose }: SidebarProps) {
             { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
             { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
           ],
-        },
-        {
-          label: "Sistema",
-          items: [
-            { icon: SettingsIcon, label: "Configuración", path: "/configuracion" },
-          ],
         }
       )
     }
 
     return groups
-  }, [isAdmin, isInstructor, isSecretaria])
+  }, [isAdmin, isInstructor, isSecretaria, pendientesCount])
 
   return (
     <aside
@@ -333,10 +331,18 @@ export function TopBar({
   onMenuClick,
   onToggleClick,
   collapsed,
+  pendientesCount,
+  showNotifications,
+  onNotificationToggle,
+  bellRef,
 }: {
   onMenuClick: () => void
   onToggleClick: () => void
   collapsed: boolean
+  pendientesCount: number
+  showNotifications: boolean
+  onNotificationToggle: () => void
+  bellRef: React.RefObject<HTMLButtonElement | null>
 }) {
   const { user } = useAuth()
   const roleLabel = user?.roles?.[0] || "Usuario"
@@ -418,20 +424,36 @@ export function TopBar({
           <HugeiconsIcon icon={SearchIcon} size={18} />
         </button>
 
-        <button
-          className="relative flex items-center justify-center size-9 rounded-lg text-[--muted-foreground] select-none"
-          style={{ transition: "background-color 150ms ease-out" }}
-        >
-          <HugeiconsIcon icon={BellIcon} size={18} />
-          <span
-            className="absolute size-2 rounded-full"
-            style={{
-              backgroundColor: ACCENT,
-              top: "6px",
-              right: "6px",
-            }}
+        <div className="relative">
+          <button
+            ref={bellRef}
+            onClick={onNotificationToggle}
+            className="relative flex items-center justify-center size-9 rounded-lg text-[--muted-foreground] select-none"
+            style={{ transition: "background-color 150ms ease-out" }}
+          >
+            <HugeiconsIcon icon={BellIcon} size={18} />
+            {pendientesCount > 0 && (
+              <span
+                className="absolute flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold text-white"
+                style={{
+                  backgroundColor: COLORS.ACCENT,
+                  top: "2px",
+                  right: "2px",
+                }}
+              >
+                {pendientesCount > 99 ? "99+" : pendientesCount}
+              </span>
+            )}
+          </button>
+
+          <NotificationDropdown
+            isOpen={showNotifications}
+            onClose={onNotificationToggle}
+            anchorRef={bellRef}
+            pendientesCount={pendientesCount}
+            onCountChange={() => {}}
           />
-        </button>
+        </div>
 
         <div className="flex items-center gap-2.5 pl-2 ml-1 border-l" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div

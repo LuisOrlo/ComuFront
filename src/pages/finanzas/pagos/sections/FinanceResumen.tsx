@@ -176,7 +176,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                       </div>
                       <div className="flex items-center gap-4 text-right">
                         <div>
-                          <p className="text-xs text-gray-400">Total Acumulado</p>
+                          <p className="text-xs text-gray-400">Valor a tener</p>
                           <p className="font-black">${item.total.toLocaleString()}</p>
                         </div>
                         <HugeiconsIcon icon={ArrowDown01Icon} size={16} className={`transition-transform ${expandedId === id ? "rotate-180" : ""}`} />

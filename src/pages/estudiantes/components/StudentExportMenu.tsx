@@ -14,7 +14,6 @@ const AVAILABLE_FIELDS = [
   { key: "cedula", label: "Cedula" },
   { key: "correo", label: "Correo" },
   { key: "celular", label: "Celular" },
-  { key: "tipo_estudiante", label: "Tipo" },
   { key: "total_cursos", label: "Cursos" },
   { key: "estado_pago", label: "Estado Pago" },
   { key: "saldo_pendiente", label: "Saldo Pendiente" },
@@ -37,7 +36,7 @@ export function StudentExportMenu() {
     try {
       const blob = await estudiantesService.exportStudents({
         formato: fmt,
-        campos: ["nombres", "apellidos", "cedula", "correo", "celular", "tipo_estudiante", "total_cursos", "estado_pago", "saldo_pendiente"],
+        campos: ["nombres", "apellidos", "cedula", "correo", "celular", "total_cursos", "estado_pago", "saldo_pendiente"],
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")

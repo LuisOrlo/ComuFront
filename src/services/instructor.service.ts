@@ -70,6 +70,7 @@ export interface EstudianteCurso {
 
 export interface EstudianteUnificado {
   matriculaId: string
+  estudianteId?: string
   nombres: string
   apellidos: string
   cedula: string
@@ -126,6 +127,26 @@ export const instructorService = {
     return response.data
   },
 
+  async getDetalleEstudiante(id: string): Promise<{
+    id: string
+    nombres: string
+    apellidos: string
+    cedula?: string
+    correo?: string
+    celular?: string
+    ciudad?: { nombre: string }
+    perfil_estudiante?: {
+      fecha_nacimiento?: string
+      ocupacion?: string
+      direccion?: string
+      estado_civil?: string
+      edad?: number
+    } | null
+  }> {
+    const response = await api.get(`/instructor/estudiantes/${id}`)
+    return response.data.datos
+  },
+
   async getTodosEstudiantes(): Promise<EstudianteUnificado[]> {
     const cursos = await this.getMisCursos()
     const resultados = await Promise.all(
@@ -144,6 +165,7 @@ export const instructorService = {
           : 0
         todos.push({
           matriculaId: e.id,
+          estudianteId: e.estudiante?.id,
           nombres: p.nombres,
           apellidos: p.apellidos || "",
           cedula: p.cedula || "—",

@@ -13,7 +13,6 @@ interface ProfileHeaderProps {
     cedula: string
     correo: string
     celular?: string
-    tipo_estudiante?: string
     ciudad?: string
     fecha_nacimiento?: string
   }
@@ -97,13 +96,6 @@ export function ProfileHeader({ estudiante, totalCursos, estadoPago, saldoPendie
             ) : (
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-1">
                 <span className="text-gray-400 text-sm">C.I. {estudiante.cedula}</span>
-                {estudiante.tipo_estudiante && (
-                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                    estudiante.tipo_estudiante === 'interno' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-amber-500/20 text-amber-300'
-                  }`}>
-                    {estudiante.tipo_estudiante}
-                  </span>
-                )}
                 {estudiante.correo && (
                   <span className="text-gray-400 text-sm flex items-center gap-1.5">
                     <HugeiconsIcon icon={Mail01Icon} size={12} />

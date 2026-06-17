@@ -1,4 +1,4 @@
-import api from "@/services/auth.service"
+import api, { apiMultipart } from "@/services/auth.service"
 
 // ============================================================================
 // TIPOS Y INTERFACES - CATÁLOGOS
@@ -157,6 +157,30 @@ export interface CursoFilters {
   catalogo_curso_id?: string
   estado?: string
   search?: string
+  per_page?: number
+}
+
+// ============================================================================
+// TIPOS Y INTERFACES - NOTIFICACIONES
+// ============================================================================
+
+export interface NotificacionItem {
+  id: string
+  estudiante: string
+  curso: string
+  color?: string
+  monto: number
+  hora: string
+}
+
+export interface NotificacionGrupo {
+  fecha: string
+  items: NotificacionItem[]
+}
+
+export interface NotificacionesResponse {
+  pendientes: number
+  recientes: NotificacionGrupo[]
 }
 
 export interface Nota {
@@ -325,7 +349,7 @@ export const cursosService = {
     page: number = 1
   ): Promise<CursosResponse> {
     const params: Record<string, string | number> = {
-      per_page: 15,
+      per_page: filters?.per_page || 15,
       page,
     }
 
@@ -501,13 +525,10 @@ export const cursosService = {
     const formData = new FormData()
     formData.append("imagen", file)
 
-    const response = await api.post<{ data: { url: string } }>(
-      "/academic/catalogos-cursos/upload-imagen",
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      }
-    )
+      const response = await apiMultipart.post<{ data: { url: string } }>(
+        "/academic/catalogos-cursos/upload-imagen",
+        formData
+      )
 
     return response.data.data.url
   },
@@ -674,9 +695,7 @@ export const cursosService = {
   async uploadComprobante(file: File): Promise<{ url: string }> {
     const form = new FormData()
     form.append('archivo', file)
-    const response = await api.post('/upload/comprobante', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const response = await apiMultipart.post('/upload/comprobante', form)
     return response.data.data
   },
 
@@ -685,9 +704,7 @@ export const cursosService = {
    * Enviar solicitud de matrícula
    */
   async crearSolicitudInscripcion(formData: FormData): Promise<Record<string, unknown>> {
-    const response = await api.post('/registrations', formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    const response = await apiMultipart.post('/registrations', formData)
     return response.data
   },
 
@@ -727,7 +744,7 @@ export const cursosService = {
   /**
    * Actualizar datos del estudiante/participante externo de una solicitud
    */
-  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string }): Promise<Record<string, unknown>> {
+  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; edad?: number }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-estudiante`, datos)
     return response.data
   },
@@ -739,6 +756,15 @@ export const cursosService = {
 
   async actualizarCurso(id: string, datos: { curso_abierto_id: string }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-curso`, datos)
+    return response.data
+  },
+
+  // ========================================================================
+  // NOTIFICACIONES
+  // ========================================================================
+
+  async getNotificaciones(): Promise<NotificacionesResponse> {
+    const response = await api.get<NotificacionesResponse>("/academic/notificaciones")
     return response.data
   },
 }

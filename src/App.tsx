@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
-import { useState } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import { LoginPage } from "@/pages/login/LoginPage"
@@ -18,9 +18,12 @@ import { AprobacionMatriculasPage } from "@/pages/matriculas/AprobacionMatricula
 import { SolicitudesInscripcionPage } from "@/pages/solicitudes-inscripcion/SolicitudesInscripcionPage"
 import { SolicitudInscripcionDetallePage } from "@/pages/solicitudes-inscripcion/SolicitudInscripcionDetallePage"
 import { AulasPage } from "@/pages/servicios/aulas/AulasPage"
+import { AulasGestionPage } from "@/pages/servicios/aulas/AulasGestionPage"
 import { EquiposPage } from "@/pages/servicios/equipos/EquiposPage"
 import { AlquileresListPage } from "@/pages/servicios/equipos/AlquileresListPage"
 import { PodcastPage } from "@/pages/servicios/podcast/PodcastPage"
+import { PaquetesPage } from "@/pages/servicios/podcast/PaquetesPage"
+
 import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPage"
 import { InstructorCursosPage } from "@/pages/instructor-portal/InstructorCursosPage"
 import { InstructorCursoDetailPage } from "@/pages/instructor-portal/detalle/InstructorCursoDetailPage"
@@ -29,12 +32,15 @@ import { NotasRegistroPage } from "@/pages/instructor-portal/NotasRegistroPage"
 import { ClasesModuloPage } from "@/pages/instructor-portal/ClasesModuloPage"
 import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorarioPage"
 import { MisEstudiantesPage } from "@/pages/instructor-portal/MisEstudiantesPage"
+import { DetalleEstudiantePage } from "@/pages/instructor-portal/detalle/DetalleEstudiantePage"
 import { FinancePagosPage } from "@/pages/finanzas/pagos/FinancePagosPage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
 import {
   SecretariaDashboardPage,
   SecretariaPagosPage,
   SecretariaCursosPage,
+  SecretariaEstudiantesPage,
+  SecretariaTalleresPage,
   SecretariaCertificadosPage,
   SecretariaAsistenciaPage,
   SecretariaPodcastPage,
@@ -49,11 +55,31 @@ import { VerificarCertificadosPage } from "@/pages/certificados/VerificarCertifi
 import { EstudianteStatsPage } from "@/pages/estudiantes/EstudianteStatsPage"
 import { EstudianteSegmentsPage } from "@/pages/estudiantes/EstudianteSegmentsPage"
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
+import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
 
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pendientesCount, setPendientesCount] = useState(0)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const bellRef = useRef<HTMLButtonElement>(null)
+
+  const fetchPendientes = useCallback(async () => {
+    try {
+      const res = await cursosService.getNotificaciones()
+      setPendientesCount(res.pendientes)
+    } catch {
+      // silent fail
+    }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchPendientes()
+    const interval = setInterval(fetchPendientes, 15000)
+    return () => clearInterval(interval)
+  }, [fetchPendientes])
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
@@ -69,11 +95,11 @@ function AppLayout() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Sidebar collapsed={false} onClose={() => setMobileOpen(false)} />
+        <Sidebar collapsed={false} onClose={() => setMobileOpen(false)} pendientesCount={pendientesCount} />
       </div>
 
       <div className="hidden lg:block shrink-0">
-        <Sidebar collapsed={collapsed} onToggleClick={() => setCollapsed(!collapsed)} />
+        <Sidebar collapsed={collapsed} pendientesCount={pendientesCount} />
       </div>
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -81,6 +107,10 @@ function AppLayout() {
           onMenuClick={() => setMobileOpen(true)}
           onToggleClick={() => setCollapsed(!collapsed)}
           collapsed={collapsed}
+          pendientesCount={pendientesCount}
+          showNotifications={showNotifications}
+          onNotificationToggle={() => setShowNotifications(prev => !prev)}
+          bellRef={bellRef}
         />
         <main className="flex-1 overflow-y-auto">
           <Routes>
@@ -102,9 +132,11 @@ function AppLayout() {
             <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador"]}><SolicitudesInscripcionPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
             <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador"]}><AulasPage /></RoleGuard>} />
+            <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador"]}><AulasGestionPage /></RoleGuard>} />
             <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador"]}><EquiposPage /></RoleGuard>} />
             <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador"]}><AlquileresListPage /></RoleGuard>} />
             <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador"]}><PodcastPage /></RoleGuard>} />
+            <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador"]}><PaquetesPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador"]}><EdicionVideoPage /></RoleGuard>} />
             <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador"]}><FinancePagosPage /></RoleGuard>} />
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
@@ -112,9 +144,9 @@ function AppLayout() {
 
             {/* Secretaria routes */}
             <Route path="/secretaria" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaDashboardPage /></RoleGuard>} />
-            <Route path="/secretaria/estudiantes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
+            <Route path="/secretaria/estudiantes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaEstudiantesPage /></RoleGuard>} />
             <Route path="/secretaria/cursos" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
-            <Route path="/secretaria/talleres" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
+            <Route path="/secretaria/talleres" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaTalleresPage /></RoleGuard>} />
             <Route path="/secretaria/pagos" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaPagosPage /></RoleGuard>} />
             <Route path="/secretaria/certificados" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCertificadosPage /></RoleGuard>} />
             <Route path="/secretaria/asistencia" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaAsistenciaPage /></RoleGuard>} />
@@ -130,6 +162,7 @@ function AppLayout() {
             <Route path="/instructor/asistencia/:cursoId/:claseId" element={<RoleGuard roles={["Administrador", "Instructor"]}><AsistenciaRegistroPage /></RoleGuard>} />
             <Route path="/instructor/notas/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><NotasRegistroPage /></RoleGuard>} />
             <Route path="/instructor/estudiantes" element={<RoleGuard roles={["Administrador", "Instructor"]}><MisEstudiantesPage /></RoleGuard>} />
+            <Route path="/instructor/estudiantes/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><DetalleEstudiantePage /></RoleGuard>} />
             <Route path="/instructor/horario" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorHorarioPage /></RoleGuard>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

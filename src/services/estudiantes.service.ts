@@ -1,4 +1,4 @@
-import api from "./auth.service"
+import api, { apiMultipart } from "./auth.service"
 
 export interface Estudiante {
   id: string
@@ -8,7 +8,6 @@ export interface Estudiante {
   correo?: string
   celular?: string
   es_activo: boolean
-  tipo_estudiante: "interno" | "externo"
   total_cursos: number
   estado_pago: "deudor" | "abonado" | "al_dia" | "ninguno"
   saldo_pendiente: number
@@ -19,6 +18,10 @@ export interface Estudiante {
     primera_matricula?: string
     ultima_matricula?: string
     total_cursos?: number
+    ocupacion?: string
+    direccion?: string
+    estado_civil?: string
+    edad?: number
   } | null
   creado_en?: string
   actualizado_en?: string
@@ -119,7 +122,6 @@ export interface FinancialProfile {
     cedula: string
     correo: string
     celular: string
-    tipo_estudiante: string
   }
   cuentas: FinancialAccount[]
   transacciones: Array<{
@@ -146,8 +148,6 @@ export interface FinancialProfile {
 
 export interface StudentStats {
   total_estudiantes: number
-  internos: number
-  externos: number
   por_ciudad: Array<{ ciudad: string; total: number }>
   matriculas_por_estado: Record<string, number>
   promedio_general: number
@@ -164,7 +164,6 @@ export interface Segment {
 
 export interface SegmentCriteria {
   estado_pago?: string
-  tipo_estudiante?: string
   cursos_min?: number
   cursos_max?: number
   promedio_min?: number
@@ -216,6 +215,10 @@ export const estudiantesService = {
     ciudad_id?: number | string
     fecha_nacimiento?: string
     notas_internas?: string
+    ocupacion?: string
+    direccion?: string
+    estado_civil?: string
+    edad?: number
   }): Promise<Estudiante> {
     const response = await api.post("/personas/estudiantes", data)
     return response.data.datos
@@ -230,6 +233,10 @@ export const estudiantesService = {
     ciudad_id?: number | string
     fecha_nacimiento?: string
     notas_internas?: string
+    ocupacion?: string
+    direccion?: string
+    estado_civil?: string
+    edad?: number
   }) {
     const response = await api.put(`/personas/estudiantes/${id}`, data)
     return response.data
@@ -278,18 +285,14 @@ export const estudiantesService = {
   async validateImport(file: File): Promise<ImportValidateResult> {
     const formData = new FormData()
     formData.append("archivo", file)
-    const response = await api.post("/personas/estudiantes/importar/validar", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    })
+    const response = await apiMultipart.post("/personas/estudiantes/importar/validar", formData)
     return response.data.datos
   },
 
   async importStudents(file: File): Promise<ImportResult> {
     const formData = new FormData()
     formData.append("archivo", file)
-    const response = await api.post("/personas/estudiantes/importar", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    })
+    const response = await apiMultipart.post("/personas/estudiantes/importar", formData)
     return response.data.datos
   },
 
@@ -309,7 +312,6 @@ export const estudiantesService = {
     ids?: string[]
     buscar?: string
     estado_pago?: string
-    tipo_estudiante?: string
   }): Promise<Blob> {
     const response = await api.post("/personas/estudiantes/exportar", params, {
       responseType: "blob"

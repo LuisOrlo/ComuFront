@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import axios from "axios"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -51,6 +51,22 @@ export function AprobacionMatriculasPage() {
   const [editCursoVal, setEditCursoVal] = useState("")
   const [savingCursoEdit, setSavingCursoEdit] = useState(false)
   const [cursosAbiertosList, setCursosAbiertosList] = useState<CursoAbierto[]>([])
+  const [searchCursoQuery, setSearchCursoQuery] = useState("")
+
+  const getCursoNombre = useCallback(() => {
+    if (!selected?.curso?.id) return selected?.curso?.nombre || "—"
+    const found = cursosAbiertosList.find((c: any) => c.id === selected.curso.id) as any
+    return found?.nombre || selected.curso?.nombre || "—"
+  }, [selected, cursosAbiertosList])
+
+  const filteredCursosAbiertos = useMemo(() => {
+    if (!searchCursoQuery.trim()) return cursosAbiertosList
+    const query = searchCursoQuery.toLowerCase()
+    return cursosAbiertosList.filter((c: any) => {
+      const nombre = (c.nombre || c.id || "").toLowerCase()
+      return nombre.includes(query)
+    })
+  }, [cursosAbiertosList, searchCursoQuery])
 
   // Upload comprobante
   const [uploadingComprobante, setUploadingComprobante] = useState(false)
@@ -95,6 +111,7 @@ export function AprobacionMatriculasPage() {
     try {
       const detalle = await cursosService.getSolicitudInscripcionById(id)
       setSelected(detalle)
+      if (cursosAbiertosList.length === 0) loadCursosAbiertos()
     } catch { toast.error("Error al cargar detalle") }
     finally { setLoadingDetail(false) }
   }
@@ -192,14 +209,16 @@ export function AprobacionMatriculasPage() {
     setSavingCursoEdit(true)
     try {
       await cursosService.actualizarCurso(selectedId, { curso_abierto_id: editCursoVal })
-      const cursoNombre = cursosAbiertosList.find((c: any) => c.id === editCursoVal)?.catalogo?.nombre || editCursoVal
+      const selectedCurso = cursosAbiertosList.find((c: any) => c.id === editCursoVal)
+      const cursoNombre = selectedCurso?.nombre_instancia || selectedCurso?.catalogo?.nombre || editCursoVal
       setSelected((prev: any) => {
         if (!prev) return prev
         return { ...prev, curso: { ...prev.curso, nombre: cursoNombre, id: editCursoVal } }
       })
       toast.success("Curso actualizado")
       setEditCursoField(null); setEditCursoVal("")
-      refreshDetail()
+      await cargarSolicitudes()
+      await refreshDetail()
     } catch (err) {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al guardar curso")
     } finally {
@@ -209,7 +228,7 @@ export function AprobacionMatriculasPage() {
 
   const loadCursosAbiertos = async () => {
     try {
-      const res = await cursosService.getCursos({}, 1)
+      const res = await cursosService.getCursos({ per_page: 100 }, 1)
       setCursosAbiertosList((res as any).data || [])
     } catch { /* silent */ }
   }
@@ -388,7 +407,11 @@ export function AprobacionMatriculasPage() {
                     {grupo.items.map(s => {
                       const isSelected = selectedId === s.id
                       return (
-                        <div key={s.id} className="bg-white rounded-2xl border overflow-hidden transition-all" style={{ borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }}>
+                        <div key={s.id} className="bg-white rounded-2xl border overflow-hidden transition-all"
+                          style={{
+                            borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                            borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
+                          }}>
                           <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
                             <div className="size-12 rounded-xl flex items-center justify-center shrink-0 text-base font-bold"
                               style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
@@ -398,10 +421,7 @@ export function AprobacionMatriculasPage() {
                               <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
                                 {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
                               </p>
-                              <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
-                                {s.curso_abierto?.catalogo?.color && (
-                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.curso_abierto.catalogo.color }} />
-                                )}
+                              <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                                 {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
                               </p>
                               <div className="flex items-center gap-2 mt-2">
@@ -433,28 +453,65 @@ export function AprobacionMatriculasPage() {
                                         editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
                                       <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
                                         editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                    </div>
+                                       <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
+                                       <InfoItem icon={UserIcon} label="Ocupación" value={getFieldValue(selected.solicitante?.datos, "ocupacion")} />
+                                       <InfoItem icon={UserIcon} label="Estado Civil" value={getFieldValue(selected.solicitante?.datos, "estado_civil")} />
+                                       <InfoItem icon={UserIcon} label="Dirección" value={getFieldValue(selected.solicitante?.datos, "direccion")} />
+                                     </div>
                                   </Section>
                                    <Section title="Curso" icon={BookOpenIcon}>
                                      <div className="grid grid-cols-2 gap-3">
                                        {editCursoField === "curso" ? (
-                                         <div className="col-span-2 space-y-2">
+                                         <div className="col-span-2 space-y-2.5">
                                            <div className="flex items-center gap-2 text-xs">
                                              <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                             <span style={{ color: COLORS.TEXT_MUTED }}>Seleccionar curso:</span>
+                                             <span style={{ color: COLORS.TEXT_MUTED }}>Buscar y seleccionar curso:</span>
                                            </div>
-                                           <select value={editCursoVal} onChange={e => setEditCursoVal(e.target.value)}
-                                             className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingCursoEdit}>
-                                              <option value="">Seleccionar...</option>
-                                             {cursosAbiertosList.map((c: any) => (
-                                               <option key={c.id} value={c.id}>{c.catalogo?.nombre || c.id} {c.fecha_inicio ? `(${c.fecha_inicio.split("T")[0]})` : ""}</option>
-                                             ))}
-                                           </select>
+                                           <input
+                                             type="text"
+                                             placeholder="Escribe el nombre del curso..."
+                                             value={searchCursoQuery}
+                                             onChange={e => setSearchCursoQuery(e.target.value)}
+                                             className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
+                                             style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                             disabled={savingCursoEdit}
+                                           />
+                                           <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                             {filteredCursosAbiertos.length === 0 ? (
+                                               <div className="p-3 text-xs text-center text-gray-500">No se encontraron cursos</div>
+                                             ) : (
+                                               filteredCursosAbiertos.map((c: any) => {
+                                                 const isSelected = editCursoVal === c.id
+                                                 return (
+                                                   <button
+                                                     key={c.id}
+                                                     type="button"
+                                                     onClick={() => setEditCursoVal(c.id)}
+                                                     className={cn(
+                                                       "w-full text-left p-2.5 text-xs flex flex-col gap-0.5 hover:bg-gray-50 transition-colors",
+                                                       isSelected && "bg-blue-50/50 hover:bg-blue-50 font-semibold"
+                                                     )}
+                                                     style={isSelected ? { borderLeft: `3px solid ${COLORS.ACCENT}` } : {}}
+                                                   >
+                                                     <div className="flex justify-between items-center gap-2">
+                                                       <span style={{ color: COLORS.CHARCOAL }}>{c.nombre || c.id}</span>
+                                                       {isSelected && <span className="text-[10px] text-blue-600 font-bold shrink-0">Seleccionado</span>}
+                                                     </div>
+                                                     <div className="flex gap-2 text-[10px] opacity-60">
+                                                        {c.semestre && <span>Sem.: {c.semestre}</span>}
+                                                        {c.fechaInicio && <span>Inicio: {c.fechaInicio}</span>}
+                                                        {c.precioBase && <span>${c.precioBase}</span>}
+                                                     </div>
+                                                   </button>
+                                                 )
+                                               })
+                                             )}
+                                           </div>
                                            <div className="flex gap-2">
-                                             <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
-                                               {savingCursoEdit ? "..." : "Guardar"}
+                                             <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
+                                               {savingCursoEdit ? "Guardando..." : "Confirmar curso"}
                                              </button>
-                                             <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                                             <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
                                                Cancelar
                                              </button>
                                            </div>
@@ -464,8 +521,8 @@ export function AprobacionMatriculasPage() {
                                            <div className="flex items-center gap-2 text-xs group col-span-2">
                                              <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
                                              <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Curso</span>
-                                             <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{selected.curso?.nombre || "—"}</span>
-                                             <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); loadCursosAbiertos() }}
+                                              <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{getCursoNombre()}</span>
+                                             <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); setSearchCursoQuery(""); loadCursosAbiertos() }}
                                                className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
                                                <HugeiconsIcon icon={Edit01Icon} size={14} />
                                              </button>
@@ -637,22 +694,23 @@ export function AprobacionMatriculasPage() {
               {filtered.map(s => {
                 const isSelected = selectedId === s.id
                 return (
-                  <div key={s.id} className="bg-white rounded-2xl border overflow-hidden transition-all" style={{ borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }}>
-                    <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
-                      <div className="size-12 rounded-xl flex items-center justify-center shrink-0 text-base font-bold"
-                        style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
-                        {(s.estudiante?.nombres || s.participante_externo?.nombres || "?")[0]}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
-                          {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
-                        </p>
-                        <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
-                          {s.curso_abierto?.catalogo?.color && (
-                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: s.curso_abierto.catalogo.color }} />
-                          )}
-                          {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
-                        </p>
+                    <div key={s.id} className="bg-white rounded-2xl border overflow-hidden transition-all"
+                      style={{
+                        borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                        borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
+                      }}>
+                      <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
+                        <div className="size-12 rounded-xl flex items-center justify-center shrink-0 text-base font-bold"
+                          style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
+                          {(s.estudiante?.nombres || s.participante_externo?.nombres || "?")[0]}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
+                            {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
+                          </p>
+                          <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                            {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
+                          </p>
                         <div className="flex items-center gap-2 mt-2">
                           <Tag color={COLORS.ACCENT}>${s.monto_solicitado}</Tag>
                           <Tag>{s.tipo_pago}</Tag>
@@ -684,31 +742,68 @@ export function AprobacionMatriculasPage() {
                                    editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
                                  <EF icon={MailIcon} label="Correo" field="correo" data={selected.solicitante?.datos}
                                    editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                 <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
-                                   editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                              </div>
+                                  <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
+                                    editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                   <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
+                                   <InfoItem icon={UserIcon} label="Ocupación" value={getFieldValue(selected.solicitante?.datos, "ocupacion")} />
+                                   <InfoItem icon={UserIcon} label="Estado Civil" value={getFieldValue(selected.solicitante?.datos, "estado_civil")} />
+                                   <InfoItem icon={UserIcon} label="Dirección" value={getFieldValue(selected.solicitante?.datos, "direccion")} />
+                               </div>
                             </Section>
 
                              <Section title="Curso" icon={BookOpenIcon}>
                                <div className="grid grid-cols-2 gap-3">
                                  {editCursoField === "curso" ? (
-                                   <div className="col-span-2 space-y-2">
+                                   <div className="col-span-2 space-y-2.5">
                                      <div className="flex items-center gap-2 text-xs">
                                        <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                       <span style={{ color: COLORS.TEXT_MUTED }}>Seleccionar curso:</span>
+                                       <span style={{ color: COLORS.TEXT_MUTED }}>Buscar y seleccionar curso:</span>
                                      </div>
-                                     <select value={editCursoVal} onChange={e => setEditCursoVal(e.target.value)}
-                                       className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingCursoEdit}>
-                                        <option value="">Seleccionar...</option>
-                                             {cursosAbiertosList.map((c: any) => (
-                                         <option key={c.id} value={c.id}>{c.catalogo?.nombre || c.id} {c.fecha_inicio ? `(${c.fecha_inicio.split("T")[0]})` : ""}</option>
-                                       ))}
-                                     </select>
+                                     <input
+                                       type="text"
+                                       placeholder="Escribe el nombre del curso..."
+                                       value={searchCursoQuery}
+                                       onChange={e => setSearchCursoQuery(e.target.value)}
+                                       className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
+                                       style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                       disabled={savingCursoEdit}
+                                     />
+                                     <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                       {filteredCursosAbiertos.length === 0 ? (
+                                         <div className="p-3 text-xs text-center text-gray-500">No se encontraron cursos</div>
+                                       ) : (
+                                         filteredCursosAbiertos.map((c: any) => {
+                                           const isSelected = editCursoVal === c.id
+                                           return (
+                                             <button
+                                               key={c.id}
+                                               type="button"
+                                               onClick={() => setEditCursoVal(c.id)}
+                                               className={cn(
+                                                 "w-full text-left p-2.5 text-xs flex flex-col gap-0.5 hover:bg-gray-50 transition-colors",
+                                                 isSelected && "bg-blue-50/50 hover:bg-blue-50 font-semibold"
+                                               )}
+                                               style={isSelected ? { borderLeft: `3px solid ${COLORS.ACCENT}` } : {}}
+                                             >
+                                               <div className="flex justify-between items-center gap-2">
+                                                 <span style={{ color: COLORS.CHARCOAL }}>{c.nombre || c.id}</span>
+                                                 {isSelected && <span className="text-[10px] text-blue-600 font-bold shrink-0">Seleccionado</span>}
+                                               </div>
+                                               <div className="flex gap-2 text-[10px] opacity-60">
+                                                 {c.semestre && <span>Sem.: {c.semestre}</span>}
+                                                 {c.fecha_inicio && <span>Inicio: {c.fecha_inicio.split("T")[0]}</span>}
+                                                 {c.precio_base && <span>${c.precio_base}</span>}
+                                               </div>
+                                             </button>
+                                           )
+                                         })
+                                       )}
+                                     </div>
                                      <div className="flex gap-2">
-                                       <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
-                                         {savingCursoEdit ? "..." : "Guardar"}
+                                       <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
+                                         {savingCursoEdit ? "Guardando..." : "Confirmar curso"}
                                        </button>
-                                       <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                                       <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
                                          Cancelar
                                        </button>
                                      </div>
@@ -719,7 +814,7 @@ export function AprobacionMatriculasPage() {
                                        <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
                                        <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Curso</span>
                                        <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{selected.curso?.nombre || "—"}</span>
-                                       <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); loadCursosAbiertos() }}
+                                       <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); setSearchCursoQuery(""); loadCursosAbiertos() }}
                                          className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
                                          <HugeiconsIcon icon={Edit01Icon} size={14} />
                                        </button>
@@ -979,6 +1074,13 @@ function Tag({ children, color }: { children: React.ReactNode; color?: string })
       {children}
     </span>
   )
+}
+
+function getFieldValue(datos: any, field: string): string {
+  if (!datos) return "—"
+  const val = datos.perfil_estudiante?.[field] ?? datos[field]
+  if (field === "edad" && val != null) return `${val} años`
+  return val ?? "—"
 }
 
 function fixImageUrl(url: string): string {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon, SearchIcon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
+import { UserGroupIcon, SearchIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { instructorService, type EstudianteUnificado, type InstructorCurso } from "@/services/instructor.service"
 import { toast } from "sonner"
@@ -161,14 +161,18 @@ export function MisEstudiantesPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <Link
-                        to={`/instructor/cursos/${e.cursoId}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ color: COLORS.ACCENT }}
-                      >
-                        Ir al curso
-                        <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-                      </Link>
+                      <div className="flex items-center gap-3 ">
+                        {e.estudianteId && (
+                          <Link
+                            to={`/instructor/estudiantes/${e.estudianteId}`}
+                            className="inline-flex items-center gap-1 text-xs font-semibold"
+                            style={{ color: COLORS.ACCENT }}
+                          >
+                            Ver perfil
+                          </Link>
+                        )}
+                       
+                      </div>
                     </td>
                   </tr>
                 ))}

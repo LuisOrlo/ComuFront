@@ -1,6 +1,8 @@
 export { SecretariaDashboardPage } from "./SecretariaDashboardPage"
 export { SecretariaPagosPage } from "./SecretariaPagosPage"
 export { SecretariaCursosPage } from "./SecretariaCursosPage"
+export { SecretariaEstudiantesPage } from "./SecretariaEstudiantesPage"
+export { SecretariaTalleresPage } from "./SecretariaTalleresPage"
 export { SecretariaCertificadosPage } from "./SecretariaCertificadosPage"
 export { SecretariaAsistenciaPage } from "./SecretariaAsistenciaPage"
 export { SecretariaPodcastPage } from "./SecretariaPodcastPage"

@@ -49,10 +49,13 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
-                  <td className="py-3 px-4 text-sm font-semibold flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
-                    {c.colorCatalogo && (
-                      <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: c.colorCatalogo }} />
-                    )}
+                  <td
+                    className="py-3 px-4 text-sm font-semibold"
+                    style={{
+                      color: COLORS.CHARCOAL,
+                      borderLeft: c.colorCatalogo ? `3px solid ${c.colorCatalogo}` : undefined,
+                    }}
+                  >
                     {c.nombre}
                   </td>
                   <td className="py-3 px-4 text-sm" style={{ color: COLORS.TEXT_MUTED }}>

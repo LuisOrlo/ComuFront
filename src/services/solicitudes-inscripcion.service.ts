@@ -34,20 +34,32 @@ export interface DocumentoSolicitud {
 }
 
 export interface SolicitudInscripcionDetallada extends SolicitudInscripcionResumen {
-  estudiante: {
-    id: string
-    nombres: string
-    apellidos: string
-    correo: string
-    celular?: string
-  }
-  participanteExterno: {
+  estudiante?: {
     id: string
     nombres: string
     apellidos: string
     correo: string
     celular?: string
     cedula?: string
+    perfil_estudiante?: {
+      ocupacion?: string
+      direccion?: string
+      estado_civil?: string
+      edad?: number
+      fecha_nacimiento?: string
+    } | null
+  }
+  participanteExterno?: {
+    id: string
+    nombres: string
+    apellidos: string
+    correo: string
+    celular?: string
+    cedula?: string
+    ocupacion?: string
+    direccion?: string
+    estado_civil?: string
+    edad?: number
   }
   cursoAbierto: {
     id: string

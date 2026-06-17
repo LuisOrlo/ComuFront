@@ -20,7 +20,14 @@ export function CourseCard({ curso }: { curso: Curso }) {
         e.currentTarget.style.boxShadow = "none"
       }}
     >
-      <div className="relative h-32 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+      <div
+        className="relative h-32 overflow-hidden"
+        style={{
+          background: curso.colorCatalogo
+            ? `linear-gradient(135deg, ${curso.colorCatalogo}80, ${curso.colorCatalogo})`
+            : "linear-gradient(135deg, #e5e7eb, #d1d5db)"
+        }}
+      >
         <div className="absolute top-2 right-2">
           <StatusBadge estado={curso.estado} />
         </div>
@@ -59,12 +66,9 @@ export function CourseCard({ curso }: { curso: Curso }) {
         </div>
 
         <h3
-          className="text-sm font-semibold mb-1 line-clamp-2 transition-colors duration-180 ease-out flex items-start gap-1.5"
+          className="text-sm font-semibold mb-1 line-clamp-2 transition-colors duration-180 ease-out"
           style={{ color: COLORS.CHARCOAL }}
         >
-          {curso.colorCatalogo && (
-            <span className="size-2.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: curso.colorCatalogo }} />
-          )}
           <span className="line-clamp-2">{curso.nombre}</span>
         </h3>
         <p className="text-xs mb-4" style={{ color: COLORS.TEXT_MUTED }}>

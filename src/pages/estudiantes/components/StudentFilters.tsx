@@ -45,7 +45,6 @@ const AVAILABLE_FIELDS = [
   { key: "cedula", label: "Cedula" },
   { key: "correo", label: "Correo" },
   { key: "celular", label: "Celular" },
-  { key: "tipo_estudiante", label: "Tipo" },
   { key: "total_cursos", label: "Cursos" },
   { key: "estado_pago", label: "Estado Pago" },
   { key: "saldo_pendiente", label: "Saldo" },

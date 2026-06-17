@@ -135,7 +135,6 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
   const [descripcion, setDescripcion] = useState("")
   const [criterios, setCriterios] = useState({
     estado_pago: "todos",
-    tipo_estudiante: "todos" as string,
     cursos_min: undefined as number | undefined,
     cursos_max: undefined as number | undefined,
     promedio_min: undefined as number | undefined,
@@ -148,7 +147,6 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
     try {
       const cleanCriterios: Record<string, string | number> = {}
       if (criterios.estado_pago !== "todos") cleanCriterios.estado_pago = criterios.estado_pago
-      if (criterios.tipo_estudiante !== "todos") cleanCriterios.tipo_estudiante = criterios.tipo_estudiante
       if (criterios.cursos_min !== undefined) cleanCriterios.cursos_min = criterios.cursos_min
       if (criterios.cursos_max !== undefined) cleanCriterios.cursos_max = criterios.cursos_max
       if (criterios.promedio_min !== undefined) cleanCriterios.promedio_min = criterios.promedio_min
@@ -158,7 +156,7 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
       onOpenChange(false)
       setNombre("")
       setDescripcion("")
-      setCriterios({ estado_pago: "todos", tipo_estudiante: "todos", cursos_min: undefined, cursos_max: undefined, promedio_min: undefined })
+      setCriterios({ estado_pago: "todos", cursos_min: undefined, cursos_max: undefined, promedio_min: undefined })
       onCreated()
     } catch {
       toast.error("Error al crear segmento")
@@ -207,14 +205,6 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
                   <option value="deudor">Pendientes</option>
                   <option value="abonado">Abonos</option>
                   <option value="al_dia">Al dia</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Tipo</label>
-                <select value={criterios.tipo_estudiante} onChange={e => setCriterios({ ...criterios, tipo_estudiante: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white">
-                  <option value="todos">Todos</option>
-                  <option value="interno">Interno</option>
-                  <option value="externo">Externo</option>
                 </select>
               </div>
               <div className="space-y-1.5">

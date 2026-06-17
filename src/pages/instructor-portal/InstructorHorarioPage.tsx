@@ -325,10 +325,7 @@ export function InstructorHorarioPage() {
                     >
                       {curso.nombre_instancia}
                     </p>
-                    <p className="text-[10px] truncate flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
-                      {curso.catalogo?.color && (
-                        <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
-                      )}
+                    <p className="text-[10px] truncate" style={{ color: COLORS.TEXT_MUTED }}>
                       {curso.catalogo?.nombre}
                     </p>
                   </div>

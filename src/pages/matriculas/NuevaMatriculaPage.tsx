@@ -18,6 +18,10 @@ interface EstudianteData {
   cedula: string
   telefono: string
   correo: string
+  ocupacion: string
+  direccion: string
+  estado_civil: string
+  edad: string
 }
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -29,7 +33,7 @@ const pasos = [
 ]
 
 const placeholders: Record<string, string> = {
-  cedula: "1234567890",
+  cedula: "Cédula o DNI",
   nombres: "Juan",
   apellidos: "Pérez",
   telefono: "0987654321",
@@ -47,6 +51,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const [selectedCourseId, setSelectedCourseId] = useState("")
   const [estudiante, setEstudiante] = useState<EstudianteData>({
     nombres: "", apellidos: "", cedula: "", telefono: "", correo: "",
+    ocupacion: "", direccion: "", estado_civil: "", edad: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -114,7 +119,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const curso = cursosAbiertos.find(c => c.id === selectedCourseId)
 
   const sanitizeInput = (campo: string, valor: string): string => {
-    if (campo === "cedula" || campo === "telefono") {
+    if (campo === "telefono") {
       return valor.replace(/[^0-9]/g, "").slice(0, 10)
     }
     if (campo === "nombres" || campo === "apellidos") {
@@ -191,7 +196,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (["cedula", "nombres", "apellidos", "telefono", "correo"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
-    if (campo === "cedula" && !/^\d{10}$/.test(valor)) return "La cédula debe tener 10 dígitos"
+    if (campo === "cedula" && valor.length < 4) return "La cédula o DNI debe tener al menos 4 caracteres"
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
     if (campo === "correo" && valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "Correo inválido"
@@ -227,6 +232,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       formData.append("cedula", estudiante.cedula)
       formData.append("correo", estudiante.correo)
       formData.append("celular", estudiante.telefono)
+      formData.append("ocupacion", estudiante.ocupacion)
+      formData.append("direccion", estudiante.direccion)
+      formData.append("estado_civil", estudiante.estado_civil)
+      formData.append("edad", estudiante.edad)
 
       const monto = tipoAbono === "completo"
         ? Number(curso?.precio_base || 0)
@@ -251,7 +260,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         window.location.href = "/matriculas"
       }
     } catch (err) {
-      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al enviar la solicitud")
+      const data = (err as { response?: { data?: { mensaje?: string; errores?: string[]; errors?: Record<string, string[]> } } })?.response?.data
+      const msg = data?.mensaje || data?.message || "Error al enviar la solicitud"
+      const detalles = data?.errores?.length
+        ? data.errores.join("\n")
+        : data?.errors
+          ? Object.values(data.errors).flat().join("\n")
+          : ""
+      toast.error(detalles ? `${msg}\n${detalles}` : msg, { duration: 8000 })
     } finally {
       setLoadingSubmit(false)
     }
@@ -329,15 +345,15 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             {(["cedula", "nombres", "apellidos", "telefono", "correo"] as const).map(campo => (
               <div key={campo} className={campo === "correo" ? "sm:col-span-2" : ""}>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.CHARCOAL }}>
-                  {campo === "cedula" ? "Cédula" :
+                  {campo === "cedula" ? "Cédula / DNI" :
                     campo === "nombres" ? "Nombres" :
                     campo === "apellidos" ? "Apellidos" :
                     campo === "telefono" ? "Teléfono" : "Correo Electrónico"}
                 </label>
                 <input
                   type={campo === "correo" ? "email" : (campo === "cedula" || campo === "telefono") ? "tel" : "text"}
-                  inputMode={campo === "cedula" || campo === "telefono" ? "numeric" : campo === "correo" ? "email" : "text"}
-                  maxLength={campo === "cedula" || campo === "telefono" ? 10 : undefined}
+                  inputMode={campo === "telefono" ? "numeric" : campo === "correo" ? "email" : "text"}
+                  maxLength={campo === "telefono" ? 10 : undefined}
                   value={estudiante[campo]}
                   onChange={e => updateEstudiante(campo, e.target.value)}
                   onBlur={() => blurEstudiante(campo)}
@@ -353,6 +369,40 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                 )}
               </div>
             ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.CHARCOAL }}>Ocupación</label>
+              <input type="text" value={estudiante.ocupacion} onChange={e => setEstudiante({...estudiante, ocupacion: e.target.value})}
+                placeholder="Ej: Ingeniero" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none transition-all focus:ring-2"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "white", color: COLORS.CHARCOAL }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.CHARCOAL }}>Estado Civil</label>
+              <select value={estudiante.estado_civil} onChange={e => setEstudiante({...estudiante, estado_civil: e.target.value})}
+                className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none transition-all focus:ring-2 bg-white"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                <option value="">Seleccionar...</option>
+                <option value="soltero">Soltero</option>
+                <option value="casado">Casado</option>
+                <option value="divorciado">Divorciado</option>
+                <option value="viudo">Viudo</option>
+                <option value="union_libre">Unión Libre</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.CHARCOAL }}>Edad</label>
+              <input type="number" min={0} max={150} value={estudiante.edad} onChange={e => setEstudiante({...estudiante, edad: e.target.value})}
+                placeholder="Ej: 25" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none transition-all focus:ring-2"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "white", color: COLORS.CHARCOAL }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.CHARCOAL }}>Dirección</label>
+              <input type="text" value={estudiante.direccion} onChange={e => setEstudiante({...estudiante, direccion: e.target.value})}
+                placeholder="Dirección residencial" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none transition-all focus:ring-2"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "white", color: COLORS.CHARCOAL }} />
+            </div>
           </div>
 
           <div>
@@ -475,16 +525,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <h3 className="text-sm font-semibold truncate flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
-                          {ca.catalogo?.color && (
-                            <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: ca.catalogo.color }} />
-                          )}
                           {ca.nombre_instancia || ca.catalogo?.nombre || "Curso"}
                         </h3>
                         {ca.catalogo?.nombre && ca.nombre_instancia && (
-                          <p className="text-[11px] truncate flex items-center gap-1" style={{ color: COLORS.TEXT_MUTED }}>
-                            {ca.catalogo.color && (
-                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: ca.catalogo.color }} />
-                            )}
+                          <p className="text-[11px] truncate" style={{ color: COLORS.TEXT_MUTED }}>
                             {ca.catalogo.nombre}
                           </p>
                         )}
@@ -679,10 +723,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             </div>
             <div className="flex justify-between text-xs" style={{ color: COLORS.TEXT_MUTED }}>
               <span>Curso</span>
-              <span style={{ color: COLORS.CHARCOAL }} className="flex items-center gap-1.5">
-                {curso?.catalogo?.color && (
-                  <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
-                )}
+              <span style={{ color: COLORS.CHARCOAL }}>
                 {curso?.nombre_instancia || curso?.catalogo?.nombre || "—"}
               </span>
             </div>

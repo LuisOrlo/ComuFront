@@ -51,6 +51,7 @@ export function EdicionVideoPage() {
   const [trabajos, setTrabajos] = useState<TrabajoEdicion[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [vista, setVista] = useState<"lista" | "kanban">("lista")
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -263,15 +264,31 @@ export function EdicionVideoPage() {
         </div>
       </header>
 
-      <div className="shrink-0 px-8 py-3 border-b bg-white/50 flex items-center gap-3 flex-wrap" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex items-center gap-4 text-[10px] font-bold opacity-40">
-          <span>{trabajos.length} trabajo{trabajos.length !== 1 ? "s" : ""}</span>
-          {KANBAN_COLUMNS.map(col => (
-            <span key={col.key} className="flex items-center gap-1.5">
-              <span className={cn("size-2 rounded-sm", col.color.split(" ")[0])} />
-              {col.label}: {grouped[col.key].length}
-            </span>
-          ))}
+      <div className="shrink-0 px-8 py-3 border-b bg-white/50 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5 p-0.5 bg-gray-200/70 rounded-xl">
+            {(["lista", "kanban"] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => setVista(k)}
+                className={cn(
+                  "px-4 py-2 rounded-[10px] text-xs font-bold transition-all",
+                  vista === k ? "bg-white text-charcoal shadow-sm" : "text-charcoal/40 hover:text-charcoal/60"
+                )}
+              >
+                {k === "lista" ? "Lista" : "Kanban"}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 text-[10px] font-bold opacity-40 ml-4">
+            <span>{trabajos.length} trabajo{trabajos.length !== 1 ? "s" : ""}</span>
+            {KANBAN_COLUMNS.map(col => (
+              <span key={col.key} className="hidden sm:flex items-center gap-1.5">
+                <span className={cn("size-2 rounded-sm", col.color.split(" ")[0])} />
+                {col.label}: {grouped[col.key].length}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -285,6 +302,109 @@ export function EdicionVideoPage() {
             </div>
             <p className="text-sm font-bold opacity-30">No hay trabajos de edición</p>
             <p className="text-xs opacity-20 max-w-[280px]">Registra un nuevo trabajo de edición para comenzar a gestionarlo.</p>
+          </div>
+        ) : vista === "lista" ? (
+          <div className="bg-white rounded-[2rem] border shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-b from-gray-50 to-gray-100/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    {["Título", "Nivel", "Estado", "Fecha Límite", "Editores", "Acciones"].map(h => (
+                      <th key={h} className="px-5 py-4 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 last:text-right" style={{ color: COLORS.CHARCOAL }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <AnimatePresence mode="popLayout">
+                    {trabajos.map((t, i) => {
+                      const isVencido = t.fecha_limite < todayStr && t.estado !== "entregado"
+                      const isProximo = !isVencido && t.fecha_limite === todayStr && t.estado !== "entregado"
+                      const col = KANBAN_COLUMNS.find(c => c.key === t.estado)
+                      return (
+                        <motion.tr
+                          key={t.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.025, type: "spring", stiffness: 450, damping: 30 }}
+                          onClick={() => { setSelectedTrabajo(t); setDetailOpen(true) }}
+                          className={cn(
+                            "cursor-pointer hover:bg-gray-50/80 transition-colors",
+                            isVencido && "bg-red-50/40",
+                            isProximo && "bg-amber-50/40",
+                          )}
+                        >
+                          <td className="px-5 py-4">
+                            <div className="min-w-0 max-w-[220px]">
+                              <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{t.titulo}</p>
+                              {t.descripcion && <p className="text-[10px] opacity-40 truncate mt-0.5">{t.descripcion}</p>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", NIVEL_COLORS[t.nivel])}>
+                              <HugeiconsIcon icon={NIVEL_ICONS[t.nivel]} size={10} />
+                              {NIVEL_EDICION_LABELS[t.nivel]}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", col?.color || "bg-gray-100")}>
+                              {ESTADO_TRABAJO_LABELS[t.estado]}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("text-xs font-bold", isVencido ? "text-red-600" : isProximo ? "text-amber-600" : "")} style={{ color: !isVencido && !isProximo ? COLORS.CHARCOAL : undefined }}>
+                                {new Date(t.fecha_limite).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+                              </span>
+                              {isVencido && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-100 text-red-700"><HugeiconsIcon icon={Alert02Icon} size={8} />Vencido</span>}
+                              {isProximo && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-100 text-amber-700"><HugeiconsIcon icon={Clock01Icon} size={8} />Hoy</span>}
+                              {t.cobro_registrado && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold bg-green-100 text-green-700"><HugeiconsIcon icon={Tick02Icon} size={8} />Cobrado</span>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-1">
+                              {t.editores && t.editores.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                  {t.editores.slice(0, 2).map(ed => (
+                                    <span key={ed.id} className="text-xs font-medium" style={{ color: COLORS.CHARCOAL }}>
+                                      {ed.nombres} {ed.apellidos}
+                                    </span>
+                                  ))}
+                                  {t.editores.length > 2 && <span className="text-[10px] font-bold opacity-40">+{t.editores.length - 2}</span>}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] opacity-30 italic">—</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                              {t.estado === "recibido" && (
+                                <button onClick={() => changeEstado(t.id, "en_proceso")} className="px-3 py-1.5 rounded-lg text-[9px] font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">Iniciar</button>
+                              )}
+                              {t.estado === "en_proceso" && (
+                                <button onClick={() => changeEstado(t.id, "revision")} className="px-3 py-1.5 rounded-lg text-[9px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors">Rev.</button>
+                              )}
+                              {t.estado === "revision" && (
+                                <>
+                                  <button onClick={() => changeEstado(t.id, "en_proceso")} className="px-3 py-1.5 rounded-lg text-[9px] font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">Volver</button>
+                                  <button onClick={() => handleRegistrarEntrega(t.id)} className="px-3 py-1.5 rounded-lg text-[9px] font-bold bg-green-100 text-green-700 hover:bg-green-200 transition-colors">Entregar</button>
+                                </>
+                              )}
+                              {t.estado === "entregado" && !t.cobro_registrado && (
+                                <button onClick={() => handleRegistrarCobro(t.id)} className="px-3 py-1.5 rounded-lg text-[9px] font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors">Cobrar</button>
+                              )}
+                              <div className="w-px h-5 bg-gray-200 mx-0.5" />
+                              <button onClick={() => openEdit(t)} className="size-7 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10"><HugeiconsIcon icon={Edit01Icon} size={11} /></button>
+                              <button onClick={() => handleDelete(t.id, t.titulo)} className="size-7 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100"><Trash2 size={11} className="text-red-500" /></button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      )
+                    })}
+                  </AnimatePresence>
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 h-full min-h-0">
@@ -336,8 +456,8 @@ export function EdicionVideoPage() {
                                 {t.descripcion && <p className="text-[10px] opacity-40 mt-0.5 line-clamp-2">{t.descripcion}</p>}
                               </div>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                                <button onClick={() => openEdit(t)} className="size-6 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10"><HugeiconsIcon icon={Edit01Icon} size={10} /></button>
-                                <button onClick={() => handleDelete(t.id, t.titulo)} className="size-6 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100"><Trash2 size={10} className="text-red-500" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); openEdit(t) }} className="size-6 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10"><HugeiconsIcon icon={Edit01Icon} size={10} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleDelete(t.id, t.titulo) }} className="size-6 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100"><Trash2 size={10} className="text-red-500" /></button>
                               </div>
                             </div>
 
@@ -394,21 +514,21 @@ export function EdicionVideoPage() {
                             {!isEntregado && (
                               <div className="flex gap-1.5 pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                                 {col.key === "recibido" && (
-                                  <button onClick={() => changeEstado(t.id, "en_proceso")} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                                  <button onClick={(e) => { e.stopPropagation(); changeEstado(t.id, "en_proceso") }} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
                                     Iniciar
                                   </button>
                                 )}
                                 {col.key === "en_proceso" && (
-                                  <button onClick={() => changeEstado(t.id, "revision")} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors">
+                                  <button onClick={(e) => { e.stopPropagation(); changeEstado(t.id, "revision") }} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors">
                                     Enviar a Rev.
                                   </button>
                                 )}
                                 {col.key === "revision" && (
                                   <>
-                                    <button onClick={() => changeEstado(t.id, "en_proceso")} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); changeEstado(t.id, "en_proceso") }} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
                                       Volver
                                     </button>
-                                    <button onClick={() => handleRegistrarEntrega(t.id)} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-green-100 text-green-700 hover:bg-green-200 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); handleRegistrarEntrega(t.id) }} className="flex-1 py-1.5 rounded-lg text-[9px] font-bold bg-green-100 text-green-700 hover:bg-green-200 transition-colors">
                                       Entregar
                                     </button>
                                   </>
@@ -418,7 +538,7 @@ export function EdicionVideoPage() {
 
                             {isEntregado && !t.cobro_registrado && (
                               <div className="pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                <button onClick={() => handleRegistrarCobro(t.id)} className="w-full py-1.5 rounded-lg text-[9px] font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors">
+                                <button onClick={(e) => { e.stopPropagation(); handleRegistrarCobro(t.id) }} className="w-full py-1.5 rounded-lg text-[9px] font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors">
                                   Registrar Cobro
                                 </button>
                               </div>

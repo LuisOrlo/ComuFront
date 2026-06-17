@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, UserGroupIcon, UserCheckIcon, UserIcon, SchoolIcon, MapPinIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, UserGroupIcon, SchoolIcon, MapPinIcon } from "@hugeicons/core-free-icons"
 import { estudiantesService, type StudentStats } from "@/services/estudiantes.service"
 
 import { toast } from "sonner"
@@ -42,27 +42,13 @@ export function EstudianteStatsPage() {
         <p className="text-black mt-1">Metricas generales y tendencias del modulo de gestion estudiantil.</p>
       </header>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="p-6 bg-white border rounded-2xl shadow-sm">
           <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
             <HugeiconsIcon icon={UserGroupIcon} size={20} className="text-blue-600" />
           </div>
           <div className="text-3xl font-black text-gray-800">{stats.total_estudiantes}</div>
           <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Total Estudiantes</div>
-        </div>
-        <div className="p-6 bg-white border rounded-2xl shadow-sm">
-          <div className="size-10 rounded-xl bg-indigo-50 flex items-center justify-center mb-3">
-            <HugeiconsIcon icon={UserCheckIcon} size={20} className="text-indigo-600" />
-          </div>
-          <div className="text-3xl font-black text-gray-800">{stats.internos}</div>
-          <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Internos</div>
-        </div>
-        <div className="p-6 bg-white border rounded-2xl shadow-sm">
-          <div className="size-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-            <HugeiconsIcon icon={UserIcon} size={20} className="text-amber-600" />
-          </div>
-          <div className="text-3xl font-black text-gray-800">{stats.externos}</div>
-          <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">Externos</div>
         </div>
         <div className="p-6 bg-white border rounded-2xl shadow-sm">
           <div className="size-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
