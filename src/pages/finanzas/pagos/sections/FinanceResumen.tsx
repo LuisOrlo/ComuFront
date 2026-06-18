@@ -28,32 +28,46 @@ const ORIGEN_CONFIG: Record<string, { label: string; desc: string; icon: any; co
 function getNombrePersona(cuenta: any): string {
   const s = cuenta.solicitud_inscripcion
   const m = cuenta.matricula
-  const it = cuenta.inscripcionTaller
+  const it = cuenta.inscripcion_taller
   if (m?.estudiante) return `${m.estudiante.nombres || ""} ${m.estudiante.apellidos || ""}`.trim()
   if (s?.estudiante) return `${s.estudiante.nombres || ""} ${s.estudiante.apellidos || ""}`.trim()
   if (s?.participante_externo) return `${s.participante_externo.nombres || ""} ${s.participante_externo.apellidos || ""}`.trim()
   if (it?.participante) return `${it.participante.nombres || ""} ${it.participante.apellidos || ""}`.trim()
+  if (cuenta.persona_nombre) return cuenta.persona_nombre
   return "—"
 }
 
 function getCuentaType(cuenta: any): string {
-  if (cuenta.matricula || cuenta.matricula_id) return "cursos"
-  if (cuenta.inscripcionTaller || cuenta.inscripcion_taller_id) return "talleres"
+  if (cuenta.inscripcion_taller || cuenta.inscripcion_taller_id) return "talleres"
   if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id) return "servicios"
+  const cat = cuenta.matricula?.curso_abierto?.catalogo?.categoria
+    ?? cuenta.matricula?.curso_abierto?.tipo
+    ?? cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.categoria
+  if (cat === "taller") return "talleres"
+  if (cat === "personalizado") return "servicios"
   return "cursos"
 }
 
 function getCuentaName(cuenta: any): string {
+  if (cuenta.inscripcion_taller?.taller?.nombre) return cuenta.inscripcion_taller.taller.nombre
   if (cuenta.matricula?.curso_abierto?.nombre_instancia) return cuenta.matricula.curso_abierto.nombre_instancia
   if (cuenta.matricula?.curso_abierto?.catalogo?.nombre) return cuenta.matricula.curso_abierto.catalogo.nombre
-  if (cuenta.inscripcionTaller?.taller?.nombre) return cuenta.inscripcionTaller.taller.nombre
   if (cuenta.inscripcion_taller_id) return "Taller"
+  if (cuenta.nombre_servicio) return cuenta.nombre_servicio
   return cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre || "Curso"
 }
 
 export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const [filter, setFilter] = useState<string>("todos")
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const sinCuentaTalleres = stats?.sin_cuenta?.talleres
+  const sinCuentaServicios = stats?.sin_cuenta?.servicios
+  const sinCuentaTotal = (sinCuentaTalleres?.total || 0) + (sinCuentaServicios?.total || 0)
+  const sinCuentaCount = (sinCuentaTalleres?.count || 0) + (sinCuentaServicios?.count || 0)
+
+  const totalPendiente = Number(stats?.total_pendiente || 0) + sinCuentaTotal
+  const totalConDeuda = Number(stats?.cuentas_con_deuda || 0) + sinCuentaCount
 
   const totalCobradoLocal = useMemo(() => {
     return cuentas.reduce((sum, cuenta) => sum + Number(cuenta.monto_abonado || 0), 0)
@@ -62,7 +76,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const cards = [
     {
       title: "Pendiente",
-      value: `$${Number(stats?.total_pendiente || 0).toLocaleString()}`,
+      value: `$${totalPendiente.toLocaleString()}`,
       icon: AlertCircleIcon,
       color: "oklch(0.5 0.15 20)",
       bg: "bg-red-50",
@@ -83,14 +97,14 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     },
     {
       title: "Con Deuda",
-      value: stats?.cuentas_con_deuda || 0,
+      value: totalConDeuda,
       icon: Coins01Icon,
       color: "oklch(0.5 0.1 240)",
       bg: "bg-blue-50",
     },
   ]
 
-  // Build groups with individual entries
+  // Build groups with individual entries, merging sin_cuenta items from stats
   const processedData = useMemo(() => {
     const groups: Record<string, any> = {
       cursos:    { label: "Cursos",    items: {} },
@@ -123,8 +137,42 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
       item.entries.push(cuenta)
     })
 
+    // Merge talleres sin cuenta (inscripciones sin cuenta_por_cobrar)
+    if (Array.isArray(stats?.sin_cuenta?.talleres?.items)) {
+      stats.sin_cuenta.talleres.items.forEach((item: any) => {
+        const name = item.inscripcion_taller?.taller?.nombre || "Taller"
+        if (!groups.talleres.items[name]) {
+          groups.talleres.items[name] = { total: 0, saldo: 0, cobrado: 0, personas: 0, deudores: 0, entries: [] }
+        }
+        const g = groups.talleres.items[name]
+        g.total += Number(item.monto_total || 0)
+        g.saldo += Number(item.saldo_pendiente || 0)
+        g.cobrado += Number(item.monto_abonado || 0)
+        g.personas += 1
+        if (Number(item.saldo_pendiente || 0) > 0) g.deudores += 1
+        g.entries.push(item)
+      })
+    }
+
+    // Merge servicios sin cuenta
+    if (Array.isArray(stats?.sin_cuenta?.servicios?.items)) {
+      stats.sin_cuenta.servicios.items.forEach((item: any) => {
+        const name = item.nombre_servicio || "Servicio"
+        if (!groups.servicios.items[name]) {
+          groups.servicios.items[name] = { total: 0, saldo: 0, cobrado: 0, personas: 0, deudores: 0, entries: [] }
+        }
+        const g = groups.servicios.items[name]
+        g.total += Number(item.monto_total || 0)
+        g.saldo += Number(item.saldo_pendiente || 0)
+        g.cobrado += Number(item.monto_abonado || 0)
+        g.personas += 1
+        if (Number(item.saldo_pendiente || 0) > 0) g.deudores += 1
+        g.entries.push(item)
+      })
+    }
+
     return groups
-  }, [cuentas])
+  }, [cuentas, stats])
 
   const filteredData = useMemo(() => {
     if (filter === "todos") return processedData
@@ -161,7 +209,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-base font-bold text-gray-900">Distribución Detallada</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">{cuentas.length} cuenta{cuentas.length !== 1 ? "s" : ""} registradas</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{cuentas.length + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0)} cuenta{(cuentas.length + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0)) !== 1 ? "s" : ""} registradas</p>
           </div>
           <div className="flex gap-1.5">
             {[

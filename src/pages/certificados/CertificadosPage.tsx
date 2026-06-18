@@ -175,8 +175,8 @@ export function CertificadosPage() {
       <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>Académico · Certificados</p>
-            <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>Gestión de Certificados</h1>
+            
+            <h1 className="text-3xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>Gestión de Certificados</h1>
             <p className="text-xs opacity-40 mt-2">
               {total} estudiantes ·{" "}
               <span className="text-emerald-600 font-medium">{conCertCount} con certificado</span>

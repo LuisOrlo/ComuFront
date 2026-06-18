@@ -118,27 +118,28 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     }
 
     const cargarTalleres = () =>
-      tallerService.listar({ per_page: 50, tab: "proximos" })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then(res => (res as any).data || [])
+      axios.get(`${API_BASE}/talleres`, {
+        params: { per_page: 50, tab: "proximos" },
+        headers: { Accept: "application/json" },
+      }).then(res => res.data.data || [])
 
     if (tipoFilter === "todos") {
-      Promise.all([cargarCursos(), cargarTalleres()])
-        .then(([cursos, talls]) => {
-          setCursosAbiertos(cursos)
-          setTalleres(talls)
+      Promise.allSettled([cargarCursos(), cargarTalleres()])
+        .then(([cursosResult, tallsResult]) => {
+          setCursosAbiertos(cursosResult.status === "fulfilled" ? cursosResult.value : [])
+          setTalleres(tallsResult.status === "fulfilled" ? tallsResult.value : [])
+          if (tallsResult.status === "rejected") console.warn("Talleres no disponibles:", tallsResult.reason)
         })
-        .catch(() => { setCursosAbiertos([]); setTalleres([]) })
         .finally(() => setLoadingCursos(false))
     } else if (tipoFilter === "cursos") {
       cargarCursos()
         .then(res => { setCursosAbiertos(res); setTalleres([]) })
-        .catch(() => setCursosAbiertos([]))
+        .catch(() => { setCursosAbiertos([]); setTalleres([]) })
         .finally(() => setLoadingCursos(false))
     } else {
       cargarTalleres()
         .then(res => { setTalleres(res); setCursosAbiertos([]) })
-        .catch(() => setTalleres([]))
+        .catch(() => { setTalleres([]); setCursosAbiertos([]) })
         .finally(() => setLoadingCursos(false))
     }
   }, [catalogoFilter, ciudadFilter, modalidadFilter, tipoFilter])

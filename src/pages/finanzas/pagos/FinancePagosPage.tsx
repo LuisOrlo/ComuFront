@@ -1,128 +1,108 @@
 import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "motion/react"
+import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { 
-  InvoiceIcon, 
-  Invoice02Icon,
+import {
+  InvoiceIcon,
   Clock01Icon,
-  ChartBarLineIcon
+  Invoice02Icon,
 } from "@hugeicons/core-free-icons"
+import { COLORS } from "@/lib/constants"
+import { useNavigate } from "react-router"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-
-// Sub-secciones
 import { FinanceResumen } from "./sections/FinanceResumen"
-import { FinanceCuentas } from "./sections/FinanceCuentas"
-import { FinancePagoRegistro } from "./sections/FinancePagoRegistro"
-import { FinanceValidacion } from "./sections/FinanceValidacion"
-import { FinanceHistorial } from "./sections/FinanceHistorial"
 
-type FinanceTab = "resumen" | "cuentas" | "validacion" | "historial"
+const NAV_LINKS = [
+  {
+    label: "Cuentas por cobrar",
+    icon: InvoiceIcon,
+    path: "/finanzas/pagos/cuentas",
+    color: "oklch(0.5 0.15 240)",
+  },
+  {
+    label: "Validación",
+    icon: Clock01Icon,
+    path: "/finanzas/pagos/validacion",
+    color: "oklch(0.65 0.15 75)",
+  },
+  {
+    label: "Historial",
+    icon: Invoice02Icon,
+    path: "/finanzas/pagos/historial",
+    color: "oklch(0.55 0.15 150)",
+  },
+]
 
 export function FinancePagosPage() {
-  const [activeTab, setActiveTab] = useState<FinanceTab>("resumen")
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Record<string, unknown> | null>(null)
   const [cuentas, setCuentas] = useState<Record<string, unknown>[]>([])
 
-  // Para flujo de registro de pago
-  const [selectedCuentaId, setSelectedCuentaId] = useState<string | null>(null)
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const [resumenData, cuentasData] = await Promise.all([
-        financeService.getResumen(),
-        financeService.getCuentas({ per_page: 50 })
-      ])
-      setStats(resumenData)
-      setCuentas(cuentasData.data)
-    } catch {
-      toast.error("Error al sincronizar datos financieros")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData()
+    const load = async () => {
+      try {
+        const [resumenData, cuentasData] = await Promise.all([
+          financeService.getResumen(),
+          financeService.getCuentas({ per_page: 50 })
+        ])
+        setStats(resumenData)
+        setCuentas(cuentasData.data)
+      } catch {
+        toast.error("Error al sincronizar datos financieros")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
-  const tabs = [
-    { id: "resumen", label: "Resumen", icon: ChartBarLineIcon },
-    { id: "cuentas", label: "Cuentas por Cobrar", icon: InvoiceIcon },
-    { id: "validacion", label: "Validación", icon: Clock01Icon },
-    { id: "historial", label: "Historial", icon: Invoice02Icon },
-  ]
-
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          
-          <h1 className="text-3xl font-black text-gray-900 mt-1">Pagos y Cobros</h1>
-         
-        </div>
-        
-        <div className="bg-gray-100 p-1.5 rounded-2xl flex gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id as FinanceTab)
-                setSelectedCuentaId(null)
-              }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                activeTab === tab.id 
-                  ? "bg-white text-blue-600 shadow-sm" 
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-            >
-              <HugeiconsIcon icon={tab.icon} size={16} />
-              <span className="hidden md:block">{tab.label}</span>
-            </button>
-          ))}
+    <div className="flex flex-col h-full bg-gray-50/30">
+      <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div className="space-y-1">
+            
+            <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
+              Pagos y Cobros
+            </h1>
+            
+          </div>
         </div>
       </header>
 
-      <AnimatePresence mode="wait">
-        {selectedCuentaId ? (
-          <motion.div
-            key="pago-registro"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+      <nav className="shrink-0 px-8 pt-6 pb-2 flex gap-2">
+        {NAV_LINKS.map((link) => (
+          <motion.button
+            key={link.path}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate(link.path)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border bg-white text-xs font-bold transition-all hover:shadow-sm"
+            style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
           >
-            <FinancePagoRegistro 
-              cuentaId={selectedCuentaId} 
-              onBack={() => setSelectedCuentaId(null)}
-              onSuccess={() => {
-                loadData()
-              }}
-            />
-          </motion.div>
+            <HugeiconsIcon icon={link.icon} size={16} style={{ color: link.color }} />
+            {link.label}
+          </motion.button>
+        ))}
+      </nav>
+
+      <div className="flex-1 px-8 pb-8 pt-4 overflow-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-sm font-medium opacity-40" style={{ color: COLORS.CHARCOAL }}>Cargando resumen financiero...</div>
+          </div>
         ) : (
           <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
+            key="resumen"
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3 }}
           >
-            {activeTab === "resumen" && <FinanceResumen stats={stats} cuentas={cuentas} />}
-            {activeTab === "cuentas" && (
-              <FinanceCuentas 
-                cuentas={cuentas} 
-                loading={loading} 
-                onSelect={(id) => setSelectedCuentaId(id)} 
-              />
-            )}
-            {activeTab === "validacion" && <FinanceValidacion />}
-            {activeTab === "historial" && <FinanceHistorial />}
+            <FinanceResumen stats={stats} cuentas={cuentas} />
           </motion.div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   )
 }

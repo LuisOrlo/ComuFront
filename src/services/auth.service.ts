@@ -62,6 +62,7 @@ export const authService = {
       throw new Error(data.mensaje || "Credenciales incorrectas")
     }
     localStorage.setItem("auth_token", data.datos.token)
+    localStorage.setItem("user_persona_id", data.datos.usuario.persona?.id ?? "")
     return data as LoginResponse
   },
 
@@ -75,6 +76,7 @@ export const authService = {
       await api.post("/auth/cerrar-sesion")
     } finally {
       localStorage.removeItem("auth_token")
+      localStorage.removeItem("user_persona_id")
     }
   },
 

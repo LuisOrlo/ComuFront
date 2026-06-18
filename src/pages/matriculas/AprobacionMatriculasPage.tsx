@@ -27,6 +27,32 @@ import { tallerService } from "@/services/taller.service"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 
+function ImageZoom({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose() }}
+      tabIndex={0}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 size-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M18 6L6 18M6 6l12 12" />
+        </svg>
+      </button>
+      <img
+        src={url}
+        alt="Imagen ampliada"
+        className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      />
+    </div>
+  )
+}
+
 export function AprobacionMatriculasPage() {
   const [solicitudes, setSolicitudes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,6 +94,7 @@ export function AprobacionMatriculasPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [expandedComprobante, setExpandedComprobante] = useState(false)
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
   const [uploadingCedula, setUploadingCedula] = useState(false)
   const cedulaRef = useRef<HTMLInputElement>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -532,18 +559,19 @@ export function AprobacionMatriculasPage() {
                    </div>
                    <div className="space-y-3">
                      {grupo.items.map(ins => (
-                       <TallerInscripcionCard key={ins.id} ins={ins}
-                         isExpanded={tallerSelectedId === ins.id}
-                         puedeVerificar={tallerSubTab === "pendientes"}
-                         editTallerField={editTallerField} editTallerVal={editTallerVal}
-                         savingTallerEdit={savingTallerEdit}
-                         onToggle={() => setTallerSelectedId(tallerSelectedId === ins.id ? null : ins.id)}
-                         onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
-                         onChange={setEditTallerVal} onSave={saveTallerEdit}
-                         onCancel={cancelTallerEdit}
-                         onApprove={() => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller" })}
-                         onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
-                       />
+                        <TallerInscripcionCard key={ins.id} ins={ins}
+                          isExpanded={tallerSelectedId === ins.id}
+                          puedeVerificar={tallerSubTab === "pendientes"}
+                          editTallerField={editTallerField} editTallerVal={editTallerVal}
+                          savingTallerEdit={savingTallerEdit}
+                          onToggle={() => setTallerSelectedId(tallerSelectedId === ins.id ? null : ins.id)}
+                          onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
+                          onChange={setEditTallerVal} onSave={saveTallerEdit}
+                          onCancel={cancelTallerEdit}
+                          onApprove={() => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller" })}
+                          onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
+                          onExpandImage={setExpandedImageUrl}
+                        />
                      ))}
                    </div>
                  </div>
@@ -790,26 +818,28 @@ export function AprobacionMatriculasPage() {
                                            </button>
                                          )}
                                        </div>
-                                       {expandedComprobante && selected.pago?.comprobante?.url && (
-                                         <div className="rounded-xl border overflow-hidden bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                           <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                             className="w-full object-contain max-h-[400px]" />
-                                         </div>
-                                       )}
-                                     </div>
-                                   </Section>
-                                   <Section title="Documento de Identidad" icon={Image01Icon}>
-                                     {selected.pago?.comprobante?.cedula_url ? (
-                                       <div>
-                                         <div className="flex items-center justify-between mb-2">
-                                           <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                           <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                             className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                             <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                                           </button>
-                                         </div>
-                                         <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
-                                           className="w-full object-contain max-h-[400px] rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                                        {expandedComprobante && selected.pago?.comprobante?.url && (
+                                          <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                            <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
+                                              className="w-full object-contain max-h-[400px]"
+                                              onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </Section>
+                                    <Section title="Documento de Identidad" icon={Image01Icon}>
+                                      {selected.pago?.comprobante?.cedula_url ? (
+                                        <div>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
+                                            <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
+                                              className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
+                                              <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                            </button>
+                                          </div>
+                                          <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
+                                            className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                            onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
                                        </div>
                                      ) : (
                                        <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -1083,27 +1113,29 @@ export function AprobacionMatriculasPage() {
                                     </button>
                                   )}
                                 </div>
-                                {expandedComprobante && selected.pago?.comprobante?.url && (
-                                  <div className="rounded-xl border overflow-hidden bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                    <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                      className="w-full object-contain max-h-[400px]" />
-                                  </div>
-                                )}
-                              </div>
-                            </Section>
-
-                             <Section title="Documento de Identidad" icon={Image01Icon}>
-                               {selected.pago?.comprobante?.cedula_url ? (
-                                 <div>
-                                   <div className="flex items-center justify-between mb-2">
-                                     <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                     <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                       className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                       <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                                     </button>
+                                 {expandedComprobante && selected.pago?.comprobante?.url && (
+                                   <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                     <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
+                                       className="w-full object-contain max-h-[400px]"
+                                       onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
                                    </div>
-                                   <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
-                                     className="w-full object-contain max-h-[400px] rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                                 )}
+                               </div>
+                             </Section>
+
+                              <Section title="Documento de Identidad" icon={Image01Icon}>
+                                {selected.pago?.comprobante?.cedula_url ? (
+                                  <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
+                                      <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
+                                        className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
+                                        <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                      </button>
+                                    </div>
+                                    <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
+                                      className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                      onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
                                  </div>
                                ) : (
                                  <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -1146,6 +1178,10 @@ export function AprobacionMatriculasPage() {
         </div>
       </main>
 
+      {expandedImageUrl && (
+        <ImageZoom url={expandedImageUrl} onClose={() => setExpandedImageUrl(null)} />
+      )}
+
       <ConfirmationModal
         isOpen={confirmAction?.type === "aprobar" && !!confirmAction}
         title={confirmAction?.origen === "taller" ? "Verificar Pago de Taller" : "Aprobar Matrícula"}
@@ -1168,11 +1204,12 @@ export function AprobacionMatriculasPage() {
   )
 }
 
-function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerField, editTallerVal, savingTallerEdit, onToggle, onEdit, onChange, onSave, onCancel, onApprove, onReject }: {
+function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerField, editTallerVal, savingTallerEdit, onToggle, onEdit, onChange, onSave, onCancel, onApprove, onReject, onExpandImage }: {
   ins: any; isExpanded: boolean; puedeVerificar: boolean
   editTallerField: string | null; editTallerVal: string; savingTallerEdit: boolean
   onToggle: () => void; onEdit: (f: string, v: string) => void; onChange: (v: string) => void
   onSave: () => void; onCancel: () => void; onApprove: () => void; onReject: () => void
+  onExpandImage?: (url: string) => void
 }) {
   const cedulaRef = useRef<HTMLInputElement>(null)
   const comprobanteRef = useRef<HTMLInputElement>(null)
@@ -1295,8 +1332,9 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
                 )}
               </div>
               {expandedComprobante && ins.comprobante_url && (
-                <div className="rounded-xl border overflow-hidden bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <img src={fixImageUrl(ins.comprobante_url)} alt="Comprobante" className="w-full object-contain max-h-[400px]" />
+                <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <img src={fixImageUrl(ins.comprobante_url)} alt="Comprobante" className="w-full object-contain max-h-[400px]"
+                    onClick={() => onExpandImage?.(fixImageUrl(ins.comprobante_url))} />
                 </div>
               )}
             </div>
@@ -1311,7 +1349,8 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
                     <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
                   </button>
                 </div>
-                <img src={fixImageUrl(ins.cedula_url)} alt="Cédula" className="w-full object-contain max-h-[400px] rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                <img src={fixImageUrl(ins.cedula_url)} alt="Cédula" className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  onClick={() => onExpandImage?.(fixImageUrl(ins.cedula_url))} />
               </div>
             ) : (
               <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>

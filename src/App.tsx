@@ -26,6 +26,9 @@ import { PodcastPage } from "@/pages/servicios/podcast/PodcastPage"
 import { PaquetesPage } from "@/pages/servicios/podcast/PaquetesPage"
 
 import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPage"
+import { RadioPage } from "@/pages/servicios/radio/RadioPage"
+import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
+import { TarifasPage as RadioTarifasPage } from "@/pages/servicios/radio/TarifasPage"
 import { InstructorCursosPage } from "@/pages/instructor-portal/InstructorCursosPage"
 import { InstructorCursoDetailPage } from "@/pages/instructor-portal/detalle/InstructorCursoDetailPage"
 import { AsistenciaRegistroPage } from "@/pages/instructor-portal/AsistenciaRegistroPage"
@@ -35,6 +38,11 @@ import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorar
 import { MisEstudiantesPage } from "@/pages/instructor-portal/MisEstudiantesPage"
 import { DetalleEstudiantePage } from "@/pages/instructor-portal/detalle/DetalleEstudiantePage"
 import { FinancePagosPage } from "@/pages/finanzas/pagos/FinancePagosPage"
+import { ResumenPage } from "@/pages/finanzas/pagos/ResumenPage"
+import { CuentasPage as FinanzasCuentasPage } from "@/pages/finanzas/pagos/CuentasPage"
+import { PagoRegistroPage } from "@/pages/finanzas/pagos/PagoRegistroPage"
+import { ValidacionPage } from "@/pages/finanzas/pagos/ValidacionPage"
+import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
 import {
   SecretariaDashboardPage,
@@ -63,6 +71,7 @@ import { CargaMasivaCertificadosPage } from "@/pages/certificados/CargaMasivaCer
 import { VerificarCertificadosPage } from "@/pages/certificados/VerificarCertificadosPage"
 import { EstudianteStatsPage } from "@/pages/estudiantes/EstudianteStatsPage"
 import { EstudianteSegmentsPage } from "@/pages/estudiantes/EstudianteSegmentsPage"
+import { AgendaPage } from "@/pages/agenda/AgendaPage"
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
@@ -149,9 +158,20 @@ function AppLayout() {
             <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador"]}><PodcastPage /></RoleGuard>} />
             <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador"]}><PaquetesPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador"]}><EdicionVideoPage /></RoleGuard>} />
+            <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador"]}><RadioPage /></RoleGuard>} />
+            <Route path="/servicios/radio/historial" element={<RoleGuard roles={["Administrador"]}><RadioHistorialPage /></RoleGuard>} />
+            <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador"]}><RadioTarifasPage /></RoleGuard>} />
             <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador"]}><FinancePagosPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos/resumen" element={<RoleGuard roles={["Administrador"]}><ResumenPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos/cuentas" element={<RoleGuard roles={["Administrador"]}><FinanzasCuentasPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos/cuentas/:cuentaId/pago" element={<RoleGuard roles={["Administrador"]}><PagoRegistroPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos/validacion" element={<RoleGuard roles={["Administrador"]}><ValidacionPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos/historial" element={<RoleGuard roles={["Administrador"]}><HistorialPage /></RoleGuard>} />
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
+
+            {/* Agenda */}
+            <Route path="/agenda" element={<RoleGuard roles={["Administrador"]}><AgendaPage /></RoleGuard>} />
 
             {/* Talleres admin */}
             <Route path="/talleres" element={<RoleGuard roles={["Administrador"]}><TalleresPage /></RoleGuard>} />

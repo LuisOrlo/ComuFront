@@ -215,7 +215,7 @@ export function CargaMasivaCertificadosPage() {
       <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>Académico · Certificados</p>
+            
             <div className="flex items-center gap-3">
               <a href="/certificados" className="size-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors">
                 <ArrowLeft size={18} />

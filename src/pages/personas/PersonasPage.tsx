@@ -74,9 +74,7 @@ export function PersonasPage() {
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
                 Personal
               </h1>
-              <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                Gestión de instructores y personal administrativo.
-              </p>
+              
             </div>
             <button
               onClick={() => setModal({ open: true, editingId: null })}

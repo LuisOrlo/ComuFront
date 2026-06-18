@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { UserGroupIcon, CheckmarkCircle01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService, type Taller } from "@/services/taller.service"
+import { authService } from "@/services/auth.service"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -17,17 +18,23 @@ export function InstructorTalleresPage() {
   const navigate = useNavigate()
   const [talleres, setTalleres] = useState<Taller[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<"hoy" | "proximos" | "completados">("hoy")
+  const [tab, setTab] = useState<"hoy" | "proximos" | "completados">("proximos")
 
   useEffect(() => {
     const cargar = async () => {
       setLoading(true)
       try {
-        const token = localStorage.getItem("auth_token")
-        if (!token) return
-
-        const payload = JSON.parse(atob(token.split(".")[1]))
-        const personaId = payload.persona_id || payload.sub
+        let personaId = localStorage.getItem("user_persona_id")
+        if (!personaId) {
+          try {
+            const perfil = await authService.getProfile()
+            personaId = (perfil as any).datos?.persona?.id
+            if (personaId) localStorage.setItem("user_persona_id", personaId)
+          } catch {
+            return
+          }
+        }
+        if (!personaId) return
 
         const params: Record<string, unknown> = { per_page: 50, instructor_id: personaId }
         if (tab === "proximos") {
@@ -35,7 +42,8 @@ export function InstructorTalleresPage() {
         } else if (tab === "completados") {
           params.estado = "completado"
         } else {
-          params.fecha = new Date().toISOString().split("T")[0]
+          params.fecha_desde = new Date().toISOString().split("T")[0]
+          params.fecha_hasta = new Date().toISOString().split("T")[0]
         }
         const res = await tallerService.listar(params)
         setTalleres((res as any).data || [])

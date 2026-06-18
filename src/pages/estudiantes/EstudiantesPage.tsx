@@ -38,7 +38,7 @@ export function EstudiantesPage() {
   const [deleting, setDeleting] = useState(false)
   const [bulkExportOpen, setBulkExportOpen] = useState(false)
   const [bulkFormat, setBulkFormat] = useState<"excel" | "pdf">("excel")
-  const [bulkFields, setBulkFields] = useState<string[]>(["nombres", "apellidos", "cedula", "correo", "celular", "total_cursos", "estado_pago", "saldo_pendiente"])
+  const [bulkFields, setBulkFields] = useState<string[]>(["nombres", "apellidos", "cedula", "correo", "celular", "edad", "direccion", "ocupacion", "estado_civil", "total_cursos", "estado_pago", "saldo_pendiente"])
   const [bulkExporting, setBulkExporting] = useState(false)
 
   useEffect(() => {
@@ -253,6 +253,10 @@ export function EstudiantesPage() {
                     { key: "cedula", label: "Cedula" },
                     { key: "correo", label: "Correo" },
                     { key: "celular", label: "Celular" },
+                    { key: "edad", label: "Edad" },
+                    { key: "direccion", label: "Direccion" },
+                    { key: "ocupacion", label: "Ocupacion" },
+                    { key: "estado_civil", label: "Estado Civil" },
                     { key: "total_cursos", label: "Total Cursos" },
                     { key: "estado_pago", label: "Estado Pago" },
                     { key: "saldo_pendiente", label: "Saldo" },

@@ -142,7 +142,7 @@ export function CiudadesPage() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>Ciudades</h1>
-                <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Ciudades donde operan los cursos</p>
+                
               </div>
             </div>
             <span className="text-sm px-3 py-1 rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>

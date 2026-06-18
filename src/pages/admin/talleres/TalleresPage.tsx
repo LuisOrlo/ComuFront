@@ -116,7 +116,7 @@ export function TalleresPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold" style={{ color: CHARCOAL }}>Talleres</h1>
-              <p className="text-sm mt-0.5" style={{ color: TEXT_MUTED }}>Gestiona los talleres presenciales y virtuales</p>
+              
             </div>
             <button onClick={() => navigate("/talleres/nuevo")}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"

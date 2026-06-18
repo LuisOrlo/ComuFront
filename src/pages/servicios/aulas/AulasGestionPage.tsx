@@ -93,9 +93,7 @@ export function AulasGestionPage() {
             </a>
             <div className="h-8 w-px bg-gray-200" />
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>
-                Servicios <span className="size-1 rounded-full bg-current opacity-50" /> Infraestructura
-              </div>
+              
               <h1 className="text-2xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
                 Gestión de Aulas
               </h1>

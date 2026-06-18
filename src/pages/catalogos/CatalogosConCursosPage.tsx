@@ -272,7 +272,7 @@ export function CatalogosConCursosPage() {
         style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div>
           <h1 className="text-xl font-bold tracking-tight" style={{ color: COLORS.CHARCOAL }}>
-            Explorador Académico
+            Explorar la Academia
           </h1>
           <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
             {catalogos.length} catálogos &middot; {cursos.length} cursos activos
@@ -322,11 +322,14 @@ export function CatalogosConCursosPage() {
             const isSelected = selectedCatalogoId === cat.id
             const imgUrl = getImageUrl(cat.imagen)
             return (
-              <button
+              <div
                 key={cat.id}
                 onClick={() => handleSelectCatalogo(cat.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelectCatalogo(cat.id) }}
                 className={cn(
-                  "w-full text-left rounded-2xl overflow-hidden border transition-all duration-200",
+                  "w-full text-left rounded-2xl overflow-hidden border transition-all duration-200 cursor-pointer",
                   isSelected ? "shadow-md" : "hover:shadow-sm"
                 )}
                 style={{
@@ -382,7 +385,7 @@ export function CatalogosConCursosPage() {
                     </span>
                   )}
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>

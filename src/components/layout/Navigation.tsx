@@ -25,6 +25,7 @@ import {
   Logout03Icon,
   SchoolIcon,
   Microphone,
+  RadioIcon,
   UserIcon
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/context/AuthContext"
@@ -241,6 +242,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
             { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
             { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
             { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
+            { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
           ],
         }
       )
