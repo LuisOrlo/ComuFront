@@ -23,6 +23,7 @@ interface EstudiantePersonal {
     fecha_nacimiento?: string
     ocupacion?: string
     direccion?: string
+    ciudad?: string
     estado_civil?: string
     edad?: number
   } | null
@@ -207,7 +208,7 @@ export function DetalleEstudiantePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
             <DataRow label="Correo" value={estudiante.correo || "—"} />
             <DataRow label="Celular" value={estudiante.celular || "—"} />
-            <DataRow label="Ciudad" value={estudiante.ciudad?.nombre || "—"} />
+            <DataRow label="Ciudad" value={perfil?.ciudad || estudiante.ciudad?.nombre || "—"} />
             <DataRow label="Direccion" value={perfil?.direccion || "—"} />
           </div>
         </div>

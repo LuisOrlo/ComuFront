@@ -12,6 +12,14 @@ interface InfoTabContentProps {
   onRefresh: () => void
 }
 
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "—"
+  const clean = dateStr.split("T")[0]
+  const parts = clean.split("-")
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+  return dateStr
+}
+
 export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoTabContentProps) {
   const [transferMatricula, setTransferMatricula] = useState<{
     id: string
@@ -41,29 +49,27 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
 
   const perfil = data.perfil_estudiante
 
-  const rows = [
+  const personalFields: Array<{ label: string; value: string; full?: boolean }> = [
     { label: "Nombres", value: data.nombres },
     { label: "Apellidos", value: data.apellidos },
-    { label: "Cedula", value: data.cedula || '—' },
-    { label: "Correo", value: data.correo || '—' },
-    { label: "Celular", value: data.celular || '—' },
-    { label: "Edad", value: perfil?.edad != null ? String(perfil.edad) : '—' },
-    { label: "Ocupacion", value: perfil?.ocupacion || '—' },
-    { label: "Estado Civil", value: perfil?.estado_civil || '—' },
-    { label: "Direccion", value: perfil?.direccion || '—' },
+    { label: "Cedula", value: data.cedula || "—" },
+    { label: "Correo", value: data.correo || "—" },
+    { label: "Celular", value: data.celular || "—" },
+    { label: "Fecha de Nacimiento", value: formatDate(perfil?.fecha_nacimiento) },
+    { label: "Edad", value: perfil?.edad != null ? String(perfil.edad) : "—" },
+    { label: "Ocupacion", value: perfil?.ocupacion || "—" },
+    { label: "Estado Civil", value: perfil?.estado_civil || "—" },
+    { label: "Direccion", value: perfil?.direccion || "—" },
+    { label: "Ciudad", value: data.ciudad?.nombre || perfil?.ciudad || "—" },
   ]
 
-  const perfilRows = perfil ? [
-    { label: "Fecha de Nacimiento", value: perfil.fecha_nacimiento?.split('-').reverse().join('/') || '—' },
-    { label: "Primera Matricula", value: perfil.primera_matricula?.split('-').reverse().join('/') || '—' },
-    { label: "Ultima Matricula", value: perfil.ultima_matricula?.split('-').reverse().join('/') || '—' },
-    { label: "Total Cursos", value: String(perfil.total_cursos || data.total_cursos || 0) },
-    { label: "Notas Internas", value: perfil.notas_internas || '—', full: true },
-  ] : []
-
-  const fechasRows = [
-    { label: "Registrado", value: data.creado_en ? new Date(data.creado_en).toLocaleString('es-ES') : (perfil?.primera_matricula ? new Date(perfil.primera_matricula + 'T12:00:00').toLocaleString('es-ES') : '—') },
-    { label: "Ultima actualizacion", value: data.actualizado_en ? new Date(data.actualizado_en).toLocaleString('es-ES') : '—' },
+  const academicFields: Array<{ label: string; value: string; full?: boolean }> = [
+    { label: "Total de cursos", value: String(perfil?.total_cursos || data.total_cursos || 0) },
+    { label: "Primera matricula", value: formatDate(perfil?.primera_matricula) },
+    { label: "Ultima matricula", value: formatDate(perfil?.ultima_matricula) },
+    { label: "Registrado", value: data.creado_en ? new Date(data.creado_en).toLocaleString("es-ES") : "—" },
+    { label: "Ultima actualizacion", value: data.actualizado_en ? new Date(data.actualizado_en).toLocaleString("es-ES") : "—" },
+    { label: "Notas internas", value: perfil?.notas_internas || "—", full: true },
   ]
 
   const matriculasActivas = academicData?.matriculas.filter((m) => m.estado === "activo") ?? []
@@ -74,48 +80,34 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Datos Personales</h3>
           <div className="divide-y divide-gray-50">
-            {rows.map((row) => (
+            {personalFields.map((row) => (
               <div key={row.label} className="flex justify-between py-2.5 text-sm">
-                <span className="text-gray-500">{row.label}</span>
-                <span className="font-bold text-gray-800 text-right ml-4">{row.value}</span>
+                <span className="text-gray-500 shrink-0">{row.label}</span>
+                <span className="font-bold text-gray-800 text-right ml-4 truncate">{row.value}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {perfilRows.length > 0 && (
-          <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Perfil Academico</h3>
-            <div className="divide-y divide-gray-50">
-              {perfilRows.map((row) => (
-                <div key={row.label} className={`flex justify-between py-2.5 text-sm ${row.full ? 'flex-col' : ''}`}>
-                  <span className="text-gray-500">{row.label}</span>
-                  <span className={`font-bold text-gray-800 ${row.full ? '' : 'text-right ml-4'}`}>
-                    {row.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+        <div>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Perfil Academico</h3>
+          <div className="divide-y divide-gray-50">
+            {academicFields.map((row) => (
+              <div key={row.label} className={`py-2.5 text-sm ${row.full ? "" : "flex justify-between"}`}>
+                <span className="text-gray-500">{row.label}</span>
+                <span className={`font-bold text-gray-800 ${row.full ? "block mt-1" : "text-right ml-4 truncate"}`}>
+                  {row.value}
+                </span>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
-
-      <div className="mt-8 pt-6 border-t">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Metadatos</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-          {fechasRows.map((row) => (
-            <div key={row.label} className="flex justify-between py-2.5 text-sm">
-              <span className="text-gray-500">{row.label}</span>
-              <span className="font-bold text-gray-800 text-right ml-4">{row.value}</span>
-            </div>
-          ))}
         </div>
       </div>
 
       {matriculasActivas.length > 0 && (
         <div className="mt-8 pt-6 border-t">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
-            Matrículas Activas ({matriculasActivas.length})
+            Matriculas Activas ({matriculasActivas.length})
           </h3>
           <div className="divide-y divide-gray-50">
             {matriculasActivas.map((matricula) => (
@@ -123,7 +115,7 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-gray-900 truncate">{matricula.curso}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    {matricula.notas.length} módulo{matricula.notas.length !== 1 ? "s" : ""}
+                    {matricula.notas.length} modulo{matricula.notas.length !== 1 ? "s" : ""}
                     {matricula.promedio !== null && (
                       <>
                         <span className="mx-1.5">·</span>

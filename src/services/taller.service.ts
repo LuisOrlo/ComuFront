@@ -7,6 +7,7 @@ export interface Taller {
   nombre: string
   descripcion?: string
   fecha?: string
+  fecha_fin?: string | null
   hora_inicio?: string
   hora_fin?: string
   instructor_id?: string
@@ -18,7 +19,17 @@ export interface Taller {
   inscripciones_count?: number
   inscripciones?: InscripcionTaller[]
   asistencias?: AsistenciaTaller[]
+  horarios?: HorarioTaller[]
   created_at?: string
+}
+
+export interface HorarioTaller {
+  id: string
+  taller_id: string
+  dia_semana: number
+  hora_inicio: string
+  hora_fin: string
+  aula?: string
 }
 
 export interface InscripcionTaller {

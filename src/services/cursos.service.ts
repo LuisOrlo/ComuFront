@@ -256,7 +256,7 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     ciudad,
     instructor: docenteNombre,
     moduloActual: calculateModuloActual(typed.modulos || []),
-    totalModulos: typed.catalogo?.modulos_default || typed.modulos?.length || 0,
+    totalModulos: typed.modulos?.length || typed.catalogo?.modulos_default || 0,
     estudiantes: typed.estudiantes_inscritos ?? typed.matriculas?.length ?? 0,
     capacidad: typed.capacidad_maxima,
     estado: mapEstadoCurso(typed.estado, typed.modulos),
@@ -571,7 +571,7 @@ export const cursosService = {
    */
   async actualizarCursoAbierto(
     id: string,
-    data: Partial<CursoAbierto>
+    data: Record<string, unknown>
   ): Promise<CursoAbierto> {
     const response = await api.put<{ data: CursoAbierto; message: string }>(
       `/academic/cursos-abiertos/${id}`,
@@ -744,12 +744,12 @@ export const cursosService = {
   /**
    * Actualizar datos del estudiante/participante externo de una solicitud
    */
-  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; edad?: number }): Promise<Record<string, unknown>> {
+  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; ciudad?: string; fecha_nacimiento?: string; edad?: number }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-estudiante`, datos)
     return response.data
   },
 
-  async actualizarPago(id: string, datos: { monto_solicitado?: number; tipo_pago?: string; fecha_pago_declarada?: string }): Promise<Record<string, unknown>> {
+  async actualizarPago(id: string, datos: { monto_solicitado?: number; tipo_pago?: string; tipo_comprobante?: string; fecha_pago_declarada?: string }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-pago`, datos)
     return response.data
   },

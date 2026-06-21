@@ -225,10 +225,10 @@ export function TalleresPage() {
                         {t.instructor ? `${t.instructor.nombres} ${t.instructor.apellidos}` : "—"}
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap" style={{ color: CHARCOAL }}>
-                        {t.fecha ? formatFecha(t.fecha) : "—"}
+                        {t.fecha ? formatFecha(t.fecha) : "—"}{t.fecha_fin ? ` - ${formatFecha(t.fecha_fin)}` : ""}
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap" style={{ color: CHARCOAL }}>
-                        {formatHora(t.hora_inicio)} - {formatHora(t.hora_fin)}
+                        {t.fecha_fin ? `${t.horarios?.length || 0} días` : `${formatHora(t.hora_inicio)} - ${formatHora(t.hora_fin)}`}
                       </td>
                       <td className="px-4 py-3.5 font-semibold" style={{ color: CHARCOAL }}>
                         ${Number(t.precio || 0).toFixed(2)}

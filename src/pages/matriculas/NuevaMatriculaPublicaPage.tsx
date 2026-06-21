@@ -43,7 +43,7 @@ export function NuevaMatriculaPublicaPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Nueva Matrícula</h1>
-              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Completa tus datos para inscribirte en un curso</p>
+              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Completa tus datos para formar parte de nosotros</p>
             </div>
           </div>
         </div>

@@ -59,13 +59,13 @@ export function AprobacionMatriculasPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [filtroEstado, setFiltroEstado] = useState("pendiente_validacion")
+  const [mainTab, setMainTab] = useState<"cursos" | "personalizados" | "talleres">("cursos")
+  const [statusFilter, setStatusFilter] = useState<"pendientes" | "aprobados" | "rechazados">("pendientes")
   const [searchTerm, setSearchTerm] = useState("")
 
   const [tallerInscripciones, setTallerInscripciones] = useState<any[]>([])
   const [loadingTalleres, setLoadingTalleres] = useState(false)
   const [tallerSelectedId, setTallerSelectedId] = useState<string | null>(null)
-  const [tallerSubTab, setTallerSubTab] = useState<"pendientes" | "verificados" | "rechazados">("pendientes")
   const [editTallerField, setEditTallerField] = useState<string | null>(null)
   const [editTallerVal, setEditTallerVal] = useState("")
   const [savingTallerEdit, setSavingTallerEdit] = useState(false)
@@ -144,7 +144,7 @@ export function AprobacionMatriculasPage() {
   const cargarSolicitudes = async () => {
     setLoading(true)
     try {
-      const res = await cursosService.getSolicitudesInscripcion({ estado: filtroEstado || undefined, per_page: 50 })
+      const res = await cursosService.getSolicitudesInscripcion({ per_page: 200 })
       setSolicitudes(((res as Record<string, unknown>).data as Record<string, unknown>[]) || [])
     } catch { toast.error("Error al cargar solicitudes") }
     finally { setLoading(false) }
@@ -159,22 +159,29 @@ export function AprobacionMatriculasPage() {
     finally { setLoadingTalleres(false) }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { cargarSolicitudes()
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (mainTab === "talleres") {
+      cargarTallerInscripciones()
+    } else {
+      cargarSolicitudes()
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroEstado])
+  }, [mainTab])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (filtroEstado === "talleres") cargarTallerInscripciones()
-  }, [filtroEstado])
+    if (mainTab !== "talleres" && statusFilter === "aprobados") {
+      cursosService.getCatalogos().then(res => setCatalogosFiltro(res.data || [])).catch(() => {})
+    }
+  }, [mainTab, statusFilter])
 
   const tallerAgrupadas = useMemo(() => {
-    if (filtroEstado !== "talleres") return null
+    if (mainTab !== "talleres") return null
     const filtradas = tallerInscripciones.filter(ins => {
-      if (tallerSubTab === "pendientes") return ins.estado === "activo" && !ins.pago_verificado
-      if (tallerSubTab === "verificados") return ins.pago_verificado
-      if (tallerSubTab === "rechazados") return ins.estado === "retirado"
+      if (statusFilter === "pendientes") return ins.estado === "activo" && !ins.pago_verificado
+      if (statusFilter === "aprobados") return ins.pago_verificado
+      if (statusFilter === "rechazados") return ins.estado === "retirado"
       return true
     })
     const grupos: { dateKey: string; label: string; items: any[] }[] = []
@@ -195,15 +202,9 @@ export function AprobacionMatriculasPage() {
       const label = `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`
       grupos.push({ dateKey: key, label, items })
     }
-    grupos.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+    grupos.sort((a, b) => b.dateKey.localeCompare(a.dateKey))
     return grupos
-  }, [tallerInscripciones, tallerSubTab, filtroEstado])
-
-  useEffect(() => {
-    if (filtroEstado === "matricula_creada") {
-      cursosService.getCatalogos().then(res => setCatalogosFiltro(res.data || [])).catch(() => {})
-    }
-  }, [filtroEstado])
+  }, [tallerInscripciones, statusFilter, mainTab])
 
   const viewDetail = async (id: string) => {
     if (selectedId === id) { setSelectedId(null); setSelected(null); return }
@@ -242,7 +243,13 @@ export function AprobacionMatriculasPage() {
         if (!prev) return prev
         const updated = { ...prev }
         if (updated.solicitante?.datos) {
-          updated.solicitante = { ...updated.solicitante, datos: { ...updated.solicitante.datos, [editField]: editVal } }
+          const datos = { ...updated.solicitante.datos }
+          if (datos.perfil_estudiante) {
+            datos.perfil_estudiante = { ...datos.perfil_estudiante, [editField]: editVal }
+          } else {
+            datos[editField] = editVal
+          }
+          updated.solicitante = { ...updated.solicitante, datos }
         }
         return updated
       })
@@ -280,10 +287,19 @@ export function AprobacionMatriculasPage() {
     setSavingPagoEdit(true)
     try {
       const data: any = {}
+      let autoTipo: string | null = null
       if (editPagoField === "pago_monto") {
-        data.monto_solicitado = parseFloat(editPagoVal)
+        const monto = parseFloat(editPagoVal)
+        data.monto_solicitado = monto
+        const precioBase = selected?.curso?.precio_base
+        if (precioBase) {
+          autoTipo = monto >= precioBase ? "completo" : "abono"
+          data.tipo_pago = autoTipo
+        }
       } else if (editPagoField === "pago_fecha") {
         data.fecha_pago_declarada = editPagoVal
+      } else if (editPagoField === "pago_comprobante") {
+        data.tipo_comprobante = editPagoVal
       } else {
         data.tipo_pago = editPagoVal
       }
@@ -291,9 +307,20 @@ export function AprobacionMatriculasPage() {
       setSelected((prev: any) => {
         if (!prev?.pago) return prev
         const updated = { ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago.comprobante } } }
-        if (editPagoField === "pago_monto") updated.pago.monto_solicitado = parseFloat(editPagoVal)
-        else if (editPagoField === "pago_fecha") updated.pago.comprobante.fecha_pago_declarada = editPagoVal
-        else updated.pago.tipo_pago = editPagoVal
+        if (editPagoField === "pago_monto") {
+          updated.pago.monto_solicitado = parseFloat(editPagoVal)
+          if (autoTipo) {
+            updated.pago.tipo_pago = autoTipo
+            updated.pago.comprobante.tipo = autoTipo
+          }
+        } else if (editPagoField === "pago_fecha") {
+          updated.pago.comprobante.fecha_pago_declarada = editPagoVal
+        } else if (editPagoField === "pago_comprobante") {
+          updated.pago.comprobante.tipo = editPagoVal
+        } else {
+          updated.pago.tipo_pago = editPagoVal
+          updated.pago.comprobante.tipo = editPagoVal
+        }
         return updated
       })
       toast.success("Dato de pago actualizado")
@@ -418,36 +445,58 @@ export function AprobacionMatriculasPage() {
     } finally { setActionLoading(false) }
   }
 
-  const filtered = useMemo(() => {
-    const items = solicitudes.filter(s => {
-      const nombre = s.estudiante?.nombres || s.participante_externo?.nombres || ""
-      const apellido = s.estudiante?.apellidos || s.participante_externo?.apellidos || ""
-      const curso = s.curso_abierto?.catalogo?.nombre || ""
-      const matchesSearch = !searchTerm || `${nombre} ${apellido} ${curso}`.toLowerCase().includes(searchTerm.toLowerCase())
-      if (!matchesSearch) return false
-      if (filtroEstado !== "matricula_creada") return true
-      if (filtroCursoId && s.curso_abierto?.catalogo_curso_id !== filtroCursoId) return false
-      if (filtroFechaDesde) {
-        const d = new Date(s.created_at || s.fecha_creacion)
-        if (isNaN(d.getTime()) || d < new Date(filtroFechaDesde)) return false
-      }
-      if (filtroFechaHasta) {
-        const d = new Date(s.created_at || s.fecha_creacion)
-        if (isNaN(d.getTime())) return false
-        const hasta = new Date(filtroFechaHasta)
-        hasta.setHours(23, 59, 59, 999)
-        if (d > hasta) return false
-      }
+  const solicitudesFiltradas = useMemo(() => {
+    if (mainTab === "talleres") return []
+
+    const categoria = mainTab === "cursos" ? "regular" : "personalizado"
+    let items = solicitudes.filter(s => s.curso_abierto?.catalogo?.categoria === categoria)
+
+    items = items.filter(s => {
+      if (statusFilter === "pendientes") return s.estado === "pendiente_validacion"
+      if (statusFilter === "aprobados") return s.estado === "matricula_creada"
+      if (statusFilter === "rechazados") return s.estado === "rechazado"
       return true
     })
+
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase()
+      items = items.filter(s => {
+        const nombre = s.estudiante?.nombres || s.participante_externo?.nombres || ""
+        const apellido = s.estudiante?.apellidos || s.participante_externo?.apellidos || ""
+        const curso = s.curso_abierto?.catalogo?.nombre || ""
+        return `${nombre} ${apellido} ${curso}`.toLowerCase().includes(q)
+      })
+    }
+
+    if (statusFilter === "aprobados") {
+      if (filtroCursoId) {
+        items = items.filter(s => s.curso_abierto?.catalogo_curso_id === filtroCursoId)
+      }
+      if (filtroFechaDesde) {
+        const desde = new Date(filtroFechaDesde)
+        items = items.filter(s => {
+          const d = new Date(s.created_at || s.fecha_creacion)
+          return !isNaN(d.getTime()) && d >= desde
+        })
+      }
+      if (filtroFechaHasta) {
+        const hasta = new Date(filtroFechaHasta)
+        hasta.setHours(23, 59, 59, 999)
+        items = items.filter(s => {
+          const d = new Date(s.created_at || s.fecha_creacion)
+          return !isNaN(d.getTime()) && d <= hasta
+        })
+      }
+    }
+
     return items
-  }, [solicitudes, searchTerm, filtroEstado, filtroCursoId, filtroFechaDesde, filtroFechaHasta])
+  }, [solicitudes, mainTab, statusFilter, searchTerm, filtroCursoId, filtroFechaDesde, filtroFechaHasta])
 
   const solicitudesAgrupadas = useMemo(() => {
-    if (filtroEstado !== "pendiente_validacion" && filtroEstado !== "matricula_creada") return null
+    if (mainTab === "talleres" || statusFilter === "rechazados") return null
     const grupos: { dateKey: string; label: string; items: any[] }[] = []
     const map = new Map<string, any[]>()
-    for (const s of filtered) {
+    for (const s of solicitudesFiltradas) {
       const rawDate = s.created_at || s.fecha_creacion
       if (!rawDate) continue
       const d = new Date(rawDate)
@@ -463,9 +512,9 @@ export function AprobacionMatriculasPage() {
       const label = `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`
       grupos.push({ dateKey: key, label, items })
     }
-    grupos.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+    grupos.sort((a, b) => b.dateKey.localeCompare(a.dateKey))
     return grupos
-  }, [filtered, filtroEstado])
+  }, [solicitudesFiltradas, statusFilter, mainTab])
 
   const totalPendientes = solicitudes.filter(s => s.estado === "pendiente_validacion").length
 
@@ -487,19 +536,31 @@ export function AprobacionMatriculasPage() {
                  className="w-full pl-9 pr-3 py-2.5 border rounded-xl text-xs outline-none bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
              </div>
               <div className="flex gap-1 rounded-xl border p-0.5 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                {[{ value: "", label: "Todos" }, { value: "pendiente_validacion", label: "Pendientes" }, { value: "matricula_creada", label: "Aprobadas" }, { value: "rechazado", label: "Rechazados" }, { value: "talleres", label: "Talleres" }].map(f => (
-                  <button key={f.value || "todos"} onClick={() => { setFiltroEstado(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
+                {[{ value: "cursos" as const, label: "Cursos" }, { value: "personalizados" as const, label: "Personalizados" }, { value: "talleres" as const, label: "Talleres" }].map(f => (
+                  <button key={f.value} onClick={() => { setMainTab(f.value); setStatusFilter("pendientes"); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
                     className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    style={{ backgroundColor: filtroEstado === f.value ? COLORS.CHARCOAL : "transparent", color: filtroEstado === f.value ? "white" : COLORS.TEXT_MUTED }}>
+                    style={{ backgroundColor: mainTab === f.value ? COLORS.CHARCOAL : "transparent", color: mainTab === f.value ? "white" : COLORS.TEXT_MUTED }}>
                     {f.label}
                   </button>
-               ))}
+                ))}
               </div>
            </div>
 
+           {/* Secondary status filter */}
+           <div className="flex gap-1 rounded-lg border p-0.5 bg-white inline-flex" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+             {[{ value: "pendientes" as const, label: "Pendientes" }, { value: "aprobados" as const, label: "Aprobados" }, { value: "rechazados" as const, label: "Rechazados" }].map(f => (
+               <button key={f.value} onClick={() => { setStatusFilter(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
+                 className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                 style={{
+                   backgroundColor: statusFilter === f.value ? COLORS.CHARCOAL : "transparent",
+                   color: statusFilter === f.value ? "white" : COLORS.TEXT_MUTED,
+                 }}>{f.label}</button>
+             ))}
+           </div>
+
            {/* Filtros extra solo para Aprobadas */}
-           {filtroEstado === "matricula_creada" && (
-             <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            {mainTab !== "talleres" && statusFilter === "aprobados" && (
+              <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                <HugeiconsIcon icon={FilterIcon} size={14} style={{ color: COLORS.TEXT_MUTED }} />
                <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
                  <span>Curso:</span>
@@ -529,59 +590,48 @@ export function AprobacionMatriculasPage() {
              </div>
            )}
 
-           {loading ? (
-             <div className="p-20 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
-            ) : filtroEstado === "talleres" ? (
-             <div className="space-y-4">
-               <div className="flex gap-1 rounded-lg border p-0.5 bg-white inline-flex" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                 {["pendientes", "verificados", "rechazados"].map(t => (
-                   <button key={t} onClick={() => { setTallerSubTab(t as any); setTallerSelectedId(null) }}
-                     className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
-                     style={{
-                       backgroundColor: tallerSubTab === t ? COLORS.CHARCOAL : "transparent",
-                       color: tallerSubTab === t ? "white" : COLORS.TEXT_MUTED,
-                     }}>{t === "pendientes" ? "Pendientes" : t === "verificados" ? "Verificados" : "Rechazados"}</button>
+            {mainTab === "talleres" ? (
+              <div className="space-y-4">
+                {loadingTalleres ? (
+                  <div className="p-16 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
+                ) : !tallerAgrupadas || tallerAgrupadas.length === 0 ? (
+                  <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay inscripciones a talleres {statusFilter === "aprobados" ? "verificadas" : statusFilter === "rechazados" ? "rechazadas" : "pendientes"}</p>
+                  </div>
+                ) : tallerAgrupadas.map(grupo => (
+                  <div key={grupo.dateKey}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <HugeiconsIcon icon={Calendar03Icon} size={14} style={{ color: COLORS.TEXT_MUTED }} />
+                      <h3 className="text-sm font-bold capitalize" style={{ color: COLORS.CHARCOAL }}>{grupo.label}</h3>
+                      <span className="text-[10px] font-medium opacity-40">{grupo.items.length} inscripción{grupo.items.length !== 1 ? "es" : ""}</span>
+                    </div>
+                    <div className="space-y-3">
+                      {grupo.items.map(ins => (
+                         <TallerInscripcionCard key={ins.id} ins={ins}
+                           isExpanded={tallerSelectedId === ins.id}
+                           puedeVerificar={statusFilter === "pendientes"}
+                           editTallerField={editTallerField} editTallerVal={editTallerVal}
+                           savingTallerEdit={savingTallerEdit}
+                           onToggle={() => setTallerSelectedId(tallerSelectedId === ins.id ? null : ins.id)}
+                           onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
+                           onChange={setEditTallerVal} onSave={saveTallerEdit}
+                           onCancel={cancelTallerEdit}
+                           onApprove={() => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller" })}
+                           onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
+                           onExpandImage={setExpandedImageUrl}
+                         />
+                      ))}
+                    </div>
+                  </div>
                  ))}
-               </div>
-
-               {loadingTalleres ? (
-                 <div className="p-16 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
-               ) : !tallerAgrupadas || tallerAgrupadas.length === 0 ? (
-                 <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                   <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay inscripciones a talleres {tallerSubTab === "verificados" ? "verificadas" : tallerSubTab === "rechazados" ? "rechazadas" : "pendientes"}</p>
-                 </div>
-               ) : tallerAgrupadas.map(grupo => (
-                 <div key={grupo.dateKey}>
-                   <div className="flex items-center gap-2 mb-3">
-                     <HugeiconsIcon icon={Calendar03Icon} size={14} style={{ color: COLORS.TEXT_MUTED }} />
-                     <h3 className="text-sm font-bold capitalize" style={{ color: COLORS.CHARCOAL }}>{grupo.label}</h3>
-                     <span className="text-[10px] font-medium opacity-40">{grupo.items.length} inscripción{grupo.items.length !== 1 ? "es" : ""}</span>
-                   </div>
-                   <div className="space-y-3">
-                     {grupo.items.map(ins => (
-                        <TallerInscripcionCard key={ins.id} ins={ins}
-                          isExpanded={tallerSelectedId === ins.id}
-                          puedeVerificar={tallerSubTab === "pendientes"}
-                          editTallerField={editTallerField} editTallerVal={editTallerVal}
-                          savingTallerEdit={savingTallerEdit}
-                          onToggle={() => setTallerSelectedId(tallerSelectedId === ins.id ? null : ins.id)}
-                          onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
-                          onChange={setEditTallerVal} onSave={saveTallerEdit}
-                          onCancel={cancelTallerEdit}
-                          onApprove={() => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller" })}
-                          onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
-                          onExpandImage={setExpandedImageUrl}
-                        />
-                     ))}
-                   </div>
-                 </div>
-                ))}
-            </div>
-          ) : filtered.length === 0 ? (
+             </div>
+           ) : loading ? (
+              <div className="p-20 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
+           ) : solicitudesFiltradas.length === 0 ? (
             <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay solicitudes</p>
             </div>
-          ) : (filtroEstado === "pendiente_validacion" || filtroEstado === "matricula_creada") && solicitudesAgrupadas ? (
+           ) : statusFilter !== "rechazados" && solicitudesAgrupadas ? (
             <div className="space-y-6">
               {solicitudesAgrupadas.map(grupo => (
                 <div key={grupo.dateKey}>
@@ -594,13 +644,13 @@ export function AprobacionMatriculasPage() {
                     {grupo.items.map(s => {
                       const isSelected = selectedId === s.id
                       return (
-                        <div key={s.id} className="bg-white rounded-2xl border overflow-hidden transition-all"
+                        <div key={s.id} className="bg-white rounded-xl border overflow-hidden transition-all"
                           style={{
                             borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
                             borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
                           }}>
                           <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
-                            <div className="size-12 rounded-xl flex items-center justify-center shrink-0 text-base font-bold"
+                            <div className="size-12 rounded-lg flex items-center justify-center shrink-0 text-base font-bold"
                               style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
                               {(s.estudiante?.nombres || s.participante_externo?.nombres || "?")[0]}
                             </div>
@@ -609,11 +659,11 @@ export function AprobacionMatriculasPage() {
                                 {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
                               </p>
                               <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                                {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
+                                {s.curso_abierto?.nombre_instancia || s.curso_abierto?.catalogo?.nombre || "Sin curso"}
                               </p>
                               <div className="flex items-center gap-2 mt-2">
                                 <Tag color={COLORS.ACCENT}>${s.monto_solicitado}</Tag>
-                                <Tag>{s.tipo_pago}</Tag>
+                                <Tag>{(s.tipo_pago || "").toUpperCase()}</Tag>
                               </div>
                             </div>
                             <HugeiconsIcon icon={isSelected ? Cancel01Icon : CheckmarkCircle04Icon} size={18}
@@ -640,15 +690,22 @@ export function AprobacionMatriculasPage() {
                                         editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
                                       <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
                                         editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                       <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
-                                       <InfoItem icon={UserIcon} label="Ocupación" value={getFieldValue(selected.solicitante?.datos, "ocupacion")} />
-                                       <InfoItem icon={UserIcon} label="Estado Civil" value={getFieldValue(selected.solicitante?.datos, "estado_civil")} />
-                                       <InfoItem icon={UserIcon} label="Dirección" value={getFieldValue(selected.solicitante?.datos, "direccion")} />
-                                     </div>
-                                  </Section>
-                                   <Section title="Curso" icon={BookOpenIcon}>
-                                     <div className="grid grid-cols-2 gap-3">
-                                       {editCursoField === "curso" ? (
+                                        <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
+                                        <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={selected.solicitante?.datos}
+                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                        <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={selected.solicitante?.datos}
+                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                        <EF icon={UserIcon} label="Dirección" field="direccion" data={selected.solicitante?.datos}
+                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                        <EF icon={UserIcon} label="Ciudad" field="ciudad" data={selected.solicitante?.datos}
+                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                        <EF icon={Calendar03Icon} label="Fecha Nacimiento" field="fecha_nacimiento" data={selected.solicitante?.datos}
+                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="date" />
+                                       </div>
+                                   </Section>
+                                    <Section title="Curso" icon={BookOpenIcon}>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        {editCursoField === "curso" ? (
                                          <div className="col-span-2 space-y-2.5">
                                            <div className="flex items-center gap-2 text-xs">
                                              <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
@@ -750,12 +807,11 @@ export function AprobacionMatriculasPage() {
                                          <div className="flex items-center gap-2 col-span-2">
                                            <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
                                            <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                                           <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                             className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
-                                             <option value="transferencia">Transferencia</option>
-                                             <option value="deposito">Depósito</option>
-                                             <option value="efectivo">Efectivo</option>
-                                           </select>
+                                            <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
+                                              className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
+                                             <option value="abono">Abono</option>
+                                             <option value="completo">Completo</option>
+                                            </select>
                                            <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
                                              {savingPagoEdit ? "..." : "Guardar"}
                                            </button>
@@ -767,8 +823,8 @@ export function AprobacionMatriculasPage() {
                                          <div className="flex items-center gap-2 text-xs group">
                                            <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
                                            <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
-                                           <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{selected.pago?.tipo_pago || "—"}</span>
-                                           <button onClick={() => { setEditPagoField("pago_tipo"); setEditPagoVal(selected.pago?.tipo_pago || "") }}
+                                            <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{(selected.pago?.tipo_pago || "—").toUpperCase()}</span>
+                                            <button onClick={() => { setEditPagoField("pago_tipo"); setEditPagoVal(selected.pago?.tipo_pago || "") }}
                                              className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
                                              <HugeiconsIcon icon={Edit01Icon} size={14} />
                                            </button>
@@ -798,7 +854,33 @@ export function AprobacionMatriculasPage() {
                                            </button>
                                          </div>
                                        )}
-                                       <InfoItem icon={PaymentIcon} label="Comprobante" value={selected.pago?.comprobante?.tipo || "—"} />
+                                        {editPagoField === "pago_comprobante" ? (
+                                          <div className="flex items-center gap-2 col-span-2">
+                                            <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                            <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Comprobante:</span>
+                                            <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
+                                              className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
+                                              <option value="transferencia">Transferencia / Depósito</option>
+                                              <option value="efectivo">Efectivo</option>
+                                            </select>
+                                            <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
+                                              {savingPagoEdit ? "..." : "Guardar"}
+                                            </button>
+                                            <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                                              Cancelar
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2 text-xs group">
+                                            <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                            <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Comprobante</span>
+                                            <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{(selected.pago?.comprobante?.tipo || "—").toUpperCase()}</span>
+                                            <button onClick={() => { setEditPagoField("pago_comprobante"); setEditPagoVal(selected.pago?.comprobante?.tipo || "") }}
+                                              className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                                              <HugeiconsIcon icon={Edit01Icon} size={14} />
+                                            </button>
+                                          </div>
+                                        )}
                                      </div>
                                      <div className="mt-3 space-y-2">
                                        <div className="flex gap-2">
@@ -880,16 +962,16 @@ export function AprobacionMatriculasPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map(s => {
+              {solicitudesFiltradas.map(s => {
                 const isSelected = selectedId === s.id
                 return (
-                    <div key={s.id} className="bg-white rounded-2xl border overflow-hidden transition-all"
+                    <div key={s.id} className="bg-white rounded-xl border overflow-hidden transition-all"
                       style={{
                         borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
                         borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
                       }}>
                       <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
-                        <div className="size-12 rounded-xl flex items-center justify-center shrink-0 text-base font-bold"
+                        <div className="size-12 rounded-lg flex items-center justify-center shrink-0 text-base font-bold"
                           style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
                           {(s.estudiante?.nombres || s.participante_externo?.nombres || "?")[0]}
                         </div>
@@ -898,11 +980,11 @@ export function AprobacionMatriculasPage() {
                             {s.estudiante?.nombres || s.participante_externo?.nombres || "—"} {s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}
                           </p>
                           <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                            {s.curso_abierto?.catalogo?.nombre || "Sin curso"} · {s.estudiante?.cedula || s.participante_externo?.cedula || "—"}
+                            {s.curso_abierto?.nombre_instancia || s.curso_abierto?.catalogo?.nombre || "Sin curso"}
                           </p>
                         <div className="flex items-center gap-2 mt-2">
                           <Tag color={COLORS.ACCENT}>${s.monto_solicitado}</Tag>
-                          <Tag>{s.tipo_pago}</Tag>
+                          <Tag>{(s.tipo_pago || "").toUpperCase()}</Tag>
                           <Tag color={s.estado === "pendiente_validacion" ? "oklch(0.55 0.12 90)" : s.estado === "matricula_creada" ? "oklch(0.50 0.10 140)" : "oklch(0.50 0.15 10)"}>
                             {s.estado === "pendiente_validacion" ? "Pendiente" : s.estado === "matricula_creada" ? "Aprobada" : "Rechazada"}
                           </Tag>
@@ -933,148 +1015,131 @@ export function AprobacionMatriculasPage() {
                                    editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
                                   <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
                                     editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                   <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
-                                   <InfoItem icon={UserIcon} label="Ocupación" value={getFieldValue(selected.solicitante?.datos, "ocupacion")} />
-                                   <InfoItem icon={UserIcon} label="Estado Civil" value={getFieldValue(selected.solicitante?.datos, "estado_civil")} />
-                                   <InfoItem icon={UserIcon} label="Dirección" value={getFieldValue(selected.solicitante?.datos, "direccion")} />
-                               </div>
-                            </Section>
+                                    <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
+                                    <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={selected.solicitante?.datos}
+                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                    <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={selected.solicitante?.datos}
+                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                    <EF icon={UserIcon} label="Dirección" field="direccion" data={selected.solicitante?.datos}
+                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                    <EF icon={UserIcon} label="Ciudad" field="ciudad" data={selected.solicitante?.datos}
+                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+                                    <EF icon={Calendar03Icon} label="Fecha Nacimiento" field="fecha_nacimiento" data={selected.solicitante?.datos}
+                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="date" />
+                                 </div>
+                              </Section>
 
-                             <Section title="Curso" icon={BookOpenIcon}>
+                               <Section title="Curso" icon={BookOpenIcon}>
+                                 <div className="grid grid-cols-2 gap-3">
+                                   {editCursoField === "curso" ? (
+                                    <div className="col-span-2 space-y-2.5">
+                                      <div className="flex items-center gap-2 text-xs">
+                                        <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                        <span style={{ color: COLORS.TEXT_MUTED }}>Buscar y seleccionar curso:</span>
+                                      </div>
+                                      <input
+                                        type="text"
+                                        placeholder="Escribe el nombre del curso..."
+                                        value={searchCursoQuery}
+                                        onChange={e => setSearchCursoQuery(e.target.value)}
+                                        className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
+                                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                        disabled={savingCursoEdit}
+                                      />
+                                      <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                        {filteredCursosAbiertos.length === 0 ? (
+                                          <div className="p-3 text-xs text-center text-gray-500">No se encontraron cursos</div>
+                                        ) : (
+                                          filteredCursosAbiertos.map((c: any) => {
+                                            const isSelected = editCursoVal === c.id
+                                            return (
+                                              <button
+                                                key={c.id}
+                                                type="button"
+                                                onClick={() => setEditCursoVal(c.id)}
+                                                className={cn(
+                                                  "w-full text-left p-2.5 text-xs flex flex-col gap-0.5 hover:bg-gray-50 transition-colors",
+                                                  isSelected && "bg-blue-50/50 hover:bg-blue-50 font-semibold"
+                                                )}
+                                                style={isSelected ? { borderLeft: `3px solid ${COLORS.ACCENT}` } : {}}
+                                              >
+                                                <div className="flex justify-between items-center gap-2">
+                                                  <span style={{ color: COLORS.CHARCOAL }}>{c.nombre || c.id}</span>
+                                                  {isSelected && <span className="text-[10px] text-blue-600 font-bold shrink-0">Seleccionado</span>}
+                                                </div>
+                                                <div className="flex gap-2 text-[10px] opacity-60">
+                                                  {c.semestre && <span>Sem.: {c.semestre}</span>}
+                                                  {c.fecha_inicio && <span>Inicio: {c.fecha_inicio.split("T")[0]}</span>}
+                                                  {c.precio_base && <span>${c.precio_base}</span>}
+                                                </div>
+                                              </button>
+                                            )
+                                          })
+                                        )}
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
+                                          {savingCursoEdit ? "Guardando..." : "Confirmar curso"}
+                                        </button>
+                                        <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center gap-2 text-xs group col-span-2">
+                                        <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                        <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Curso</span>
+                                        <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{selected.curso?.nombre || "—"}</span>
+                                        <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); setSearchCursoQuery(""); loadCursosAbiertos() }}
+                                          className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                                          <HugeiconsIcon icon={Edit01Icon} size={14} />
+                                        </button>
+                                      </div>
+                                      <InfoItem icon={CalendarIcon} label="Inicio" value={selected.curso?.fechas?.inicio?.split("T")[0] || "—"} />
+                                      <InfoItem icon={PaymentIcon} label="Precio" value={`$${selected.curso?.precio_base || 0}`} bold />
+                                    </>
+                                  )}
+                                </div>
+                              </Section>
+
+                             <Section title="Pago" icon={PaymentIcon}>
                                <div className="grid grid-cols-2 gap-3">
-                                 {editCursoField === "curso" ? (
-                                   <div className="col-span-2 space-y-2.5">
-                                     <div className="flex items-center gap-2 text-xs">
-                                       <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                       <span style={{ color: COLORS.TEXT_MUTED }}>Buscar y seleccionar curso:</span>
-                                     </div>
-                                     <input
-                                       type="text"
-                                       placeholder="Escribe el nombre del curso..."
-                                       value={searchCursoQuery}
-                                       onChange={e => setSearchCursoQuery(e.target.value)}
-                                       className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
-                                       style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                       disabled={savingCursoEdit}
-                                     />
-                                     <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                       {filteredCursosAbiertos.length === 0 ? (
-                                         <div className="p-3 text-xs text-center text-gray-500">No se encontraron cursos</div>
-                                       ) : (
-                                         filteredCursosAbiertos.map((c: any) => {
-                                           const isSelected = editCursoVal === c.id
-                                           return (
-                                             <button
-                                               key={c.id}
-                                               type="button"
-                                               onClick={() => setEditCursoVal(c.id)}
-                                               className={cn(
-                                                 "w-full text-left p-2.5 text-xs flex flex-col gap-0.5 hover:bg-gray-50 transition-colors",
-                                                 isSelected && "bg-blue-50/50 hover:bg-blue-50 font-semibold"
-                                               )}
-                                               style={isSelected ? { borderLeft: `3px solid ${COLORS.ACCENT}` } : {}}
-                                             >
-                                               <div className="flex justify-between items-center gap-2">
-                                                 <span style={{ color: COLORS.CHARCOAL }}>{c.nombre || c.id}</span>
-                                                 {isSelected && <span className="text-[10px] text-blue-600 font-bold shrink-0">Seleccionado</span>}
-                                               </div>
-                                               <div className="flex gap-2 text-[10px] opacity-60">
-                                                 {c.semestre && <span>Sem.: {c.semestre}</span>}
-                                                 {c.fecha_inicio && <span>Inicio: {c.fecha_inicio.split("T")[0]}</span>}
-                                                 {c.precio_base && <span>${c.precio_base}</span>}
-                                               </div>
-                                             </button>
-                                           )
-                                         })
-                                       )}
-                                     </div>
-                                     <div className="flex gap-2">
-                                       <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
-                                         {savingCursoEdit ? "Guardando..." : "Confirmar curso"}
-                                       </button>
-                                       <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
-                                         Cancelar
-                                       </button>
-                                     </div>
+                                 {editPagoField === "pago_monto" ? (
+                                   <div className="flex items-center gap-2 col-span-2">
+                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                     <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Monto:</span>
+                                      <input type="number" step="0.01" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)} placeholder="0.00"
+                                        className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
+                                      <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
+                                        {savingPagoEdit ? "..." : "Guardar"}
+                                      </button>
+                                      <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                                        Cancelar
+                                     </button>
                                    </div>
                                  ) : (
-                                   <>
-                                     <div className="flex items-center gap-2 text-xs group col-span-2">
-                                       <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                       <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Curso</span>
-                                       <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{selected.curso?.nombre || "—"}</span>
-                                       <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); setSearchCursoQuery(""); loadCursosAbiertos() }}
-                                         className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                         <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                       </button>
-                                     </div>
-                                     <InfoItem icon={CalendarIcon} label="Inicio" value={selected.curso?.fechas?.inicio?.split("T")[0] || "—"} />
-                                     <InfoItem icon={PaymentIcon} label="Precio" value={`$${selected.curso?.precio_base || 0}`} bold />
-                                   </>
-                                 )}
-                               </div>
-                             </Section>
-
-                            <Section title="Pago" icon={PaymentIcon}>
-                              <div className="grid grid-cols-2 gap-3">
-                                {editPagoField === "pago_monto" ? (
-                                  <div className="flex items-center gap-2 col-span-2">
-                                    <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                    <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Monto:</span>
-                                     <input type="number" step="0.01" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)} placeholder="0.00"
-                                       className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
-                                     <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                       {savingPagoEdit ? "..." : "Guardar"}
+                                   <div className="flex items-center gap-2 text-xs group">
+                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                     <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Monto</span>
+                                     <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>${selected.pago?.monto_solicitado}</span>
+                                     <button onClick={() => { setEditPagoField("pago_monto"); setEditPagoVal(String(selected.pago?.monto_solicitado || "")) }}
+                                       className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                                       <HugeiconsIcon icon={Edit01Icon} size={14} />
                                      </button>
-                                     <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                       Cancelar
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2 text-xs group">
-                                    <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                    <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Monto</span>
-                                    <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>${selected.pago?.monto_solicitado}</span>
-                                    <button onClick={() => { setEditPagoField("pago_monto"); setEditPagoVal(String(selected.pago?.monto_solicitado || "")) }}
-                                      className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                      <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                                {editPagoField === "pago_tipo" ? (
-                                  <div className="flex items-center gap-2 col-span-2">
-                                    <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                    <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                                    <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                      className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
-                                      <option value="transferencia">Transferencia</option>
-                                      <option value="deposito">Depósito</option>
-                                      <option value="efectivo">Efectivo</option>
-                                    </select>
-                                    <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                      {savingPagoEdit ? "..." : "Guardar"}
-                                    </button>
-                                    <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                      Cancelar
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2 text-xs group">
-                                    <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                    <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
-                                    <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{selected.pago?.tipo_pago || "—"}</span>
-                                    <button onClick={() => { setEditPagoField("pago_tipo"); setEditPagoVal(selected.pago?.tipo_pago || "") }}
-                                      className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                      <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                                 {editPagoField === "pago_fecha" ? (
+                                   </div>
+                                 )}
+                                 {editPagoField === "pago_tipo" ? (
                                    <div className="flex items-center gap-2 col-span-2">
-                                     <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                     <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
-                                     <input type="date" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                       className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
+                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                     <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
+                                     <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
+                                       className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
+                                       <option value="transferencia">Transferencia</option>
+                                       <option value="deposito">Depósito</option>
+                                       <option value="efectivo">Efectivo</option>
+                                     </select>
                                      <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
                                        {savingPagoEdit ? "..." : "Guardar"}
                                      </button>
@@ -1084,88 +1149,112 @@ export function AprobacionMatriculasPage() {
                                    </div>
                                  ) : (
                                    <div className="flex items-center gap-2 text-xs group">
-                                     <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                     <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha</span>
-                                      <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "—"}</span>
-                                      <button onClick={() => { setEditPagoField("pago_fecha"); setEditPagoVal(selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "") }}
+                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                     <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
+                                      <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{(selected.pago?.tipo_pago || "—").toUpperCase()}</span>
+                                      <button onClick={() => { setEditPagoField("pago_tipo"); setEditPagoVal(selected.pago?.tipo_pago || "") }}
                                        className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
                                        <HugeiconsIcon icon={Edit01Icon} size={14} />
                                      </button>
                                    </div>
                                  )}
-                                 <InfoItem icon={PaymentIcon} label="Comprobante" value={selected.pago?.comprobante?.tipo || "—"} />
-                               </div>
-                              <div className="mt-3 space-y-2">
-                                <div className="flex gap-2">
-                                  <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleUploadComprobante} />
-                                  <button onClick={() => comprobanteRef.current?.click()} disabled={uploadingComprobante}
-                                    className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT, opacity: uploadingComprobante ? 0.6 : 1 }}>
-                                    <HugeiconsIcon icon={Upload05Icon} size={16} />
-                                       {uploadingComprobante ? "Subiendo..." : selected.pago?.comprobante?.url ? "Cambiar comprobante" : "Subir comprobante"}
-                                  </button>
-                                  {selected.pago?.comprobante?.url && (
-                                    <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                                      className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                      <HugeiconsIcon icon={Image01Icon} size={16} />
-                                      {expandedComprobante ? "Ocultar" : "Ver"}
-                                    </button>
-                                  )}
-                                </div>
-                                 {expandedComprobante && selected.pago?.comprobante?.url && (
-                                   <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                     <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                       className="w-full object-contain max-h-[400px]"
-                                       onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
-                                   </div>
-                                 )}
-                               </div>
-                             </Section>
-
-                              <Section title="Documento de Identidad" icon={Image01Icon}>
-                                {selected.pago?.comprobante?.cedula_url ? (
-                                  <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                      <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                        className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                        <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                  {editPagoField === "pago_fecha" ? (
+                                    <div className="flex items-center gap-2 col-span-2">
+                                      <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                      <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
+                                      <input type="date" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
+                                        className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
+                                      <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
+                                        {savingPagoEdit ? "..." : "Guardar"}
+                                      </button>
+                                      <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                                        Cancelar
                                       </button>
                                     </div>
-                                    <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
-                                      className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                      onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
-                                 </div>
-                               ) : (
-                                 <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                   <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
-                                   <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                                   <button type="button" onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                     className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
-                                     style={{ backgroundColor: COLORS.ACCENT, opacity: uploadingCedula ? 0.6 : 1 }}>
-                                     <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
-                                     {uploadingCedula ? "Subiendo..." : "Subir foto de cédula"}
+                                  ) : (
+                                    <div className="flex items-center gap-2 text-xs group">
+                                      <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                                      <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha</span>
+                                       <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "—"}</span>
+                                       <button onClick={() => { setEditPagoField("pago_fecha"); setEditPagoVal(selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "") }}
+                                        className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                                        <HugeiconsIcon icon={Edit01Icon} size={14} />
+                                      </button>
+                                    </div>
+                                  )}
+                                  <InfoItem icon={PaymentIcon} label="Comprobante" value={(selected.pago?.comprobante?.tipo || "—").toUpperCase()} />
+                                </div>
+                               <div className="mt-3 space-y-2">
+                                 <div className="flex gap-2">
+                                   <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleUploadComprobante} />
+                                   <button onClick={() => comprobanteRef.current?.click()} disabled={uploadingComprobante}
+                                     className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
+                                     style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT, opacity: uploadingComprobante ? 0.6 : 1 }}>
+                                     <HugeiconsIcon icon={Upload05Icon} size={16} />
+                                        {uploadingComprobante ? "Subiendo..." : selected.pago?.comprobante?.url ? "Cambiar comprobante" : "Subir comprobante"}
                                    </button>
+                                   {selected.pago?.comprobante?.url && (
+                                     <button onClick={() => setExpandedComprobante(!expandedComprobante)}
+                                       className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
+                                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                       <HugeiconsIcon icon={Image01Icon} size={16} />
+                                       {expandedComprobante ? "Ocultar" : "Ver"}
+                                     </button>
+                                   )}
                                  </div>
-                               )}
-                               <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                             </Section>
+                                  {expandedComprobante && selected.pago?.comprobante?.url && (
+                                    <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                      <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
+                                        className="w-full object-contain max-h-[400px]"
+                                        onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
+                                    </div>
+                                  )}
+                                </div>
+                              </Section>
 
-                            {s.estado === "pendiente_validacion" && (
-                              <div className="flex gap-3 pt-3">
-                                <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
-                                  className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
-                                  style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-                                  <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
-                                </button>
-                                <button onClick={() => setConfirmAction({ type: "aprobar", id: selected.id })}
-                                  className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97]"
-                                  style={{ backgroundColor: COLORS.ACCENT }}>
-                                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar Matrícula
-                                </button>
-                              </div>
-                            )}
+                               <Section title="Documento de Identidad" icon={Image01Icon}>
+                                 {selected.pago?.comprobante?.cedula_url ? (
+                                   <div>
+                                     <div className="flex items-center justify-between mb-2">
+                                       <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
+                                       <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
+                                         className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
+                                         <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                       </button>
+                                     </div>
+                                     <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
+                                       className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                       onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
+                                  </div>
+                                ) : (
+                                  <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                    <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
+                                    <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
+                                    <button type="button" onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
+                                      className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
+                                      style={{ backgroundColor: COLORS.ACCENT, opacity: uploadingCedula ? 0.6 : 1 }}>
+                                      <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
+                                      {uploadingCedula ? "Subiendo..." : "Subir foto de cédula"}
+                                    </button>
+                                  </div>
+                                )}
+                                <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
+                              </Section>
+
+                             {s.estado === "pendiente_validacion" && (
+                               <div className="flex gap-3 pt-3">
+                                 <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
+                                   className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
+                                   style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
+                                   <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
+                                 </button>
+                                 <button onClick={() => setConfirmAction({ type: "aprobar", id: selected.id })}
+                                   className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97]"
+                                   style={{ backgroundColor: COLORS.ACCENT }}>
+                                   <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar Matrícula
+                                 </button>
+                               </div>
+                             )}
                           </>
                         ) : null}
                       </div>
@@ -1291,9 +1380,10 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
               <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <EF icon={UserIcon} label="Dirección" field="direccion" data={ins}
+               <EF icon={UserIcon} label="Dirección" field="direccion" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
+               <InfoItem icon={UserIcon} label="Ciudad" value={ins.ciudad || "—"} />
               <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
@@ -1400,40 +1490,41 @@ function Section({ title, icon, children }: { title: string; icon: any; children
 
 function InfoItem({ icon, label, value, bold }: { icon: any; label: string; value: string; bold?: boolean }) {
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <HugeiconsIcon icon={icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+    <div className="flex items-center gap-2 text-sm">
+      <HugeiconsIcon icon={icon} size={14} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
       <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">{label}</span>
       <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: bold ? 700 : 500 }}>{value}</span>
     </div>
   )
 }
 
-function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, onSave, onCancel, bold, saving }: {
+function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, onSave, onCancel, bold, saving, inputType }: {
   icon: any; label: string; field: string; data: any
   editField: string | null; editVal: string
   onEdit: (f: string, v: string) => void; onChange: (v: string) => void; onSave: () => void; onCancel: () => void
-  bold?: boolean; saving?: boolean
+  bold?: boolean; saving?: boolean; inputType?: string
 }) {
-  const value = data?.[field] || "—"
+  const raw = data?.perfil_estudiante?.[field] ?? data?.[field]
+  const value = raw ?? "—"
   if (editField === field) {
     return (
       <div className="flex items-center gap-2 col-span-2">
-        <HugeiconsIcon icon={icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-        <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>{label}:</span>
-        <input value={editVal} onChange={e => onChange(e.target.value)} placeholder={`Ingrese ${label.toLowerCase()}`}
-          className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={saving} />
-        <button onClick={onSave} disabled={saving} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: saving ? 0.6 : 1 }}>
+        <HugeiconsIcon icon={icon} size={14} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+        <span className="shrink-0 text-sm" style={{ color: COLORS.TEXT_MUTED }}>{label}:</span>
+        <input type={inputType || "text"} value={editVal} onChange={e => onChange(e.target.value)} placeholder={`Ingrese ${label.toLowerCase()}`}
+          className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none bg-white shadow-sm focus:ring-2 focus:ring-blue-200 transition-shadow" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={saving} />
+        <button onClick={onSave} disabled={saving} className="text-xs font-medium px-3 py-2 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: saving ? 0.6 : 1 }}>
           {saving ? "..." : "Guardar"}
         </button>
-        <button onClick={onCancel} disabled={saving} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED, opacity: saving ? 0.6 : 1 }}>
+        <button onClick={onCancel} disabled={saving} className="text-xs px-3 py-2 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED, opacity: saving ? 0.6 : 1 }}>
           Cancelar
         </button>
       </div>
     )
   }
   return (
-    <div className="flex items-center gap-2 text-xs group">
-      <HugeiconsIcon icon={icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+    <div className="flex items-center gap-2 text-sm group">
+      <HugeiconsIcon icon={icon} size={14} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
       <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">{label}</span>
       <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: bold ? 700 : 500 }}>{value}</span>
       <button type="button" onClick={() => onEdit(field, value !== "—" ? value : "")}
@@ -1446,7 +1537,7 @@ function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, on
 
 function Tag({ children, color }: { children: React.ReactNode; color?: string }) {
   return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+    <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
       style={{ backgroundColor: color ? `color-mix(in srgb, ${color} 12%, transparent)` : "oklch(0.96 0 0)", color: color || COLORS.TEXT_MUTED }}>
       {children}
     </span>

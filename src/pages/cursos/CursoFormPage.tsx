@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ChevronRight, ChevronLeft, Search } from "lucide-react"
+import { ChevronRight, ChevronLeft, Search, Plus, Trash2 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -22,6 +22,7 @@ interface InstructorOption {
 }
 
 interface Modulo {
+  id?: string
   nombre: string
   fecha_inicio: string
   fecha_fin: string
@@ -107,6 +108,7 @@ export function CursoFormPage() {
           try {
             const rawModulos = await cursosService.getModulosCurso(id)
             modulosEdit = rawModulos.map((m: Record<string, unknown>) => ({
+              id: String(m.id || ""),
               nombre: String(m.nombre_modulo || m.nombre || ""),
               fecha_inicio: String(m.fecha_inicio || ""),
               fecha_fin: String(m.fecha_fin || ""),
@@ -224,6 +226,34 @@ export function CursoFormPage() {
     })
   }
 
+  const redistribuirFechas = (nuevoTotal: number, nombresActuales: string[]) => {
+    const nuevasFechas = calcularFechasModulos(nuevoTotal, form.fecha_inicio, form.fecha_fin)
+    const nombresFinales = nombresActuales.map((n, i) => n || `Módulo ${i + 1}`)
+    while (nombresFinales.length < nuevoTotal) {
+      nombresFinales.push(`Módulo ${nombresFinales.length + 1}`)
+    }
+    if (nuevasFechas.length === 0) {
+      return nombresFinales.map((nombre) => ({ nombre, fecha_inicio: "", fecha_fin: "" }))
+    }
+    return nuevasFechas.map((f, i) => ({
+      ...f,
+      nombre: nombresFinales[i] || `Módulo ${i + 1}`,
+    }))
+  }
+
+  const agregarModulo = () => {
+    const nuevosNombres = form.modulos.map(m => m.nombre)
+    const nuevosModulos = redistribuirFechas(form.modulos.length + 1, nuevosNombres)
+    setForm(prev => ({ ...prev, modulos: nuevosModulos }))
+  }
+
+  const eliminarModulo = (indice: number) => {
+    if (form.modulos.length <= 1) return
+    const nuevosNombres = form.modulos.filter((_, i) => i !== indice).map(m => m.nombre)
+    const nuevosModulos = redistribuirFechas(form.modulos.length - 1, nuevosNombres)
+    setForm(prev => ({ ...prev, modulos: nuevosModulos }))
+  }
+
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {}
     if (step === 1) {
@@ -248,7 +278,9 @@ export function CursoFormPage() {
       if (!form.precio_base || Number(form.precio_base) < 0) newErrors.precio_base = "El precio base es obligatorio"
       if (!form.modalidad) newErrors.modalidad = "Selecciona la modalidad"
     } else if (step === 5) {
-      if (form.modulos.length > 0) {
+      if (form.modulos.length === 0) {
+        newErrors.modulos = "Debe existir al menos un módulo"
+      } else {
         form.modulos.forEach((mod, idx) => {
           if (!mod.nombre.trim()) newErrors[`modulo_${idx}_nombre`] = "El nombre del módulo es obligatorio"
         })
@@ -291,7 +323,10 @@ export function CursoFormPage() {
       }
 
       if (isEdit && id) {
-        await cursosService.actualizarCursoAbierto(id, baseData)
+        await cursosService.actualizarCursoAbierto(id, {
+          ...baseData,
+          modulos: form.modulos.length > 0 ? form.modulos : undefined,
+        })
         toast.success("Curso actualizado")
       } else {
         await cursosService.crearCursoAbierto({
@@ -573,17 +608,25 @@ export function CursoFormPage() {
               {form.modulos.length === 0 ? (
                 <div className="p-8 text-center rounded-lg border" style={{ borderColor: BORDER }}>
                   <p style={{ color: TEXT_MUTED }}>Este catálogo no tiene módulos configurados</p>
+                  <button type="button" onClick={agregarModulo}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90"
+                    style={{ backgroundColor: ACCENT }}>
+                    <Plus size={16} />Agregar Módulo
+                  </button>
                 </div>
               ) : (
                 <>
                   <div className="p-4 rounded-lg" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 5%, white)` }}>
                     <p className="text-xs font-semibold" style={{ color: ACCENT }}>
-                      Las fechas se calculan automáticamente. Al cambiar la fecha fin de un módulo, el siguiente módulo se ajusta en cascada.
+                      Las fechas se distribuyen automáticamente al agregar o quitar módulos. Puedes ajustar cada fecha manualmente.
                     </p>
                   </div>
+                  {getError("modulos") && (
+                    <p className="text-xs font-medium" style={{ color: "#ef4444" }}>{getError("modulos")}</p>
+                  )}
                   <div className={`space-y-3 ${hiddenScroll} max-h-[400px]`}>
                     {form.modulos.map((mod, i) => (
-                      <div key={i} className="p-4 rounded-lg border bg-white" style={{
+                      <div key={i} className="p-4 rounded-lg border bg-white relative" style={{
                         borderColor: (getError(`modulo_${i}_nombre`) || getError(`modulo_${i}_inicio`) || getError(`modulo_${i}_fin`)) ? "#ef4444" : BORDER,
                       }}>
                         <div className="flex items-center gap-2 mb-3">
@@ -591,23 +634,12 @@ export function CursoFormPage() {
                             style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 12%, transparent)`, color: ACCENT }}>
                             Módulo {i + 1}
                           </span>
-                          {i > 0 && mod.fecha_inicio && form.modulos[i - 1]?.fecha_fin && (() => {
-                            const prevEnd = new Date(form.modulos[i - 1].fecha_fin)
-                            prevEnd.setDate(prevEnd.getDate() + 1)
-                            return prevEnd.toISOString().split('T')[0] !== mod.fecha_inicio
-                          })() && (
-                            <button type="button"
-                              onClick={() => {
-                                const prevEnd = new Date(form.modulos[i - 1].fecha_fin)
-                                prevEnd.setDate(prevEnd.getDate() + 1)
-                                setForm(prev => ({
-                                  ...prev,
-                                  modulos: prev.modulos.map((m, j) => j === i ? { ...m, fecha_inicio: prevEnd.toISOString().split('T')[0] } : m)
-                                }))
-                              }}
-                              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                              style={{ color: ACCENT, backgroundColor: `color-mix(in srgb, ${ACCENT} 8%, transparent)` }}>
-                              sincronizar
+                          {form.modulos.length > 1 && (
+                            <button type="button" onClick={() => eliminarModulo(i)}
+                              className="ml-auto p-1.5 rounded-lg transition-all hover:bg-red-50"
+                              style={{ color: "#ef4444" }}
+                              title="Eliminar módulo">
+                              <Trash2 size={14} />
                             </button>
                           )}
                         </div>
@@ -637,6 +669,11 @@ export function CursoFormPage() {
                       </div>
                     ))}
                   </div>
+                  <button type="button" onClick={agregarModulo}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed text-sm font-semibold transition-all hover:bg-gray-50"
+                    style={{ borderColor: BORDER, color: ACCENT }}>
+                    <Plus size={16} />Agregar Módulo
+                  </button>
                 </>
               )}
             </div>

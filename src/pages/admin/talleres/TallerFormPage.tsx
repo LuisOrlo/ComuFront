@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { tallerService } from "@/services/taller.service"
+import { tallerService, type HorarioTaller } from "@/services/taller.service"
 import axios from "axios"
 import { toast } from "sonner"
 
@@ -13,16 +13,34 @@ const CHARCOAL = COLORS.CHARCOAL
 const TEXT_MUTED = COLORS.TEXT_MUTED
 const BORDER = COLORS.BORDER_SUBTLE
 
+const DIAS = [
+  { num: 1, label: "Lun" },
+  { num: 2, label: "Mar" },
+  { num: 3, label: "Mie" },
+  { num: 4, label: "Jue" },
+  { num: 5, label: "Vie" },
+  { num: 6, label: "Sab" },
+  { num: 7, label: "Dom" },
+]
+
 interface FormData {
   nombre: string
   descripcion: string
   instructor_id: string
   modalidad: string
   fecha: string
+  fecha_fin: string
   hora_inicio: string
   hora_fin: string
   capacidad_maxima: string
   precio: string
+}
+
+interface HorarioForm {
+  dia_semana: number
+  hora_inicio: string
+  hora_fin: string
+  aula: string
 }
 
 const initialState: FormData = {
@@ -31,6 +49,7 @@ const initialState: FormData = {
   instructor_id: "",
   modalidad: "presencial",
   fecha: "",
+  fecha_fin: "",
   hora_inicio: "",
   hora_fin: "",
   capacidad_maxima: "30",
@@ -57,6 +76,9 @@ export function TallerFormPage() {
   const [searchingInstructor, setSearchingInstructor] = useState(false)
   const [instructorNombre, setInstructorNombre] = useState("")
   const [showInstructorSelect, setShowInstructorSelect] = useState(false)
+  const [multiDia, setMultiDia] = useState(false)
+  const [horarios, setHorarios] = useState<HorarioForm[]>([])
+  const [diasSeleccionados, setDiasSeleccionados] = useState<number[]>([])
 
   useEffect(() => {
     if (!isEdit) return
@@ -70,6 +92,7 @@ export function TallerFormPage() {
           instructor_id: taller.instructor_id || "",
           modalidad: taller.modalidad || "presencial",
           fecha: taller.fecha || "",
+          fecha_fin: taller.fecha_fin || "",
           hora_inicio: taller.hora_inicio || "",
           hora_fin: taller.hora_fin || "",
           capacidad_maxima: String(taller.capacidad_maxima || ""),
@@ -77,6 +100,18 @@ export function TallerFormPage() {
         })
         if (taller.instructor) {
           setInstructorNombre(`${taller.instructor.nombres} ${taller.instructor.apellidos}`)
+        }
+        if (taller.fecha_fin) {
+          setMultiDia(true)
+          if (taller.horarios?.length) {
+            setHorarios(taller.horarios.map((h: HorarioTaller) => ({
+              dia_semana: h.dia_semana,
+              hora_inicio: h.hora_inicio?.substring(0, 5) || "",
+              hora_fin: h.hora_fin?.substring(0, 5) || "",
+              aula: h.aula || "",
+            })))
+            setDiasSeleccionados(taller.horarios.map((h: HorarioTaller) => h.dia_semana))
+          }
         }
       } catch {
         toast.error("Error al cargar taller")
@@ -87,6 +122,21 @@ export function TallerFormPage() {
     }
     cargar()
   }, [id, isEdit, navigate])
+
+  const toggleDia = (dia: number) => {
+    setDiasSeleccionados(prev => {
+      if (prev.includes(dia)) {
+        setHorarios(h => h.filter(x => x.dia_semana !== dia))
+        return prev.filter(d => d !== dia)
+      }
+      setHorarios(h => [...h, { dia_semana: dia, hora_inicio: form.hora_inicio, hora_fin: form.hora_fin, aula: "" }])
+      return [...prev, dia].sort()
+    })
+  }
+
+  const updateHorario = (dia: number, field: "hora_inicio" | "hora_fin" | "aula", value: string) => {
+    setHorarios(prev => prev.map(h => h.dia_semana === dia ? { ...h, [field]: value } : h))
+  }
 
   const buscarInstructores = async (q: string) => {
     setInstructorQuery(q)
@@ -115,10 +165,16 @@ export function TallerFormPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      const data = {
+      const data: any = {
         ...form,
         capacidad_maxima: parseInt(form.capacidad_maxima),
         precio: parseFloat(form.precio),
+      }
+      if (!multiDia) {
+        delete data.fecha_fin
+      }
+      if (multiDia && horarios.length > 0) {
+        data.horarios = horarios
       }
       if (isEdit) {
         await tallerService.actualizar(id!, data)
@@ -211,23 +267,34 @@ export function TallerFormPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Fecha</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Fecha de inicio</label>
               <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} required
                 className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Hora Inicio</label>
-                <input type="time" value={form.hora_inicio} onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))} required
-                  className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Hora Fin</label>
-                <input type="time" value={form.hora_fin} onChange={e => setForm(f => ({ ...f, hora_fin: e.target.value }))} required
-                  className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} />
-              </div>
+            <div className="col-span-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={multiDia} onChange={e => {
+                  setMultiDia(e.target.checked)
+                  if (!e.target.checked) {
+                    setForm(f => ({ ...f, fecha_fin: "" }))
+                    setHorarios([])
+                    setDiasSeleccionados([])
+                  }
+                }}
+                  className="rounded" style={{ accentColor: ACCENT }} />
+                <span className="text-xs font-medium" style={{ color: CHARCOAL }}>Taller de varios días</span>
+              </label>
             </div>
+
+            {multiDia && (
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Fecha de fin</label>
+                <input type="date" value={form.fecha_fin} onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))} required={multiDia}
+                  min={form.fecha || undefined}
+                  className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Capacidad Máxima</label>
@@ -241,6 +308,67 @@ export function TallerFormPage() {
                 className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} placeholder="0.00" />
             </div>
           </div>
+
+          {!multiDia && (
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Hora Inicio</label>
+                <input type="time" value={form.hora_inicio} onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))} required
+                  className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Hora Fin</label>
+                <input type="time" value={form.hora_fin} onChange={e => setForm(f => ({ ...f, hora_fin: e.target.value }))} required
+                  className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }} />
+              </div>
+            </div>
+          )}
+
+          {multiDia && (
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="block text-xs font-medium mb-2" style={{ color: CHARCOAL }}>Días del taller</label>
+                <div className="flex gap-2 flex-wrap">
+                  {DIAS.map(d => (
+                    <button key={d.num} type="button" onClick={() => toggleDia(d.num)}
+                      className="px-3 py-2 rounded-lg text-xs font-medium border transition-all"
+                      style={{
+                        borderColor: diasSeleccionados.includes(d.num) ? ACCENT : BORDER,
+                        backgroundColor: diasSeleccionados.includes(d.num) ? `color-mix(in srgb, ${ACCENT} 10%, transparent)` : "white",
+                        color: diasSeleccionados.includes(d.num) ? ACCENT : TEXT_MUTED,
+                      }}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {diasSeleccionados.length > 0 && (
+                <div className="space-y-3">
+                  <label className="block text-xs font-medium" style={{ color: CHARCOAL }}>Horarios por día</label>
+                  {diasSeleccionados.map(dia => {
+                    const h = horarios.find(x => x.dia_semana === dia)
+                    const diaLabel = DIAS.find(d => d.num === dia)?.label || ""
+                    return (
+                      <div key={dia} className="flex items-center gap-3 p-3 rounded-lg border" style={{ borderColor: BORDER }}>
+                        <span className="text-xs font-bold w-10 shrink-0" style={{ color: ACCENT }}>{diaLabel}</span>
+                        <input type="time" value={h?.hora_inicio || ""} onChange={e => updateHorario(dia, "hora_inicio", e.target.value)}
+                          className="px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} />
+                        <span className="text-xs" style={{ color: TEXT_MUTED }}>a</span>
+                        <input type="time" value={h?.hora_fin || ""} onChange={e => updateHorario(dia, "hora_fin", e.target.value)}
+                          className="px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} />
+                        <input type="text" value={h?.aula || ""} onChange={e => updateHorario(dia, "aula", e.target.value)}
+                          className="px-2 py-1.5 rounded text-xs border outline-none flex-1" style={{ borderColor: BORDER }} placeholder="Aula (opcional)" />
+                        <button type="button" onClick={() => toggleDia(dia)} className="shrink-0 p-1 rounded hover:bg-red-50" style={{ color: "#ef4444" }}>
+                          <HugeiconsIcon icon={Delete01Icon} size={14} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => navigate("/talleres")}

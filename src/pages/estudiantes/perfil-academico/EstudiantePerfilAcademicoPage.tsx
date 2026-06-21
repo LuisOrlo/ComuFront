@@ -23,6 +23,7 @@ export function EstudiantePerfilAcademicoPage() {
     academicData,
     financialData,
     loading,
+    notFound,
     activeTab,
     setActiveTab,
     updateStudentInfo,
@@ -35,6 +36,17 @@ export function EstudiantePerfilAcademicoPage() {
       <div className="p-8 text-center">
         <div className="animate-spin size-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
         <span className="text-sm text-gray-400 font-medium">Cargando perfil del estudiante...</span>
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-gray-500">Estudiante no encontrado.</p>
+        <Link to="/estudiantes" className="text-sm font-bold mt-4 inline-block" style={{ color: COLORS.ACCENT }}>
+          Volver al listado
+        </Link>
       </div>
     )
   }
@@ -85,7 +97,7 @@ export function EstudiantePerfilAcademicoPage() {
           cedula: studentData?.cedula || academicData?.estudiante.cedula || '',
           correo: studentData?.correo || academicData?.estudiante.correo || '',
           celular: studentData?.celular,
-          ciudad: studentData?.ciudad?.nombre,
+          ciudad: studentData?.perfil_estudiante?.ciudad || studentData?.ciudad?.nombre,
           fecha_nacimiento: studentData?.perfil_estudiante?.fecha_nacimiento,
         }}
         totalCursos={totalCursos}

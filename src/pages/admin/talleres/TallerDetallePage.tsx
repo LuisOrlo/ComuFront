@@ -136,11 +136,15 @@ export function TallerDetallePage() {
             <div>
               <h1 className="text-xl font-bold" style={{ color: CHARCOAL }}>{taller.nombre}</h1>
               <p className="text-sm mt-0.5 flex items-center gap-2" style={{ color: TEXT_MUTED }}>
-                <span>{formatFecha(taller.fecha)}</span>
+                <span>{formatFecha(taller.fecha)}{taller.fecha_fin ? ` - ${formatFecha(taller.fecha_fin)}` : ""}</span>
+                {!taller.fecha_fin && (
+                  <>
+                    <span>·</span>
+                    <span>{formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}</span>
+                  </>
+                )}
                 <span>·</span>
-                <span>{formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}</span>
-                <span>·</span>
-                <span>{taller.modalidad}</span>
+                <span>{taller.modalidad?.toUpperCase()}</span>
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -191,14 +195,18 @@ export function TallerDetallePage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Fecha</p>
-                  <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>{formatFecha(taller.fecha)}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Horario</p>
                   <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                    {formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}
+                    {formatFecha(taller.fecha)}{taller.fecha_fin ? ` - ${formatFecha(taller.fecha_fin)}` : ""}
                   </p>
                 </div>
+                {!taller.fecha_fin && (
+                  <div>
+                    <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Horario</p>
+                    <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
+                      {formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Modalidad</p>
                   <p className="text-sm font-semibold capitalize" style={{ color: CHARCOAL }}>{taller.modalidad}</p>
@@ -214,6 +222,23 @@ export function TallerDetallePage() {
                   </p>
                 </div>
               </div>
+              {taller.fecha_fin && taller.horarios && taller.horarios.length > 0 && (
+                <div className="mt-4 pt-4 border-t" style={{ borderColor: BORDER }}>
+                  <p className="text-[11px] font-medium mb-2" style={{ color: TEXT_MUTED }}>Horarios por día</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {taller.horarios.map((h: any) => {
+                      const dias = ["", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
+                      return (
+                        <div key={h.id} className="px-3 py-2 rounded-lg border text-xs" style={{ borderColor: BORDER }}>
+                          <span className="font-semibold" style={{ color: ACCENT }}>{dias[h.dia_semana] || h.dia_semana}</span>
+                          <span className="ml-2" style={{ color: CHARCOAL }}>{formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}</span>
+                          {h.aula && <span className="ml-2" style={{ color: TEXT_MUTED }}>({h.aula})</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               {taller.descripcion && (
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: BORDER }}>
                   <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Descripción</p>

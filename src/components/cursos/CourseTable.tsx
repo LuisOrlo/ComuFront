@@ -7,12 +7,6 @@ import type { Curso } from "@/services/cursos.service"
 
 export type { Curso }
 
-const tipoLabel: Record<Curso["tipo"], string> = {
-  regular: "Regular",
-  taller: "Taller",
-  personalizado: "Personalizado",
-}
-
 export function CourseTable({ cursos, onView, onEdit, onDelete }: {
   cursos: Curso[]
   onView?: (id: string) => void
@@ -25,7 +19,7 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              {["Nombre del curso", "Tipo", "Modalidad / Ciudad", "Instructor", "Progreso", "Estudiantes", "Estado", ""].map(
+              {["Nombre del curso", "Modalidad / Ciudad", "Instructor", "Progreso", "Estudiantes", "Estado", ""].map(
                 (h, i) => (
                   <th
                     key={`course-table-h-${i}`}
@@ -58,9 +52,7 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                   >
                     {c.nombre}
                   </td>
-                  <td className="py-3 px-4 text-sm" style={{ color: COLORS.TEXT_MUTED }}>
-                    {tipoLabel[c.tipo]}
-                  </td>
+                 
                   <td className="py-3 px-4">
                     <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>
                       {c.modalidad === "presencial" ? "Presencial" : "Virtual"}

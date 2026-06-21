@@ -40,11 +40,15 @@ function getNombrePersona(cuenta: any): string {
 function getCuentaType(cuenta: any): string {
   if (cuenta.inscripcion_taller || cuenta.inscripcion_taller_id) return "talleres"
   if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id) return "servicios"
+  if (cuenta.tipo === "aula" || cuenta.tipo === "podcast" || cuenta.tipo === "equipo" || cuenta.tipo === "personalizado") return "servicios"
+  if (cuenta.tipo === "taller" || cuenta.tipo === "talleres") return "talleres"
   const cat = cuenta.matricula?.curso_abierto?.catalogo?.categoria
     ?? cuenta.matricula?.curso_abierto?.tipo
     ?? cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.categoria
-  if (cat === "taller") return "talleres"
+    ?? cuenta.categoria
+  if (cat === "taller" || cat === "talleres") return "talleres"
   if (cat === "personalizado") return "servicios"
+  console.log('📦 cuenta sin clasificar:', { id: cuenta.id, tipo: cuenta.tipo, categoria: cat, nombre: getCuentaName(cuenta) })
   return "cursos"
 }
 

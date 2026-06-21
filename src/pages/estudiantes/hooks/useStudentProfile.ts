@@ -14,6 +14,7 @@ interface UseStudentProfileReturn {
   academicData: AcademicProfile | null
   financialData: FinancialProfile | null
   loading: boolean
+  notFound: boolean
   activeTab: ProfileTab
   setActiveTab: (tab: ProfileTab) => void
   refreshData: () => void
@@ -26,26 +27,36 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
   const [academicData, setAcademicData] = useState<AcademicProfile | null>(null)
   const [financialData, setFinancialData] = useState<FinancialProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<ProfileTab>("informacion")
 
   const loadData = useCallback(async () => {
     if (!id) return
     setLoading(true)
+    setNotFound(false)
     try {
       const [estudiante, academic, financial] = await Promise.allSettled([
         estudiantesService.getStudentById(id),
         estudiantesService.getAcademicProfile(id),
         estudiantesService.getFinancialProfile(id),
       ])
-      if (estudiante.status === 'fulfilled') setStudentData(estudiante.value)
-      else toast.error("Error al cargar datos del estudiante")
+      if (estudiante.status === 'fulfilled') {
+        setStudentData(estudiante.value)
+      } else {
+        setStudentData(null)
+        if ((estudiante.reason as { response?: { status?: number } })?.response?.status === 404) {
+          setNotFound(true)
+        }
+      }
       if (academic.status === 'fulfilled') setAcademicData(academic.value)
-      else toast.error("Error al cargar historial academico")
+      else setAcademicData(null)
       if (financial.status === 'fulfilled') setFinancialData(financial.value)
-      else toast.error("Error al cargar historial financiero")
+      else setFinancialData(null)
     } catch {
-      toast.error("Error al cargar el perfil")
+      setStudentData(null)
+      setAcademicData(null)
+      setFinancialData(null)
     } finally {
       setLoading(false)
     }
@@ -77,6 +88,7 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
     academicData,
     financialData,
     loading,
+    notFound,
     activeTab,
     setActiveTab,
     refreshData: loadData,

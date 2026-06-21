@@ -20,6 +20,7 @@ export interface Estudiante {
     total_cursos?: number
     ocupacion?: string
     direccion?: string
+    ciudad?: string
     estado_civil?: string
     edad?: number
   } | null
