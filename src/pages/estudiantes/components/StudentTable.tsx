@@ -2,17 +2,43 @@ import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { GraduationCapIcon, Clock04Icon } from "@hugeicons/core-free-icons"
 import { FinancialStatusBadge } from "./FinancialStatusBadge"
-import { type Estudiante } from "@/services/estudiantes.service"
+
+export interface StudentRow {
+  id: string
+  nombres: string
+  apellidos: string
+  cedula?: string
+  correo?: string
+  estado_pago?: string
+  total_cursos?: number
+  saldo_pendiente?: number
+}
 
 interface StudentTableProps {
-  estudiantes: Estudiante[]
+  estudiantes: StudentRow[]
   loading: boolean
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
+  variant?: "estudiantes" | "participantes"
 }
 
-export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect, onToggleSelectAll }: StudentTableProps) {
+function SaldoCell({ saldo_pendiente, estado_pago }: { saldo_pendiente?: number; estado_pago?: string }) {
+  if (saldo_pendiente === undefined || saldo_pendiente === null) {
+    return <span className="text-sm font-medium text-gray-400">Sin registro</span>
+  }
+  if (saldo_pendiente > 0) {
+    return <span className="text-sm font-bold text-red-500">${saldo_pendiente.toLocaleString()}</span>
+  }
+  if (saldo_pendiente === 0 && (estado_pago === "al_dia" || estado_pago === "ninguno")) {
+    return <span className="text-sm font-bold text-emerald-600">Completo</span>
+  }
+  return <span className="text-sm font-medium text-gray-400">Sin registro</span>
+}
+
+export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect, onToggleSelectAll, variant = "estudiantes" }: StudentTableProps) {
+  const isEstudiantes = variant === "estudiantes"
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse">
@@ -91,26 +117,28 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
                   <div className="text-sm text-gray-600 font-mono bg-gray-50 px-3 py-1 rounded-lg inline-block">{e.cedula || '—'}</div>
                 </td>
                 <td className="px-6 py-5 text-center">
-                  <FinancialStatusBadge status={e.estado_pago} />
+                  <FinancialStatusBadge status={e.estado_pago || "ninguno"} />
                 </td>
                 <td className="px-6 py-5 text-center">
-                  <span className="text-lg font-black text-gray-700">{e.total_cursos || 0}</span>
+                  <span className="text-lg font-black text-gray-700">
+                    {isEstudiantes ? (e.total_cursos ?? 0) : (e.total_cursos !== undefined && e.total_cursos !== null ? e.total_cursos : "N/A")}
+                  </span>
                 </td>
                 <td className="px-6 py-5 text-center">
-                  {e.saldo_pendiente > 0 ? (
-                    <span className="text-sm font-bold text-red-500">${e.saldo_pendiente.toLocaleString()}</span>
-                  ) : (
-                    <span className="text-sm font-medium text-gray-400">—</span>
-                  )}
+                  <SaldoCell saldo_pendiente={e.saldo_pendiente} estado_pago={e.estado_pago} />
                 </td>
                 <td className="px-6 py-5 text-right">
-                  <Link
-                    to={`/estudiantes/${e.id}/academico`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                  >
-                    <HugeiconsIcon icon={GraduationCapIcon} size={14} />
-                    Ver Perfil
-                  </Link>
+                  {e.id && !e.id.startsWith("mat-") ? (
+                    <Link
+                      to={`/estudiantes/${e.id}/academico`}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                    >
+                      <HugeiconsIcon icon={GraduationCapIcon} size={14} />
+                      Ver Perfil
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-gray-300">—</span>
+                  )}
                 </td>
               </tr>
             ))

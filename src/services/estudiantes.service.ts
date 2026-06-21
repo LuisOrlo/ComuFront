@@ -193,6 +193,11 @@ export interface ImportResult {
 }
 
 export const estudiantesService = {
+  async buscarEstudiantes(params: { cedula?: string; nombre?: string; correo?: string }): Promise<{ datos: Array<{ id: string; nombres: string; apellidos: string; cedula?: string; correo?: string; celular?: string; ciudad?: string }>; total: number }> {
+    const response = await api.get("/personas/estudiantes/buscar", { params })
+    return response.data
+  },
+
   async getEstudiantes(params: Record<string, string | number | undefined>): Promise<EstudiantesResponse> {
     const response = await api.get("/personas/estudiantes", { params })
     return {

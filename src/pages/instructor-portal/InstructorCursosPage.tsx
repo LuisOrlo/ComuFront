@@ -69,8 +69,7 @@ export function InstructorCursosPage() {
             <Link
               key={curso.id}
               to={`/instructor/cursos/${curso.id}`}
-              className="group bg-white rounded-2xl p-6 transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.03)] active:scale-[0.98]"
-              style={{ border: "1px solid #f1f3f5" }}
+              className="group bg-white rounded-2xl p-6 transition-all duration-200 hover:bg-orange-50/30 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06),0_2px_4px_rgba(0,0,0,0.03)] active:scale-[0.98] border border-gray-200"
             >
               <div className="flex items-start justify-between mb-5">
                 <div

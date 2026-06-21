@@ -58,6 +58,9 @@ import {
   SecretariaSolicitudesPage,
 } from "@/pages/secretaria"
 import { EstudiantePerfilAcademicoPage } from "@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"
+import { EstudiantesCursoDetallePage } from "@/pages/estudiantes/detalle/EstudiantesCursoDetallePage"
+import { EstudiantesTallerDetallePage } from "@/pages/estudiantes/detalle/EstudiantesTallerDetallePage"
+import { EstudiantesCiudadDetallePage } from "@/pages/estudiantes/detalle/EstudiantesCiudadDetallePage"
 import {
   TalleresPage,
   TallerFormPage,
@@ -143,6 +146,9 @@ function AppLayout() {
             <Route path="/ciudades" element={<RoleGuard roles={["Administrador"]}><CiudadesPage /></RoleGuard>} />
             <Route path="/personas" element={<RoleGuard roles={["Administrador"]}><PersonasPage /></RoleGuard>} />
             <Route path="/estudiantes" element={<RoleGuard roles={["Administrador"]}><EstudiantesPage /></RoleGuard>} />
+            <Route path="/estudiantes/cursos/:cursoId" element={<RoleGuard roles={["Administrador"]}><EstudiantesCursoDetallePage /></RoleGuard>} />
+            <Route path="/estudiantes/talleres/:tallerId" element={<RoleGuard roles={["Administrador"]}><EstudiantesTallerDetallePage /></RoleGuard>} />
+            <Route path="/estudiantes/ciudades/:ciudadId" element={<RoleGuard roles={["Administrador"]}><EstudiantesCiudadDetallePage /></RoleGuard>} />
             <Route path="/estudiantes/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstudianteStatsPage /></RoleGuard>} />
             <Route path="/estudiantes/segmentos" element={<RoleGuard roles={["Administrador"]}><EstudianteSegmentsPage /></RoleGuard>} />
             <Route path="/estudiantes/:id/academico" element={<RoleGuard roles={["Administrador"]}><EstudiantePerfilAcademicoPage /></RoleGuard>} />

@@ -9,8 +9,10 @@ import {
   CheckListIcon,
   AssignmentsIcon,
   ArrowRight01Icon,
+  Download04Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 import {
   instructorService,
   type InstructorCurso,
@@ -76,6 +78,14 @@ export function InstructorCursoDetailPage() {
   const getEstudianteCedula = (e: EstudianteCurso) =>
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
+  const handleDescargarAsistencia = () => {
+    if (!curso) return
+    const horario = curso.horario?.nombre_referencial ?? "Sin horario"
+    const nombres = estudiantes.map(e => getEstudianteName(e))
+    generarListadoAsistenciaPDF(curso.nombre_instancia, horario, nombres)
+    toast.success("Listado de asistencia descargado")
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <Link
@@ -87,10 +97,12 @@ export function InstructorCursoDetailPage() {
         Volver a mis cursos
       </Link>
 
-      <div className="bg-white rounded-3xl overflow-hidden mb-8 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.03)]" style={{ border: "1px solid #f1f3f5" }}>
+      <div
+        className="bg-white rounded-3xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.03)] border border-gray-200 mb-4"
+      >
         <div
           className="p-8 md:p-10 text-white"
-          style={{ background: `linear-gradient(135deg, ${COLORS.ACCENT}, oklch(0.42 0.15 50))` }}
+          style={{ background: COLORS.ACCENT }}
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
             <div className="space-y-3">
@@ -115,21 +127,37 @@ export function InstructorCursoDetailPage() {
                 </span>
               </div>
             </div>
-            <div
-              className="shrink-0 px-5 py-2.5 rounded-2xl text-center border backdrop-blur-sm"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.08)",
-                borderColor: "rgba(255,255,255,0.15)",
-              }}
-            >
-              <span className="block text-[10px] uppercase tracking-widest font-semibold" style={{ color: "oklch(0.85 0.02 50)" }}>
-                Estado
-              </span>
-              <span className="text-sm font-black uppercase tracking-wide">{curso.estado}</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDescargarAsistencia}
+                className="shrink-0 px-4 py-2.5 rounded-2xl text-xs font-bold border backdrop-blur-sm flex items-center gap-2 transition-all hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98]"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  borderColor: "rgba(255,255,255,0.15)",
+                  color: "white",
+                }}
+              >
+                <HugeiconsIcon icon={Download04Icon} size={14} />
+                Descargar Listado
+              </button>
+              <div
+                className="shrink-0 px-5 py-2.5 rounded-2xl text-center border backdrop-blur-sm"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  borderColor: "rgba(255,255,255,0.15)",
+                }}
+              >
+                <span className="block text-[10px] uppercase tracking-widest font-semibold" style={{ color: "oklch(0.85 0.02 50)" }}>
+                  Estado
+                </span>
+                <span className="text-sm font-black uppercase tracking-wide">{curso.estado}</span>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-4">
         <nav className="flex gap-1 px-6 pt-4 border-b overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderColor: "#f1f3f5" }}>
           {[
             { id: "info", label: "Información", icon: BookOpen01Icon },
@@ -175,6 +203,24 @@ export function InstructorCursoDetailPage() {
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: COLORS.TEXT_MUTED }}>Fecha Fin</p>
                       <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{curso.fecha_fin ? new Date(curso.fecha_fin).toLocaleDateString() : "N/A"}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: COLORS.TEXT_MUTED }}>Días de clase</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(curso.horario?.dias_semana && curso.horario.dias_semana.length > 0
+                        ? curso.horario.dias_semana.map(d => d.dia_semana)
+                        : curso.horario?.dia_semana || []
+                      ).map((dia: number) => (
+                        <span key={dia} className="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
+                          {getDiaNombre(dia)}
+                        </span>
+                      ))}
+                      {(!curso.horario?.dias_semana || curso.horario.dias_semana.length === 0) &&
+                       (!curso.horario?.dia_semana || curso.horario.dia_semana.length === 0) && (
+                        <span className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>No especificados</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -300,7 +346,7 @@ export function InstructorCursoDetailPage() {
                 <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Gestión de Asistencia</h3>
                 <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>Selecciona un módulo para registrar la asistencia de sus clases.</p>
               </div>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {curso.modulos.map((modulo: ModuloResumen) => (
                   <Link
                     key={modulo.id}
@@ -340,7 +386,7 @@ export function InstructorCursoDetailPage() {
                 <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registro de Calificaciones</h3>
                 <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>Las notas se registran por módulo. Selecciona el módulo correspondiente.</p>
               </div>
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {curso.modulos.map((modulo: ModuloResumen) => (
                   <Link
                     key={modulo.id}
@@ -384,4 +430,9 @@ export function InstructorCursoDetailPage() {
       </div>
     </div>
   )
+}
+
+function getDiaNombre(numero: number): string {
+  const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+  return dias[numero - 1] || `Día ${numero}`
 }

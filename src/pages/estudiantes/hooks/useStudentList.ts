@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { estudiantesService, type Estudiante } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 
@@ -9,6 +9,10 @@ interface Meta {
   ultima_pagina: number
   total: number
   per_page: number
+}
+
+interface UseStudentListOptions {
+  extraFilters?: Record<string, string | number | undefined>
 }
 
 interface UseStudentListReturn {
@@ -29,7 +33,9 @@ interface UseStudentListReturn {
   refreshData: () => void
 }
 
-export function useStudentList(): UseStudentListReturn {
+export function useStudentList(options: UseStudentListOptions = {}): UseStudentListReturn {
+  const { extraFilters = {} } = options
+
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -38,14 +44,18 @@ export function useStudentList(): UseStudentListReturn {
   const [meta, setMeta] = useState<Meta | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  const extraFiltersKey = useMemo(() => JSON.stringify(extraFilters), [extraFilters])
+
   const loadData = useCallback(async (page = 1) => {
     setLoading(true)
     try {
-      const response = await estudiantesService.getEstudiantes({
+      const params: Record<string, string | number | undefined> = {
         buscar: search || undefined,
         estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
         page,
-      })
+        ...extraFilters,
+      }
+      const response = await estudiantesService.getEstudiantes(params)
       setEstudiantes(response.datos)
       setMeta(response.meta ?? undefined)
       if (response.stats) setStats(response.stats)
@@ -54,7 +64,8 @@ export function useStudentList(): UseStudentListReturn {
     } finally {
       setLoading(false)
     }
-  }, [search, paymentFilter])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, paymentFilter, extraFiltersKey])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

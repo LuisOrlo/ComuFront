@@ -167,7 +167,6 @@ export function AprobacionMatriculasPage() {
       cargarSolicitudes()
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainTab])
 
   useEffect(() => {

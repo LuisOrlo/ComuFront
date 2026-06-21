@@ -14,6 +14,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
+import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
 import { toast } from "sonner"
@@ -296,6 +297,21 @@ export function CursoDetailPage() {
                     }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                       <HugeiconsIcon icon={Download01Icon} size={14} />PDF
+                    </button>
+                    <button onClick={() => {
+                      if (!curso) return
+                      const nombres = matriculas.map(m => {
+                        const e = m.estudiante
+                        const ext = m.solicitud_inscripcion?.participante_externo
+                        const sol = m.solicitud_inscripcion?.estudiante
+                        return [e?.nombres || ext?.nombres || sol?.nombres || "", e?.apellidos || ext?.apellidos || sol?.apellidos || ""]
+                          .filter(Boolean).join(" ") || "—"
+                      })
+                      generarListadoAsistenciaPDF(curso.nombre, `${curso.horaInicio || ""} - ${curso.horaFin || ""}`, nombres)
+                      toast.success("Listado de asistencia descargado")
+                    }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.98]"
+                      style={{ backgroundColor: COLORS.ACCENT }}>
+                      <HugeiconsIcon icon={Download01Icon} size={14} />Listado Asistencia
                     </button>
                   </div>
                 </div>
