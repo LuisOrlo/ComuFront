@@ -48,7 +48,7 @@ function getCuentaType(cuenta: any): string {
     ?? cuenta.categoria
   if (cat === "taller" || cat === "talleres") return "talleres"
   if (cat === "personalizado") return "servicios"
-  console.log('📦 cuenta sin clasificar:', { id: cuenta.id, tipo: cuenta.tipo, categoria: cat, nombre: getCuentaName(cuenta) })
+  
   return "cursos"
 }
 
