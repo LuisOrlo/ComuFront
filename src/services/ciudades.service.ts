@@ -31,7 +31,7 @@ export interface CiudadListaResponse {
 
 export const ciudadesService = {
   /**
-   * GET /api/v1/ciudades/todas/sin-paginacion
+   * GET /api/ciudades/todas/sin-paginacion
    * Obtener todas las ciudades sin paginación (para selects)
    * ✅ PÚBLICO (no requiere autenticación)
    */
@@ -43,7 +43,7 @@ export const ciudadesService = {
   },
 
   /**
-   * GET /api/v1/academic/ciudades
+   * GET /api/academic/ciudades
    * Listar ciudades con paginación y búsqueda
    */
   async getCiudades(search?: string, page: number = 1): Promise<CiudadPaginada> {
@@ -64,7 +64,7 @@ export const ciudadesService = {
   },
 
   /**
-   * GET /api/v1/academic/ciudades/{id}
+   * GET /api/academic/ciudades/{id}
    * Obtener detalles de una ciudad
    */
   async getCiudadById(id: number): Promise<Ciudad> {
@@ -76,7 +76,7 @@ export const ciudadesService = {
   },
 
   /**
-   * POST /api/v1/academic/ciudades
+   * POST /api/academic/ciudades
    * Crear nueva ciudad
    */
   async crearCiudad(nombre: string): Promise<Ciudad> {
@@ -89,7 +89,7 @@ export const ciudadesService = {
   },
 
   /**
-   * PUT /api/v1/academic/ciudades/{id}
+   * PUT /api/academic/ciudades/{id}
    * Actualizar ciudad
    */
   async actualizarCiudad(id: number, nombre: string): Promise<Ciudad> {
@@ -102,7 +102,7 @@ export const ciudadesService = {
   },
 
   /**
-   * DELETE /api/v1/academic/ciudades/{id}
+   * DELETE /api/academic/ciudades/{id}
    * Eliminar ciudad
    */
   async eliminarCiudad(id: number): Promise<void> {

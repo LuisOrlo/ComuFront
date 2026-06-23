@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService, type HorarioTaller } from "@/services/taller.service"
+import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import axios from "axios"
 import { toast } from "sonner"
 
@@ -28,6 +29,7 @@ interface FormData {
   descripcion: string
   instructor_id: string
   modalidad: string
+  ciudad_id: number
   fecha: string
   fecha_fin: string
   hora_inicio: string
@@ -48,6 +50,7 @@ const initialState: FormData = {
   descripcion: "",
   instructor_id: "",
   modalidad: "presencial",
+  ciudad_id: 0,
   fecha: "",
   fecha_fin: "",
   hora_inicio: "",
@@ -75,10 +78,10 @@ export function TallerFormPage() {
   const [instructores, setInstructores] = useState<Persona[]>([])
   const [searchingInstructor, setSearchingInstructor] = useState(false)
   const [instructorNombre, setInstructorNombre] = useState("")
-  const [showInstructorSelect, setShowInstructorSelect] = useState(false)
   const [multiDia, setMultiDia] = useState(false)
   const [horarios, setHorarios] = useState<HorarioForm[]>([])
   const [diasSeleccionados, setDiasSeleccionados] = useState<number[]>([])
+  const [ciudades, setCiudades] = useState<Ciudad[]>([])
 
   useEffect(() => {
     if (!isEdit) return
@@ -91,6 +94,7 @@ export function TallerFormPage() {
           descripcion: taller.descripcion || "",
           instructor_id: taller.instructor_id || "",
           modalidad: taller.modalidad || "presencial",
+          ciudad_id: Number(taller.ciudad_id) || 0,
           fecha: taller.fecha || "",
           fecha_fin: taller.fecha_fin || "",
           hora_inicio: taller.hora_inicio || "",
@@ -123,6 +127,13 @@ export function TallerFormPage() {
     cargar()
   }, [id, isEdit, navigate])
 
+  // Cargar instructores al montar
+  useEffect(() => {
+    buscarInstructores("")
+    ciudadesService.getCiudadesTodas().then(setCiudades).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const toggleDia = (dia: number) => {
     setDiasSeleccionados(prev => {
       if (prev.includes(dia)) {
@@ -140,13 +151,14 @@ export function TallerFormPage() {
 
   const buscarInstructores = async (q: string) => {
     setInstructorQuery(q)
-    if (!q.trim()) { setInstructores([]); return }
     setSearchingInstructor(true)
     try {
       const token = localStorage.getItem("auth_token")
       const base = import.meta.env.VITE_API_URL
+      const params: Record<string, string | number> = { tipo: "instructor", per_page: 25 }
+      if (q.trim()) params.buscar = q
       const res = await axios.get(`${base}/academic/personas`, {
-        params: { buscar: q, tipo: "instructor", per_page: 10 },
+        params,
         headers: { Authorization: token ? `Bearer ${token}` : "" },
       })
       setInstructores((res.data as any).data || [])
@@ -157,7 +169,6 @@ export function TallerFormPage() {
   const seleccionarInstructor = (p: Persona) => {
     setForm(f => ({ ...f, instructor_id: p.id }))
     setInstructorNombre(`${p.nombres} ${p.apellidos}`)
-    setShowInstructorSelect(false)
     setInstructorQuery("")
   }
 
@@ -169,6 +180,7 @@ export function TallerFormPage() {
         ...form,
         capacidad_maxima: parseInt(form.capacidad_maxima),
         precio: parseFloat(form.precio),
+        ciudad_id: form.modalidad === "virtual" ? undefined : (form.ciudad_id || undefined),
       }
       if (!multiDia) {
         delete data.fecha_fin
@@ -231,30 +243,55 @@ export function TallerFormPage() {
 
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Instructor</label>
-              <div className="relative">
-                <input type="text" value={showInstructorSelect ? instructorQuery : instructorNombre}
-                  onChange={e => { setShowInstructorSelect(true); buscarInstructores(e.target.value) }}
-                  onFocus={() => { if (!form.instructor_id) setShowInstructorSelect(true) }}
+              <div className="relative mb-3">
+                <input type="text" value={instructorQuery}
+                  onChange={e => { setInstructorQuery(e.target.value); buscarInstructores(e.target.value) }}
                   className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: BORDER }}
                   placeholder="Buscar instructor..." />
-                {showInstructorSelect && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto" style={{ borderColor: BORDER }}>
-                    {searchingInstructor ? (
-                      <div className="p-3 text-xs text-center" style={{ color: TEXT_MUTED }}>Buscando...</div>
-                    ) : instructores.length === 0 ? (
-                      instructorQuery.trim() && <div className="p-3 text-xs text-center" style={{ color: TEXT_MUTED }}>Sin resultados</div>
-                    ) : (
-                      instructores.map(p => (
-                        <button key={p.id} type="button" onClick={() => seleccionarInstructor(p)}
-                          className="w-full text-left px-3.5 py-2.5 text-sm hover:bg-gray-50 transition-colors">
-                          <span style={{ color: CHARCOAL }}>{p.nombres} {p.apellidos}</span>
-                          {p.email && <span className="text-xs ml-2" style={{ color: TEXT_MUTED }}>{p.email}</span>}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
               </div>
+              {form.instructor_id && instructorNombre && (
+                <div className="p-3 rounded-lg border mb-3 flex items-center justify-between" style={{ borderColor: ACCENT, backgroundColor: `color-mix(in srgb, ${ACCENT} 8%, white)` }}>
+                  <div>
+                    <span className="text-sm font-semibold" style={{ color: CHARCOAL }}>{instructorNombre}</span>
+                    <span className="text-xs ml-2" style={{ color: TEXT_MUTED }}>Seleccionado</span>
+                  </div>
+                  <button type="button" onClick={() => { setForm(f => ({ ...f, instructor_id: "" })); setInstructorNombre(""); setInstructorQuery("") }}
+                    className="text-xs font-medium hover:underline" style={{ color: ACCENT }}>
+                    Cambiar
+                  </button>
+                </div>
+              )}
+              {(!form.instructor_id || instructorQuery) && (
+                <>
+                  {searchingInstructor ? (
+                    <div className="text-center py-6" style={{ color: TEXT_MUTED }}>
+                      <div className="inline-block size-6 rounded-full border-2 border-transparent animate-spin mb-2" style={{ borderTopColor: ACCENT, borderRightColor: ACCENT }} />
+                      <p className="text-xs">Buscando instructores...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {instructores
+                        .filter(p => !instructorQuery.trim() || `${p.nombres} ${p.apellidos}`.toLowerCase().includes(instructorQuery.toLowerCase()))
+                        .map(p => (
+                          <button key={p.id} type="button" onClick={() => seleccionarInstructor(p)}
+                            className="p-3 rounded-lg border text-left transition-all duration-150 hover:shadow-sm"
+                            style={{
+                              borderColor: form.instructor_id === p.id ? ACCENT : BORDER,
+                              backgroundColor: form.instructor_id === p.id ? `color-mix(in srgb, ${ACCENT} 8%, white)` : "white",
+                            }}>
+                            <span className="block text-xs font-medium truncate" style={{ color: CHARCOAL }}>{p.nombres} {p.apellidos}</span>
+                            {p.email && <span className="block text-[11px] mt-0.5 truncate" style={{ color: TEXT_MUTED }}>{p.email}</span>}
+                          </button>
+                        ))}
+                      {!searchingInstructor && instructores.length === 0 && (
+                        <div className="col-span-full text-center py-4" style={{ color: TEXT_MUTED }}>
+                          <p className="text-xs">No se encontraron instructores</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div>
@@ -263,6 +300,21 @@ export function TallerFormPage() {
                 className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: BORDER }}>
                 <option value="presencial">Presencial</option>
                 <option value="virtual">Virtual</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>
+                Ciudad
+                {form.modalidad === "virtual" && <span className="text-xs ml-1" style={{ color: TEXT_MUTED }}>— No aplica</span>}
+              </label>
+              <select value={form.ciudad_id}
+                onChange={e => setForm(f => ({ ...f, ciudad_id: e.target.value ? parseInt(e.target.value, 10) : 0 }))}
+                disabled={form.modalidad === "virtual"}
+                className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none"
+                style={{ borderColor: BORDER, opacity: form.modalidad === "virtual" ? 0.5 : 1 }}>
+                <option value="">Seleccionar ciudad...</option>
+                {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
 

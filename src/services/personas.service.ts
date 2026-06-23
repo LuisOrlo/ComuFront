@@ -8,9 +8,9 @@ export interface Persona {
   apellidos: string
   correo?: string
   celular?: string
+  ciudad?: string
   ciudad_id?: number
   es_activo: boolean
-  ciudad?: { id: number; nombre: string }
   cuentaSistema?: { id: string; username: string }
   perfilInstructor?: { id: string; especialidad?: string; bio?: string }
   perfilStaff?: { id: string; cargo?: string; salario_base?: number; fecha_ingreso?: string; es_pasante?: boolean }
@@ -24,8 +24,7 @@ export interface PersonaPaginada {
 function mapPersona(raw: Record<string, unknown>): Persona {
   const r = raw as Record<string, unknown> & {
     id: string; tipo: string; cedula?: string; nombres: string; apellidos: string;
-    correo?: string; celular?: string; ciudad_id?: number; es_activo: boolean;
-    ciudad?: { id: number; nombre: string };
+    correo?: string; celular?: string; ciudad?: string; ciudad_id?: number; es_activo: boolean;
     cuenta_sistema?: { id: string; username: string };
     perfil_instructor?: { id: string; especialidad?: string; bio?: string };
     perfil_staff?: { id: string; cargo?: string; salario_base?: number; fecha_ingreso?: string; es_pasante?: boolean };
@@ -38,9 +37,9 @@ function mapPersona(raw: Record<string, unknown>): Persona {
     apellidos: r.apellidos,
     correo: r.correo,
     celular: r.celular,
+    ciudad: r.ciudad,
     ciudad_id: r.ciudad_id,
     es_activo: r.es_activo,
-    ciudad: r.ciudad,
     cuentaSistema: r.cuenta_sistema,
     perfilInstructor: r.perfil_instructor,
     perfilStaff: r.perfil_staff,
@@ -77,14 +76,23 @@ export const personasService = {
     apellidos: string
     correo?: string
     celular?: string
-    ciudad_id?: number
+    ciudad?: string
     es_activo?: boolean
   }): Promise<Persona> {
     const res = await api.post<{ data: Record<string, unknown>; message: string }>("/academic/personas", data)
     return mapPersona(res.data.data)
   },
 
-  async actualizarPersona(id: string, data: Partial<Persona>): Promise<Persona> {
+  async actualizarPersona(id: string, data: {
+    tipo?: "instructor" | "staff" | "secretaria" | "admin"
+    cedula?: string
+    nombres?: string
+    apellidos?: string
+    correo?: string
+    celular?: string
+    ciudad?: string
+    es_activo?: boolean
+  }): Promise<Persona> {
     const res = await api.put<{ data: Record<string, unknown> }>(`/academic/personas/${id}`, data)
     return mapPersona(res.data.data)
   },
@@ -100,7 +108,7 @@ export const personasService = {
     apellidos: string
     correo?: string
     celular?: string
-    ciudad_id?: number
+    ciudad?: string
     es_activo?: boolean
     especialidad?: string
     bio?: string

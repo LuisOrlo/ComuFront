@@ -4,8 +4,8 @@ import type { Persona } from "./personas.service"
 function mapPersona(raw: Record<string, unknown>): Persona {
   const r = raw as Record<string, unknown> & {
     id: string; tipo: string; cedula?: string; nombres: string; apellidos: string;
-    correo?: string; celular?: string; ciudad_id?: number; es_activo: boolean;
-    ciudad?: { id: number; nombre: string };
+    correo?: string; celular?: string; es_activo: boolean;
+    ciudad?: string; ciudad_id?: number;
     cuenta_sistema?: { id: string; username: string };
     perfil_instructor?: { id: string; especialidad?: string; bio?: string };
     perfil_staff?: { id: string; cargo?: string; salario_base?: number; fecha_ingreso?: string; es_pasante?: boolean };

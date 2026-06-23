@@ -219,7 +219,15 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCatalogo?.categoria, form.modalidad, editingId, form.catalogo_curso_id, selectedCatalogo])
+     }, [selectedCatalogo?.categoria, form.modalidad, editingId, form.catalogo_curso_id, selectedCatalogo])
+
+  // Limpiar ciudad_id al cambiar a modalidad virtual
+  useEffect(() => {
+    if (form.modalidad === "virtual" && form.ciudad_id !== 0) {
+      setForm(prev => ({ ...prev, ciudad_id: 0 }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.modalidad])
 
   const updateField = (f: string, v: string | number | number[] | Modulo[]) => { 
     setForm(p => ({ ...p, [f]: v }))
@@ -530,9 +538,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                           >
                             {cat.nombre}
                           </span>
-                          <span className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>
-                            {cat.categoria} • {selectedCatalogo?.id === cat.id ? numModulosDefault : 0} módulos
-                          </span>
+                          
                         </div>
                         {form.catalogo_curso_id === cat.id && (
                           <span className="ml-2 text-lg">✓</span>
@@ -728,7 +734,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                   </div>
 
                   <div>
-                    <label className={label} style={{ color: COLORS.CHARCOAL }}>Precio Base <span style={{ color: "#ef4444" }}>*</span></label>
+                    <label className={label} style={{ color: COLORS.CHARCOAL }}>Precio Base por modulo<span style={{ color: "#ef4444" }}>*</span></label>
                     <input 
                       type="number" 
                       min={0} 
@@ -769,12 +775,20 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                 </div>
 
                 <div>
-                  <label className={label} style={{ color: COLORS.CHARCOAL }}>Ciudad (Opcional)</label>
+                  <label className={label} style={{ color: COLORS.CHARCOAL }}>
+                    Ciudad (Opcional)
+                    {form.modalidad === "virtual" && <span className="text-xs ml-1" style={{ color: COLORS.TEXT_MUTED }}>— No aplica para cursos virtuales</span>}
+                  </label>
                   <select 
                     value={form.ciudad_id} 
                     onChange={e => updateField("ciudad_id", e.target.value ? parseInt(e.target.value, 10) : 0)} 
                     className={inputC}
-                    style={borderS}
+                    disabled={form.modalidad === "virtual"}
+                    style={{
+                      ...borderS,
+                      opacity: form.modalidad === "virtual" ? 0.5 : 1,
+                      cursor: form.modalidad === "virtual" ? "not-allowed" : "pointer",
+                    }}
                   >
                     <option value="">Seleccionar ciudad...</option>
                     {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}

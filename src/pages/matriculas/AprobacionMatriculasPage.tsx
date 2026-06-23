@@ -25,6 +25,7 @@ import { RejectModal } from "@/components/RejectModal"
 import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services/cursos.service"
 import { tallerService } from "@/services/taller.service"
 import { financeService } from "@/services/finance.service"
+import { PagoInicialMatriculaModal } from "@/pages/estudiantes/components/PagoInicialMatriculaModal"
 import { toast } from "sonner"
 
 function ImageZoom({ url, onClose }: { url: string; onClose: () => void }) {
@@ -103,6 +104,14 @@ export function AprobacionMatriculasPage() {
   const [editPagoField, setEditPagoField] = useState<string | null>(null)
   const [editPagoVal, setEditPagoVal] = useState("")
   const [savingPagoEdit, setSavingPagoEdit] = useState(false)
+
+  // Modal de pago inicial por módulo
+  const [pagoInicialOpen, setPagoInicialOpen] = useState(false)
+  const [pagoInicialData, setPagoInicialData] = useState<{
+    lineasPagoIds: string[]
+    matriculaId: string
+    cursoNombre: string
+  } | null>(null)
 
   // Edición de curso
   const [editCursoField, setEditCursoField] = useState<string | null>(null)
@@ -391,10 +400,23 @@ export function AprobacionMatriculasPage() {
         return
       }
 
-      await cursosService.aprobarSolicitudInscripcion(confirmAction.id)
+      const result = await cursosService.aprobarSolicitudInscripcion(confirmAction.id)
+      const responseData = (result as any)?.data
 
-      // Auto-registrar pago aprobado
-      if (selected?.pago?.monto_solicitado) {
+      if (responseData?.lineas_pago_ids?.length > 0 && responseData?.matricula_id) {
+        setPagoInicialData({
+          lineasPagoIds: responseData.lineas_pago_ids,
+          matriculaId: responseData.matricula_id,
+          cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
+        })
+        setPagoInicialOpen(true)
+        setSelected((prev: any) => prev ? {
+          ...prev,
+          _lineas_pago_ids: responseData.lineas_pago_ids,
+          _matricula_id: responseData.matricula_id,
+        } : null)
+      } else if (selected?.pago?.monto_solicitado) {
+        // Fallback legacy: no hay lineas_pago, usar cuentaPorCobrar
         try {
           const cuentasRes = await financeService.getCuentas({ per_page: 100 })
           const cuentas: any[] = cuentasRes.data || []
@@ -410,9 +432,7 @@ export function AprobacionMatriculasPage() {
               fecha_pago: selected.pago.comprobante?.fecha_pago_declarada?.split("T")[0] || new Date().toISOString().split("T")[0],
             })
           }
-        } catch {
-          // No bloquea la aprobación si falla el auto-registro de pago
-        }
+        } catch { /* no bloquea */ }
       }
 
       toast.success("Matrícula aprobada")
@@ -949,6 +969,21 @@ export function AprobacionMatriculasPage() {
                                     </button>
                                   </div>
                                 </>
+                              ) : selected?.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 ? (
+                                <div className="flex gap-3 pt-3">
+                                  <button onClick={() => {
+                                    setPagoInicialData({
+                                      lineasPagoIds: selected._lineas_pago_ids,
+                                      matriculaId: selected._matricula_id,
+                                      cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
+                                    })
+                                    setPagoInicialOpen(true)
+                                  }}
+                                    className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
+                                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                    <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
+                                  </button>
+                                </div>
                               ) : null}
                             </div>
                           )}
@@ -1254,7 +1289,23 @@ export function AprobacionMatriculasPage() {
                                  </button>
                                </div>
                              )}
-                          </>
+                              {s.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 && (
+                                <div className="flex gap-3 pt-3">
+                                  <button onClick={() => {
+                                    setPagoInicialData({
+                                      lineasPagoIds: selected._lineas_pago_ids,
+                                      matriculaId: selected._matricula_id,
+                                      cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
+                                    })
+                                    setPagoInicialOpen(true)
+                                  }}
+                                    className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
+                                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                    <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
+                                  </button>
+                                </div>
+                              )}
+                           </>
                         ) : null}
                       </div>
                     )}
@@ -1283,11 +1334,22 @@ export function AprobacionMatriculasPage() {
       />
 
       <RejectModal
-        isOpen={confirmAction?.type === "rechazar" && !!confirmAction}
-        isLoading={actionLoading}
+        isOpen={confirmAction?.type === "rechazar"}
         onConfirm={handleReject}
         onCancel={() => setConfirmAction(null)}
+        isLoading={actionLoading}
       />
+
+      {pagoInicialData && (
+        <PagoInicialMatriculaModal
+          open={pagoInicialOpen}
+          onOpenChange={(open) => { setPagoInicialOpen(open); if (!open) { cargarSolicitudes(); setPagoInicialData(null) } }}
+          lineasPagoIds={pagoInicialData.lineasPagoIds}
+          matriculaId={pagoInicialData.matriculaId}
+          cursoNombre={pagoInicialData.cursoNombre}
+          onCompleted={() => { cargarSolicitudes(); setPagoInicialOpen(false); setPagoInicialData(null) }}
+        />
+      )}
     </div>
   )
 }
@@ -1306,6 +1368,14 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
   const [expandedComprobante, setExpandedComprobante] = useState(false)
 
   const [, forceUpdate] = useState(0)
+  const [talleresList, setTalleresList] = useState<any[]>([])
+
+  const cargarTalleres = async () => {
+    try {
+      const res = await tallerService.listar({ per_page: 100 } as any)
+      setTalleresList((res as any).data || [])
+    } catch { /* */ }
+  }
 
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1382,25 +1452,174 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
                <EF icon={UserIcon} label="Dirección" field="direccion" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-               <InfoItem icon={UserIcon} label="Ciudad" value={ins.ciudad || "—"} />
+               <EF icon={UserIcon} label="Ciudad" field="ciudad" data={ins}
+                editField={editTallerField} editVal={editTallerVal}
+                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
               <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <InfoItem icon={Calendar03Icon} label="Fecha Nacimiento" value={formatDate(ins.fecha_nacimiento)} />
-              <InfoItem icon={Calendar03Icon} label="Edad" value={ins.edad ? `${ins.edad} años` : "—"} />
+              {editTallerField === "fecha_nacimiento" ? (
+                <div className="flex items-center gap-2 col-span-2">
+                  <HugeiconsIcon icon={Calendar03Icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha Nac.:</span>
+                  <input type="date" value={editTallerVal} onChange={e => onChange(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit} />
+                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
+                    {savingTallerEdit ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs group">
+                  <HugeiconsIcon icon={Calendar03Icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha Nacimiento</span>
+                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{formatDate(ins.fecha_nacimiento)}</span>
+                  <button onClick={() => onEdit("fecha_nacimiento", ins.fecha_nacimiento ? ins.fecha_nacimiento.split("T")[0] : "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />
+                  </button>
+                </div>
+              )}
+              <EF icon={Calendar03Icon} label="Edad" field="edad" data={ins}
+                editField={editTallerField} editVal={editTallerVal}
+                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} inputType="number" />
             </div>
           </Section>
           <Section title="Taller" icon={BookOpenIcon}>
-            <InfoItem icon={BookOpenIcon} label="Taller" value={ins.taller?.nombre || "—"} bold />
-            <InfoItem icon={CalendarIcon} label="Fecha" value={ins.taller?.fecha ? new Date(ins.taller.fecha).toLocaleDateString('es-ES') : "—"} />
-            <InfoItem icon={PaymentIcon} label="Precio" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold />
+            <div className="grid grid-cols-2 gap-3">
+              {editTallerField === "taller_id" ? (
+                <div className="flex items-center gap-2 col-span-2">
+                  <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Taller:</span>
+                  <select value={editTallerVal} onChange={e => onChange(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit}>
+                    {talleresList.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.nombre}</option>
+                    ))}
+                  </select>
+                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
+                    {savingTallerEdit ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs group col-span-2">
+                  <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Taller</span>
+                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{ins.taller?.nombre || "—"}</span>
+                  <button onClick={() => { cargarTalleres(); onEdit("taller_id", ins.taller?.id || "") }} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />
+                  </button>
+                </div>
+              )}
+              <InfoItem icon={CalendarIcon} label="Fecha" value={ins.taller?.fecha ? new Date(ins.taller.fecha).toLocaleDateString('es-ES') : "—"} />
+              <InfoItem icon={PaymentIcon} label="Precio" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold />
+            </div>
           </Section>
           <Section title="Pago" icon={PaymentIcon}>
             <div className="grid grid-cols-2 gap-3">
-              <InfoItem icon={PaymentIcon} label="Monto" value={`$${Number(ins.monto_pagado || 0).toFixed(2)}`} bold />
-              <InfoItem icon={PaymentIcon} label="Tipo" value={ins.tipo_pago || "—"} />
-              <InfoItem icon={CalendarIcon} label="Fecha de Pago" value={formatDate(ins.fecha_pago)} />
-              <InfoItem icon={PaymentIcon} label="Método" value={ins.metodo_pago || "—"} />
+              {editTallerField === "monto_pagado" ? (
+                <div className="flex items-center gap-2 col-span-2">
+                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Monto:</span>
+                  <input type="number" step="0.01" value={editTallerVal} onChange={e => onChange(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit} />
+                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
+                    {savingTallerEdit ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs group">
+                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Monto</span>
+                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>${Number(ins.monto_pagado || 0).toFixed(2)}</span>
+                  <button onClick={() => onEdit("monto_pagado", String(ins.monto_pagado || ""))} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />
+                  </button>
+                </div>
+              )}
+              {editTallerField === "tipo_pago" ? (
+                <div className="flex items-center gap-2 col-span-2">
+                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
+                  <select value={editTallerVal} onChange={e => onChange(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit}>
+                    <option value="completo">Completo</option>
+                    <option value="abono">Abono</option>
+                  </select>
+                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
+                    {savingTallerEdit ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs group">
+                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
+                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{ins.tipo_pago || "—"}</span>
+                  <button onClick={() => onEdit("tipo_pago", ins.tipo_pago || "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />
+                  </button>
+                </div>
+              )}
+              {editTallerField === "metodo_pago" ? (
+                <div className="flex items-center gap-2 col-span-2">
+                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Método:</span>
+                  <select value={editTallerVal} onChange={e => onChange(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit}>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="deposito">Depósito</option>
+                  </select>
+                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
+                    {savingTallerEdit ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs group">
+                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Método</span>
+                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{ins.metodo_pago || "—"}</span>
+                  <button onClick={() => onEdit("metodo_pago", ins.metodo_pago || "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />
+                  </button>
+                </div>
+              )}
+              {editTallerField === "fecha_pago" ? (
+                <div className="flex items-center gap-2 col-span-2">
+                  <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
+                  <input type="date" value={editTallerVal} onChange={e => onChange(e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit} />
+                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
+                    {savingTallerEdit ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs group">
+                  <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha</span>
+                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{formatDate(ins.fecha_pago)}</span>
+                  <button onClick={() => onEdit("fecha_pago", ins.fecha_pago ? ins.fecha_pago.split("T")[0] : "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />
+                  </button>
+                </div>
+              )}
             </div>
             <div className="mt-3 space-y-2">
               <div className="flex gap-2">

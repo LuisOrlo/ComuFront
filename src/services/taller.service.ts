@@ -13,6 +13,8 @@ export interface Taller {
   instructor_id?: string
   instructor?: { id: string; nombres: string; apellidos: string }
   modalidad?: string
+  ciudad_id?: number
+  ciudad?: { id: number; nombre: string }
   capacidad_maxima?: number
   precio?: number
   estado: string

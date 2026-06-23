@@ -1,14 +1,15 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { FileAttachmentIcon } from "@hugeicons/core-free-icons"
+import { FileAttachmentIcon, PaymentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import type { FinancialProfile } from "@/services/estudiantes.service"
+import type { FinancialProfile, LineaPagoModulo } from "@/services/estudiantes.service"
 
 interface FinancialTabContentProps {
   data: FinancialProfile | null
   loading: boolean
+  onPagoInicial?: (data: { lineasPagoIds: string[]; matriculaId: string; cursoNombre: string }) => void
 }
 
-export function FinancialTabContent({ data, loading }: FinancialTabContentProps) {
+export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialTabContentProps) {
   if (loading) {
     return (
       <div className="text-center py-20">
@@ -108,6 +109,39 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
         </div>
       </div>
 
+      {data.matriculas && data.matriculas.filter(m => m.lineas_pago?.length > 0).length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+            Desglose por Módulo
+          </h3>
+          {data.matriculas.filter(m => m.lineas_pago?.length > 0).map(matricula => (
+            <div key={matricula.id} className="mb-4 rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="flex items-center justify-between px-5 py-3 bg-gray-50/70 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <span className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>
+                  {matricula.curso.nombre}
+                  {matricula.curso.instancia ? ` — ${matricula.curso.instancia}` : ''}
+                </span>
+                {onPagoInicial && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
+                  <button onClick={() => onPagoInicial({
+                    lineasPagoIds: matricula.lineas_pago.map(lp => lp.id),
+                    matriculaId: matricula.id,
+                    cursoNombre: matricula.curso.nombre,
+                  })}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                    <HugeiconsIcon icon={PaymentIcon} size={12} />
+                    Registrar pago
+                  </button>
+                )}
+              </div>
+              {matricula.lineas_pago.map((lp, idx) => (
+                <ModuleRow key={lp.id} linea={lp} isLast={idx === matricula.lineas_pago.length - 1} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
       {data.transacciones.length > 0 && (
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
@@ -155,6 +189,55 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ModuleRow({ linea, isLast }: { linea: LineaPagoModulo; isLast: boolean }) {
+  const estadoStyle: Record<string, { bg: string; color: string }> = {
+    pendiente: { bg: 'rgba(239,68,68,0.08)', color: '#dc2626' },
+    abonado: { bg: 'rgba(245,158,11,0.1)', color: '#d97706' },
+    pagado: { bg: 'rgba(16,185,129,0.08)', color: '#059669' },
+  }
+  const s = estadoStyle[linea.estado] || estadoStyle.pendiente
+  const pct = linea.monto_ajustado > 0 ? Math.round((linea.monto_abonado / linea.monto_ajustado) * 100) : 0
+
+  return (
+    <div className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/30 transition-colors"
+      style={{ borderBottom: isLast ? 'none' : `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+      <div className="min-w-0 flex-1">
+        <span className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
+          {linea.modulo.nombre || `Módulo ${linea.modulo.numero_orden}`}
+        </span>
+        <div className="flex items-center gap-3 mt-1">
+          <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
+            Total: <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${linea.monto_ajustado.toFixed(2)}</span>
+          </span>
+          <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
+            Abonado: <span className="font-semibold" style={{ color: '#059669' }}>${linea.monto_abonado.toFixed(2)}</span>
+          </span>
+          <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
+            Saldo:{' '}
+            <span className={`font-semibold ${linea.saldo_pendiente > 0 ? '' : ''}`}
+              style={{ color: linea.saldo_pendiente > 0 ? '#dc2626' : '#059669' }}>
+              ${linea.saldo_pendiente.toFixed(2)}
+            </span>
+          </span>
+        </div>
+      </div>
+      <div className="shrink-0 flex items-center gap-2">
+        <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: COLORS.BORDER_SUBTLE }}>
+          <div className="h-full rounded-full transition-all" style={{
+            width: `${pct}%`,
+            backgroundColor: linea.estado === 'pagado' ? '#059669' : linea.estado === 'abonado' ? '#d97706' : COLORS.ACCENT,
+          }} />
+        </div>
+        <span className="text-[10px] font-bold">{pct}%</span>
+        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase"
+          style={{ backgroundColor: s.bg, color: s.color }}>
+          {linea.estado}
+        </span>
+      </div>
     </div>
   )
 }

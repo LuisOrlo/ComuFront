@@ -6,6 +6,7 @@ import { COLORS } from "@/lib/constants"
 import { personasService, type Persona } from "@/services/personas.service"
 import { toast } from "sonner"
 import { PersonaFormModal } from "./PersonaFormModal"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 
 export function PersonasPage() {
   const [personas, setPersonas] = useState<Persona[]>([])
@@ -18,6 +19,7 @@ export function PersonasPage() {
   })
   const [detailPersona, setDetailPersona] = useState<Persona | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; nombre: string } | null>(null)
 
   const cargarPersonas = async () => {
     setLoading(true)
@@ -40,14 +42,16 @@ export function PersonasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filtroTipo])
 
-  const handleDelete = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar a ${nombre}?`)) return
+  const handleDelete = async () => {
+    if (!deleteConfirm) return
     try {
-      await personasService.eliminarPersona(id)
+      await personasService.eliminarPersona(deleteConfirm.id)
       toast.success("Eliminado")
       cargarPersonas()
     } catch {
       toast.error("Error al eliminar")
+    } finally {
+      setDeleteConfirm(null)
     }
   }
 
@@ -158,7 +162,7 @@ export function PersonasPage() {
                       <button onClick={(e) => { e.stopPropagation(); setModal({ open: true, editingId: p.id }) }} className="size-7 flex items-center justify-center rounded-md transition-colors" style={{ color: COLORS.TEXT_MUTED }}>
                         <HugeiconsIcon icon={Edit01Icon} size={14} />
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id, fullName(p)) }} className="size-7 flex items-center justify-center rounded-md transition-colors hover:bg-red-50" style={{ color: "oklch(0.50 0.12 10)" }}>
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: p.id, nombre: fullName(p) }) }} className="size-7 flex items-center justify-center rounded-md transition-colors hover:bg-red-50" style={{ color: "oklch(0.50 0.12 10)" }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -170,7 +174,7 @@ export function PersonasPage() {
                   <div className="space-y-0.5 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
                     {p.correo && <p>{p.correo}</p>}
                     {p.celular && <p>{p.celular}</p>}
-                    {p.ciudad && <p>{p.ciudad.nombre}</p>}
+                     {p.ciudad && <p>{p.ciudad}</p>}
                   </div>
 
                   {p.perfilInstructor?.especialidad && (
@@ -250,7 +254,7 @@ export function PersonasPage() {
                 <Row label="Cédula" value={detailPersona.cedula} />
                 <Row label="Correo" value={detailPersona.correo} />
                 <Row label="Celular" value={detailPersona.celular} />
-                <Row label="Ciudad" value={detailPersona.ciudad?.nombre} />
+                <Row label="Ciudad" value={detailPersona.ciudad} />
               </Section>
 
               <Section title="Cuenta de sistema">
@@ -302,6 +306,18 @@ export function PersonasPage() {
           <div className="size-8 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: "white", borderRightColor: "white" }} />
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        title="Eliminar Persona"
+        message={`¿Eliminar a "${deleteConfirm?.nombre}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous
+        icon="trash"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }
@@ -316,11 +332,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Row({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
-  if (!value) return null
   return (
     <div className="flex justify-between items-center">
       <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{label}</span>
-      <span className={`text-xs ${mono ? "font-mono" : ""}`} style={{ color: COLORS.CHARCOAL }}>{value}</span>
+      <span className={`text-xs ${mono ? "font-mono" : ""}`} style={{ color: value ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
+        {value || "—"}
+      </span>
     </div>
   )
 }

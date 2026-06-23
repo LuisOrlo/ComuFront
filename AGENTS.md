@@ -18,7 +18,7 @@ Single-page React app for **Comunikate Academy ** — a course enrollment manage
 - **Entry**: `src/main.tsx` → `src/App.tsx`
 - **Router**: React Router v7 (`BrowserRouter`), not Inertia (despite `@inertiajs/react` in deps)
 - **API proxy**: Vite dev server proxies `/api` → `http://localhost:8000`
-- **Base URL**: `VITE_API_URL` env var, defaults to `http://localhost:8000/api/v1`
+- **Base URL**: `VITE_API_URL` env var, defaults to `http://localhost:8000/api`
 - **Auth**: Bearer token stored in `localStorage` (`auth_token`), attached via axios interceptor
 - **Protected routes**: All routes except `/matricula/nueva` and `/login` require auth
 
@@ -39,7 +39,7 @@ Single-page React app for **Comunikate Academy ** — a course enrollment manage
 
 ## Backend Contract
 
-Auth endpoint: `POST /api/v1/auth/iniciar-sesion` (login), `POST /api/v1/auth/cerrar-sesion` (logout)
+Auth endpoint: `POST /api/auth/iniciar-sesion` (login), `POST /api/auth/cerrar-sesion` (logout)
 
 Response shape:
 ```ts

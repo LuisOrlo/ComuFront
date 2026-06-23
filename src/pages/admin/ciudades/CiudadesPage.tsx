@@ -4,6 +4,7 @@ import { MapPinIcon, AddCircleIcon, Delete01Icon, SearchIcon, CheckmarkCircle01I
 import { COLORS } from "@/lib/constants"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { toast } from "sonner"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 
 const ECUADOR_CIUDADES = [
   { nombre: "Quito", provincia: "Pichincha", region: "Sierra" },
@@ -51,6 +52,7 @@ export function CiudadesPage() {
   const [selectedCiudad, setSelectedCiudad] = useState<string | null>(null)
   const [filterRegion, setFilterRegion] = useState<Region | null>(null)
   const [saving, setSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; nombre: string } | null>(null)
 
   const cargarCiudades = async () => {
     try {
@@ -80,8 +82,16 @@ export function CiudadesPage() {
       setSelectedCiudad(null)
       setSelectedRegion(null)
       cargarCiudades()
-    } catch {
-      toast.error("Error al crear la ciudad")
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string } } }
+      const errorsObj = axiosErr.response?.data?.errors
+      const backendMsg = axiosErr.response?.data?.message
+      if (errorsObj) {
+        const first = Object.values(errorsObj).flat()[0] as string
+        toast.error(first)
+      } else {
+        toast.error(backendMsg || "Error al crear la ciudad")
+      }
     } finally {
       setSaving(false)
     }
@@ -94,15 +104,17 @@ export function CiudadesPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (confirm("¿Eliminar esta ciudad? Esta acción no se puede deshacer.")) {
-      try {
-        await ciudadesService.eliminarCiudad(id)
-        toast.success("Ciudad eliminada")
-        cargarCiudades()
-      } catch {
-        toast.error("Error al eliminar la ciudad")
-      }
+  const handleDelete = async () => {
+    if (!deleteConfirm) return
+    try {
+      await ciudadesService.eliminarCiudad(deleteConfirm.id)
+      toast.success("Ciudad eliminada")
+      cargarCiudades()
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosErr.response?.data?.message || "Error al eliminar la ciudad")
+    } finally {
+      setDeleteConfirm(null)
     }
   }
 
@@ -314,7 +326,7 @@ export function CiudadesPage() {
                         </div>
                       </div>
                       <button
-                        onClick={() => handleDelete(ciudad.id)}
+                        onClick={() => setDeleteConfirm({ id: ciudad.id, nombre: ciudad.nombre })}
                         className="p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-150"
                         style={{ color: COLORS.TEXT_MUTED }}
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "oklch(0.95 0 0)"; e.currentTarget.style.color = "oklch(0.50 0.12 10)" }}
@@ -330,6 +342,18 @@ export function CiudadesPage() {
           )}
         </div>
       </main>
+
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        title="Eliminar Ciudad"
+        message={`¿Eliminar la ciudad "${deleteConfirm?.nombre}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous
+        icon="trash"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

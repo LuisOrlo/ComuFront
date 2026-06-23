@@ -13,7 +13,6 @@ import { ValidatedInput, ValidatedTextarea } from "@/components/form"
 import { personasService } from "@/services/personas.service"
 import { instructoresService } from "@/services/instructores.service"
 import { staffService } from "@/services/staff.service"
-import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { toast } from "sonner"
 
 interface Props {
@@ -22,26 +21,9 @@ interface Props {
   onSuccess: () => void
 }
 
-const inputClasses = "w-full px-3 py-2.5 bg-white border rounded-xl outline-none text-sm transition-all duration-150"
-const inputFocus = "focus:border-[--accent] focus:ring-2 focus:ring-[--accent]/20 focus:shadow-sm"
-
-// Helper para calcular estilo de validación
-function getInputValidationStyle(hasError: boolean) {
-  if (hasError) {
-    return {
-      borderColor: "#ef4444",
-      boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.1)",
-    }
-  }
-  return {
-    borderColor: COLORS.BORDER_SUBTLE,
-  }
-}
-
 export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
   const [saving, setSaving] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
-  const [ciudades, setCiudades] = useState<Ciudad[]>([])
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
@@ -52,7 +34,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     apellidos: "",
     correo: "",
     celular: "",
-    ciudad_id: "",
+    ciudad: "",
     es_activo: true,
     especialidad: "",
     bio: "",
@@ -64,13 +46,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     username: "",
     password: "",
   })
-
-  const cargarCiudades = async () => {
-    try {
-      const data = await ciudadesService.getCiudadesTodas()
-      setCiudades(data)
-    } catch { /* */ }
-  }
 
   const cargarPersona = async () => {
     if (!editingId) return
@@ -84,7 +59,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
         apellidos: p.apellidos,
         correo: p.correo || "",
         celular: p.celular || "",
-        ciudad_id: p.ciudad_id ? String(p.ciudad_id) : "",
+        ciudad: p.ciudad || "",
         es_activo: p.es_activo,
         especialidad: p.perfilInstructor?.especialidad || "",
         bio: p.perfilInstructor?.bio || "",
@@ -105,7 +80,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    cargarCiudades()
     setFieldErrors({})
     if (editingId) cargarPersona()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,11 +93,113 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     return parsed
   }
 
-  const getError = (field: string) => fieldErrors[field]
+  const validateField = (field: string, value: string): string | null => {
+    switch (field) {
+      case "nombres":
+        if (!value.trim()) return "Los nombres son obligatorios"
+        if (!/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(value.trim())) return "Solo se permiten letras"
+        return null
+      case "apellidos":
+        if (!value.trim()) return "Los apellidos son obligatorios"
+        if (!/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(value.trim())) return "Solo se permiten letras"
+        return null
+      case "cedula":
+        if (!value.trim()) return null
+        if (!/^\d+$/.test(value.trim())) return "Solo se permiten números"
+        if (value.trim().length > 10) return "Máximo 10 dígitos"
+        return null
+      case "celular":
+        if (!value.trim()) return null
+        if (!/^\d+$/.test(value.trim())) return "Solo se permiten números"
+        if (value.trim().length > 10) return "Máximo 10 dígitos"
+        return null
+      case "correo":
+        if (!value.trim()) return null
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Correo no válido"
+        return null
+      case "ciudad":
+        if (!value.trim()) return "La ciudad es obligatoria"
+        return null
+      case "especialidad":
+        if (!value.trim()) return "La especialidad es obligatoria"
+        return null
+      case "cargo":
+        if (!value.trim()) return "El cargo es obligatorio"
+        return null
+      default:
+        return null
+    }
+  }
+
+  const sanitizeInput = (field: string, value: string): string => {
+    switch (field) {
+      case "nombres":
+      case "apellidos":
+        return value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "")
+      case "cedula":
+        return value.replace(/\D/g, "").slice(0, 10)
+      case "celular":
+        return value.replace(/\D/g, "").slice(0, 10)
+      default:
+        return value
+    }
+  }
+
+  const handleBlur = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
+    const value = (form as Record<string, unknown>)[field] as string
+    const err = validateField(field, value)
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      if (err) next[field] = err
+      else delete next[field]
+      return next
+    })
+  }
+
+  const handleChange = (field: keyof typeof form, rawValue: string) => {
+    const value = sanitizeInput(field, rawValue)
+    setForm((prev) => ({ ...prev, [field]: value }))
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.nombres.trim() || !form.apellidos.trim()) return
+
+    const fieldsToValidate: { name: string; value: string }[] = [
+      { name: "nombres", value: form.nombres },
+      { name: "apellidos", value: form.apellidos },
+      { name: "cedula", value: form.cedula },
+      { name: "celular", value: form.celular },
+      { name: "correo", value: form.correo },
+      { name: "ciudad", value: form.ciudad },
+    ]
+    if (form.tipo === "instructor") {
+      fieldsToValidate.push({ name: "especialidad", value: form.especialidad })
+    } else {
+      fieldsToValidate.push({ name: "cargo", value: form.cargo })
+    }
+
+    const allTouched: Record<string, boolean> = {}
+    const errors: Record<string, string> = {}
+    for (const { name, value } of fieldsToValidate) {
+      allTouched[name] = true
+      const err = validateField(name, value)
+      if (err) errors[name] = err
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setTouched(allTouched)
+      setFieldErrors(errors)
+      toast.error("Corrige los errores en el formulario")
+      return
+    }
 
     setSaving(true)
     try {
@@ -135,7 +211,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
           apellidos: form.apellidos,
           correo: form.correo || undefined,
           celular: form.celular || undefined,
-          ciudad_id: form.ciudad_id ? parseInt(form.ciudad_id) : undefined,
+          ciudad: form.ciudad || undefined,
           es_activo: form.es_activo,
         })
 
@@ -160,7 +236,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
           apellidos: form.apellidos,
           correo: form.correo || undefined,
           celular: form.celular || undefined,
-          ciudad_id: form.ciudad_id ? parseInt(form.ciudad_id) : undefined,
+          ciudad: form.ciudad || undefined,
           especialidad: form.tipo === "instructor" ? (form.especialidad || undefined) : undefined,
           bio: form.tipo === "instructor" ? (form.bio || undefined) : undefined,
           cargo: form.tipo !== "instructor" ? form.cargo : undefined,
@@ -304,8 +380,8 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
               <ValidatedInput
                 label="Nombres"
                 value={form.nombres}
-                onChange={(value) => setForm({ ...form, nombres: value })}
-                onBlur={() => setTouched({ ...touched, nombres: true })}
+                onChange={(value) => handleChange("nombres", value)}
+                onBlur={() => handleBlur("nombres")}
                 error={fieldErrors.nombres}
                 touched={touched.nombres}
                 placeholder="Ej: Carlos"
@@ -314,8 +390,8 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
               <ValidatedInput
                 label="Apellidos"
                 value={form.apellidos}
-                onChange={(value) => setForm({ ...form, apellidos: value })}
-                onBlur={() => setTouched({ ...touched, apellidos: true })}
+                onChange={(value) => handleChange("apellidos", value)}
+                onBlur={() => handleBlur("apellidos")}
                 error={fieldErrors.apellidos}
                 touched={touched.apellidos}
                 placeholder="Ej: Roa"
@@ -324,80 +400,47 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
-                  Cédula
-                </label>
-                <input
-                  type="text"
-                  value={form.cedula}
-                  onChange={(e) => setForm({ ...form, cedula: e.target.value })}
-                  placeholder="1234567890"
-                  className={`${inputClasses} ${inputFocus}`}
-                  style={{ 
-                    ...getInputValidationStyle(!!getError("cedula")),
-                    color: COLORS.CHARCOAL 
-                  }}
-                />
-                {getError("cedula") && (
-                  <div className="flex items-start gap-1.5 mt-2">
-                    <span className="text-red-500 text-lg leading-none">•</span>
-                    <p className="text-red-500 text-xs">{getError("cedula")}</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
-                  Celular
-                </label>
-                <input
-                  type="text"
-                  value={form.celular}
-                  onChange={(e) => setForm({ ...form, celular: e.target.value })}
-                  placeholder="0999999999"
-                  className={`${inputClasses} ${inputFocus}`}
-                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-                />
-              </div>
+              <ValidatedInput
+                label="Cédula"
+                value={form.cedula}
+                onChange={(value) => handleChange("cedula", value)}
+                onBlur={() => handleBlur("cedula")}
+                error={fieldErrors.cedula}
+                touched={touched.cedula}
+                placeholder="1234567890"
+              />
+              <ValidatedInput
+                label="Celular"
+                value={form.celular}
+                onChange={(value) => handleChange("celular", value)}
+                onBlur={() => handleBlur("celular")}
+                error={fieldErrors.celular}
+                touched={touched.celular}
+                placeholder="0999999999"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
-                  Correo
-                </label>
-                <input
-                  type="email"
-                  value={form.correo}
-                  onChange={(e) => setForm({ ...form, correo: e.target.value })}
-                  placeholder="correo@email.com"
-                  className={`${inputClasses} ${inputFocus}`}
-                  style={{ 
-                    ...getInputValidationStyle(!!getError("correo")),
-                    color: COLORS.CHARCOAL 
-                  }}
-                />
-                {getError("correo") && (
-                  <div className="flex items-start gap-1.5 mt-2">
-                    <span className="text-red-500 text-lg leading-none">•</span>
-                    <p className="text-red-500 text-xs">{getError("correo")}</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
-                  Ciudad
-                </label>
-                <select
-                  value={form.ciudad_id}
-                  onChange={(e) => setForm({ ...form, ciudad_id: e.target.value })}
-                  className={`${inputClasses} ${inputFocus}`}
-                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-                >
-                  <option value="">Seleccionar...</option>
-                  {ciudades.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
+              <ValidatedInput
+                label="Correo"
+                type="email"
+                value={form.correo}
+                onChange={(value) => handleChange("correo", value)}
+                onBlur={() => handleBlur("correo")}
+                error={fieldErrors.correo}
+                touched={touched.correo}
+                placeholder="correo@email.com"
+              />
+              <ValidatedInput
+                label="Ciudad"
+                value={form.ciudad}
+                onChange={(value) => handleChange("ciudad", value)}
+                onBlur={() => handleBlur("ciudad")}
+                error={fieldErrors.ciudad}
+                touched={touched.ciudad}
+                placeholder="Ej: Quito"
+                required
+              />
             </div>
           </div>
 
@@ -409,31 +452,25 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
                   Perfil de instructor
                 </span>
               </div>
-               <div>
-                <ValidatedInput
-                  label="Especialidad"
-                  value={form.especialidad}
-                  onChange={(value) => setForm({ ...form, especialidad: value })}
-                  onBlur={() => setTouched({ ...touched, especialidad: true })}
-                  error={fieldErrors.especialidad}
-                  touched={touched.especialidad}
-                  placeholder="Ej: Oratoria y Comunicación"
-                  helperText="(opcional)"
-                />
-               </div>
-               <div>
-                <ValidatedTextarea
-                  label="Bio"
-                  value={form.bio}
-                  onChange={(value) => setForm({ ...form, bio: value })}
-                  onBlur={() => setTouched({ ...touched, bio: true })}
-                  error={fieldErrors.bio}
-                  touched={touched.bio}
-                  placeholder="Experiencia, formación..."
-                  rows={3}
-                  helperText="(opcional)"
-                />
-               </div>
+              <ValidatedInput
+                label="Especialidad"
+                value={form.especialidad}
+                onChange={(value) => handleChange("especialidad", value)}
+                onBlur={() => handleBlur("especialidad")}
+                error={fieldErrors.especialidad}
+                touched={touched.especialidad}
+                placeholder="Ej: Oratoria y Comunicación"
+                required
+              />
+              <ValidatedTextarea
+                label="Bio"
+                value={form.bio}
+                onChange={(value) => handleChange("bio", value)}
+                onBlur={() => setTouched({ ...touched, bio: true })}
+                placeholder="Experiencia, formación..."
+                rows={3}
+                helperText="(opcional)"
+              />
             </div>
           ) : (
             <div className="space-y-4 mb-6">
@@ -442,33 +479,29 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
                   Datos laborales
                 </span>
               </div>
-              <div>
-                <ValidatedInput
-                  label="Cargo"
-                  value={form.cargo}
-                  onChange={(value) => setForm({ ...form, cargo: value })}
-                  onBlur={() => setTouched({ ...touched, cargo: true })}
-                  error={fieldErrors.cargo}
-                  touched={touched.cargo}
-                  placeholder="Ej: Coordinador Académico"
-                  required
-                />
-              </div>
+              <ValidatedInput
+                label="Cargo"
+                value={form.cargo}
+                onChange={(value) => handleChange("cargo", value)}
+                onBlur={() => handleBlur("cargo")}
+                error={fieldErrors.cargo}
+                touched={touched.cargo}
+                placeholder="Ej: Coordinador Académico"
+                required
+              />
               {form.tipo === "staff" && (
                 <>
-                   <div>
-                    <ValidatedInput
-                      label="Salario base"
-                      type="number"
-                      value={form.salario_base}
-                      onChange={(value) => setForm({ ...form, salario_base: value })}
-                      onBlur={() => setTouched({ ...touched, salario_base: true })}
-                      error={fieldErrors.salario_base}
-                      touched={touched.salario_base}
-                      placeholder="0.00"
-                      helperText="(opcional)"
-                    />
-                   </div>
+                  <ValidatedInput
+                    label="Salario base"
+                    type="number"
+                    value={form.salario_base}
+                    onChange={(value) => handleChange("salario_base", value)}
+                    onBlur={() => setTouched({ ...touched, salario_base: true })}
+                    error={fieldErrors.salario_base}
+                    touched={touched.salario_base}
+                    placeholder="0.00"
+                    helperText="(opcional)"
+                  />
                   <label className="flex items-center gap-2.5 cursor-pointer group">
                     <div
                       className="size-5 rounded flex items-center justify-center transition-all duration-150 group-hover:scale-110"
@@ -487,7 +520,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
             </div>
           )}
 
-
           {/* Cuenta (solo en creación) */}
           {!editingId && (
             <div className="mb-6">
@@ -505,61 +537,36 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
                 <span className="text-sm font-semibold group-hover:text-[--accent] transition-colors duration-150" style={{ color: COLORS.CHARCOAL }}>Crear cuenta de sistema</span>
               </label>
               {form.crearCuenta && (
-                <div 
+                <div
                   className="rounded-xl p-4 mt-3 border"
-                  style={{ 
+                  style={{
                     backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 3%, white)`,
                     borderColor: COLORS.BORDER_SUBTLE
                   }}
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
-                        Usuario <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={form.username}
-                        onChange={(e) => setForm({ ...form, username: e.target.value })}
-                        placeholder="Ej: juan.morales"
-                        className={`${inputClasses} ${inputFocus}`}
-                        style={{ 
-                          borderColor: getError("username") ? "#ef4444" : COLORS.BORDER_SUBTLE,
-                          color: COLORS.CHARCOAL,
-                          boxShadow: getError("username") ? `0 0 0 3px rgba(239, 68, 68, 0.1)` : "none"
-                        }}
-                      />
-                      {getError("username") && (
-                        <div className="flex items-start gap-1.5 mt-2">
-                          <span className="text-red-500 text-lg leading-none">•</span>
-                          <p className="text-red-500 text-xs">{getError("username")}</p>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-1.5 text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
-                        Contraseña <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        placeholder="Mínimo 6 caracteres"
-                        className={`${inputClasses} ${inputFocus}`}
-                        style={{ 
-                          borderColor: getError("password") ? "#ef4444" : COLORS.BORDER_SUBTLE,
-                          color: COLORS.CHARCOAL,
-                          boxShadow: getError("password") ? `0 0 0 3px rgba(239, 68, 68, 0.1)` : "none"
-                        }}
-                      />
-                      {getError("password") && (
-                        <div className="flex items-start gap-1.5 mt-2">
-                          <span className="text-red-500 text-lg leading-none">•</span>
-                          <p className="text-red-500 text-xs">{getError("password")}</p>
-                        </div>
-                      )}
-                      <p className="text-[10px] mt-2" style={{ color: COLORS.TEXT_MUTED }}>Mínimo 6 caracteres</p>
-                    </div>
+                    <ValidatedInput
+                      label="Usuario"
+                      value={form.username}
+                      onChange={(value) => handleChange("username", value)}
+                      onBlur={() => setTouched({ ...touched, username: true })}
+                      error={fieldErrors.username}
+                      touched={touched.username}
+                      placeholder="Ej: juan.morales"
+                      required
+                    />
+                    <ValidatedInput
+                      label="Contraseña"
+                      type="password"
+                      value={form.password}
+                      onChange={(value) => handleChange("password", value)}
+                      onBlur={() => setTouched({ ...touched, password: true })}
+                      error={fieldErrors.password}
+                      touched={touched.password}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                      helperText="Mínimo 6 caracteres"
+                    />
                   </div>
                 </div>
               )}

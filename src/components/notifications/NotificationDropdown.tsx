@@ -159,9 +159,14 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                       <p className="text-sm font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>
                         {item.estudiante}
                       </p>
-                      <p className="text-xs truncate" style={{ color: COLORS.TEXT_MUTED }}>
-                        {item.curso}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        {item.tipo === "taller" && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: "oklch(0.92 0.05 80)", color: "oklch(0.55 0.12 70)" }}>Taller</span>
+                        )}
+                        <p className="text-xs truncate" style={{ color: COLORS.TEXT_MUTED }}>
+                          {item.curso}
+                        </p>
+                      </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-[10px] font-medium" style={{ color: COLORS.TEXT_MUTED }}>
                           {item.hora}

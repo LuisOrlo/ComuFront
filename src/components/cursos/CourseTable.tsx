@@ -57,9 +57,11 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                     <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>
                       {c.modalidad === "presencial" ? "Presencial" : "Virtual"}
                     </span>
-                    <span className="block text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
-                      {c.ciudad}
-                    </span>
+                    {c.ciudad && (
+                      <span className="block text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
+                        {c.ciudad}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-sm" style={{ color: COLORS.CHARCOAL }}>
                     {c.instructor}

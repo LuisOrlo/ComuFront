@@ -166,6 +166,7 @@ export interface CursoFilters {
 
 export interface NotificacionItem {
   id: string
+  tipo?: "curso" | "taller"
   estudiante: string
   curso: string
   color?: string
@@ -246,7 +247,7 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     : "Sin asignar"
 
   const modalidad = typed.modalidad || "presencial"
-  const ciudad = typed.ciudad?.nombre || "No especificada"
+  const ciudad = modalidad === "virtual" ? "" : (typed.ciudad?.nombre || "No especificada")
 
   return {
     id: typed.id,
@@ -434,7 +435,7 @@ export const cursosService = {
   // ========================================================================
 
   /**
-   * GET /api/v1/academic/catalogos-cursos
+   * GET /api/academic/catalogos-cursos
    * Listar catálogos de cursos
    */
   async getCatalogos(
@@ -459,7 +460,7 @@ export const cursosService = {
   },
 
   /**
-   * GET /api/v1/academic/catalogos-cursos/{id}
+   * GET /api/academic/catalogos-cursos/{id}
    * Obtener detalles de un catálogo
    */
   async getCatalogoById(id: string): Promise<CatalogoCurso> {
@@ -471,7 +472,7 @@ export const cursosService = {
   },
 
   /**
-   * POST /api/v1/academic/catalogos-cursos
+   * POST /api/academic/catalogos-cursos
    * Crear nuevo catálogo de curso
    */
   async crearCatalogo(data: {
@@ -494,7 +495,7 @@ export const cursosService = {
   },
 
   /**
-   * PUT /api/v1/academic/catalogos-cursos/{id}
+   * PUT /api/academic/catalogos-cursos/{id}
    * Actualizar catálogo
    */
   async actualizarCatalogo(
@@ -510,7 +511,7 @@ export const cursosService = {
   },
 
   /**
-   * DELETE /api/v1/academic/catalogos-cursos/{id}
+   * DELETE /api/academic/catalogos-cursos/{id}
    * Eliminar catálogo
    */
   async eliminarCatalogo(id: string): Promise<void> {
@@ -518,7 +519,7 @@ export const cursosService = {
   },
 
   /**
-   * POST /api/v1/academic/catalogos-cursos/upload-imagen
+   * POST /api/academic/catalogos-cursos/upload-imagen
    * Subir imagen para un catálogo
    */
   async uploadImagenCatalogo(file: File): Promise<string> {
@@ -538,7 +539,7 @@ export const cursosService = {
   // ========================================================================
 
   /**
-   * POST /api/v1/academic/cursos-abiertos
+   * POST /api/academic/cursos-abiertos
    * Crear nueva instancia de curso (Curso Abierto)
    */
   async crearCursoAbierto(data: {
@@ -566,7 +567,7 @@ export const cursosService = {
   },
 
   /**
-   * PUT /api/v1/academic/cursos-abiertos/{id}
+   * PUT /api/academic/cursos-abiertos/{id}
    * Actualizar curso abierto
    */
   async actualizarCursoAbierto(
@@ -582,7 +583,7 @@ export const cursosService = {
   },
 
   /**
-   * DELETE /api/v1/academic/cursos-abiertos/{id}
+   * DELETE /api/academic/cursos-abiertos/{id}
    * Eliminar curso abierto
    */
   async eliminarCursoAbierto(id: string): Promise<void> {
@@ -594,7 +595,7 @@ export const cursosService = {
   // ========================================================================
 
   /**
-   * GET /api/v1/academic/horarios?curso_abierto_id=...
+   * GET /api/academic/horarios?curso_abierto_id=...
    * Obtener horarios de un curso abierto
    */
   async getHorariosCurso(cursoAbiertoId: string): Promise<Horario[]> {
@@ -606,7 +607,7 @@ export const cursosService = {
   },
 
   /**
-   * POST /api/v1/academic/horarios
+   * POST /api/academic/horarios
    * Crear nuevo horario
    */
   async crearHorario(data: {
@@ -625,7 +626,7 @@ export const cursosService = {
   },
 
   /**
-   * PUT /api/v1/academic/horarios/{id}
+   * PUT /api/academic/horarios/{id}
    * Actualizar horario
    */
   async actualizarHorario(id: string, data: Partial<Horario>): Promise<Horario> {
@@ -638,7 +639,7 @@ export const cursosService = {
   },
 
   /**
-   * DELETE /api/v1/academic/horarios/{id}
+   * DELETE /api/academic/horarios/{id}
    * Eliminar horario
    */
   async eliminarHorario(id: string): Promise<void> {
@@ -650,7 +651,7 @@ export const cursosService = {
   // ========================================================================
 
   /**
-   * GET /api/v1/academic/cursos-abiertos/{id}/matriculas
+   * GET /api/academic/cursos-abiertos/{id}/matriculas
    * Obtener matrículas de un curso abierto
    */
   async getMatriculasCurso(cursoAbiertoId: string): Promise<MatriculaDetallada[]> {
@@ -665,7 +666,7 @@ export const cursosService = {
   // ========================================================================
 
   /**
-   * GET /api/v1/academic/cursos-abiertos/{id}/modulos
+   * GET /api/academic/cursos-abiertos/{id}/modulos
    * Obtener módulos de un curso abierto
    */
   async getModulosCurso(cursoAbiertoId: string): Promise<Record<string, unknown>[]> {
@@ -676,7 +677,7 @@ export const cursosService = {
   },
 
   /**
-   * PUT /api/v1/academic/modulos/{id}
+   * PUT /api/academic/modulos/{id}
    * Actualizar módulo
    */
   async actualizarModulo(id: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -689,7 +690,7 @@ export const cursosService = {
   // ========================================================================
 
   /**
-   * POST /api/v1/academic/upload/comprobante
+   * POST /api/academic/upload/comprobante
    * Subir imagen de comprobante
    */
   async uploadComprobante(file: File): Promise<{ url: string }> {
@@ -700,7 +701,7 @@ export const cursosService = {
   },
 
   /**
-   * POST /api/v1/academic/registrations
+   * POST /api/academic/registrations
    * Enviar solicitud de matrícula
    */
   async crearSolicitudInscripcion(formData: FormData): Promise<Record<string, unknown>> {
@@ -709,7 +710,7 @@ export const cursosService = {
   },
 
   /**
-   * GET /api/v1/academic/solicitudes-inscripcion
+   * GET /api/academic/solicitudes-inscripcion
    * Listar solicitudes
    */
   async getSolicitudesInscripcion(params?: { estado?: string; per_page?: number; page?: number }): Promise<Record<string, unknown>> {
@@ -718,7 +719,7 @@ export const cursosService = {
   },
 
   /**
-   * GET /api/v1/academic/solicitudes-inscripcion/{id}
+   * GET /api/academic/solicitudes-inscripcion/{id}
    */
   async getSolicitudInscripcionById(id: string): Promise<Record<string, unknown>> {
     const response = await api.get(`/academic/solicitudes-inscripcion/${id}`)
@@ -726,7 +727,7 @@ export const cursosService = {
   },
 
   /**
-   * POST /api/v1/academic/solicitudes-inscripcion/{id}/validar
+   * POST /api/academic/solicitudes-inscripcion/{id}/validar
    */
   async aprobarSolicitudInscripcion(id: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/academic/solicitudes-inscripcion/${id}/validar`)
@@ -734,7 +735,7 @@ export const cursosService = {
   },
 
   /**
-   * POST /api/v1/academic/solicitudes-inscripcion/{id}/rechazar
+   * POST /api/academic/solicitudes-inscripcion/{id}/rechazar
    */
   async rechazarSolicitudInscripcion(id: string, motivo?: string): Promise<Record<string, unknown>> {
     const response = await api.post(`/academic/solicitudes-inscripcion/${id}/rechazar`, { motivo_rechazo: motivo })

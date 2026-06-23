@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react"
+import { COLORS } from "@/lib/constants"
 
 interface Props {
   children: ReactNode
@@ -27,16 +28,36 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-4">
-            <p className="text-gray-500 text-lg font-medium">
-              Algo sali&oacute; mal
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-            >
-              Recargar p&aacute;gina
-            </button>
+          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-6 px-6">
+            <div className="text-center space-y-2">
+              <p className="text-7xl font-bold" style={{ color: COLORS.ACCENT }}>
+                {this.state.error instanceof Error && "status" in this.state.error
+                  ? String((this.state.error as Error & { status?: number }).status)
+                  : "!"}
+              </p>
+              <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
+                Algo sali&oacute; mal
+              </h1>
+              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                {this.state.error?.message || "Ocurri&oacute; un error inesperado"}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { window.location.href = "/" }}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-150 active:scale-95"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                Volver al inicio
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150"
+                style={{ backgroundColor: "white", color: COLORS.TEXT_MUTED, border: `1px solid ${COLORS.BORDER_SUBTLE}` }}
+              >
+                Recargar p&aacute;gina
+              </button>
+            </div>
           </div>
         )
       )

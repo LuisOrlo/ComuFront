@@ -116,6 +116,30 @@ export interface FinancialAccount {
   }>
 }
 
+export interface LineaPagoModulo {
+  id: string
+  modulo: {
+    id: string | null
+    nombre: string
+    numero_orden: number
+  }
+  monto_original: number
+  monto_ajustado: number
+  monto_abonado: number
+  saldo_pendiente: number
+  estado: string
+  orden: number
+}
+
+export interface MatriculaConLineas {
+  id: string
+  curso: {
+    nombre: string
+    instancia: string
+  }
+  lineas_pago: LineaPagoModulo[]
+}
+
 export interface FinancialProfile {
   estudiante: {
     id: string
@@ -124,6 +148,7 @@ export interface FinancialProfile {
     correo: string
     celular: string
   }
+  matriculas?: MatriculaConLineas[]
   cuentas: FinancialAccount[]
   transacciones: Array<{
     id: string

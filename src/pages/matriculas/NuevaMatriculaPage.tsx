@@ -77,8 +77,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         result.push({ id: c.ciudad.id, nombre: c.ciudad.nombre })
       }
     }
+    for (const t of talleres) {
+      if (t.ciudad && !seen.has(t.ciudad.id)) {
+        seen.add(t.ciudad.id)
+        result.push({ id: t.ciudad.id, nombre: t.ciudad.nombre })
+      }
+    }
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre))
-  }, [cursosAbiertos])
+  }, [cursosAbiertos, talleres])
   const [selectedTipo, setSelectedTipo] = useState("")
   const [selectedCatalogoNombre, setSelectedCatalogoNombre] = useState("")
   const [catalogoFilter, setCatalogoFilter] = useState("")
@@ -113,44 +119,60 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     cursosService.getCatalogos().then(res => setCatalogos(res.data || [])).catch(() => setCatalogos([]))
   }, [])
 
+  const cargarCursosBase = () => {
+    const params: Record<string, string | number> = { per_page: 50, no_iniciados: "true" }
+    if (selectedModalidad) params.modalidad = selectedModalidad
+    if (selectedCiudadId) params.ciudad_id = selectedCiudadId
+    return api.get("/cursos-abiertos", { params })
+      .then(res => res.data.data || [])
+  }
+
+  const cargarTalleresBase = () => {
+    const params: Record<string, unknown> = { per_page: 50, tab: "proximos" }
+    if (selectedModalidad) params.modalidad = selectedModalidad
+    if (selectedCiudadId) params.ciudad_id = selectedCiudadId
+    return api.get("/talleres", { params })
+      .then((res: any) => res.data.data || [])
+  }
+
+  const cargarCursosCatalogo = () => {
+    const params: Record<string, string | number> = { per_page: 50, no_iniciados: "true" }
+    if (catalogoFilter) params.catalogo_curso_id = catalogoFilter
+    if (selectedModalidad) params.modalidad = selectedModalidad
+    if (selectedCiudadId) params.ciudad_id = selectedCiudadId
+    return api.get("/cursos-abiertos", { params })
+      .then(res => res.data.data || [])
+  }
+
+  // Cargar cursos y talleres cuando cambia modalidad o ciudad
   useEffect(() => {
+    if (!selectedModalidad) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedCourseId("")
     setLoadingCursos(true)
 
-    const cargarCursos = () => {
-      const params: Record<string, string | number> = { per_page: 50, no_iniciados: "true" }
-      if (catalogoFilter) params.catalogo_curso_id = catalogoFilter
-      if (selectedCiudadId) params.ciudad_id = selectedCiudadId
-      if (selectedModalidad) params.modalidad = selectedModalidad
-      return api.get("/cursos-abiertos", { params })
-        .then(res => res.data.data || [])
-    }
+    Promise.allSettled([cargarCursosBase(), cargarTalleresBase()])
+      .then(([cursosResult, tallsResult]) => {
+        setCursosAbiertos(cursosResult.status === "fulfilled" ? cursosResult.value : [])
+        setTalleres(tallsResult.status === "fulfilled" ? tallsResult.value : [])
+        if (cursosResult.status === "rejected") console.warn("Cursos no disponibles:", cursosResult.reason)
+        if (tallsResult.status === "rejected") console.warn("Talleres no disponibles:", tallsResult.reason)
+      })
+      .finally(() => setLoadingCursos(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModalidad, selectedCiudadId])
 
-    const cargarTalleres = () => {
-      const params: Record<string, unknown> = { per_page: 50, tab: "proximos" }
-      if (selectedModalidad) params.modalidad = selectedModalidad
-      if (selectedCiudadId) params.ciudad_id = selectedCiudadId
-      return tallerService.listar(params)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((res: any) => res.data || [])
-    }
+  // Recargar cursos cuando se selecciona un catálogo específico
+  useEffect(() => {
+    if (!catalogoFilter || !selectedModalidad) return
+    setLoadingCursos(true)
 
-    if (selectedTipo === "taller") {
-      cargarTalleres()
-        .then(data => { setTalleres(data); setCursosAbiertos([]) })
-        .catch(reason => { console.warn("Talleres no disponibles:", reason); setTalleres([]); setCursosAbiertos([]) })
-        .finally(() => setLoadingCursos(false))
-    } else {
-      Promise.allSettled([cargarCursos(), cargarTalleres()])
-        .then(([cursosResult, tallsResult]) => {
-          setCursosAbiertos(cursosResult.status === "fulfilled" ? cursosResult.value : [])
-          setTalleres(tallsResult.status === "fulfilled" ? tallsResult.value : [])
-          if (tallsResult.status === "rejected") console.warn("Talleres no disponibles:", tallsResult.reason)
-        })
-        .finally(() => setLoadingCursos(false))
-    }
-  }, [catalogoFilter, selectedCiudadId, selectedModalidad, selectedTipo])
+    cargarCursosCatalogo()
+      .then(data => setCursosAbiertos(data))
+      .catch(reason => { console.warn("Cursos no disponibles:", reason); setCursosAbiertos([]) })
+      .finally(() => setLoadingCursos(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogoFilter])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -172,9 +194,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     { key: "personalizado" as const, label: "Curso Personalizado", desc: "Programa adaptado a tus necesidades", categoria: "personalizado" },
   ]
 
-  const availableTipos = TIPO_OPTIONS.filter(t => {
-    return catalogos.some(c => c.categoria === t.categoria && c.es_activo !== false)
-  })
+  const availableTipos = useMemo(() => {
+    return TIPO_OPTIONS.filter(t => {
+      if (t.categoria === "taller") return talleres.length > 0
+      if (t.categoria === "regular") return cursosAbiertos.some(c => c.catalogo?.categoria === "regular")
+      if (t.categoria === "personalizado") return cursosAbiertos.some(c => c.catalogo?.categoria === "personalizado")
+      return false
+    })
+  }, [cursosAbiertos, talleres])
 
   const sanitizeInput = (campo: string, valor: string): string => {
     if (campo === "telefono") return valor.replace(/[^0-9]/g, "").slice(0, 10)
@@ -496,7 +523,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu modalidad</p>
               <div className="grid grid-cols-2 gap-3">
                 {["presencial", "virtual"].map(mod => (
-                  <button key={mod} onClick={() => { setSelectedModalidad(mod); if (mod === "virtual") { setSelectedCiudadId(null); setSelectedCiudadNombre(""); setSubStep("tipo") } else setSubStep("ciudad") }}
+                  <button key={mod} onClick={() => { setSelectedModalidad(mod); setSelectedCiudadId(null); setSelectedCiudadNombre(""); setSelectedTipo(""); setCatalogoFilter(""); setSelectedCatalogoNombre(""); if (mod === "virtual") { setSubStep("tipo") } else setSubStep("ciudad") }}
                     className="rounded-xl border-2 p-6 text-center cursor-pointer transition-all hover:shadow-md"
                     style={{ borderColor: selectedModalidad === mod ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
                     <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3"
@@ -516,7 +543,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             </div>
           )}
 
-          {subStep === "ciudad" && (
+              {subStep === "ciudad" && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
@@ -526,7 +553,9 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona la ciudad donde deseas estudiar</p>
               <p className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>Las ciudades mostradas cuentan actualmente con cursos, talleres o cursos personalizados disponibles.</p>
               {ciudades.length === 0 ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando ciudades...</div>
+                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                  {loadingCursos ? "Cargando ciudades..." : "No hay ciudades disponibles"}
+                </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {ciudades.map(c => (
@@ -559,7 +588,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               {loadingCursos ? (
                 <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Verificando programas disponibles...</div>
               ) : availableTipos.length === 0 ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay programas disponibles para esta ciudad y modalidad</div>
+                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay programas disponibles para esta modalidad{selectedModalidad === "presencial" && selectedCiudadNombre ? " y ciudad" : ""}</div>
               ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {availableTipos.map(t => (
@@ -600,12 +629,18 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                 <button onClick={() => setSubStep("tipo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
               </div>
               <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona el curso que deseas estudiar</p>
-              {catalogos.length === 0 ? (
+              {loadingCursos ? (
+                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando cursos...</div>
+              ) : catalogos.length === 0 ? (
                 <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay cursos disponibles</div>
               ) : (() => {
-                const filtrados = catalogos.filter(c => c.es_activo !== false).filter(c => c.categoria === (selectedTipo === "curso" ? "regular" : selectedTipo))
+                const availableCatalogoIds = new Set(cursosAbiertos.map(c => c.catalogo?.id).filter(Boolean))
+                const filtrados = catalogos
+                  .filter(c => c.es_activo !== false)
+                  .filter(c => c.categoria === (selectedTipo === "curso" ? "regular" : selectedTipo))
+                  .filter(c => availableCatalogoIds.has(c.id))
                 if (filtrados.length === 0) {
-                  return <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay {selectedTipo === "curso" ? "cursos" : selectedTipo === "taller" ? "talleres" : "cursos personalizados"} disponibles para esta selección</div>
+                  return <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay {selectedTipo === "curso" ? "cursos" : selectedTipo === "taller" ? "talleres" : "cursos personalizados"} disponibles para esta ciudad y modalidad</div>
                 }
                 return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-1">
@@ -659,7 +694,22 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                   }
 
                   if (items.length === 0) {
-                    return <div className="col-span-full py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay cursos o talleres disponibles para esta selección</div>
+                    return (
+                      <div className="col-span-full py-8 text-center space-y-3">
+                        <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                          No hay {selectedTipo === "curso" ? "cursos" : selectedTipo === "taller" ? "talleres" : "cursos personalizados"} disponibles para esta ciudad y modalidad
+                        </p>
+                        {selectedTipo === "curso" && talleres.length > 0 && (
+                          <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                            Hay {talleres.length} taller(es) disponible(s).{" "}
+                            <button onClick={() => { setSelectedTipo("taller"); setCatalogoFilter(""); setSelectedCatalogoNombre(""); setSubStep("lista") }}
+                              className="font-semibold underline" style={{ color: COLORS.ACCENT }}>
+                              Ver talleres
+                            </button>
+                          </p>
+                        )}
+                      </div>
+                    )
                   }
 
                   return items.map(item => {

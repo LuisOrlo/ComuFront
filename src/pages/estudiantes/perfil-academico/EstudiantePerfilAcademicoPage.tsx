@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router"
+import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { useStudentProfile } from "../hooks/useStudentProfile"
@@ -7,6 +8,7 @@ import { InfoTabContent } from "../sections/InfoTabContent"
 import { OverviewTabContent } from "../sections/OverviewTabContent"
 import { AcademicTabContent } from "../sections/AcademicTabContent"
 import { FinancialTabContent } from "../sections/FinancialTabContent"
+import { PagoInicialMatriculaModal } from "../components/PagoInicialMatriculaModal"
 import { COLORS } from "@/lib/constants"
 
 const tabs = [
@@ -18,6 +20,12 @@ const tabs = [
 
 export function EstudiantePerfilAcademicoPage() {
   const { id } = useParams<{ id: string }>()
+  const [pagoInicialOpen, setPagoInicialOpen] = useState(false)
+  const [pagoInicialData, setPagoInicialData] = useState<{
+    lineasPagoIds: string[]
+    matriculaId: string
+    cursoNombre: string
+  } | null>(null)
   const {
     studentData,
     academicData,
@@ -142,10 +150,22 @@ export function EstudiantePerfilAcademicoPage() {
             <AcademicTabContent data={academicData} loading={loading && !academicData} />
           )}
           {activeTab === "financiero" && (
-            <FinancialTabContent data={financialData} loading={loading && !financialData} />
+            <FinancialTabContent data={financialData} loading={loading && !financialData}
+              onPagoInicial={(data) => { setPagoInicialData(data); setPagoInicialOpen(true) }} />
           )}
         </div>
       </div>
+
+      {pagoInicialData && (
+        <PagoInicialMatriculaModal
+          open={pagoInicialOpen}
+          onOpenChange={setPagoInicialOpen}
+          lineasPagoIds={pagoInicialData.lineasPagoIds}
+          matriculaId={pagoInicialData.matriculaId}
+          cursoNombre={pagoInicialData.cursoNombre}
+          onCompleted={() => { setPagoInicialOpen(false); setPagoInicialData(null) }}
+        />
+      )}
     </div>
   )
 }

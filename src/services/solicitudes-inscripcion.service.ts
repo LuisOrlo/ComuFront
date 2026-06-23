@@ -112,7 +112,7 @@ export interface RejectRequest {
 
 export const solicitudesInscripcionService = {
   /**
-   * GET /api/v1/staff/solicitudes-inscripcion
+   * GET /api/staff/solicitudes-inscripcion
    * Listar solicitudes de inscripción con filtros
    */
   async getSolicitudes(
@@ -144,7 +144,7 @@ export const solicitudesInscripcionService = {
   },
 
   /**
-   * GET /api/v1/staff/solicitudes-inscripcion/{id}
+   * GET /api/staff/solicitudes-inscripcion/{id}
    * Obtener detalles de una solicitud
    */
   async getSolicitudDetalle(id: string): Promise<SolicitudInscripcionDetallada> {
@@ -155,7 +155,7 @@ export const solicitudesInscripcionService = {
   },
 
   /**
-   * POST /api/v1/staff/solicitudes-inscripcion/{id}/validar
+   * POST /api/staff/solicitudes-inscripcion/{id}/validar
    * Aprobar una solicitud
    */
   async aprobarSolicitud(
@@ -178,7 +178,7 @@ export const solicitudesInscripcionService = {
   },
 
   /**
-   * POST /api/v1/staff/solicitudes-inscripcion/{id}/rechazar
+   * POST /api/staff/solicitudes-inscripcion/{id}/rechazar
    * Rechazar una solicitud
    */
   async rechazarSolicitud(
@@ -199,7 +199,7 @@ export const solicitudesInscripcionService = {
   },
 
   /**
-   * POST /api/v1/staff/solicitudes-inscripcion/{id}/cancelar
+   * POST /api/staff/solicitudes-inscripcion/{id}/cancelar
    * Cancelar una solicitud
    */
   async cancelarSolicitud(id: string): Promise<{

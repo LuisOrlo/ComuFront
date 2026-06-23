@@ -57,12 +57,14 @@ export function CourseCard({ curso }: { curso: Curso }) {
           >
             {curso.modalidad === "presencial" ? "Presencial" : "Virtual"}
           </span>
-          <span
-            className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border"
-            style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}
-          >
-            {curso.ciudad}
-          </span>
+          {curso.ciudad && (
+            <span
+              className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border"
+              style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}
+            >
+              {curso.ciudad}
+            </span>
+          )}
         </div>
 
         <h3

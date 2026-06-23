@@ -437,9 +437,7 @@ export function CursoFormPage() {
                           style={{ color: form.catalogo_curso_id === cat.id ? ACCENT : CHARCOAL }}>
                           {cat.nombre}
                         </span>
-                        <span className="text-xs mt-1" style={{ color: TEXT_MUTED }}>
-                          {cat.categoria} • {selectedCatalogo?.id === cat.id ? numModulosDefault : 0} módulos
-                        </span>
+                        
                       </div>
                       {form.catalogo_curso_id === cat.id && <span className="ml-2 text-lg">✓</span>}
                     </button>
