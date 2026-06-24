@@ -55,5 +55,30 @@ export const financeService = {
   async verificarTransaccion(id: string, data: any) {
     const response = await api.post(`/finanzas/transacciones/${id}/verificar`, data)
     return response.data
-  }
+  },
+
+  async getHistorial(params: any) {
+    const response = await api.get("/finanzas/historial", { params })
+    return response.data
+  },
+
+  async getTransaccionDetalle(id: string) {
+    const response = await api.get(`/finanzas/transacciones/${id}/detalle`)
+    return response.data
+  },
+
+  async getCursoFinanciero(id: string) {
+    const response = await api.get(`/finanzas/cursos/${id}/financiero`)
+    return response.data
+  },
+
+  async getTallerFinanciero(id: string) {
+    const response = await api.get(`/finanzas/talleres/${id}/financiero`)
+    return response.data
+  },
+
+  async getHistorialParticipanteTaller(tallerId: string, participanteId: string) {
+    const response = await api.get(`/finanzas/talleres/${tallerId}/participante/${participanteId}`)
+    return response.data
+  },
 }

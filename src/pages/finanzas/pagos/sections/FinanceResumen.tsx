@@ -13,6 +13,8 @@ import {
   ArrowDown01Icon,
   UserIcon,
 } from "@hugeicons/core-free-icons"
+import { COLORS } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 
 interface FinanceResumenProps {
   stats: any
@@ -20,9 +22,9 @@ interface FinanceResumenProps {
 }
 
 const ORIGEN_CONFIG: Record<string, { label: string; desc: string; icon: any; color: string }> = {
-  cursos:     { label: "Cursos",     desc: "Matrículas e inscripciones",        icon: LibraryIcon,    color: "#4f46e5" },
-  talleres:   { label: "Talleres",   desc: "Talleres y workshops",             icon: SchoolIcon,     color: "#0891b2" },
-  servicios:  { label: "Servicios",  desc: "Aulas, podcast, equipos",          icon: AiFolderIcon,   color: "#7c3aed" },
+  cursos:    { label: "Cursos",     desc: "Matrículas e inscripciones",        icon: LibraryIcon,    color: "#4f46e5" },
+  talleres:  { label: "Talleres",   desc: "Talleres y workshops",             icon: SchoolIcon,     color: "#0891b2" },
+  servicios: { label: "Servicios",  desc: "Aulas, podcast, equipos",          icon: AiFolderIcon,   color: "#7c3aed" },
 }
 
 function getNombrePersona(cuenta: any): string {
@@ -39,8 +41,10 @@ function getNombrePersona(cuenta: any): string {
 
 function getCuentaType(cuenta: any): string {
   if (cuenta.inscripcion_taller || cuenta.inscripcion_taller_id) return "talleres"
-  if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id) return "servicios"
-  if (cuenta.tipo === "aula" || cuenta.tipo === "podcast" || cuenta.tipo === "equipo" || cuenta.tipo === "personalizado") return "servicios"
+  if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id
+      || cuenta.servicio_streaming_id || cuenta.servicio_produccion_id || cuenta.edicion_video_id
+      || cuenta.clase_extra_id || cuenta.asesoria_id || cuenta.reserva_radio_id) return "servicios"
+  if (cuenta.tipo === "aula" || cuenta.tipo === "podcast" || cuenta.tipo === "equipo" || cuenta.tipo === "streaming" || cuenta.tipo === "produccion" || cuenta.tipo === "edicion" || cuenta.tipo === "radio" || cuenta.tipo === "clase_extra" || cuenta.tipo === "asesoria") return "servicios"
   if (cuenta.tipo === "taller" || cuenta.tipo === "talleres") return "talleres"
   const cat = cuenta.matricula?.curso_abierto?.catalogo?.categoria
     ?? cuenta.matricula?.curso_abierto?.tipo
@@ -48,7 +52,7 @@ function getCuentaType(cuenta: any): string {
     ?? cuenta.categoria
   if (cat === "taller" || cat === "talleres") return "talleres"
   if (cat === "personalizado") return "servicios"
-  
+
   return "cursos"
 }
 
@@ -56,19 +60,42 @@ function getCuentaName(cuenta: any): string {
   if (cuenta.inscripcion_taller?.taller?.nombre) return cuenta.inscripcion_taller.taller.nombre
   if (cuenta.matricula?.curso_abierto?.nombre_instancia) return cuenta.matricula.curso_abierto.nombre_instancia
   if (cuenta.matricula?.curso_abierto?.catalogo?.nombre) return cuenta.matricula.curso_abierto.catalogo.nombre
+  if (cuenta.curso_nombre) return cuenta.curso_nombre
   if (cuenta.inscripcion_taller_id) return "Taller"
   if (cuenta.nombre_servicio) return cuenta.nombre_servicio
   return cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre || "Curso"
 }
 
+function HealthBar({ recaudado, total }: { recaudado: number; total: number }) {
+  const pct = total > 0 ? (recaudado / total) * 100 : 0
+  const barColor =
+    pct >= 80 ? "oklch(0.55 0.15 150)" :
+    pct >= 50 ? "oklch(0.65 0.15 75)" :
+    "oklch(0.5 0.15 20)"
+
+  return (
+    <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "oklch(0.93 0 0)" }}>
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(pct, 100)}%` }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="h-full rounded-full"
+        style={{ backgroundColor: barColor }}
+      />
+    </div>
+  )
+}
+
 export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const [filter, setFilter] = useState<string>("todos")
+  const [modalidadFilter, setModalidadFilter] = useState<string>("todos")
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const sinCuentaTalleres = stats?.sin_cuenta?.talleres
   const sinCuentaServicios = stats?.sin_cuenta?.servicios
-  const sinCuentaTotal = (sinCuentaTalleres?.total || 0) + (sinCuentaServicios?.total || 0)
-  const sinCuentaCount = (sinCuentaTalleres?.count || 0) + (sinCuentaServicios?.count || 0)
+  const sinCuentaCursos = stats?.sin_cuenta?.cursos
+  const sinCuentaTotal = (sinCuentaTalleres?.total || 0) + (sinCuentaServicios?.total || 0) + (sinCuentaCursos?.total || 0)
+  const sinCuentaCount = (sinCuentaTalleres?.count || 0) + (sinCuentaServicios?.count || 0) + (sinCuentaCursos?.count || 0)
 
   const totalPendiente = Number(stats?.total_pendiente || 0) + sinCuentaTotal
   const totalConDeuda = Number(stats?.cuentas_con_deuda || 0) + sinCuentaCount
@@ -77,38 +104,50 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     return cuentas.reduce((sum, cuenta) => sum + Number(cuenta.monto_abonado || 0), 0)
   }, [cuentas])
 
-  const cards = [
+  const kpiCards = [
     {
       title: "Pendiente",
       value: `$${totalPendiente.toLocaleString()}`,
       icon: AlertCircleIcon,
       color: "oklch(0.5 0.15 20)",
-      bg: "bg-red-50",
+      bg: "oklch(0.5 0.15 20 / 0.12)",
     },
     {
       title: "Cobrado",
       value: `$${totalCobradoLocal.toLocaleString()}`,
       icon: CheckmarkCircle02Icon,
       color: "oklch(0.55 0.15 150)",
-      bg: "bg-green-50",
+      bg: "oklch(0.55 0.15 150 / 0.12)",
     },
     {
       title: "Por Verificar",
       value: stats?.pendientes_verificacion || 0,
       icon: InvoiceIcon,
       color: "oklch(0.65 0.15 75)",
-      bg: "bg-amber-50",
+      bg: "oklch(0.65 0.15 75 / 0.12)",
     },
     {
       title: "Con Deuda",
       value: totalConDeuda,
       icon: Coins01Icon,
       color: "oklch(0.5 0.1 240)",
-      bg: "bg-blue-50",
+      bg: "oklch(0.5 0.1 240 / 0.12)",
     },
   ]
 
-  // Build groups with individual entries, merging sin_cuenta items from stats
+  const getModalidad = (cuenta: any): string | null => {
+    return cuenta.matricula?.curso_abierto?.modalidad
+      || cuenta.solicitud_inscripcion?.curso_abierto?.modalidad
+      || cuenta.inscripcion_taller?.taller?.modalidad
+      || cuenta.modalidad
+      || null
+  }
+
+  const cuentasFiltradas = useMemo(() => {
+    if (modalidadFilter === "todos") return cuentas
+    return cuentas.filter(c => getModalidad(c) === modalidadFilter)
+  }, [cuentas, modalidadFilter])
+
   const processedData = useMemo(() => {
     const groups: Record<string, any> = {
       cursos:    { label: "Cursos",    items: {} },
@@ -116,7 +155,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
       servicios: { label: "Servicios", items: {} },
     }
 
-    cuentas.forEach((cuenta) => {
+    cuentasFiltradas.forEach((cuenta) => {
       if (!cuenta) return
       const type = getCuentaType(cuenta)
       const name = getCuentaName(cuenta)
@@ -125,8 +164,8 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
       if (!groups[type].items[name]) {
         groups[type].items[name] = {
           total: 0,
-          saldo: 0,
           cobrado: 0,
+          saldo: 0,
           personas: 0,
           deudores: 0,
           entries: [],
@@ -134,41 +173,55 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
       }
       const item = groups[type].items[name]
       item.total += Number(cuenta.monto_total || 0)
-      item.saldo += Number(cuenta.saldo_pendiente || 0)
       item.cobrado += Number(cuenta.monto_abonado || 0)
+      item.saldo += Number(cuenta.saldo_pendiente || 0)
       item.personas += 1
       if (Number(cuenta.saldo_pendiente || 0) > 0) item.deudores += 1
       item.entries.push(cuenta)
     })
 
-    // Merge talleres sin cuenta (inscripciones sin cuenta_por_cobrar)
     if (Array.isArray(stats?.sin_cuenta?.talleres?.items)) {
       stats.sin_cuenta.talleres.items.forEach((item: any) => {
         const name = item.inscripcion_taller?.taller?.nombre || "Taller"
         if (!groups.talleres.items[name]) {
-          groups.talleres.items[name] = { total: 0, saldo: 0, cobrado: 0, personas: 0, deudores: 0, entries: [] }
+          groups.talleres.items[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, deudores: 0, entries: [] }
         }
         const g = groups.talleres.items[name]
         g.total += Number(item.monto_total || 0)
-        g.saldo += Number(item.saldo_pendiente || 0)
         g.cobrado += Number(item.monto_abonado || 0)
+        g.saldo += Number(item.saldo_pendiente || 0)
         g.personas += 1
         if (Number(item.saldo_pendiente || 0) > 0) g.deudores += 1
         g.entries.push(item)
       })
     }
 
-    // Merge servicios sin cuenta
     if (Array.isArray(stats?.sin_cuenta?.servicios?.items)) {
       stats.sin_cuenta.servicios.items.forEach((item: any) => {
         const name = item.nombre_servicio || "Servicio"
         if (!groups.servicios.items[name]) {
-          groups.servicios.items[name] = { total: 0, saldo: 0, cobrado: 0, personas: 0, deudores: 0, entries: [] }
+          groups.servicios.items[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, deudores: 0, entries: [] }
         }
         const g = groups.servicios.items[name]
         g.total += Number(item.monto_total || 0)
-        g.saldo += Number(item.saldo_pendiente || 0)
         g.cobrado += Number(item.monto_abonado || 0)
+        g.saldo += Number(item.saldo_pendiente || 0)
+        g.personas += 1
+        if (Number(item.saldo_pendiente || 0) > 0) g.deudores += 1
+        g.entries.push(item)
+      })
+    }
+
+    if (Array.isArray(stats?.sin_cuenta?.cursos?.items)) {
+      stats.sin_cuenta.cursos.items.forEach((item: any) => {
+        const name = item.curso_nombre || "Curso"
+        if (!groups.cursos.items[name]) {
+          groups.cursos.items[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, deudores: 0, entries: [] }
+        }
+        const g = groups.cursos.items[name]
+        g.total += Number(item.monto_total || 0)
+        g.cobrado += Number(item.monto_abonado || 0)
+        g.saldo += Number(item.saldo_pendiente || 0)
         g.personas += 1
         if (Number(item.saldo_pendiente || 0) > 0) g.deudores += 1
         g.entries.push(item)
@@ -176,7 +229,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     }
 
     return groups
-  }, [cuentas, stats])
+  }, [cuentasFiltradas, stats])
 
   const filteredData = useMemo(() => {
     if (filter === "todos") return processedData
@@ -185,35 +238,38 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
 
   return (
     <div className="space-y-6">
-      {/* Compact summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {cards.map((card, idx) => (
+        {kpiCards.map((card, idx) => (
           <motion.div
             key={idx}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.06 }}
-            className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm"
+            transition={{ delay: idx * 0.06, type: "spring", stiffness: 400, damping: 30 }}
+            className="relative rounded-2xl border bg-white p-5 overflow-hidden"
+            style={{ borderColor: COLORS.BORDER_SUBTLE }}
           >
-            <div className="flex items-center gap-3">
-              <div className={`size-8 rounded-lg ${card.bg} flex items-center justify-center shrink-0`}>
-                <HugeiconsIcon icon={card.icon} size={16} style={{ color: card.color }} />
+            <motion.div
+              className="absolute -top-6 -right-6 size-20 rounded-full blur-3xl pointer-events-none"
+              style={{ backgroundColor: card.bg }}
+            />
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="size-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: card.bg }}>
+                <HugeiconsIcon icon={card.icon} size={18} style={{ color: card.color }} />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{card.title}</p>
-                <p className="text-sm font-black text-gray-900 truncate">{card.value}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>{card.title}</p>
+                <p className="text-lg font-black truncate" style={{ color: COLORS.CHARCOAL }}>{card.value}</p>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Distribution detail — primary section */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
+      <div className="rounded-2xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex items-center justify-between p-6 pb-4">
           <div>
-            <h3 className="text-base font-bold text-gray-900">Distribución Detallada</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">{cuentas.length + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0)} cuenta{(cuentas.length + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0)) !== 1 ? "s" : ""} registradas</p>
+            <h3 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>Distribución Detallada</h3>
+            <p className="text-[11px] opacity-40 mt-0.5">{(cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0) + (stats?.sin_cuenta?.cursos?.items?.length || 0)} cuenta{((cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0) + (stats?.sin_cuenta?.cursos?.items?.length || 0)) !== 1 ? "s" : ""} registradas</p>
           </div>
           <div className="flex gap-1.5">
             {[
@@ -225,9 +281,33 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                  filter === f.key ? "bg-gray-900 text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                  filter === f.key
+                    ? "text-white shadow-sm"
+                    : "hover:opacity-60"
+                )}
+                style={filter === f.key ? { backgroundColor: COLORS.ACCENT } : { color: COLORS.TEXT_MUTED, backgroundColor: "oklch(0.95 0 0)" }}
+              >
+                {f.label}
+              </button>
+            ))}
+            <span className="mx-2 w-px self-stretch bg-gray-200" />
+            {[
+              { key: "todos", label: "Ambas" },
+              { key: "presencial", label: "Presencial" },
+              { key: "virtual", label: "Virtual" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setModalidadFilter(f.key === "todos" ? "todos" : f.key)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                  modalidadFilter === f.key
+                    ? "text-white shadow-sm"
+                    : "hover:opacity-60"
+                )}
+                style={modalidadFilter === f.key ? { backgroundColor: COLORS.CHARCOAL } : { color: COLORS.TEXT_MUTED, backgroundColor: "oklch(0.95 0 0)" }}
               >
                 {f.label}
               </button>
@@ -235,55 +315,66 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
           </div>
         </div>
 
-        <div className="space-y-2">
-          {Object.entries(filteredData).map(([type, group]) => (
+        <div className="px-6 pb-6 space-y-2">
+          {Object.entries(filteredData).map(([type, group]: [string, any]) => (
             <div key={type}>
-              <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-widest mb-1.5 ml-1">
+              <h4 className="font-bold uppercase text-[10px] tracking-widest mb-1.5 ml-1" style={{ color: COLORS.TEXT_MUTED }}>
                 {group.label}
               </h4>
               {Object.entries(group.items).map(([name, item]: [string, any]) => {
                 const id = `${type}-${name}`
                 const hasDebtors = item.deudores > 0
                 const isExpanded = expandedId === id
+                const recaudadoPct = item.total > 0 ? (item.cobrado / item.total) * 100 : 0
                 return (
-                  <div key={id} className="border border-gray-100 rounded-xl overflow-hidden mb-1.5">
+                  <div key={id} className="border rounded-xl overflow-hidden mb-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : id)}
-                      className={`w-full px-4 py-3 flex items-center justify-between text-left transition-colors ${
-                        hasDebtors ? "bg-red-50/50" : "bg-white hover:bg-gray-50/50"
-                      }`}
+                      className="w-full px-4 py-3 flex items-center justify-between text-left transition-colors hover:bg-black/[0.02]"
+                      style={{ backgroundColor: hasDebtors ? "oklch(0.5 0.15 20 / 0.04)" : "transparent" }}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`size-7 rounded-lg flex items-center justify-center shrink-0 ${
-                          hasDebtors ? "bg-red-100" : "bg-blue-100"
-                        }`}>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="size-7 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: hasDebtors ? "oklch(0.5 0.15 20 / 0.1)" : "oklch(0.5 0.1 240 / 0.1)" }}
+                        >
                           <HugeiconsIcon
                             icon={ORIGEN_CONFIG[type]?.icon || LibraryIcon}
                             size={14}
                             color={hasDebtors ? "#ef4444" : (ORIGEN_CONFIG[type]?.color || "#4f46e5")}
                           />
                         </div>
-                        <div className="min-w-0">
-                          <span className="text-sm font-bold text-gray-900 truncate block">{name}</span>
-                          <span className="text-[10px] text-gray-400">{item.personas} persona{item.personas !== 1 ? "s" : ""}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold truncate block" style={{ color: COLORS.CHARCOAL }}>{name}</span>
+                            <span className="text-[10px] opacity-40 shrink-0">{item.personas} persona{item.personas !== 1 ? "s" : ""}</span>
+                          </div>
+                          <div className="mt-1.5 pr-2">
+                            <div className="flex items-center gap-2">
+                              <HealthBar recaudado={item.cobrado} total={item.total} />
+                              <span className="text-[10px] font-bold shrink-0" style={{ color: recaudadoPct >= 80 ? "oklch(0.55 0.15 150)" : recaudadoPct >= 50 ? "oklch(0.65 0.15 75)" : "oklch(0.5 0.15 20)" }}>
+                                {Math.round(recaudadoPct)}%
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-right shrink-0">
+                      <div className="flex items-center gap-4 text-right shrink-0 ml-4">
                         <div className="hidden sm:block">
-                          <p className="text-[10px] text-gray-400">Total</p>
-                          <p className="text-sm font-black">${item.total.toLocaleString()}</p>
+                          <p className="text-[10px] opacity-40">Total</p>
+                          <p className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p>
                         </div>
                         <div className="hidden sm:block">
-                          <p className="text-[10px] text-gray-400">Pendiente</p>
-                          <p className={`text-sm font-black ${hasDebtors ? "text-red-600" : "text-gray-900"}`}>
+                          <p className="text-[10px] opacity-40">Recaudado</p>
+                          <p className="text-sm font-black text-green-600">${item.cobrado.toLocaleString()}</p>
+                        </div>
+                        <div className="hidden sm:block">
+                          <p className="text-[10px] opacity-40">Pendiente</p>
+                          <p className={cn("text-sm font-black", hasDebtors ? "text-red-600" : "")} style={{ color: hasDebtors ? undefined : COLORS.CHARCOAL }}>
                             ${item.saldo.toLocaleString()}
                           </p>
                         </div>
-                        <motion.div
-                          animate={{ rotate: isExpanded ? 180 : 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="text-gray-400" />
+                        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="opacity-40" />
                         </motion.div>
                       </div>
                     </button>
@@ -295,35 +386,20 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="border-t border-gray-100 overflow-hidden"
+                          className="border-t overflow-hidden"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
                         >
-                          <div className="bg-gray-50/70 px-4 py-3 border-b border-gray-100">
+                          <div className="px-4 py-3 border-b" style={{ backgroundColor: "oklch(0.97 0 0)", borderColor: COLORS.BORDER_SUBTLE }}>
                             <div className="grid grid-cols-4 gap-3 text-xs">
-                              <div>
-                                <p className="text-[10px] text-gray-400">Valor Total</p>
-                                <p className="font-bold text-gray-900">${item.total.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-400">Cobrado</p>
-                                <p className="font-bold text-green-600">${item.cobrado.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-400">Pendiente</p>
-                                <p className="font-bold text-red-600">${item.saldo.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-400">{hasDebtors ? "Deudores" : "Pagado"}</p>
-                                <p className={`font-bold ${hasDebtors ? "text-red-600" : "text-green-600"}`}>
-                                  {item.deudores}/{item.personas}
-                                </p>
-                              </div>
+                              <div><p className="text-[10px] opacity-40">Valor Total</p><p className="font-bold" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p></div>
+                              <div><p className="text-[10px] opacity-40">Cobrado</p><p className="font-bold text-green-600">${item.cobrado.toLocaleString()}</p></div>
+                              <div><p className="text-[10px] opacity-40">Pendiente</p><p className="font-bold text-red-600">${item.saldo.toLocaleString()}</p></div>
+                              <div><p className="text-[10px] opacity-40">{hasDebtors ? "Deudores" : "Pagado"}</p><p className={cn("font-bold", hasDebtors ? "text-red-600" : "text-green-600")}>{item.deudores}/{item.personas}</p></div>
                             </div>
                           </div>
-
-                          {/* Individual entries */}
-                          <div className="divide-y divide-gray-100">
+                          <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                             {item.entries.length === 0 ? (
-                              <div className="p-4 text-xs text-gray-400 text-center">Sin registros</div>
+                              <div className="p-4 text-xs opacity-40 text-center">Sin registros</div>
                             ) : (
                               item.entries.map((cuenta: any) => {
                                 const nombre = getNombrePersona(cuenta)
@@ -331,37 +407,32 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                 const abonado = Number(cuenta.monto_abonado || 0)
                                 const total = Number(cuenta.monto_total || 0)
                                 return (
-                                  <div key={cuenta.id} className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-white/50 transition-colors">
+                                  <div key={cuenta.id || Math.random()} className="px-4 py-2.5 flex items-center justify-between gap-3 transition-colors hover:bg-white/50">
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="size-6 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                                        <HugeiconsIcon icon={UserIcon} size={12} className="text-gray-500" />
+                                      <div className="size-6 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.9 0 0)" }}>
+                                        <HugeiconsIcon icon={UserIcon} size={12} style={{ color: COLORS.TEXT_MUTED }} />
                                       </div>
                                       <div className="min-w-0">
-                                        <p className="text-xs font-semibold text-gray-900 truncate">{nombre}</p>
-                                        <p className="text-[10px] text-gray-400">
-                                          Total: <span className="font-medium">${total.toLocaleString()}</span>
-                                        </p>
+                                        <p className="text-xs font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
+                                        <p className="text-[10px] opacity-40">Total: <span className="font-medium">${total.toLocaleString()}</span></p>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                       <div className="text-right">
-                                        <p className="text-[10px] text-gray-400">Abonado</p>
+                                        <p className="text-[10px] opacity-40">Abonado</p>
                                         <p className="text-xs font-bold text-green-600">${abonado.toLocaleString()}</p>
                                       </div>
                                       <div className="text-right">
-                                        <p className="text-[10px] text-gray-400">Saldo</p>
-                                        <p className={`text-xs font-bold ${pendiente > 0 ? "text-red-600" : "text-gray-900"}`}>
+                                        <p className="text-[10px] opacity-40">Saldo</p>
+                                        <p className={cn("text-xs font-bold", pendiente > 0 ? "text-red-600" : "")} style={{ color: pendiente > 0 ? undefined : COLORS.CHARCOAL }}>
                                           ${pendiente.toLocaleString()}
                                         </p>
                                       </div>
-                                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
-                                        pendiente === 0
-                                          ? "bg-green-100 text-green-700"
-                                          : abonado > 0
-                                            ? "bg-amber-100 text-amber-700"
-                                            : "bg-red-100 text-red-700"
-                                      }`}>
-                                        {pendiente === 0 ? "Pagado" : abonado > 0 ? "Parcial" : "Deuda"}
+                                      <span className={cn(
+                                        "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
+                                        pendiente === 0 ? "bg-green-100 text-green-700" : abonado > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                      )}>
+                                        {pendiente === 0 ? "Al día" : abonado > 0 ? "Parcial" : "Deuda"}
                                       </span>
                                     </div>
                                   </div>

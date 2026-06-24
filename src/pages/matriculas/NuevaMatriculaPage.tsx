@@ -57,6 +57,12 @@ const placeholders: Record<string, string> = {
   correo: "correo@ejemplo.com",
 }
 
+const TIPO_OPTIONS = [
+  { key: "curso" as const, label: "Curso", desc: "Formación completa en un área específica", categoria: "regular" },
+  { key: "taller" as const, label: "Taller", desc: "Capacitación práctica y corta", categoria: "taller" },
+  { key: "personalizado" as const, label: "Curso Personalizado", desc: "Programa adaptado a tus necesidades", categoria: "personalizado" },
+]
+
 export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean; onSuccess?: () => void }) {
   const [paso, setPaso] = useState<Paso>(1)
   const [catalogos, setCatalogos] = useState<CatalogoCurso[]>([])
@@ -132,7 +138,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (selectedModalidad) params.modalidad = selectedModalidad
     if (selectedCiudadId) params.ciudad_id = selectedCiudadId
     return api.get("/talleres", { params })
-      .then((res: any) => res.data.data || [])
+      .then(res => (res.data as { data: unknown[] }).data || [])
   }
 
   const cargarCursosCatalogo = () => {
@@ -165,6 +171,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   // Recargar cursos cuando se selecciona un catálogo específico
   useEffect(() => {
     if (!catalogoFilter || !selectedModalidad) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingCursos(true)
 
     cargarCursosCatalogo()
@@ -187,12 +194,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const curso = cursosAbiertos.find(c => c.id === selectedCourseId)
   const tallerSel = talleres.find(t => t.id === selectedCourseId)
   const esTaller = !!tallerSel && !curso
-
-  const TIPO_OPTIONS = [
-    { key: "curso" as const, label: "Curso", desc: "Formación completa en un área específica", categoria: "regular" },
-    { key: "taller" as const, label: "Taller", desc: "Capacitación práctica y corta", categoria: "taller" },
-    { key: "personalizado" as const, label: "Curso Personalizado", desc: "Programa adaptado a tus necesidades", categoria: "personalizado" },
-  ]
 
   const availableTipos = useMemo(() => {
     return TIPO_OPTIONS.filter(t => {
@@ -479,6 +480,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             </div>
           </div>
           <div>
+            <br />
             <label className="block text-xs font-medium mb-1.5">Foto de la Cédula</label>
             <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) { setCedulaFile(file); setCedulaPreview(URL.createObjectURL(file)); setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n }) } }} />
             <div onClick={() => !cedulaPreview && cedulaInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: errors.cedulaFile ? "#ef4444" : COLORS.BORDER_SUBTLE }}>

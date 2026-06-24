@@ -127,28 +127,6 @@ export function TallerFormPage() {
     cargar()
   }, [id, isEdit, navigate])
 
-  // Cargar instructores al montar
-  useEffect(() => {
-    buscarInstructores("")
-    ciudadesService.getCiudadesTodas().then(setCiudades).catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const toggleDia = (dia: number) => {
-    setDiasSeleccionados(prev => {
-      if (prev.includes(dia)) {
-        setHorarios(h => h.filter(x => x.dia_semana !== dia))
-        return prev.filter(d => d !== dia)
-      }
-      setHorarios(h => [...h, { dia_semana: dia, hora_inicio: form.hora_inicio, hora_fin: form.hora_fin, aula: "" }])
-      return [...prev, dia].sort()
-    })
-  }
-
-  const updateHorario = (dia: number, field: "hora_inicio" | "hora_fin" | "aula", value: string) => {
-    setHorarios(prev => prev.map(h => h.dia_semana === dia ? { ...h, [field]: value } : h))
-  }
-
   const buscarInstructores = async (q: string) => {
     setInstructorQuery(q)
     setSearchingInstructor(true)
@@ -164,6 +142,28 @@ export function TallerFormPage() {
       setInstructores((res.data as any).data || [])
     } catch { setInstructores([]) }
     finally { setSearchingInstructor(false) }
+  }
+
+  // Cargar instructores al montar
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    buscarInstructores("")
+    ciudadesService.getCiudadesTodas().then(setCiudades).catch(() => {})
+  }, [])
+
+  const toggleDia = (dia: number) => {
+    setDiasSeleccionados(prev => {
+      if (prev.includes(dia)) {
+        setHorarios(h => h.filter(x => x.dia_semana !== dia))
+        return prev.filter(d => d !== dia)
+      }
+      setHorarios(h => [...h, { dia_semana: dia, hora_inicio: form.hora_inicio, hora_fin: form.hora_fin, aula: "" }])
+      return [...prev, dia].sort()
+    })
+  }
+
+  const updateHorario = (dia: number, field: "hora_inicio" | "hora_fin" | "aula", value: string) => {
+    setHorarios(prev => prev.map(h => h.dia_semana === dia ? { ...h, [field]: value } : h))
   }
 
   const seleccionarInstructor = (p: Persona) => {

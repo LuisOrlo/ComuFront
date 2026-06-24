@@ -404,16 +404,12 @@ export function AprobacionMatriculasPage() {
       const responseData = (result as any)?.data
 
       if (responseData?.lineas_pago_ids?.length > 0 && responseData?.matricula_id) {
-        setPagoInicialData({
-          lineasPagoIds: responseData.lineas_pago_ids,
-          matriculaId: responseData.matricula_id,
-          cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
-        })
-        setPagoInicialOpen(true)
         setSelected((prev: any) => prev ? {
           ...prev,
+          estado: "matricula_creada",
           _lineas_pago_ids: responseData.lineas_pago_ids,
           _matricula_id: responseData.matricula_id,
+          _mostrar_pago_inicial: true,
         } : null)
       } else if (selected?.pago?.monto_solicitado) {
         // Fallback legacy: no hay lineas_pago, usar cuentaPorCobrar
@@ -436,7 +432,7 @@ export function AprobacionMatriculasPage() {
       }
 
       toast.success("Matrícula aprobada")
-      setConfirmAction(null); setSelectedId(null); setSelected(null)
+      setConfirmAction(null)
       cargarSolicitudes()
     } catch (err) {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al aprobar")
@@ -967,24 +963,42 @@ export function AprobacionMatriculasPage() {
                                       style={{ backgroundColor: COLORS.ACCENT }}>
                                       <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar Matrícula
                                     </button>
-                                  </div>
-                                </>
-                              ) : selected?.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 ? (
-                                <div className="flex gap-3 pt-3">
-                                  <button onClick={() => {
-                                    setPagoInicialData({
-                                      lineasPagoIds: selected._lineas_pago_ids,
-                                      matriculaId: selected._matricula_id,
-                                      cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
-                                    })
-                                    setPagoInicialOpen(true)
-                                  }}
-                                    className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                    <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
-                                  </button>
-                                </div>
-                              ) : null}
+                              </div>
+                            </>
+                          ) : selected?.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 ? (
+                            selected?._mostrar_pago_inicial ? (
+                              <PagoInicialInline
+                                lineasPagoIds={selected._lineas_pago_ids}
+                                matriculaId={selected._matricula_id}
+                                cursoNombre={selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || ""}
+                                estudianteNombre={[selected.solicitante?.datos?.nombres, selected.solicitante?.datos?.apellidos].filter(Boolean).join(" ") || undefined}
+                                estudianteCedula={selected.solicitante?.datos?.cedula || undefined}
+                                onOmitir={() => {
+                                  setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
+                                  cargarSolicitudes()
+                                }}
+                                onCompleted={() => {
+                                  setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
+                                  cargarSolicitudes()
+                                }}
+                              />
+                            ) : (
+                              <div className="flex gap-3 pt-3">
+                                <button onClick={() => {
+                                  setPagoInicialData({
+                                    lineasPagoIds: selected._lineas_pago_ids,
+                                    matriculaId: selected._matricula_id,
+                                    cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
+                                  })
+                                  setPagoInicialOpen(true)
+                                }}
+                                  className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
+                                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                  <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
+                                </button>
+                              </div>
+                            )
+                          ) : null}
                             </div>
                           )}
                         </div>
@@ -1288,26 +1302,44 @@ export function AprobacionMatriculasPage() {
                                    <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar Matrícula
                                  </button>
                                </div>
-                             )}
-                              {s.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 && (
-                                <div className="flex gap-3 pt-3">
-                                  <button onClick={() => {
-                                    setPagoInicialData({
-                                      lineasPagoIds: selected._lineas_pago_ids,
-                                      matriculaId: selected._matricula_id,
-                                      cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
-                                    })
-                                    setPagoInicialOpen(true)
-                                  }}
-                                    className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                    <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
-                                  </button>
-                                </div>
                               )}
-                           </>
-                        ) : null}
-                      </div>
+                               {s.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 && (
+                                 selected?._mostrar_pago_inicial ? (
+                                   <PagoInicialInline
+                                     lineasPagoIds={selected._lineas_pago_ids}
+                                     matriculaId={selected._matricula_id}
+                                     cursoNombre={selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || ""}
+                                     estudianteNombre={[selected.solicitante?.datos?.nombres, selected.solicitante?.datos?.apellidos].filter(Boolean).join(" ") || undefined}
+                                     estudianteCedula={selected.solicitante?.datos?.cedula || undefined}
+                                     onOmitir={() => {
+                                       setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
+                                       cargarSolicitudes()
+                                     }}
+                                     onCompleted={() => {
+                                       setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
+                                       cargarSolicitudes()
+                                     }}
+                                   />
+                                 ) : (
+                                   <div className="flex gap-3 pt-3">
+                                     <button onClick={() => {
+                                       setPagoInicialData({
+                                         lineasPagoIds: selected._lineas_pago_ids,
+                                         matriculaId: selected._matricula_id,
+                                         cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
+                                       })
+                                       setPagoInicialOpen(true)
+                                     }}
+                                       className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
+                                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                       <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
+                                     </button>
+                                   </div>
+                                 )
+                               )}
+                            </>
+                         ) : null}
+                       </div>
                     )}
                   </div>
                 )
@@ -1690,6 +1722,232 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function PagoInicialInline({
+  lineasPagoIds, matriculaId, cursoNombre, estudianteNombre, estudianteCedula, onOmitir, onCompleted
+}: {
+  lineasPagoIds: string[]
+  matriculaId: string
+  cursoNombre: string
+  estudianteNombre?: string
+  estudianteCedula?: string
+  onOmitir: () => void
+  onCompleted: () => void
+}) {
+  const [multiModulo, setMultiModulo] = useState(false)
+  const [montos, setMontos] = useState<Record<string, string>>({})
+  const [metodoPago, setMetodoPago] = useState("efectivo")
+  const [saving, setSaving] = useState(false)
+  const [lineas, setLineas] = useState<any[]>([])
+  const [ajustes, setAjustes] = useState<Record<string, { expandido: boolean; nuevoPrecio: string; motivo: string }>>({})
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/personas/estudiantes/${lineasPagoIds[0]}/matricula/${matriculaId}/lineas-pago`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` }
+        })
+        setLineas(res.data.datos || [])
+      } catch {
+        setLineas(lineasPagoIds.map((id, i) => ({
+          id, modulo_id: id, nombre_modulo: `M\u00f3dulo ${i + 1}`, numero_orden: i + 1,
+          monto_original: 0, monto_ajustado: 0, monto_abonado: 0,
+        })))
+      }
+    }
+    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const visibles = multiModulo ? lineas : [lineas[0]]
+  const totalModulos = lineas.length
+
+  const toggleAjuste = (lineaId: string) => {
+    setAjustes(prev => {
+      const actual = prev[lineaId]
+      if (actual?.expandido) return { ...prev, [lineaId]: { ...actual, expandido: false } }
+      const linea = lineas.find(l => l.id === lineaId)
+      return { ...prev, [lineaId]: { expandido: true, nuevoPrecio: String(linea?.monto_ajustado ?? 0), motivo: actual?.motivo ?? "" } }
+    })
+  }
+
+  const confirmarAjuste = (lineaId: string) => {
+    const a = ajustes[lineaId]
+    if (!a) return
+    setLineas(prev => prev.map(l => l.id === lineaId ? { ...l, monto_ajustado: parseFloat(a.nuevoPrecio) || 0 } : l))
+    setAjustes(prev => ({ ...prev, [lineaId]: { ...a, expandido: false } }))
+  }
+
+  const handleRegistrar = async () => {
+    setSaving(true)
+    try {
+      const pagos = visibles
+        .filter(l => parseFloat(montos[l.id] || "0") > 0)
+        .map(l => {
+          const base: Record<string, unknown> = {
+            linea_pago_modulo_id: l.id,
+            monto: parseFloat(montos[l.id] || "0"),
+            metodo_pago: metodoPago,
+            fecha_pago: new Date().toISOString(),
+          }
+          const ajuste = ajustes[l.id]
+          if (ajuste && !ajuste.expandido && parseFloat(ajuste.nuevoPrecio || "0") !== l.monto_ajustado) {
+            base.monto_ajustado = parseFloat(ajuste.nuevoPrecio || "0")
+            base.motivo_ajuste = ajuste.motivo
+          }
+          return base
+        })
+      if (pagos.length === 0) { toast.error("Ingresa al menos un monto"); setSaving(false); return }
+      await axios.post(`${import.meta.env.VITE_API_URL}/finanzas/pagos-iniciales`, { matricula_id: matriculaId, pagos }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` }
+      })
+      toast.success(`Pago${pagos.length > 1 ? 's' : ''} registrado${pagos.length > 1 ? 's' : ''}`)
+      onCompleted()
+    } catch (err: any) {
+      toast.error(err?.response?.data?.mensaje || "Error al registrar pago")
+    } finally { setSaving(false) }
+  }
+
+  const sorted = [...visibles].sort((a: any, b: any) => (a.numero_orden || 0) - (b.numero_orden || 0))
+
+  return (
+    <div className="pt-5 border-t space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+      <div className="flex items-center gap-2 mb-1">
+        <HugeiconsIcon icon={PaymentIcon} size={14} style={{ color: COLORS.ACCENT }} />
+        <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Registro de pago por m\u00f3dulo</h4>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl" style={{ backgroundColor: "oklch(0.97 0 0)", borderColor: COLORS.BORDER_SUBTLE, border: "1px solid" }}>
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estudiante</span>
+          <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{estudianteNombre || "—"}</p>
+          {estudianteCedula && <p className="text-xs opacity-40">{estudianteCedula}</p>}
+        </div>
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</span>
+          <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{cursoNombre}</p>
+          <p className="text-xs opacity-40">{totalModulos} m\u00f3dulo{totalModulos !== 1 ? "s" : ""}</p>
+        </div>
+      </div>
+
+      {sorted.map((linea: any) => {
+        const monto = parseFloat(montos[linea.id] || "0")
+        const ajuste = ajustes[linea.id]
+        const precioEfectivo = !ajuste?.expandido && ajuste?.nuevoPrecio
+          ? parseFloat(ajuste.nuevoPrecio) || linea.monto_ajustado
+          : linea.monto_ajustado
+        const pagado = monto > 0 && monto >= precioEfectivo
+        const abonado = monto > 0 && monto < precioEfectivo
+        const tieneAjuste = ajuste && !ajuste.expandido && parseFloat(ajuste.nuevoPrecio || "0") !== linea.monto_original
+
+        return (
+          <div key={linea.id} className="p-4 rounded-xl border space-y-3 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
+                  M\u00f3dulo {linea.numero_orden || "—"}
+                </span>
+                <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{linea.nombre_modulo}</p>
+              </div>
+              <div className="text-right">
+                {tieneAjuste ? (
+                  <>
+                    <span className="text-xs line-through opacity-40">${linea.monto_original.toLocaleString()}</span>
+                    <span className="text-sm font-black ml-1" style={{ color: COLORS.CHARCOAL }}>${precioEfectivo.toLocaleString()}</span>
+                  </>
+                ) : (
+                  <span className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${precioEfectivo.toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+
+            <button type="button" onClick={() => toggleAjuste(linea.id)}
+              className="text-[11px] font-medium hover:underline inline-flex items-center gap-1"
+              style={{ color: COLORS.TEXT_MUTED }}>
+              <HugeiconsIcon icon={Edit01Icon} size={11} />
+              {tieneAjuste ? "Ajuste aplicado" : "Modificar precio para este estudiante"}
+            </button>
+
+            {ajuste?.expandido && (
+              <div className="p-3 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Nuevo precio</label>
+                  <input type="number" min="0" step="0.01" value={ajuste.nuevoPrecio}
+                    onChange={e => setAjustes(prev => ({ ...prev, [linea.id]: { ...ajuste, nuevoPrecio: e.target.value } }))}
+                    className="w-full px-3 py-2 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 mt-1 bg-white"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder={String(linea.monto_original)} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Motivo del ajuste</label>
+                  <input type="text" value={ajuste.motivo}
+                    onChange={e => setAjustes(prev => ({ ...prev, [linea.id]: { ...ajuste, motivo: e.target.value } }))}
+                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-blue-500 mt-1 bg-white"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder="Ej: descuento por pronto pago" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={() => confirmarAjuste(linea.id)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98]"
+                    style={{ backgroundColor: COLORS.ACCENT }}>Confirmar ajuste</button>
+                  <button type="button" onClick={() => toggleAjuste(linea.id)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium hover:text-gray-700 transition-colors"
+                    style={{ color: COLORS.TEXT_MUTED }}>Cancelar</button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 items-center">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                <input type="number" min="0" step="0.01" placeholder="0.00"
+                  value={montos[linea.id] || ""}
+                  onChange={e => setMontos(prev => ({ ...prev, [linea.id]: e.target.value }))}
+                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+              </div>
+              {pagado && <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white bg-emerald-500 whitespace-nowrap">PAGADO</span>}
+              {abonado && <>
+                <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white bg-amber-500 whitespace-nowrap">ABONO</span>
+                <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg whitespace-nowrap">${(precioEfectivo - monto).toLocaleString()} pend.</span>
+              </>}
+            </div>
+          </div>
+        )
+      })}
+
+      {lineas.length > 1 && (
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={multiModulo} onChange={() => setMultiModulo(!multiModulo)} className="size-4 rounded border-gray-300" />
+          <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Pagar varios m\u00f3dulos en esta operaci\u00f3n</span>
+        </label>
+      )}
+
+      <div>
+        <label className="text-xs font-bold uppercase tracking-wider ml-1 mb-2 block" style={{ color: COLORS.TEXT_MUTED }}>M\u00e9todo de pago</label>
+        <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
+          className="w-full px-4 py-3 border rounded-2xl text-sm outline-none focus:border-blue-500 bg-white"
+          style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="deposito">Dep\u00f3sito</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <button type="button" onClick={onOmitir}
+          className="px-6 py-3 rounded-2xl text-sm font-bold hover:text-gray-600 transition-colors"
+          style={{ color: COLORS.TEXT_MUTED }}>Omitir</button>
+        <button type="button" onClick={handleRegistrar} disabled={saving}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] shadow-lg disabled:opacity-60"
+          style={{ backgroundColor: COLORS.ACCENT }}>
+          <HugeiconsIcon icon={PaymentIcon} size={16} />
+          {saving ? "Registrando..." : "Registrar pago"}
+        </button>
+      </div>
     </div>
   )
 }

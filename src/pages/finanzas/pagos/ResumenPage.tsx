@@ -39,8 +39,10 @@ function getNombrePersona(cuenta: any): string {
 
 function getCuentaType(cuenta: any): string {
   if (cuenta.inscripcion_taller || cuenta.inscripcion_taller_id) return "talleres"
-  if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id) return "servicios"
-  if (cuenta.tipo === "aula" || cuenta.tipo === "podcast" || cuenta.tipo === "equipo") return "servicios"
+  if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id
+      || cuenta.servicio_streaming_id || cuenta.servicio_produccion_id || cuenta.edicion_video_id
+      || cuenta.clase_extra_id || cuenta.asesoria_id || cuenta.reserva_radio_id) return "servicios"
+  if (cuenta.tipo === "aula" || cuenta.tipo === "podcast" || cuenta.tipo === "equipo" || cuenta.tipo === "streaming" || cuenta.tipo === "produccion" || cuenta.tipo === "edicion" || cuenta.tipo === "radio" || cuenta.tipo === "clase_extra" || cuenta.tipo === "asesoria") return "servicios"
   const categoria = cuenta.matricula?.curso_abierto?.catalogo?.categoria
     ?? cuenta.matricula?.curso_abierto?.tipo
     ?? cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.categoria
@@ -53,6 +55,7 @@ function getCuentaName(cuenta: any): string {
   if (cuenta.inscripcion_taller?.taller?.nombre) return cuenta.inscripcion_taller.taller.nombre
   if (cuenta.matricula?.curso_abierto?.nombre_instancia) return cuenta.matricula.curso_abierto.nombre_instancia
   if (cuenta.matricula?.curso_abierto?.catalogo?.nombre) return cuenta.matricula.curso_abierto.catalogo.nombre
+  if (cuenta.curso_nombre) return cuenta.curso_nombre
   if (cuenta.inscripcion_taller_id) return "Taller"
   if (cuenta.nombre_servicio) return cuenta.nombre_servicio
   return cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre || "Curso"
@@ -71,7 +74,7 @@ export function ResumenPage() {
       try {
         const [resumenData, cuentasData] = await Promise.all([
           financeService.getResumen(),
-          financeService.getCuentas({ per_page: 50 })
+          financeService.getCuentas({ per_page: 200, recientes: false })
         ])
         setStats(resumenData)
         setCuentas(cuentasData.data)
@@ -86,8 +89,9 @@ export function ResumenPage() {
 
   const sinCuentaTalleres = stats?.sin_cuenta?.talleres
   const sinCuentaServicios = stats?.sin_cuenta?.servicios
-  const sinCuentaTotal = (sinCuentaTalleres?.total || 0) + (sinCuentaServicios?.total || 0)
-  const sinCuentaCount = (sinCuentaTalleres?.count || 0) + (sinCuentaServicios?.count || 0)
+  const sinCuentaCursos = stats?.sin_cuenta?.cursos
+  const sinCuentaTotal = (sinCuentaTalleres?.total || 0) + (sinCuentaServicios?.total || 0) + (sinCuentaCursos?.total || 0)
+  const sinCuentaCount = (sinCuentaTalleres?.count || 0) + (sinCuentaServicios?.count || 0) + (sinCuentaCursos?.count || 0)
 
   const totalPendiente = Number(stats?.total_pendiente || 0) + sinCuentaTotal
   const totalConDeuda = Number(stats?.cuentas_con_deuda || 0) + sinCuentaCount
@@ -183,6 +187,22 @@ export function ResumenPage() {
         g.entries.push(item)
       })
     }
+    // Merge cursos sin cuenta (lineas_pago_modulo sin cuenta por cobrar)
+    if (Array.isArray(stats?.sin_cuenta?.cursos?.items)) {
+      stats.sin_cuenta.cursos.items.forEach((item: any) => {
+        const name = item.curso_nombre || "Curso"
+        if (!groups.cursos.items[name]) {
+          groups.cursos.items[name] = { total: 0, saldo: 0, cobrado: 0, personas: 0, deudores: 0, entries: [] }
+        }
+        const g = groups.cursos.items[name]
+        g.total += Number(item.monto_total || 0)
+        g.saldo += Number(item.saldo_pendiente || 0)
+        g.cobrado += Number(item.monto_abonado || 0)
+        g.personas += 1
+        if (Number(item.saldo_pendiente || 0) > 0) g.deudores += 1
+        g.entries.push(item)
+      })
+    }
     return groups
   }, [cuentas, stats])
 
@@ -257,7 +277,7 @@ export function ResumenPage() {
           <div className="flex items-center justify-between p-6 pb-4">
             <div>
               <h3 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>Distribución Detallada</h3>
-              <p className="text-[11px] opacity-40 mt-0.5">{(cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0)} cuenta{((cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0)) !== 1 ? "s" : ""} registradas</p>
+              <p className="text-[11px] opacity-40 mt-0.5">{(cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0) + (stats?.sin_cuenta?.cursos?.items?.length || 0)} cuenta{((cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0) + (stats?.sin_cuenta?.cursos?.items?.length || 0)) !== 1 ? "s" : ""} registradas</p>
             </div>
             <div className="flex gap-1.5">
               {[

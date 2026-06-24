@@ -26,6 +26,7 @@ interface Modulo {
   nombre: string
   fecha_inicio: string
   fecha_fin: string
+  precio_base?: number
 }
 
 export function CursoFormPage() {
@@ -659,6 +660,14 @@ export function CursoFormPage() {
                               onChange={e => cascadeModuleDates(i, e.target.value)}
                               className={dateC} style={{ ...borderS, borderColor: getError(`modulo_${i}_fin`) ? "#ef4444" : BORDER, colorScheme: "light" }} />
                           </div>
+                        </div>
+                        <div className="mt-3">
+                          <label className="text-xs font-semibold mb-1.5 block" style={{ color: TEXT_MUTED }}>Precio del módulo</label>
+                          <input type="number" min="0" step="0.01"
+                            value={mod.precio_base ?? form.precio_base}
+                            onChange={e => setForm(prev => ({ ...prev, modulos: prev.modulos.map((m, j) => j === i ? { ...m, precio_base: e.target.value === "" ? undefined : Number(e.target.value) } : m) }))}
+                            placeholder={String(form.precio_base || "0.00")}
+                            className={inputC} style={{ ...borderS, borderColor: BORDER }} />
                         </div>
                         <div className="mt-3 p-2 rounded text-xs" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 5%, white)`, color: TEXT_MUTED }}>
                           Duración: {mod.fecha_inicio && mod.fecha_fin ? Math.ceil((new Date(mod.fecha_fin).getTime() - new Date(mod.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24) + 1) : "?"} días

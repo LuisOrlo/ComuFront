@@ -37,12 +37,15 @@ import { ClasesModuloPage } from "@/pages/instructor-portal/ClasesModuloPage"
 import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorarioPage"
 import { MisEstudiantesPage } from "@/pages/instructor-portal/MisEstudiantesPage"
 import { DetalleEstudiantePage } from "@/pages/instructor-portal/detalle/DetalleEstudiantePage"
-import { FinancePagosPage } from "@/pages/finanzas/pagos/FinancePagosPage"
-import { ResumenPage } from "@/pages/finanzas/pagos/ResumenPage"
-import { CuentasPage as FinanzasCuentasPage } from "@/pages/finanzas/pagos/CuentasPage"
-import { PagoRegistroPage } from "@/pages/finanzas/pagos/PagoRegistroPage"
-import { ValidacionPage } from "@/pages/finanzas/pagos/ValidacionPage"
+import { FinancePagosPage, FinanceResumenWrapper } from "@/pages/finanzas/pagos/FinancePagosPage"
+import { CuentasCobrarLayout } from "@/pages/finanzas/pagos/CuentasCobrarLayout"
+import { TalleresCuentasPage } from "@/pages/finanzas/pagos/TalleresCuentasPage"
+import { TallerCuentasDetallePage } from "@/pages/finanzas/pagos/TallerCuentasDetallePage"
+import { TallerParticipantePage } from "@/pages/finanzas/pagos/TallerParticipantePage"
+import { CursosCuentasPage } from "@/pages/finanzas/pagos/CursosCuentasPage"
+import { CursoCuentasDetallePage } from "@/pages/finanzas/pagos/CursoCuentasDetallePage"
 import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
+import { PagoDetallePage } from "@/pages/finanzas/pagos/PagoDetallePage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
 import {
   SecretariaDashboardPage,
@@ -167,12 +170,20 @@ function AppLayout() {
             <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador"]}><RadioPage /></RoleGuard>} />
             <Route path="/servicios/radio/historial" element={<RoleGuard roles={["Administrador"]}><RadioHistorialPage /></RoleGuard>} />
             <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador"]}><RadioTarifasPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador"]}><FinancePagosPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos/resumen" element={<RoleGuard roles={["Administrador"]}><ResumenPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos/cuentas" element={<RoleGuard roles={["Administrador"]}><FinanzasCuentasPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos/cuentas/:cuentaId/pago" element={<RoleGuard roles={["Administrador"]}><PagoRegistroPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos/validacion" element={<RoleGuard roles={["Administrador"]}><ValidacionPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos/historial" element={<RoleGuard roles={["Administrador"]}><HistorialPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador"]}><FinancePagosPage /></RoleGuard>}>
+              <Route index element={<Navigate to="resumen" replace />} />
+              <Route path="resumen" element={<RoleGuard roles={["Administrador"]}><FinanceResumenWrapper /></RoleGuard>} />
+              <Route path="historial" element={<RoleGuard roles={["Administrador"]}><HistorialPage /></RoleGuard>} />
+              <Route path="historial/:id" element={<RoleGuard roles={["Administrador"]}><PagoDetallePage /></RoleGuard>} />
+              <Route path="cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasCobrarLayout /></RoleGuard>}>
+                <Route index element={<Navigate to="talleres" replace />} />
+                <Route path="talleres" element={<RoleGuard roles={["Administrador"]}><TalleresCuentasPage /></RoleGuard>} />
+                <Route path="talleres/:id" element={<RoleGuard roles={["Administrador"]}><TallerCuentasDetallePage /></RoleGuard>} />
+                <Route path="talleres/:id/participante/:pid" element={<RoleGuard roles={["Administrador"]}><TallerParticipantePage /></RoleGuard>} />
+                <Route path="cursos" element={<RoleGuard roles={["Administrador"]}><CursosCuentasPage /></RoleGuard>} />
+                <Route path="cursos/:id" element={<RoleGuard roles={["Administrador"]}><CursoCuentasDetallePage /></RoleGuard>} />
+              </Route>
+            </Route>
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 

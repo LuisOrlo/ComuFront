@@ -263,18 +263,9 @@ export function LoginPage() {
                   onCheckedChange={(checked: boolean | "indeterminate") => setRemember(checked === true)}
                   className="data-[state=checked]:bg-[--accent] data-[state=checked]:border-[--accent]"
                 />
-                <span className="text-sm" style={{ color: TEXT_MUTED }}>
-                  Recordarme
-                </span>
+                
               </label>
-              <a
-                href="#"
-                className="text-sm transition-colors hover:underline"
-                style={{ color: ACCENT_TOMATO }}
-                onClick={(e) => e.preventDefault()}
-              >
-                ¿Olvidaste tu contraseña?
-              </a>
+              
             </div>
 
             {error && (

@@ -29,6 +29,7 @@ interface ModuloData {
   numero_orden?: number
   horas_academicas?: number
   cupo?: number
+  precio_base?: number | null
 }
 interface DiaHorario {
   id?: string
@@ -256,10 +257,11 @@ export function CursoDetailPage() {
                            {estadoConfig[estado].label}
                          </span>
                        </div>
-                       <div className="grid grid-cols-2 gap-4 ml-11">
-                         <ModuleField label="Fecha inicio" value={mod.fecha_inicio} modId={mod.id} field="fecha_inicio" type="date" onUpdate={updateModulo} />
-                         <ModuleField label="Fecha fin" value={mod.fecha_fin} modId={mod.id} field="fecha_fin" type="date" onUpdate={updateModulo} />
-                       </div>
+                        <div className="grid grid-cols-3 gap-4 ml-11">
+                          <ModuleField label="Fecha inicio" value={mod.fecha_inicio} modId={mod.id} field="fecha_inicio" type="date" onUpdate={updateModulo} />
+                          <ModuleField label="Fecha fin" value={mod.fecha_fin} modId={mod.id} field="fecha_fin" type="date" onUpdate={updateModulo} />
+                          <ModuleField label="Precio" value={mod.precio_base != null ? String(mod.precio_base) : undefined} modId={mod.id} field="precio_base" type="number" onUpdate={updateModulo} />
+                        </div>
                      </div>
                    )
                  })
