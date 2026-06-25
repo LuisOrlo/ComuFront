@@ -45,6 +45,9 @@ import { TallerParticipantePage } from "@/pages/finanzas/pagos/TallerParticipant
 import { CursosCuentasPage } from "@/pages/finanzas/pagos/CursosCuentasPage"
 import { CursoCuentasDetallePage } from "@/pages/finanzas/pagos/CursoCuentasDetallePage"
 import { CursoEstudiantePagoPage } from "@/pages/finanzas/pagos/CursoEstudiantePagoPage"
+import { ServiciosCuentasPage } from "@/pages/finanzas/pagos/ServiciosCuentasPage"
+import { ServicioDetallePage } from "@/pages/finanzas/pagos/ServicioDetallePage"
+import { ServicioPagoPage } from "@/pages/finanzas/pagos/ServicioPagoPage"
 import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
 import { PagoDetallePage } from "@/pages/finanzas/pagos/PagoDetallePage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
@@ -183,6 +186,9 @@ function AppLayout() {
                 <Route path="talleres/:id/participante/:pid" element={<RoleGuard roles={["Administrador"]}><TallerParticipantePage /></RoleGuard>} />
                 <Route path="cursos" element={<RoleGuard roles={["Administrador"]}><CursosCuentasPage /></RoleGuard>} />
                 <Route path="cursos/:id" element={<RoleGuard roles={["Administrador"]}><CursoCuentasDetallePage /></RoleGuard>} />
+                <Route path="servicios" element={<RoleGuard roles={["Administrador"]}><ServiciosCuentasPage /></RoleGuard>} />
+                <Route path="servicios/:name" element={<RoleGuard roles={["Administrador"]}><ServicioDetallePage /></RoleGuard>} />
+                <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador"]}><ServicioPagoPage /></RoleGuard>} />
               </Route>
             </Route>
             <Route path="/finanzas/pagos/cursos/:cursoId/estudiante/:matriculaId/pago" element={<RoleGuard roles={["Administrador"]}><CursoEstudiantePagoPage /></RoleGuard>} />

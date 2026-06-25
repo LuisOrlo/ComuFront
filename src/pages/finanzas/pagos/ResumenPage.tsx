@@ -6,7 +6,6 @@ import {
   Coins01Icon,
   AlertCircleIcon,
   CheckmarkCircle02Icon,
-  InvoiceIcon,
   LibraryIcon,
   SchoolIcon,
   AiFolderIcon,
@@ -87,14 +86,8 @@ export function ResumenPage() {
     load()
   }, [])
 
-  const sinCuentaTalleres = stats?.sin_cuenta?.talleres
-  const sinCuentaServicios = stats?.sin_cuenta?.servicios
-  const sinCuentaCursos = stats?.sin_cuenta?.cursos
-  const sinCuentaTotal = (sinCuentaTalleres?.total || 0) + (sinCuentaServicios?.total || 0) + (sinCuentaCursos?.total || 0)
-  const sinCuentaCount = (sinCuentaTalleres?.count || 0) + (sinCuentaServicios?.count || 0) + (sinCuentaCursos?.count || 0)
-
-  const totalPendiente = Number(stats?.total_pendiente || 0) + sinCuentaTotal
-  const totalConDeuda = Number(stats?.cuentas_con_deuda || 0) + sinCuentaCount
+  const totalPendiente = Number(stats?.total_pendiente || 0)
+  const totalConDeuda = Number(stats?.cuentas_con_deuda || 0)
 
   const totalCobradoLocal = useMemo(() => {
     return cuentas.reduce((sum, cuenta) => sum + Number(cuenta.monto_abonado || 0), 0)
@@ -114,13 +107,6 @@ export function ResumenPage() {
       icon: CheckmarkCircle02Icon,
       color: "oklch(0.55 0.15 150)",
       bg: "oklch(0.55 0.15 150 / 0.12)",
-    },
-    {
-      title: "Por Verificar",
-      value: stats?.pendientes_verificacion || 0,
-      icon: InvoiceIcon,
-      color: "oklch(0.65 0.15 75)",
-      bg: "oklch(0.65 0.15 75 / 0.12)",
     },
     {
       title: "Con Deuda",

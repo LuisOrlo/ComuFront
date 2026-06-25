@@ -48,15 +48,26 @@ export function PodcastCalendar({ weekDays, horas, reservas, onSelect }: {
                       <button
                         onClick={() => onSelect(r)}
                         className={cn(
-                          "w-full rounded-xl p-1.5 text-left hover:brightness-110 cursor-pointer border",
+                          "absolute inset-x-0.5 top-0 rounded-xl flex flex-col items-center justify-center gap-px hover:brightness-110 cursor-pointer border z-10",
                           r.persona_id ? "bg-indigo-50 border-indigo-200" : "bg-emerald-50 border-emerald-200"
                         )}
-                        style={{ height: `${Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0])) * 50 - 6}px` }}
+                        style={{ height: `${Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0])) * 50 - 4}px` }}
                       >
-                        <p className={cn("text-[9px] font-bold leading-tight truncate", r.persona_id ? "text-indigo-600" : "text-emerald-600")}>
+                        <span className={cn("text-[10px] font-bold text-center leading-tight", r.persona_id ? "text-indigo-600" : "text-emerald-600")}>
                           {fmtHora(r.hora_inicio)}–{fmtHora(r.hora_fin)}
-                        </p>
-                        <p className="text-[8px] font-medium opacity-50 truncate">{r.paquete?.nombre}</p>
+                        </span>
+                        <span className="text-[9px] font-semibold opacity-65 text-center leading-tight truncate max-w-full px-1">
+                          {r.titulo || r.paquete?.nombre}
+                        </span>
+                        <span className="text-[9px] font-medium opacity-55 text-center leading-tight truncate max-w-full px-1">
+                          {r.cliente_externo
+                            ? `${r.cliente_externo.nombres} ${r.cliente_externo.apellidos || ""}`.trim()
+                            : r.persona
+                              ? `${r.persona.nombres} ${r.persona.apellidos}`
+                              : r.asignaciones?.[0]?.persona
+                                ? `${r.asignaciones[0].persona.nombres} ${r.asignaciones[0].persona.apellidos}`
+                                : "—"}
+                        </span>
                       </button>
                     )}
                   </div>

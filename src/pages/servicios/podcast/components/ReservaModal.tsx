@@ -32,10 +32,11 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
         hora_inicio: editingReserva.hora_inicio,
         hora_fin: editingReserva.hora_fin,
         precio_total: editingReserva.precio_total,
+        titulo: editingReserva.titulo,
         notas: editingReserva.notas,
       }
     }
-    return { paquete_id: "", fecha_reserva: fmtDate(new Date()), hora_inicio: "08:00", hora_fin: "10:00", precio_total: 0 }
+    return { paquete_id: "", fecha_reserva: fmtDate(new Date()), hora_inicio: "08:00", hora_fin: "10:00", precio_total: 0, titulo: "" }
   })
   const [tipoResponsable, setTipoResponsable] = useState<"externo" | "interno">(
     editingReserva?.persona_id ? "interno" : "externo"
@@ -274,6 +275,18 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-1.5 px-1">
+                <label className="text-[9px] font-bold uppercase tracking-widest opacity-40">Título del podcast</label>
+                <input
+                  type="text"
+                  value={reservaForm.titulo || ""}
+                  onChange={e => setReservaForm({ ...reservaForm, titulo: e.target.value })}
+                  className="w-full px-5 py-4 rounded-2xl border-2 bg-gray-50/50 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-violet-500/10 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  placeholder="Ej: Entrevista con invitado especial..."
+                />
               </div>
 
               <div className="rounded-2xl border-2 overflow-hidden" style={{ borderColor: tipoResponsable === "externo" ? "rgba(5, 150, 105, 0.15)" : "rgba(99, 102, 241, 0.15)" }}>

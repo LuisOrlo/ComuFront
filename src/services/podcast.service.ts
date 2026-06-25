@@ -27,6 +27,7 @@ export interface ReservaPodcast {
   paquete_id: string
   cliente_externo_id?: string
   persona_id?: string
+  titulo?: string
   fecha_reserva: string
   hora_inicio: string
   hora_fin: string

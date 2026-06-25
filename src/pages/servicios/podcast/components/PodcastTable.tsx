@@ -57,13 +57,22 @@ export function PodcastTable({ reservas, onEdit, onDelete, onRegistrarPago, onSe
                       </td>
                       <td className="p-3 border-r text-xs font-mono opacity-60" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{fmtHora(r.hora_inicio)} – {fmtHora(r.hora_fin)}</td>
                       <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{r.paquete?.nombre || "—"}</span>
+                        <span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{r.titulo || r.paquete?.nombre || "—"}</span>
+                        {r.titulo && r.paquete?.nombre && (
+                          <span className="text-[9px] font-medium opacity-40 truncate max-w-[120px] block">{r.paquete.nombre}</span>
+                        )}
                       </td>
                       <td className="p-3 border-r text-xs font-medium opacity-60 max-w-[100px] truncate" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                         {r.cliente_externo ? `${r.cliente_externo.nombres} ${r.cliente_externo.apellidos || ""}`.trim() : "—"}
                       </td>
                       <td className="p-3 border-r text-xs font-medium opacity-60 max-w-[100px] truncate" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        {r.persona ? `${r.persona.nombres} ${r.persona.apellidos}` : "—"}
+                        {r.persona
+                          ? `${r.persona.nombres} ${r.persona.apellidos}`
+                          : r.asignaciones?.[0]?.persona
+                            ? `${r.asignaciones[0].persona.nombres} ${r.asignaciones[0].persona.apellidos}`
+                            : r.persona_id
+                              ? "Asignado"
+                              : "—"}
                       </td>
                       <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                         <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_LABELS[r.estado]?.color || "bg-gray-100")}>

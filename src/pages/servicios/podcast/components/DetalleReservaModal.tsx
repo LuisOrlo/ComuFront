@@ -44,7 +44,7 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
                     <HugeiconsIcon icon={Microphone} size={22} className="text-violet-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{reserva.paquete.nombre}</p>
+                    <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{reserva.titulo || reserva.paquete.nombre}</p>
                     <p className="text-[10px] font-medium opacity-50">${reserva.paquete.precio_por_hora}/hr · {reserva.paquete.items?.length || 0} ítems</p>
                   </div>
                 </div>
@@ -64,12 +64,12 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-4 rounded-2xl bg-gray-50 space-y-1">
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Tipo</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Estado de Pago</p>
                   <div className="flex items-center gap-2">
-                    {reserva.persona_id ? (
-                      <><HugeiconsIcon icon={UserIcon} size={16} className="text-indigo-500" /><span className="text-sm font-bold text-indigo-600">Uso Interno</span></>
+                    {reserva.pago_registrado ? (
+                      <><HugeiconsIcon icon={Tick02Icon} size={16} className="text-green-500" /><span className="text-sm font-bold text-green-600">Pagado</span></>
                     ) : (
-                      <><HugeiconsIcon icon={Money01Icon} size={16} className="text-emerald-500" /><span className="text-sm font-bold text-emerald-600">Cliente Externo</span></>
+                      <><HugeiconsIcon icon={Money01Icon} size={16} className="text-amber-500" /><span className="text-sm font-bold text-amber-600">Pendiente</span></>
                     )}
                   </div>
                 </div>
@@ -84,11 +84,6 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
                   <span className={cn("inline-block px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border", ESTADO_LABELS[reserva.estado]?.color || "bg-gray-100")}>
                     {ESTADO_LABELS[reserva.estado]?.label || reserva.estado}
                   </span>
-                  {reserva.pago_registrado && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 border border-green-200">
-                      <HugeiconsIcon icon={Tick02Icon} size={10} /> Pagado
-                    </span>
-                  )}
                 </div>
               </div>
               {reserva.notas && (
@@ -98,7 +93,7 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
                 </div>
               )}
               <div className="p-4 rounded-2xl bg-gray-50 space-y-3">
-                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Responsable</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
                 {reserva.persona ? (
                   <div className="flex items-center gap-3">
                     <div className="size-10 rounded-xl bg-indigo-100 flex items-center justify-center"><HugeiconsIcon icon={UserIcon} size={18} className="text-indigo-600" /></div>

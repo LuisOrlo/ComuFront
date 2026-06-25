@@ -33,6 +33,8 @@ export function FinancePagosPage() {
     return <Navigate to="/finanzas/pagos/resumen" replace />
   }
 
+  const hideTabs = !TABS.some(tab => location.pathname === tab.path)
+
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
       <header
@@ -42,7 +44,7 @@ export function FinancePagosPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
             <h1
-              className="text-4xl font-bold tracking-tighter leading-none"
+              className="text-2xl font-bold tracking-tighter leading-none"
               style={{ color: COLORS.CHARCOAL }}
             >
               Pagos y Cobros
@@ -51,26 +53,28 @@ export function FinancePagosPage() {
         </div>
       </header>
 
-      <nav
-        className="shrink-0 px-8 pt-4 pb-0 flex gap-1"
-        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-      >
-        {TABS.map((tab) => (
-          <NavLink
-            key={tab.path}
-            to={tab.path}
-            className="flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-bold transition-all"
-            style={({ isActive }) => ({
-              color: isActive ? "#fff" : COLORS.CHARCOAL,
-              backgroundColor: isActive ? COLORS.ACCENT : "transparent",
-              opacity: isActive ? 1 : 0.5,
-            })}
-          >
-            <HugeiconsIcon icon={tab.icon} size={16} />
-            {tab.label}
-          </NavLink>
-        ))}
-      </nav>
+      {!hideTabs && (
+        <nav
+          className="shrink-0 px-8 pt-4 pb-0 flex gap-1"
+          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+        >
+          {TABS.map((tab) => (
+            <NavLink
+              key={tab.path}
+              to={tab.path}
+              className="flex items-center gap-2 px-5 py-3 rounded-t-xl text-xs font-bold transition-all"
+              style={({ isActive }) => ({
+                color: isActive ? "#fff" : COLORS.CHARCOAL,
+                backgroundColor: isActive ? COLORS.ACCENT : "transparent",
+                opacity: isActive ? 1 : 0.5,
+              })}
+            >
+              <HugeiconsIcon icon={tab.icon} size={16} />
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
 
       <div className="flex-1 overflow-auto">
         <Outlet />
