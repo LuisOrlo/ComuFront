@@ -47,7 +47,7 @@ export function PagoInicialMatriculaModal({
 
   const loadLineas = async () => {
     try {
-      const res = await api.get(`/personas/estudiantes/${lineasPagoIds[0]}/matricula/${matriculaId}/lineas-pago`)
+      const res = await api.get(`/finanzas/matriculas/${matriculaId}/lineas-pago`)
       setLineas(res.data.datos || [])
     } catch {
       setLineas(lineasPagoIds.map((id, i) => ({

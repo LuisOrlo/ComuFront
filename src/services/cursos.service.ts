@@ -171,6 +171,7 @@ export interface NotificacionItem {
   curso: string
   color?: string
   monto: number
+  metodo_pago?: string | null
   hora: string
 }
 
@@ -729,8 +730,8 @@ export const cursosService = {
   /**
    * POST /api/academic/solicitudes-inscripcion/{id}/validar
    */
-  async aprobarSolicitudInscripcion(id: string): Promise<Record<string, unknown>> {
-    const response = await api.post(`/academic/solicitudes-inscripcion/${id}/validar`)
+  async aprobarSolicitudInscripcion(id: string, data?: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await api.post(`/academic/solicitudes-inscripcion/${id}/validar`, data ?? {})
     return response.data
   },
 

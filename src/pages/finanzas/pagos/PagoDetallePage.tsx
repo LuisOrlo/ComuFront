@@ -18,7 +18,7 @@ import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import { useParams, useNavigate, NavLink } from "react-router"
+import { useParams, useNavigate } from "react-router"
 
 export function PagoDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -61,6 +61,7 @@ export function PagoDetallePage() {
   }
 
   const getNombreEstudiante = () => {
+    if (data?.estudiante_nombre) return data.estudiante_nombre
     const cp = data?.cuenta_por_cobrar
     const m = cp?.matricula
     const s = cp?.solicitud_inscripcion
@@ -73,6 +74,8 @@ export function PagoDetallePage() {
   }
 
   const getCursoNombre = () => {
+    if (data?.curso_nombre) return data.curso_nombre
+    if (data?.taller_nombre) return data.taller_nombre
     const cp = data?.cuenta_por_cobrar
     const m = cp?.matricula
     const s = cp?.solicitud_inscripcion
@@ -86,10 +89,11 @@ export function PagoDetallePage() {
   }
 
   const getModuloNombre = () => {
+    if (data?.modulo_nombre) return data.modulo_nombre
     const cp = data?.cuenta_por_cobrar
     const m = cp?.matricula
     if (m?.modulo?.nombre) return m.modulo.nombre
-    return data?.modulo_nombre || null
+    return null
   }
 
   if (loading) {
@@ -116,16 +120,12 @@ export function PagoDetallePage() {
     )
   }
 
-  const registradoPor = data.registrado_por?.name || data.registrado_por?.username || "—"
-  const verificadoPor = data.verificado_por?.name || data.verificado_por?.username || "—"
+  const registradoPor = data?.registrado_por || "—"
+  const verificadoPor = data?.verificado_por || "—"
 
   return (
     <div className="px-8 py-6">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40 mb-3" style={{ color: COLORS.CHARCOAL }}>
-        <NavLink to="/finanzas/pagos/historial" className="hover:underline">Historial</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <span>Detalle de Transacción</span>
-      </div>
+      
 
       <button
         onClick={() => navigate("/finanzas/pagos/historial")}

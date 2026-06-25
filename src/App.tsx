@@ -44,6 +44,7 @@ import { TallerCuentasDetallePage } from "@/pages/finanzas/pagos/TallerCuentasDe
 import { TallerParticipantePage } from "@/pages/finanzas/pagos/TallerParticipantePage"
 import { CursosCuentasPage } from "@/pages/finanzas/pagos/CursosCuentasPage"
 import { CursoCuentasDetallePage } from "@/pages/finanzas/pagos/CursoCuentasDetallePage"
+import { CursoEstudiantePagoPage } from "@/pages/finanzas/pagos/CursoEstudiantePagoPage"
 import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
 import { PagoDetallePage } from "@/pages/finanzas/pagos/PagoDetallePage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
@@ -157,7 +158,7 @@ function AppLayout() {
             <Route path="/estudiantes/:id/academico" element={<RoleGuard roles={["Administrador"]}><EstudiantePerfilAcademicoPage /></RoleGuard>} />
             <Route path="/asistencia" element={<RoleGuard roles={["Administrador"]}><AsistenciaStaffPage /></RoleGuard>} />
             <Route path="/cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasPage /></RoleGuard>} />
-            <Route path="/matriculas" element={<RoleGuard roles={["Administrador"]}><AprobacionMatriculasPage /></RoleGuard>} />
+            <Route path="/matriculas/*" element={<RoleGuard roles={["Administrador"]}><AprobacionMatriculasPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador"]}><SolicitudesInscripcionPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
             <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador"]}><AulasPage /></RoleGuard>} />
@@ -184,6 +185,7 @@ function AppLayout() {
                 <Route path="cursos/:id" element={<RoleGuard roles={["Administrador"]}><CursoCuentasDetallePage /></RoleGuard>} />
               </Route>
             </Route>
+            <Route path="/finanzas/pagos/cursos/:cursoId/estudiante/:matriculaId/pago" element={<RoleGuard roles={["Administrador"]}><CursoEstudiantePagoPage /></RoleGuard>} />
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 

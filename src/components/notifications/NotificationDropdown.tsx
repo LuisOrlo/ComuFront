@@ -146,7 +146,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                 {grupo.items.map((item) => (
                   <Link
                     key={item.id}
-                    to={`/matriculas/aprobacion`}
+                    to={`/matriculas/aprobacion?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
                     onClick={onClose}
                     className="flex items-start gap-3 px-4 py-3 border-b transition-colors hover:bg-gray-50/60"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
@@ -171,9 +171,17 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                         <span className="text-[10px] font-medium" style={{ color: COLORS.TEXT_MUTED }}>
                           {item.hora}
                         </span>
-                        <span className="text-[10px] font-bold" style={{ color: COLORS.ACCENT }}>
-                          ${item.monto.toFixed(2)}
-                        </span>
+                        {item.metodo_pago && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{
+                            backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, white)`,
+                            color: COLORS.ACCENT,
+                          }}>
+                            {item.metodo_pago === "transferencia" ? "Transferencia"
+                              : item.metodo_pago === "deposito" ? "Depósito"
+                              : item.metodo_pago === "efectivo" ? "Efectivo"
+                              : item.metodo_pago}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>

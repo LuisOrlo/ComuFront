@@ -9,12 +9,13 @@ import {
   MapsLocation01Icon,
   Clock01Icon,
   Download01Icon,
+  CheckmarkCircle04Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import { useParams, useNavigate, NavLink } from "react-router"
+import { useParams, useNavigate } from "react-router"
 
 export function CursoCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -78,9 +79,10 @@ export function CursoCuentasDetallePage() {
   }, [estudiantes, modulos, selectedModulo])
 
   const getNombreEstudiante = (e: any) => {
+    if (e.nombre && e.nombre !== "—") return e.nombre
     if (e.estudiante) return `${e.estudiante.nombres || ""} ${e.estudiante.apellidos || ""}`.trim()
     if (e.nombres) return `${e.nombres || ""} ${e.apellidos || ""}`.trim()
-    return e.nombre || "—"
+    return "—"
   }
 
   const getCedula = (e: any) => {
@@ -129,14 +131,7 @@ export function CursoCuentasDetallePage() {
 
   return (
     <div className="px-8 py-6">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40 mb-3" style={{ color: COLORS.CHARCOAL }}>
-        <NavLink to="/finanzas/pagos" className="hover:underline">Finanzas</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <NavLink to="/finanzas/pagos/cuentas/cursos" className="hover:underline">Cursos</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <span>{curso.nombre || "Detalle"}</span>
-      </div>
-
+      
       <button
         onClick={() => navigate("/finanzas/pagos/cuentas/cursos")}
         className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
@@ -157,7 +152,7 @@ export function CursoCuentasDetallePage() {
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-black" style={{ color: COLORS.CHARCOAL }}>
-              {curso.nombre || curso.nombre_instancia || "Curso"}
+              {curso.nombre_instancia || curso.nombre || "Curso"}
             </h2>
             <button
               onClick={() => {
@@ -172,10 +167,10 @@ export function CursoCuentasDetallePage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <InfoBadge icon={UserIcon} label="Instructor" value={curso.instructor_nombre || curso.instructor?.persona?.nombres || "—"} />
+            <InfoBadge icon={UserIcon} label="Instructor" value={curso.instructor || "—"} />
             <InfoBadge icon={Calendar02Icon} label="Inicio" value={curso.fecha_inicio ? new Date(curso.fecha_inicio).toLocaleDateString("es-ES") : "—"} />
             <InfoBadge icon={Calendar02Icon} label="Fin" value={curso.fecha_fin ? new Date(curso.fecha_fin).toLocaleDateString("es-ES") : "—"} />
-            <InfoBadge icon={MapsLocation01Icon} label="Ciudad" value={curso.ciudad_nombre || curso.ciudad?.nombre || "—"} />
+            <InfoBadge icon={MapsLocation01Icon} label="Ciudad" value={curso.ciudad || "—"} />
             <InfoBadge icon={Clock01Icon} label="Horario" value={curso.horario || "—"} />
           </div>
         </div>
@@ -184,29 +179,29 @@ export function CursoCuentasDetallePage() {
           className="rounded-2xl border bg-white overflow-hidden"
           style={{ borderColor: COLORS.BORDER_SUBTLE }}
         >
-          <div className="p-6 border-b flex items-center justify-between flex-wrap gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <h3 className="text-base font-black" style={{ color: COLORS.CHARCOAL }}>
-              Estudiantes ({estudiantes.length})
-            </h3>
-            {modulos.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold opacity-40">Módulo:</span>
-                <select
-                  value={selectedModulo}
-                  onChange={(e) => setSelectedModulo(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold outline-none"
-                  style={{ backgroundColor: "oklch(0.95 0 0)", color: COLORS.CHARCOAL }}
-                >
-                  <option value="todos">Todos los módulos</option>
-                  {modulos.map((m: any) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nombre || `Módulo ${m.orden || m.id}`}
-                    </option>
-                  ))}
-                </select>
+              <div className="p-6 border-b flex items-center justify-between flex-wrap gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <h3 className="text-base font-black" style={{ color: COLORS.CHARCOAL }}>
+                  Estudiantes ({estudiantes.length})
+                </h3>
+                {modulos.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold opacity-40">Módulo:</span>
+                    <select
+                      value={selectedModulo}
+                      onChange={(e) => setSelectedModulo(e.target.value)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold outline-none"
+                      style={{ backgroundColor: "oklch(0.95 0 0)", color: COLORS.CHARCOAL }}
+                    >
+                      <option value="todos">Todos los módulos</option>
+                      {modulos.map((m: any) => (
+                        <option key={m.id} value={m.id}>
+                          {m.nombre || `Módulo ${m.orden || m.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[800px]">
@@ -218,13 +213,11 @@ export function CursoCuentasDetallePage() {
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Ciudad</th>
                   {selectedModulo === "todos" && modulos.length > 0 ? (
                     modulos.map((m: any) => (
-                      <th key={m.id} className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-center" style={{ color: COLORS.CHARCOAL }}>
-                        <div>{m.nombre || `M${m.orden}`}</div>
-                        <div className="flex gap-1 text-[8px] mt-0.5 justify-center opacity-60">
+                      <th key={m.id} className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
+                        <div className="text-center mb-1">{m.nombre || `M${m.orden}`}</div>
+                        <div className="grid grid-cols-3 gap-1 text-[8px] text-center opacity-60">
                           <span>Total</span>
-                          <span>|</span>
                           <span>Abono</span>
-                          <span>|</span>
                           <span>Saldo</span>
                         </div>
                       </th>
@@ -239,6 +232,7 @@ export function CursoCuentasDetallePage() {
                   {selectedModulo === "todos" && modulos.length > 0 && (
                     <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Total Pagado</th>
                   )}
+                  <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -273,10 +267,10 @@ export function CursoCuentasDetallePage() {
                               return (
                                 <td key={m.id} className="px-3 py-3 text-center">
                                   {lm ? (
-                                    <div className="text-[10px] space-y-0.5">
-                                      <div className="font-bold" style={{ color: COLORS.CHARCOAL }}>${totalM.toLocaleString()}</div>
-                                      <div className="text-green-600 font-bold">${abonoM.toLocaleString()}</div>
-                                      <div className={cn("font-bold", saldoM > 0 ? "text-red-600" : "text-green-600")}>${saldoM.toLocaleString()}</div>
+                                    <div className="grid grid-cols-3 gap-1 text-[10px] text-center">
+                                      <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${totalM.toLocaleString()}</span>
+                                      <span className="text-green-600 font-bold">${abonoM.toLocaleString()}</span>
+                                      <span className={cn("font-bold", saldoM > 0 ? "text-red-600" : "text-green-600")}>${saldoM.toLocaleString()}</span>
                                     </div>
                                   ) : (
                                     <span className="text-[10px] opacity-20">—</span>
@@ -305,6 +299,16 @@ export function CursoCuentasDetallePage() {
                             )
                           })()
                         ) : null}
+                        <td className="px-3 py-3">
+                          <button
+                            onClick={() => navigate(`/finanzas/pagos/cursos/${id}/estudiante/${e.matricula_id}/pago`)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+                            style={{ backgroundColor: COLORS.ACCENT }}
+                          >
+                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                            Registrar cobro
+                          </button>
+                        </td>
                       </tr>
                     )
                   })
@@ -316,30 +320,27 @@ export function CursoCuentasDetallePage() {
                     <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: COLORS.CHARCOAL }}>
                       <span className="text-xs font-black text-white">Totales</span>
                     </td>
-                    <td className="px-3 py-3" colSpan={3}></td>
-                    {modulos.map((m: any) => {
-                      const t = totalesPorModulo?.[m.id]
-                      return (
-                        <td key={m.id} className="px-3 py-3 text-center">
-                          {t ? (
-                            <div className="text-[10px] space-y-0.5">
-                              <div className="font-bold text-white">${t.total.toLocaleString()}</div>
-                              <div className="font-bold" style={{ color: "oklch(0.65 0.2 45)" }}>${t.abono.toLocaleString()}</div>
-                              <div className="font-bold" style={{ color: t.saldo > 0 ? "oklch(0.65 0.15 75)" : "oklch(0.55 0.15 150)" }}>${t.saldo.toLocaleString()}</div>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-white/20">—</span>
-                          )}
-                        </td>
-                      )
-                    })}
-                    <td className="px-3 py-3 text-right">
-                      <p className="text-xs font-black" style={{ color: "oklch(0.65 0.2 45)" }}>
-                        ${filteredEstudiantes.reduce((sum, e) => sum + getTotalPagado(e), 0).toLocaleString()}
-                      </p>
-                    </td>
-                  </tr>
-                </tfoot>
+                      <td className="px-3 py-3" colSpan={3}></td>
+                      {modulos.map((m: any) => {
+                        const t = totalesPorModulo?.[m.id]
+                        return (
+                          <td key={m.id} className="px-3 py-3 text-center">
+                            {t ? (
+                              <span className="text-[10px] font-bold text-white">${t.total.toLocaleString()}</span>
+                            ) : (
+                              <span className="text-[10px] text-white/20">—</span>
+                            )}
+                          </td>
+                        )
+                      })}
+                      <td className="px-3 py-3 text-right">
+                        <p className="text-xs font-black text-white">
+                          ${filteredEstudiantes.reduce((sum, e) => sum + getTotalPagado(e), 0).toLocaleString()}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3"></td>
+                    </tr>
+                  </tfoot>
               )}
             </table>
           </div>

@@ -67,6 +67,11 @@ export const financeService = {
     return response.data
   },
 
+  async getEstudianteFinancieroCurso(cursoId: string, matriculaId: string) {
+    const response = await api.get(`/finanzas/cursos/${cursoId}/estudiante/${matriculaId}/financiero`)
+    return response.data
+  },
+
   async getCursoFinanciero(id: string) {
     const response = await api.get(`/finanzas/cursos/${id}/financiero`)
     return response.data

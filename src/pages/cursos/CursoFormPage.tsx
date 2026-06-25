@@ -176,9 +176,7 @@ export function CursoFormPage() {
   useEffect(() => {
     if (form.catalogo_curso_id && !isEdit) {
       const tipoDelCatalogo = selectedCatalogo?.categoria || "regular"
-      let capacidadAutomatica = 30
-      if (tipoDelCatalogo === "regular" && form.modalidad === "presencial") capacidadAutomatica = 18
-      else capacidadAutomatica = 99
+      const capacidadAutomatica = tipoDelCatalogo === "regular" && form.modalidad === "presencial" ? 18 : 99
       if (form.capacidad_maxima !== capacidadAutomatica) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setForm(prev => ({ ...prev, capacidad_maxima: capacidadAutomatica }))
@@ -275,7 +273,7 @@ export function CursoFormPage() {
     } else if (step === 3) {
       if (!form.dias_semana || form.dias_semana.length === 0) newErrors.dias_semana = "Selecciona al menos un día"
     } else if (step === 4) {
-      if (form.capacidad_maxima < 1 || form.capacidad_maxima > 99) newErrors.capacidad_maxima = "La capacidad debe estar entre 1 y 99"
+      if (form.capacidad_maxima < 1 || form.capacidad_maxima > (form.modalidad === "presencial" ? 18 : 99)) newErrors.capacidad_maxima = form.modalidad === "presencial" ? "La capacidad máxima es 18 estudiantes" : "La capacidad debe estar entre 1 y 99"
       if (!form.precio_base || Number(form.precio_base) < 0) newErrors.precio_base = "El precio base es obligatorio"
       if (!form.modalidad) newErrors.modalidad = "Selecciona la modalidad"
     } else if (step === 5) {
@@ -549,20 +547,24 @@ export function CursoFormPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={label} style={{ color: CHARCOAL }}>Capacidad Máxima <span style={{ color: "#ef4444" }}>*</span></label>
-                  <input type="number" min={1} max={99} value={form.capacidad_maxima}
-                    onChange={e => updateField("capacidad_maxima", parseInt(e.target.value) || 1)}
+                  <input type="number" min={1} max={form.modalidad === "presencial" ? 18 : 99} value={form.capacidad_maxima}
+                    onChange={e => {
+                      let val = parseInt(e.target.value) || 1
+                      if (form.modalidad === "presencial" && val > 18) val = 18
+                      updateField("capacidad_maxima", val)
+                    }}
                     className={inputC} style={{ ...borderS, borderColor: getError("capacidad_maxima") ? "#ef4444" : BORDER }} />
                   {getError("capacidad_maxima") && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{getError("capacidad_maxima")}</p>}
                   {!isEdit && (
                     <p className="text-xs mt-1" style={{ color: TEXT_MUTED }}>
-                      {selectedCatalogo?.categoria === "regular" && form.modalidad === "presencial"
-                        ? "Capacidad fija para cursos regulares presenciales: 18 estudiantes"
-                        : "Capacidad abierta para modalidades virtuales y otros tipos"}
+                      {form.modalidad === "presencial"
+                        ? "Capacidad máxima para cursos presenciales: 18 estudiantes"
+                        : "Sin límite de capacidad para cursos virtuales"}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label className={label} style={{ color: CHARCOAL }}>Precio Base <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label className={label} style={{ color: CHARCOAL }}>Precio Base por Modulo<span style={{ color: "#ef4444" }}>*</span></label>
                   <input type="number" min={0} step="0.01" value={form.precio_base}
                     onChange={e => updateField("precio_base", e.target.value)} placeholder="0.00"
                     className={inputC} style={{ ...borderS, borderColor: getError("precio_base") ? "#ef4444" : BORDER }} />
@@ -585,14 +587,16 @@ export function CursoFormPage() {
                   ))}
                 </div>
               </div>
-              <div>
-                <label className={label} style={{ color: CHARCOAL }}>Ciudad (Opcional)</label>
-                <select value={form.ciudad_id} onChange={e => updateField("ciudad_id", e.target.value ? parseInt(e.target.value, 10) : 0)}
-                  className={inputC} style={borderS}>
-                  <option value="">Seleccionar ciudad...</option>
-                  {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
+              {form.modalidad === "presencial" && (
+                <div>
+                  <label className={label} style={{ color: CHARCOAL }}>Ciudad</label>
+                  <select value={form.ciudad_id} onChange={e => updateField("ciudad_id", e.target.value ? parseInt(e.target.value, 10) : 0)}
+                    className={inputC} style={borderS}>
+                    <option value="">Seleccionar ciudad...</option>
+                    {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className={label} style={{ color: CHARCOAL }}>Observaciones (Opcional)</label>
                 <textarea value={form.observaciones} onChange={e => updateField("observaciones", e.target.value)}

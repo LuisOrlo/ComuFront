@@ -55,6 +55,11 @@ export function HistorialPage() {
   }, [transacciones])
 
   const getNombreEstudiante = (t: any) => {
+    // Transacción con línea de pago por módulo: usar datos resueltos por el backend
+    if (t.modulo_nombre || t.linea_pago_modulo) {
+      return t.estudiante_nombre || "—"
+    }
+    // Transacción legacy con cuenta por cobrar
     const cp = t.cuenta_por_cobrar
     const m = cp?.matricula
     const s = cp?.solicitud_inscripcion
@@ -67,6 +72,11 @@ export function HistorialPage() {
   }
 
   const getCursoNombre = (t: any) => {
+    // Transacción con línea de pago por módulo
+    if (t.modulo_nombre || t.linea_pago_modulo) {
+      return t.curso_nombre || ""
+    }
+    // Transacción legacy con cuenta por cobrar
     const cp = t.cuenta_por_cobrar
     const m = cp?.matricula
     const s = cp?.solicitud_inscripcion
@@ -78,6 +88,8 @@ export function HistorialPage() {
     if (s?.curso_abierto?.catalogo?.nombre) return s.curso_abierto.catalogo.nombre
     return t.curso_nombre || ""
   }
+
+  const esPagoPorModulo = (t: any) => !!(t.modulo_nombre || t.linea_pago_modulo)
 
   const metodoIcon = (metodo: string) => {
     const lower = (metodo || "").toLowerCase()
@@ -176,38 +188,45 @@ export function HistorialPage() {
                             >
                               {metodoIcon(t.metodo_pago)}
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
-                                {getNombreEstudiante(t)}
-                              </p>
-                              <p className="text-[10px] opacity-40 truncate">
-                                {getCursoNombre(t) || t.metodo_pago}
-                              </p>
-                            </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
+                                  {getNombreEstudiante(t)}
+                                </p>
+                                <p className="text-[10px] opacity-40 truncate">
+                                  {esPagoPorModulo(t) && t.modulo_nombre
+                                    ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulo_nombre}`
+                                    : (getCursoNombre(t) || t.metodo_pago)}
+                                </p>
+                              </div>
                           </div>
-                          <div className="flex items-center gap-4 shrink-0">
-                            <div className="text-right">
-                              <p className="text-sm font-black" style={{ color: "oklch(0.55 0.15 150)" }}>
-                                +${Number(t.monto || 0).toLocaleString()}
-                              </p>
-                              <p className="text-[10px] opacity-40 capitalize">{t.metodo_pago}</p>
+                            <div className="flex items-center gap-4 shrink-0">
+                              <div className="text-right">
+                                <p className="text-sm font-black" style={{ color: "oklch(0.55 0.15 150)" }}>
+                                  +${Number(t.monto || 0).toLocaleString()}
+                                </p>
+                                <p className="text-[10px] opacity-40 capitalize">{t.metodo_pago}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {t.comprobante_url && (
+                                  <HugeiconsIcon icon={ImageIcon} size={14} className="opacity-30" />
+                                )}
+                                {esPagoPorModulo(t) && (
+                                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-purple-100 text-purple-700">
+                                    Módulo
+                                  </span>
+                                )}
+                                <span
+                                  className={cn("px-2 py-0.5 rounded-full text-[8px] font-bold uppercase", badgeEstado(t.estado_verificacion))}
+                                >
+                                  {t.estado_verificacion}
+                                </span>
+                                <HugeiconsIcon
+                                  icon={ArrowRight01Icon}
+                                  size={16}
+                                  className="opacity-0 group-hover:opacity-40 transition-opacity"
+                                />
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {t.comprobante_url && (
-                                <HugeiconsIcon icon={ImageIcon} size={14} className="opacity-30" />
-                              )}
-                              <span
-                                className={cn("px-2 py-0.5 rounded-full text-[8px] font-bold uppercase", badgeEstado(t.estado_verificacion))}
-                              >
-                                {t.estado_verificacion}
-                              </span>
-                              <HugeiconsIcon
-                                icon={ArrowRight01Icon}
-                                size={16}
-                                className="opacity-0 group-hover:opacity-40 transition-opacity"
-                              />
-                            </div>
-                          </div>
                         </motion.button>
                       ))}
                     </div>

@@ -59,19 +59,34 @@ export function CursosCuentasPage() {
       if (c.tipo === "aula" || c.tipo === "podcast" || c.tipo === "equipo" || c.tipo === "streaming" || c.tipo === "produccion" || c.tipo === "edicion" || c.tipo === "radio" || c.tipo === "clase_extra" || c.tipo === "asesoria") return
       if (c.tipo === "taller" || c.tipo === "talleres") return
 
-      const name =
-        c.matricula?.curso_abierto?.nombre_instancia ||
-        c.matricula?.curso_abierto?.catalogo?.nombre ||
-        c.solicitud_inscripcion?.curso_abierto?.nombre_instancia ||
-        c.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre ||
-        c.curso_nombre ||
-        "Curso"
-
       const cursoId =
         c.matricula?.curso_abierto?.id ||
         c.solicitud_inscripcion?.curso_abierto?.id ||
+        c.curso_abierto_id ||
         c.curso_id ||
         ""
+
+      const curso =
+        c.matricula?.curso_abierto ||
+        c.solicitud_inscripcion?.curso_abierto ||
+        null
+
+      let name = curso?.nombre_instancia || ""
+
+      if (!name && curso) {
+        const partes: string[] = []
+        if (curso.catalogo?.nombre) partes.push(curso.catalogo.nombre)
+        if (curso.ciudad?.nombre) partes.push(curso.ciudad.nombre)
+        if (curso.fecha_inicio) {
+          const d = new Date(curso.fecha_inicio)
+          const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+          partes.push(`${meses[d.getMonth()]} ${d.getFullYear()}`)
+        }
+        if (curso.modalidad) partes.push(curso.modalidad.charAt(0).toUpperCase() + curso.modalidad.slice(1))
+        if (partes.length > 0) name = partes.join(' — ')
+      }
+
+      if (!name) name = c.curso_nombre || "Curso"
 
       if (!groups[name]) {
         groups[name] = {

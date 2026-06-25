@@ -28,14 +28,14 @@ const ORIGEN_CONFIG: Record<string, { label: string; desc: string; icon: any; co
 }
 
 function getNombrePersona(cuenta: any): string {
-  const s = cuenta.solicitud_inscripcion
+  if (cuenta.persona_nombre) return cuenta.persona_nombre
   const m = cuenta.matricula
+  const s = cuenta.solicitud_inscripcion
   const it = cuenta.inscripcion_taller
   if (m?.estudiante) return `${m.estudiante.nombres || ""} ${m.estudiante.apellidos || ""}`.trim()
   if (s?.estudiante) return `${s.estudiante.nombres || ""} ${s.estudiante.apellidos || ""}`.trim()
   if (s?.participante_externo) return `${s.participante_externo.nombres || ""} ${s.participante_externo.apellidos || ""}`.trim()
   if (it?.participante) return `${it.participante.nombres || ""} ${it.participante.apellidos || ""}`.trim()
-  if (cuenta.persona_nombre) return cuenta.persona_nombre
   return "—"
 }
 
@@ -58,12 +58,30 @@ function getCuentaType(cuenta: any): string {
 
 function getCuentaName(cuenta: any): string {
   if (cuenta.inscripcion_taller?.taller?.nombre) return cuenta.inscripcion_taller.taller.nombre
-  if (cuenta.matricula?.curso_abierto?.nombre_instancia) return cuenta.matricula.curso_abierto.nombre_instancia
-  if (cuenta.matricula?.curso_abierto?.catalogo?.nombre) return cuenta.matricula.curso_abierto.catalogo.nombre
+
+  const curso =
+    cuenta.matricula?.curso_abierto ||
+    cuenta.solicitud_inscripcion?.curso_abierto ||
+    null
+
+  if (curso) {
+    if (curso.nombre_instancia) return curso.nombre_instancia
+    const partes: string[] = []
+    if (curso.catalogo?.nombre) partes.push(curso.catalogo.nombre)
+    if (curso.ciudad?.nombre) partes.push(curso.ciudad.nombre)
+    if (curso.fecha_inicio) {
+      const d = new Date(curso.fecha_inicio)
+      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+      partes.push(`${meses[d.getMonth()]} ${d.getFullYear()}`)
+    }
+    if (curso.modalidad) partes.push(curso.modalidad.charAt(0).toUpperCase() + curso.modalidad.slice(1))
+    if (partes.length > 0) return partes.join(' — ')
+  }
+
   if (cuenta.curso_nombre) return cuenta.curso_nombre
   if (cuenta.inscripcion_taller_id) return "Taller"
   if (cuenta.nombre_servicio) return cuenta.nombre_servicio
-  return cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre || "Curso"
+  return "Curso"
 }
 
 function HealthBar({ recaudado, total }: { recaudado: number; total: number }) {
@@ -90,6 +108,16 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const [filter, setFilter] = useState<string>("todos")
   const [modalidadFilter, setModalidadFilter] = useState<string>("todos")
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [modulosExpandidos, setModulosExpandidos] = useState<Set<string>>(new Set())
+
+  const toggleModulos = (id: string) => {
+    setModulosExpandidos(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const sinCuentaTalleres = stats?.sin_cuenta?.talleres
   const sinCuentaServicios = stats?.sin_cuenta?.servicios
@@ -213,7 +241,15 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     }
 
     if (Array.isArray(stats?.sin_cuenta?.cursos?.items)) {
+      const idsEnCuentas = new Set(
+        cuentasFiltradas
+          .filter((c: any) => c._origen === "lineas_pago" || c.matricula_id)
+          .map((c: any) => c.matricula_id)
+          .filter(Boolean)
+      )
+
       stats.sin_cuenta.cursos.items.forEach((item: any) => {
+        if (item.matricula_id && idsEnCuentas.has(item.matricula_id)) return
         const name = item.curso_nombre || "Curso"
         if (!groups.cursos.items[name]) {
           groups.cursos.items[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, deudores: 0, entries: [] }
@@ -405,36 +441,95 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                 const nombre = getNombrePersona(cuenta)
                                 const pendiente = Number(cuenta.saldo_pendiente || 0)
                                 const abonado = Number(cuenta.monto_abonado || 0)
-                                const total = Number(cuenta.monto_total || 0)
+                                const lineasPago = cuenta.lineas_pago || []
+                                const instructor = cuenta.instructor_nombre || null
+
                                 return (
-                                  <div key={cuenta.id || Math.random()} className="px-4 py-2.5 flex items-center justify-between gap-3 transition-colors hover:bg-white/50">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="size-6 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.9 0 0)" }}>
-                                        <HugeiconsIcon icon={UserIcon} size={12} style={{ color: COLORS.TEXT_MUTED }} />
+                                     <div key={cuenta.id || Math.random()} className="px-4 py-3 transition-colors hover:bg-white/50">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        <div className="size-6 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.9 0 0)" }}>
+                                          <HugeiconsIcon icon={UserIcon} size={12} style={{ color: COLORS.TEXT_MUTED }} />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
+                                          <p className="text-[10px] opacity-40">
+                                            Total: ${(Number(cuenta.monto_total) || 0).toLocaleString()}
+                                            {instructor && ` · Instructor: ${instructor}`}
+                                          </p>
+                                        </div>
                                       </div>
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
-                                        <p className="text-[10px] opacity-40">Total: <span className="font-medium">${total.toLocaleString()}</span></p>
+                                      <div className="flex items-center gap-3 shrink-0">
+                                        <div className="text-right">
+                                          <p className="text-[10px] opacity-40">Abonado</p>
+                                          <p className="text-xs font-bold text-green-600">${abonado.toLocaleString()}</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-[10px] opacity-40">Saldo</p>
+                                          <p className={cn("text-xs font-bold", pendiente > 0 ? "text-red-600" : "")} style={{ color: pendiente > 0 ? undefined : COLORS.CHARCOAL }}>
+                                            ${pendiente.toLocaleString()}
+                                          </p>
+                                        </div>
+                                        <span className={cn(
+                                          "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
+                                          pendiente === 0 ? "bg-green-100 text-green-700" : abonado > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                        )}>
+                                          {pendiente === 0 ? "Al día" : abonado > 0 ? "Parcial" : "Deuda"}
+                                        </span>
+                                        {lineasPago.length > 0 && (
+                                          <button
+                                            onClick={() => toggleModulos(cuenta.id || cuenta.matricula_id)}
+                                            className="text-[10px] font-medium hover:underline shrink-0"
+                                            style={{ color: COLORS.TEXT_MUTED }}
+                                          >
+                                            {modulosExpandidos.has(cuenta.id || cuenta.matricula_id) ? "Ocultar módulos" : "Ver módulos"}
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0">
-                                      <div className="text-right">
-                                        <p className="text-[10px] opacity-40">Abonado</p>
-                                        <p className="text-xs font-bold text-green-600">${abonado.toLocaleString()}</p>
+
+                                    {lineasPago.length > 0 && modulosExpandidos.has(cuenta.id || cuenta.matricula_id) && (
+                                      <div className="mt-2 overflow-x-auto border-t pt-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                        <table className="w-full text-[10px]">
+                                          <thead>
+                                            <tr className="border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                              <th className="text-left py-1 pr-2 font-bold uppercase opacity-40">Módulo</th>
+                                              <th className="text-right py-1 px-2 font-bold uppercase opacity-40">Precio</th>
+                                              <th className="text-right py-1 px-2 font-bold uppercase opacity-40">Abonado</th>
+                                              <th className="text-right py-1 px-2 font-bold uppercase opacity-40">Saldo</th>
+                                              <th className="text-center py-1 pl-2 font-bold uppercase opacity-40">Estado</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {lineasPago.map((lp: any) => {
+                                              const lpPrecio = Number(lp.monto_ajustado || 0)
+                                              const lpAbonado = Number(lp.monto_abonado || 0)
+                                              const lpSaldo = Math.max(0, lpPrecio - lpAbonado)
+                                              return (
+                                                <tr key={lp.id || lp.modulo_id} className="border-b border-gray-50">
+                                                  <td className="py-1 pr-2 text-left font-medium" style={{ color: COLORS.CHARCOAL }}>
+                                                    {lp.nombre_modulo || `Módulo ${lp.numero_orden || '—'}`}
+                                                  </td>
+                                                  <td className="py-1 px-2 text-right">${lpPrecio.toLocaleString()}</td>
+                                                  <td className="py-1 px-2 text-right text-green-600 font-medium">${lpAbonado.toLocaleString()}</td>
+                                                  <td className="py-1 px-2 text-right" style={{ color: lpSaldo > 0 ? '#dc2626' : COLORS.CHARCOAL }}>
+                                                    ${lpSaldo.toLocaleString()}
+                                                  </td>
+                                                  <td className="py-1 pl-2 text-center">
+                                                    <span className={cn(
+                                                      "text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full",
+                                                      lpSaldo === 0 ? "bg-green-100 text-green-700" : lpAbonado > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                                    )}>
+                                                      {lpSaldo === 0 ? "Pagado" : lpAbonado > 0 ? "Parcial" : "Pendiente"}
+                                                    </span>
+                                                  </td>
+                                                </tr>
+                                              )
+                                            })}
+                                          </tbody>
+                                        </table>
                                       </div>
-                                      <div className="text-right">
-                                        <p className="text-[10px] opacity-40">Saldo</p>
-                                        <p className={cn("text-xs font-bold", pendiente > 0 ? "text-red-600" : "")} style={{ color: pendiente > 0 ? undefined : COLORS.CHARCOAL }}>
-                                          ${pendiente.toLocaleString()}
-                                        </p>
-                                      </div>
-                                      <span className={cn(
-                                        "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
-                                        pendiente === 0 ? "bg-green-100 text-green-700" : abonado > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                                      )}>
-                                        {pendiente === 0 ? "Al día" : abonado > 0 ? "Parcial" : "Deuda"}
-                                      </span>
-                                    </div>
+                                    )}
                                   </div>
                                 )
                               })

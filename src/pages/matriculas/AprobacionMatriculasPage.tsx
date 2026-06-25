@@ -24,8 +24,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { RejectModal } from "@/components/RejectModal"
 import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services/cursos.service"
 import { tallerService } from "@/services/taller.service"
-import { financeService } from "@/services/finance.service"
-import { PagoInicialMatriculaModal } from "@/pages/estudiantes/components/PagoInicialMatriculaModal"
+import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "./PagoPreAprobacionSection"
 import { toast } from "sonner"
 
 function ImageZoom({ url, onClose }: { url: string; onClose: () => void }) {
@@ -99,19 +98,13 @@ export function AprobacionMatriculasPage() {
   const [uploadingCedula, setUploadingCedula] = useState(false)
   const cedulaRef = useRef<HTMLInputElement>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const pagoRef = useRef<PagoPreAprobacionRef>(null)
+  const [montoModulo1Valido, setMontoModulo1Valido] = useState(false)
 
   // Edición de pago
   const [editPagoField, setEditPagoField] = useState<string | null>(null)
   const [editPagoVal, setEditPagoVal] = useState("")
   const [savingPagoEdit, setSavingPagoEdit] = useState(false)
-
-  // Modal de pago inicial por módulo
-  const [pagoInicialOpen, setPagoInicialOpen] = useState(false)
-  const [pagoInicialData, setPagoInicialData] = useState<{
-    lineasPagoIds: string[]
-    matriculaId: string
-    cursoNombre: string
-  } | null>(null)
 
   // Edición de curso
   const [editCursoField, setEditCursoField] = useState<string | null>(null)
@@ -388,54 +381,32 @@ export function AprobacionMatriculasPage() {
     finally { setUploadingComprobante(false) }
   }
 
-  const handleApprove = async () => {
-    if (!confirmAction) return
+  const handleApproveWithPayment = async (pagos: any[], metodoPago: string) => {
+    if (!selectedId) return
     setActionLoading(true)
     try {
-      if (confirmAction.origen === "taller") {
-        await tallerService.verificarPago(confirmAction.id)
-        toast.success("Pago de taller verificado correctamente")
-        setConfirmAction(null)
-        cargarTallerInscripciones()
-        return
-      }
-
-      const result = await cursosService.aprobarSolicitudInscripcion(confirmAction.id)
-      const responseData = (result as any)?.data
-
-      if (responseData?.lineas_pago_ids?.length > 0 && responseData?.matricula_id) {
-        setSelected((prev: any) => prev ? {
-          ...prev,
-          estado: "matricula_creada",
-          _lineas_pago_ids: responseData.lineas_pago_ids,
-          _matricula_id: responseData.matricula_id,
-          _mostrar_pago_inicial: true,
-        } : null)
-      } else if (selected?.pago?.monto_solicitado) {
-        // Fallback legacy: no hay lineas_pago, usar cuentaPorCobrar
-        try {
-          const cuentasRes = await financeService.getCuentas({ per_page: 100 })
-          const cuentas: any[] = cuentasRes.data || []
-          const cuenta = cuentas.find((c: any) =>
-            c.solicitud_inscripcion_id === confirmAction.id ||
-            c.solicitud_inscripcion?.id === confirmAction.id
-          )
-          if (cuenta?.id) {
-            await financeService.registrarPago({
-              cuenta_cobrar_id: cuenta.id,
-              monto: Number(selected.pago.monto_solicitado),
-              metodo_pago: selected.pago.tipo_pago || "transferencia",
-              fecha_pago: selected.pago.comprobante?.fecha_pago_declarada?.split("T")[0] || new Date().toISOString().split("T")[0],
-            })
-          }
-        } catch { /* no bloquea */ }
-      }
-
-      toast.success("Matrícula aprobada")
-      setConfirmAction(null)
+      await cursosService.aprobarSolicitudInscripcion(selectedId, {
+        pagos,
+        metodo_pago: metodoPago,
+      })
+      toast.success("Matrícula aprobada y pago registrado")
+      setSelectedId(null); setSelected(null)
       cargarSolicitudes()
     } catch (err) {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al aprobar")
+    } finally { setActionLoading(false) }
+  }
+
+  const handleApproveTaller = async () => {
+    if (!confirmAction) return
+    setActionLoading(true)
+    try {
+      await tallerService.verificarPago(confirmAction.id)
+      toast.success("Pago de taller verificado correctamente")
+      setConfirmAction(null)
+      cargarTallerInscripciones()
+    } catch (err) {
+      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al verificar pago")
     } finally { setActionLoading(false) }
   }
 
@@ -792,60 +763,9 @@ export function AprobacionMatriculasPage() {
                                        )}
                                      </div>
                                    </Section>
-                                   <Section title="Pago" icon={PaymentIcon}>
-                                     <div className="grid grid-cols-2 gap-3">
-                                       {editPagoField === "pago_monto" ? (
-                                         <div className="flex items-center gap-2 col-span-2">
-                                           <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                           <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Monto:</span>
-                                            <input type="number" step="0.01" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)} placeholder="0.00"
-                                              className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
-                                            <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                              {savingPagoEdit ? "..." : "Guardar"}
-                                           </button>
-                                           <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                             Cancelar
-                                           </button>
-                                         </div>
-                                       ) : (
-                                         <div className="flex items-center gap-2 text-xs group">
-                                           <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                           <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Monto</span>
-                                           <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>${selected.pago?.monto_solicitado}</span>
-                                           <button onClick={() => { setEditPagoField("pago_monto"); setEditPagoVal(String(selected.pago?.monto_solicitado || "")) }}
-                                             className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                             <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                           </button>
-                                         </div>
-                                       )}
-                                       {editPagoField === "pago_tipo" ? (
-                                         <div className="flex items-center gap-2 col-span-2">
-                                           <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                           <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                                            <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                              className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
-                                             <option value="abono">Abono</option>
-                                             <option value="completo">Completo</option>
-                                            </select>
-                                           <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                             {savingPagoEdit ? "..." : "Guardar"}
-                                           </button>
-                                           <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                             Cancelar
-                                           </button>
-                                         </div>
-                                       ) : (
-                                         <div className="flex items-center gap-2 text-xs group">
-                                           <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                           <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
-                                            <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{(selected.pago?.tipo_pago || "—").toUpperCase()}</span>
-                                            <button onClick={() => { setEditPagoField("pago_tipo"); setEditPagoVal(selected.pago?.tipo_pago || "") }}
-                                             className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                             <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                           </button>
-                                         </div>
-                                       )}
-                                       {editPagoField === "pago_fecha" ? (
+                                    <Section title="Pago" icon={PaymentIcon}>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        {editPagoField === "pago_fecha" ? (
                                          <div className="flex items-center gap-2 col-span-2">
                                            <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
                                            <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
@@ -923,6 +843,47 @@ export function AprobacionMatriculasPage() {
                                           </div>
                                         )}
                                       </div>
+                                      {selected?.estado?.valor === "pendiente_validacion" && selected?.curso?.id && (
+                                        <PagoPreAprobacionSection
+                                          ref={pagoRef}
+                                          cursoAbiertoId={selected.curso.id}
+                                          cursoNombre={getCursoNombre()}
+                                          metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
+                                          onMontoModulo1Change={setMontoModulo1Valido}
+                                          onSubmit={(pagos, metodoPago) => handleApproveWithPayment(pagos, metodoPago)}
+                                        />
+                                      )}
+                                      {selected?.lineas_pago?.modulos?.length > 0 && (
+                                        <div className="mt-3 p-4 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pagos</span>
+                                            <span className="text-[10px] font-bold" style={{ color: COLORS.ACCENT }}>
+                                              {selected.lineas_pago.modulos_pagados}/{selected.lineas_pago.modulos_count} módulos pagados
+                                            </span>
+                                          </div>
+                                          {selected.lineas_pago.modulos.map((lp: any, i: number) => (
+                                            <div key={i} className="flex items-center justify-between text-[10px]">
+                                              <span style={{ color: COLORS.CHARCOAL }}>{lp.modulo_nombre}</span>
+                                              <div className="flex items-center gap-3">
+                                                <span className="opacity-50">${lp.monto_ajustado.toLocaleString()}</span>
+                                                <span className="font-medium" style={{ color: lp.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
+                                                  ${lp.monto_abonado.toLocaleString()}
+                                                </span>
+                                                <span className={cn("text-[8px] font-bold uppercase px-1 py-0.5 rounded-full",
+                                                  lp.estado === "pagado" ? "bg-green-100 text-green-700" :
+                                                  lp.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                                )}>{lp.estado === "pagado" ? "Pagado" : lp.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                          <div className="border-t pt-2 mt-2 flex justify-between text-[10px] font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                            <span style={{ color: COLORS.CHARCOAL }}>Total abonado</span>
+                                            <span style={{ color: "oklch(0.55 0.15 150)" }}>
+                                              ${selected.lineas_pago.total_abonado.toLocaleString()} de ${selected.lineas_pago.total_esperado.toLocaleString()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
                                     </Section>
                                     <Section title="Documento de Identidad" icon={Image01Icon}>
                                       {selected.pago?.comprobante?.cedula_url ? (
@@ -950,55 +911,26 @@ export function AprobacionMatriculasPage() {
                                          </button>
                                        </div>
                                      )}
-                                     <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                                   </Section>
-                                  <div className="flex gap-3 pt-3">
-                                    <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
-                                      className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
-                                      style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-                                      <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
-                                    </button>
-                                    <button onClick={() => setConfirmAction({ type: "aprobar", id: selected.id })}
-                                      className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97]"
-                                      style={{ backgroundColor: COLORS.ACCENT }}>
-                                      <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar Matrícula
-                                    </button>
-                              </div>
-                            </>
-                          ) : selected?.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 ? (
-                            selected?._mostrar_pago_inicial ? (
-                              <PagoInicialInline
-                                lineasPagoIds={selected._lineas_pago_ids}
-                                matriculaId={selected._matricula_id}
-                                cursoNombre={selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || ""}
-                                estudianteNombre={[selected.solicitante?.datos?.nombres, selected.solicitante?.datos?.apellidos].filter(Boolean).join(" ") || undefined}
-                                estudianteCedula={selected.solicitante?.datos?.cedula || undefined}
-                                onOmitir={() => {
-                                  setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
-                                  cargarSolicitudes()
-                                }}
-                                onCompleted={() => {
-                                  setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
-                                  cargarSolicitudes()
-                                }}
-                              />
-                            ) : (
-                              <div className="flex gap-3 pt-3">
-                                <button onClick={() => {
-                                  setPagoInicialData({
-                                    lineasPagoIds: selected._lineas_pago_ids,
-                                    matriculaId: selected._matricula_id,
-                                    cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
-                                  })
-                                  setPagoInicialOpen(true)
-                                }}
-                                  className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
-                                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                  <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
-                                </button>
-                              </div>
-                            )
-                          ) : null}
+                                      <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
+                                    </Section>
+                                   {selected?.estado?.valor === "pendiente_validacion" && (
+                                     <div className="flex gap-3 pt-3">
+                                       <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
+                                         className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
+                                         style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
+                                         <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
+                                       </button>
+                                       <button
+                                        onClick={() => pagoRef.current?.submit()}
+                                        disabled={actionLoading || !montoModulo1Valido}
+                                         className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
+                                         style={{ backgroundColor: COLORS.ACCENT }}>
+                                         <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
+                                       </button>
+                                     </div>
+                                   )}
+                                </>
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -1289,57 +1221,43 @@ export function AprobacionMatriculasPage() {
                                 <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
                               </Section>
 
-                             {s.estado === "pendiente_validacion" && (
+                              {s.estado === "pendiente_validacion" && selected?.curso?.id && (
+                                <PagoPreAprobacionSection
+                                  ref={pagoRef}
+                                  cursoAbiertoId={selected.curso.id}
+                                  cursoNombre={getCursoNombre()}
+                                  metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
+                                  onMontoModulo1Change={setMontoModulo1Valido}
+                                  onSubmit={(pagos, metodoPago) => handleApproveWithPayment(pagos, metodoPago)}
+                                />
+                              )}
+                             {s.estado === "pendiente_validacion" ? (
                                <div className="flex gap-3 pt-3">
                                  <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
                                    className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
                                    style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
                                    <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
                                  </button>
-                                 <button onClick={() => setConfirmAction({ type: "aprobar", id: selected.id })}
-                                   className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97]"
+                                 <button
+                                   onClick={() => pagoRef.current?.submit()}
+                                   disabled={actionLoading || !pagoRef.current?.tieneMontoModulo1}
+                                   className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
                                    style={{ backgroundColor: COLORS.ACCENT }}>
-                                   <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar Matrícula
+                                   <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
                                  </button>
                                </div>
-                              )}
-                               {s.estado === "matricula_creada" && selected?._lineas_pago_ids?.length > 0 && (
-                                 selected?._mostrar_pago_inicial ? (
-                                   <PagoInicialInline
-                                     lineasPagoIds={selected._lineas_pago_ids}
-                                     matriculaId={selected._matricula_id}
-                                     cursoNombre={selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || ""}
-                                     estudianteNombre={[selected.solicitante?.datos?.nombres, selected.solicitante?.datos?.apellidos].filter(Boolean).join(" ") || undefined}
-                                     estudianteCedula={selected.solicitante?.datos?.cedula || undefined}
-                                     onOmitir={() => {
-                                       setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
-                                       cargarSolicitudes()
-                                     }}
-                                     onCompleted={() => {
-                                       setSelected((prev: any) => prev ? { ...prev, _mostrar_pago_inicial: false } : null)
-                                       cargarSolicitudes()
-                                     }}
-                                   />
-                                 ) : (
-                                   <div className="flex gap-3 pt-3">
-                                     <button onClick={() => {
-                                       setPagoInicialData({
-                                         lineasPagoIds: selected._lineas_pago_ids,
-                                         matriculaId: selected._matricula_id,
-                                         cursoNombre: selected?.curso?.nombre || selected?.curso_abierto?.catalogo?.nombre || "",
-                                       })
-                                       setPagoInicialOpen(true)
-                                     }}
-                                       className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-gray-50 active:scale-[0.97]"
-                                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                       <HugeiconsIcon icon={PaymentIcon} size={16} className="inline mr-1.5" />Registrar pago inicial
-                                     </button>
-                                   </div>
-                                 )
-                               )}
-                            </>
-                         ) : null}
-                       </div>
+                             ) : (
+                               <div className="flex gap-3 pt-3">
+                                 <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
+                                   className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
+                                   style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
+                                   <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
+                                 </button>
+                               </div>
+                             )}
+                          </>
+                        ) : null}
+                      </div>
                     )}
                   </div>
                 )
@@ -1354,34 +1272,23 @@ export function AprobacionMatriculasPage() {
       )}
 
       <ConfirmationModal
-        isOpen={confirmAction?.type === "aprobar" && !!confirmAction}
-        title={confirmAction?.origen === "taller" ? "Verificar Pago de Taller" : "Aprobar Matrícula"}
-        message={confirmAction?.origen === "taller" ? "Se confirmará el pago del participante en el taller." : "Se creará la matrícula del estudiante."}
-        confirmText={confirmAction?.origen === "taller" ? "Verificar Pago" : "Aprobar"}
+        isOpen={confirmAction?.type === "aprobar" && confirmAction?.origen === "taller" && !!confirmAction}
+        title="Verificar Pago de Taller"
+        message="Se confirmará el pago del participante en el taller."
+        confirmText="Verificar Pago"
         cancelText="Cancelar"
         isLoading={actionLoading}
         icon="info"
-        onConfirm={handleApprove}
+        onConfirm={handleApproveTaller}
         onCancel={() => setConfirmAction(null)}
       />
 
       <RejectModal
-        isOpen={confirmAction?.type === "rechazar"}
+        isOpen={confirmAction?.type === "rechazar" && !!confirmAction}
+        isLoading={actionLoading}
         onConfirm={handleReject}
         onCancel={() => setConfirmAction(null)}
-        isLoading={actionLoading}
       />
-
-      {pagoInicialData && (
-        <PagoInicialMatriculaModal
-          open={pagoInicialOpen}
-          onOpenChange={(open) => { setPagoInicialOpen(open); if (!open) { cargarSolicitudes(); setPagoInicialData(null) } }}
-          lineasPagoIds={pagoInicialData.lineasPagoIds}
-          matriculaId={pagoInicialData.matriculaId}
-          cursoNombre={pagoInicialData.cursoNombre}
-          onCompleted={() => { cargarSolicitudes(); setPagoInicialOpen(false); setPagoInicialData(null) }}
-        />
-      )}
     </div>
   )
 }
@@ -1400,14 +1307,6 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
   const [expandedComprobante, setExpandedComprobante] = useState(false)
 
   const [, forceUpdate] = useState(0)
-  const [talleresList, setTalleresList] = useState<any[]>([])
-
-  const cargarTalleres = async () => {
-    try {
-      const res = await tallerService.listar({ per_page: 100 } as any)
-      setTalleresList((res as any).data || [])
-    } catch { /* */ }
-  }
 
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1484,174 +1383,25 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
                <EF icon={UserIcon} label="Dirección" field="direccion" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-               <EF icon={UserIcon} label="Ciudad" field="ciudad" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
+               <InfoItem icon={UserIcon} label="Ciudad" value={ins.ciudad || "—"} />
               <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              {editTallerField === "fecha_nacimiento" ? (
-                <div className="flex items-center gap-2 col-span-2">
-                  <HugeiconsIcon icon={Calendar03Icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha Nac.:</span>
-                  <input type="date" value={editTallerVal} onChange={e => onChange(e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit} />
-                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
-                    {savingTallerEdit ? "..." : "Guardar"}
-                  </button>
-                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs group">
-                  <HugeiconsIcon icon={Calendar03Icon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha Nacimiento</span>
-                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{formatDate(ins.fecha_nacimiento)}</span>
-                  <button onClick={() => onEdit("fecha_nacimiento", ins.fecha_nacimiento ? ins.fecha_nacimiento.split("T")[0] : "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={14} />
-                  </button>
-                </div>
-              )}
-              <EF icon={Calendar03Icon} label="Edad" field="edad" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} inputType="number" />
+              <InfoItem icon={Calendar03Icon} label="Fecha Nacimiento" value={formatDate(ins.fecha_nacimiento)} />
+              <InfoItem icon={Calendar03Icon} label="Edad" value={ins.edad ? `${ins.edad} años` : "—"} />
             </div>
           </Section>
           <Section title="Taller" icon={BookOpenIcon}>
-            <div className="grid grid-cols-2 gap-3">
-              {editTallerField === "taller_id" ? (
-                <div className="flex items-center gap-2 col-span-2">
-                  <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Taller:</span>
-                  <select value={editTallerVal} onChange={e => onChange(e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit}>
-                    {talleresList.map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.nombre}</option>
-                    ))}
-                  </select>
-                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
-                    {savingTallerEdit ? "..." : "Guardar"}
-                  </button>
-                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs group col-span-2">
-                  <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Taller</span>
-                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{ins.taller?.nombre || "—"}</span>
-                  <button onClick={() => { cargarTalleres(); onEdit("taller_id", ins.taller?.id || "") }} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={14} />
-                  </button>
-                </div>
-              )}
-              <InfoItem icon={CalendarIcon} label="Fecha" value={ins.taller?.fecha ? new Date(ins.taller.fecha).toLocaleDateString('es-ES') : "—"} />
-              <InfoItem icon={PaymentIcon} label="Precio" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold />
-            </div>
+            <InfoItem icon={BookOpenIcon} label="Taller" value={ins.taller?.nombre || "—"} bold />
+            <InfoItem icon={CalendarIcon} label="Fecha" value={ins.taller?.fecha ? new Date(ins.taller.fecha).toLocaleDateString('es-ES') : "—"} />
+            <InfoItem icon={PaymentIcon} label="Precio" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold />
           </Section>
           <Section title="Pago" icon={PaymentIcon}>
             <div className="grid grid-cols-2 gap-3">
-              {editTallerField === "monto_pagado" ? (
-                <div className="flex items-center gap-2 col-span-2">
-                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Monto:</span>
-                  <input type="number" step="0.01" value={editTallerVal} onChange={e => onChange(e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit} />
-                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
-                    {savingTallerEdit ? "..." : "Guardar"}
-                  </button>
-                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs group">
-                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Monto</span>
-                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>${Number(ins.monto_pagado || 0).toFixed(2)}</span>
-                  <button onClick={() => onEdit("monto_pagado", String(ins.monto_pagado || ""))} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={14} />
-                  </button>
-                </div>
-              )}
-              {editTallerField === "tipo_pago" ? (
-                <div className="flex items-center gap-2 col-span-2">
-                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                  <select value={editTallerVal} onChange={e => onChange(e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit}>
-                    <option value="completo">Completo</option>
-                    <option value="abono">Abono</option>
-                  </select>
-                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
-                    {savingTallerEdit ? "..." : "Guardar"}
-                  </button>
-                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs group">
-                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
-                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{ins.tipo_pago || "—"}</span>
-                  <button onClick={() => onEdit("tipo_pago", ins.tipo_pago || "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={14} />
-                  </button>
-                </div>
-              )}
-              {editTallerField === "metodo_pago" ? (
-                <div className="flex items-center gap-2 col-span-2">
-                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Método:</span>
-                  <select value={editTallerVal} onChange={e => onChange(e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit}>
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia">Transferencia</option>
-                    <option value="deposito">Depósito</option>
-                  </select>
-                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
-                    {savingTallerEdit ? "..." : "Guardar"}
-                  </button>
-                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs group">
-                  <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Método</span>
-                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{ins.metodo_pago || "—"}</span>
-                  <button onClick={() => onEdit("metodo_pago", ins.metodo_pago || "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={14} />
-                  </button>
-                </div>
-              )}
-              {editTallerField === "fecha_pago" ? (
-                <div className="flex items-center gap-2 col-span-2">
-                  <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
-                  <input type="date" value={editTallerVal} onChange={e => onChange(e.target.value)}
-                    className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingTallerEdit} />
-                  <button onClick={onSave} disabled={savingTallerEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingTallerEdit ? 0.6 : 1 }}>
-                    {savingTallerEdit ? "..." : "Guardar"}
-                  </button>
-                  <button onClick={onCancel} disabled={savingTallerEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs group">
-                  <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                  <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha</span>
-                  <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{formatDate(ins.fecha_pago)}</span>
-                  <button onClick={() => onEdit("fecha_pago", ins.fecha_pago ? ins.fecha_pago.split("T")[0] : "")} className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={14} />
-                  </button>
-                </div>
-              )}
+              <InfoItem icon={PaymentIcon} label="Monto" value={`$${Number(ins.monto_pagado || 0).toFixed(2)}`} bold />
+              <InfoItem icon={PaymentIcon} label="Tipo" value={ins.tipo_pago || "—"} />
+              <InfoItem icon={CalendarIcon} label="Fecha de Pago" value={formatDate(ins.fecha_pago)} />
+              <InfoItem icon={PaymentIcon} label="Método" value={ins.metodo_pago || "—"} />
             </div>
             <div className="mt-3 space-y-2">
               <div className="flex gap-2">
@@ -1722,232 +1472,6 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-function PagoInicialInline({
-  lineasPagoIds, matriculaId, cursoNombre, estudianteNombre, estudianteCedula, onOmitir, onCompleted
-}: {
-  lineasPagoIds: string[]
-  matriculaId: string
-  cursoNombre: string
-  estudianteNombre?: string
-  estudianteCedula?: string
-  onOmitir: () => void
-  onCompleted: () => void
-}) {
-  const [multiModulo, setMultiModulo] = useState(false)
-  const [montos, setMontos] = useState<Record<string, string>>({})
-  const [metodoPago, setMetodoPago] = useState("efectivo")
-  const [saving, setSaving] = useState(false)
-  const [lineas, setLineas] = useState<any[]>([])
-  const [ajustes, setAjustes] = useState<Record<string, { expandido: boolean; nuevoPrecio: string; motivo: string }>>({})
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/personas/estudiantes/${lineasPagoIds[0]}/matricula/${matriculaId}/lineas-pago`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` }
-        })
-        setLineas(res.data.datos || [])
-      } catch {
-        setLineas(lineasPagoIds.map((id, i) => ({
-          id, modulo_id: id, nombre_modulo: `M\u00f3dulo ${i + 1}`, numero_orden: i + 1,
-          monto_original: 0, monto_ajustado: 0, monto_abonado: 0,
-        })))
-      }
-    }
-    load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const visibles = multiModulo ? lineas : [lineas[0]]
-  const totalModulos = lineas.length
-
-  const toggleAjuste = (lineaId: string) => {
-    setAjustes(prev => {
-      const actual = prev[lineaId]
-      if (actual?.expandido) return { ...prev, [lineaId]: { ...actual, expandido: false } }
-      const linea = lineas.find(l => l.id === lineaId)
-      return { ...prev, [lineaId]: { expandido: true, nuevoPrecio: String(linea?.monto_ajustado ?? 0), motivo: actual?.motivo ?? "" } }
-    })
-  }
-
-  const confirmarAjuste = (lineaId: string) => {
-    const a = ajustes[lineaId]
-    if (!a) return
-    setLineas(prev => prev.map(l => l.id === lineaId ? { ...l, monto_ajustado: parseFloat(a.nuevoPrecio) || 0 } : l))
-    setAjustes(prev => ({ ...prev, [lineaId]: { ...a, expandido: false } }))
-  }
-
-  const handleRegistrar = async () => {
-    setSaving(true)
-    try {
-      const pagos = visibles
-        .filter(l => parseFloat(montos[l.id] || "0") > 0)
-        .map(l => {
-          const base: Record<string, unknown> = {
-            linea_pago_modulo_id: l.id,
-            monto: parseFloat(montos[l.id] || "0"),
-            metodo_pago: metodoPago,
-            fecha_pago: new Date().toISOString(),
-          }
-          const ajuste = ajustes[l.id]
-          if (ajuste && !ajuste.expandido && parseFloat(ajuste.nuevoPrecio || "0") !== l.monto_ajustado) {
-            base.monto_ajustado = parseFloat(ajuste.nuevoPrecio || "0")
-            base.motivo_ajuste = ajuste.motivo
-          }
-          return base
-        })
-      if (pagos.length === 0) { toast.error("Ingresa al menos un monto"); setSaving(false); return }
-      await axios.post(`${import.meta.env.VITE_API_URL}/finanzas/pagos-iniciales`, { matricula_id: matriculaId, pagos }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` }
-      })
-      toast.success(`Pago${pagos.length > 1 ? 's' : ''} registrado${pagos.length > 1 ? 's' : ''}`)
-      onCompleted()
-    } catch (err: any) {
-      toast.error(err?.response?.data?.mensaje || "Error al registrar pago")
-    } finally { setSaving(false) }
-  }
-
-  const sorted = [...visibles].sort((a: any, b: any) => (a.numero_orden || 0) - (b.numero_orden || 0))
-
-  return (
-    <div className="pt-5 border-t space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-      <div className="flex items-center gap-2 mb-1">
-        <HugeiconsIcon icon={PaymentIcon} size={14} style={{ color: COLORS.ACCENT }} />
-        <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Registro de pago por m\u00f3dulo</h4>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl" style={{ backgroundColor: "oklch(0.97 0 0)", borderColor: COLORS.BORDER_SUBTLE, border: "1px solid" }}>
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estudiante</span>
-          <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{estudianteNombre || "—"}</p>
-          {estudianteCedula && <p className="text-xs opacity-40">{estudianteCedula}</p>}
-        </div>
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</span>
-          <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{cursoNombre}</p>
-          <p className="text-xs opacity-40">{totalModulos} m\u00f3dulo{totalModulos !== 1 ? "s" : ""}</p>
-        </div>
-      </div>
-
-      {sorted.map((linea: any) => {
-        const monto = parseFloat(montos[linea.id] || "0")
-        const ajuste = ajustes[linea.id]
-        const precioEfectivo = !ajuste?.expandido && ajuste?.nuevoPrecio
-          ? parseFloat(ajuste.nuevoPrecio) || linea.monto_ajustado
-          : linea.monto_ajustado
-        const pagado = monto > 0 && monto >= precioEfectivo
-        const abonado = monto > 0 && monto < precioEfectivo
-        const tieneAjuste = ajuste && !ajuste.expandido && parseFloat(ajuste.nuevoPrecio || "0") !== linea.monto_original
-
-        return (
-          <div key={linea.id} className="p-4 rounded-xl border space-y-3 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
-                  M\u00f3dulo {linea.numero_orden || "—"}
-                </span>
-                <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{linea.nombre_modulo}</p>
-              </div>
-              <div className="text-right">
-                {tieneAjuste ? (
-                  <>
-                    <span className="text-xs line-through opacity-40">${linea.monto_original.toLocaleString()}</span>
-                    <span className="text-sm font-black ml-1" style={{ color: COLORS.CHARCOAL }}>${precioEfectivo.toLocaleString()}</span>
-                  </>
-                ) : (
-                  <span className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${precioEfectivo.toLocaleString()}</span>
-                )}
-              </div>
-            </div>
-
-            <button type="button" onClick={() => toggleAjuste(linea.id)}
-              className="text-[11px] font-medium hover:underline inline-flex items-center gap-1"
-              style={{ color: COLORS.TEXT_MUTED }}>
-              <HugeiconsIcon icon={Edit01Icon} size={11} />
-              {tieneAjuste ? "Ajuste aplicado" : "Modificar precio para este estudiante"}
-            </button>
-
-            {ajuste?.expandido && (
-              <div className="p-3 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Nuevo precio</label>
-                  <input type="number" min="0" step="0.01" value={ajuste.nuevoPrecio}
-                    onChange={e => setAjustes(prev => ({ ...prev, [linea.id]: { ...ajuste, nuevoPrecio: e.target.value } }))}
-                    className="w-full px-3 py-2 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 mt-1 bg-white"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder={String(linea.monto_original)} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Motivo del ajuste</label>
-                  <input type="text" value={ajuste.motivo}
-                    onChange={e => setAjustes(prev => ({ ...prev, [linea.id]: { ...ajuste, motivo: e.target.value } }))}
-                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-blue-500 mt-1 bg-white"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder="Ej: descuento por pronto pago" />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={() => confirmarAjuste(linea.id)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98]"
-                    style={{ backgroundColor: COLORS.ACCENT }}>Confirmar ajuste</button>
-                  <button type="button" onClick={() => toggleAjuste(linea.id)}
-                    className="px-4 py-2 rounded-xl text-xs font-medium hover:text-gray-700 transition-colors"
-                    style={{ color: COLORS.TEXT_MUTED }}>Cancelar</button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 items-center">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                <input type="number" min="0" step="0.01" placeholder="0.00"
-                  value={montos[linea.id] || ""}
-                  onChange={e => setMontos(prev => ({ ...prev, [linea.id]: e.target.value }))}
-                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-              </div>
-              {pagado && <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white bg-emerald-500 whitespace-nowrap">PAGADO</span>}
-              {abonado && <>
-                <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white bg-amber-500 whitespace-nowrap">ABONO</span>
-                <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg whitespace-nowrap">${(precioEfectivo - monto).toLocaleString()} pend.</span>
-              </>}
-            </div>
-          </div>
-        )
-      })}
-
-      {lineas.length > 1 && (
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={multiModulo} onChange={() => setMultiModulo(!multiModulo)} className="size-4 rounded border-gray-300" />
-          <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Pagar varios m\u00f3dulos en esta operaci\u00f3n</span>
-        </label>
-      )}
-
-      <div>
-        <label className="text-xs font-bold uppercase tracking-wider ml-1 mb-2 block" style={{ color: COLORS.TEXT_MUTED }}>M\u00e9todo de pago</label>
-        <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
-          className="w-full px-4 py-3 border rounded-2xl text-sm outline-none focus:border-blue-500 bg-white"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <option value="efectivo">Efectivo</option>
-          <option value="transferencia">Transferencia</option>
-          <option value="deposito">Dep\u00f3sito</option>
-          <option value="tarjeta">Tarjeta</option>
-          <option value="otro">Otro</option>
-        </select>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onOmitir}
-          className="px-6 py-3 rounded-2xl text-sm font-bold hover:text-gray-600 transition-colors"
-          style={{ color: COLORS.TEXT_MUTED }}>Omitir</button>
-        <button type="button" onClick={handleRegistrar} disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] shadow-lg disabled:opacity-60"
-          style={{ backgroundColor: COLORS.ACCENT }}>
-          <HugeiconsIcon icon={PaymentIcon} size={16} />
-          {saving ? "Registrando..." : "Registrar pago"}
-        </button>
-      </div>
     </div>
   )
 }
