@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo, useImperativeHandle, forwardRef } from "react"
+import { useState, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from "react"
 import axios from "axios"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -49,13 +49,13 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     load()
   }, [cursoAbiertoId])
 
-  const getPrecioEfectivo = (modulo: any): number => {
+  const getPrecioEfectivo = useCallback((modulo: any): number => {
     const a = ajustes[modulo.id]
     if (a && !a.expandido && parseFloat(a.nuevoPrecio || "0") > 0) {
       return parseFloat(a.nuevoPrecio) || 0
     }
     return modulo.precio_base ?? modulo.precio ?? 0
-  }
+  }, [ajustes])
 
   const modulosSinPrecioConfig = useMemo(() => {
     if (!modulosCargados || modulos.length === 0) return false
@@ -88,7 +88,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       const precio = getPrecioEfectivo(m)
       return monto >= precio
     }).length
-  }, [visibles, montos, ajustes])
+  }, [visibles, montos, getPrecioEfectivo])
 
   const handleMontoChange = (moduloId: string, valor: string) => {
     const nuevoMonto = parseFloat(valor) || 0
@@ -150,7 +150,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const pagos = modulos
       .filter((m: any) => {
         const monto = parseFloat(montos[m.id] || "0")
@@ -169,7 +169,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         return base
       })
     onSubmit(pagos, metodoPagoInicial || "efectivo")
-  }
+  }, [modulos, montos, ajustes, getPrecioEfectivo, onSubmit, metodoPagoInicial])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,

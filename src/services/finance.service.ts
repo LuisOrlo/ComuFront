@@ -86,4 +86,39 @@ export const financeService = {
     const response = await api.get(`/finanzas/talleres/${tallerId}/participante/${participanteId}`)
     return response.data
   },
+
+  async getIngresos(params: any) {
+    const response = await api.get("/finanzas/ingresos", { params })
+    return response.data
+  },
+
+  async getEgresos(params: any) {
+    const response = await api.get("/finanzas/egresos", { params })
+    return response.data
+  },
+
+  async createEgreso(data: any) {
+    const response = await api.post("/finanzas/egresos", data)
+    return response.data
+  },
+
+  async updateEgreso(id: string, data: any) {
+    const response = await api.put(`/finanzas/egresos/${id}`, data)
+    return response.data
+  },
+
+  async deleteEgreso(id: string) {
+    const response = await api.delete(`/finanzas/egresos/${id}`)
+    return response.data
+  },
+
+  async getEgresoCategorias() {
+    const response = await api.get("/finanzas/egresos/categorias")
+    return response.data
+  },
+
+  async getEstadisticas(params: any) {
+    const response = await api.get("/finanzas/estadisticas", { params })
+    return response.data
+  },
 }

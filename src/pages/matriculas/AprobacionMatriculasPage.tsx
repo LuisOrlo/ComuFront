@@ -1240,7 +1240,7 @@ export function AprobacionMatriculasPage() {
                                  </button>
                                  <button
                                    onClick={() => pagoRef.current?.submit()}
-                                   disabled={actionLoading || !pagoRef.current?.tieneMontoModulo1}
+                                    disabled={actionLoading || !montoModulo1Valido}
                                    className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
                                    style={{ backgroundColor: COLORS.ACCENT }}>
                                    <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar

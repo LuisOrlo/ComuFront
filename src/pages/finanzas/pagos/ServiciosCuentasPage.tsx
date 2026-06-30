@@ -15,6 +15,36 @@ const CHARCOAL = COLORS.CHARCOAL
 const MUTED = COLORS.TEXT_MUTED
 const BORDER = COLORS.BORDER_SUBTLE
 
+const FK_A_TIPO: Record<string, string> = {
+  reserva_podcast_id: "Podcast",
+  reserva_aula_id: "Aula",
+  alquiler_equipo_id: "Equipo",
+  edicion_video_id: "Edición de Video",
+  reserva_radio_id: "Radio",
+  servicio_streaming_id: "Streaming",
+  servicio_produccion_id: "Producción",
+  clase_extra_id: "Clase Extra",
+  asesoria_id: "Asesoría",
+}
+
+const SERVICIO_FKS = Object.keys(FK_A_TIPO)
+
+function getServicioTipo(entry: any): string {
+  for (const fk of SERVICIO_FKS) if (entry[fk]) return FK_A_TIPO[fk]
+  return "Servicio"
+}
+
+function getServicioNombre(c: any): string {
+  const tipo = getServicioTipo(c)
+  const titulo = c.reserva_podcast?.titulo
+    || c.reserva_aula?.aula?.nombre
+    || c.alquiler_equipo?.equipo?.nombre
+  if (titulo) return `${tipo} - ${titulo}`
+  const paquete = c.reserva_podcast?.paquete?.nombre
+  if (paquete) return `${tipo} - ${paquete}`
+  return tipo
+}
+
 export function ServiciosCuentasPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -40,13 +70,7 @@ export function ServiciosCuentasPage() {
 
     cuentas.forEach((c: any) => {
       if (!c) return
-      const name = c.nombre_servicio
-        || (c.reserva_aula_id ? "Aula" : undefined)
-        || (c.reserva_podcast_id ? "Podcast" : undefined)
-        || (c.alquiler_equipo_id ? "Equipo" : undefined)
-        || (c.edicion_video_id ? "Edición" : undefined)
-        || (c.reserva_radio_id ? "Radio" : undefined)
-        || "Servicio"
+      const name = getServicioNombre(c)
       if (!map[name]) map[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, entries: [] }
       const g = map[name]
       g.total += Number(c.monto_total || 0)
@@ -58,14 +82,14 @@ export function ServiciosCuentasPage() {
 
     if (Array.isArray(stats?.sin_cuenta?.servicios?.items)) {
       stats.sin_cuenta.servicios.items.forEach((item: any) => {
-        const name = item.nombre_servicio || "Servicio"
+        const name = getServicioNombre(item)
         if (!map[name]) map[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, entries: [] }
         const g = map[name]
         g.total += Number(item.monto_total || 0)
         g.cobrado += Number(item.monto_abonado || 0)
         g.saldo += Number(item.saldo_pendiente || 0)
         g.personas += 1
-        g.entries.push(item)
+        g.entries.push({ ...item, _sin_cuenta: true })
       })
     }
 
@@ -131,8 +155,8 @@ export function ServiciosCuentasPage() {
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="size-16 rounded-[1.5rem] bg-violet-100 flex items-center justify-center mb-4">
-            <HugeiconsIcon icon={AiFolderIcon} size={28} style={{ color: "#7c3aed" }} />
+          <div className="size-16 rounded-[1.5rem] flex items-center justify-center mb-4" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
+            <HugeiconsIcon icon={AiFolderIcon} size={28} style={{ color: COLORS.ACCENT }} />
           </div>
           <p className="text-sm font-bold" style={{ color: CHARCOAL }}>No hay servicios registrados</p>
           <p className="text-xs opacity-40 mt-1">Los servicios con pagos aparecerán aquí</p>
@@ -150,8 +174,8 @@ export function ServiciosCuentasPage() {
                 style={{ borderColor: BORDER }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
-                    <HugeiconsIcon icon={AiFolderIcon} size={18} style={{ color: "#7c3aed" }} />
+                  <div className="size-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
+                    <HugeiconsIcon icon={AiFolderIcon} size={18} style={{ color: COLORS.ACCENT }} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold truncate" style={{ color: CHARCOAL }}>{name}</p>
@@ -161,13 +185,14 @@ export function ServiciosCuentasPage() {
 
                 <HealthBar recaudado={g.cobrado} total={g.total} />
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[10px]">
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1.5">
                     <HugeiconsIcon icon={Money01Icon} size={12} className="opacity-40" />
                     <span className="font-medium" style={{ color: CHARCOAL }}>
-                      Recaudado {Math.round(pct)}% de ${g.cobrado.toLocaleString()}
+                      Recaudado ${g.cobrado.toLocaleString()} de ${g.total.toLocaleString()}
                     </span>
                   </div>
+                  <span className="font-bold" style={{ color: COLORS.ACCENT }}>{Math.round(pct)}%</span>
                 </div>
 
                 <button

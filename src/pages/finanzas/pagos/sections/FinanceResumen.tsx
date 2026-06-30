@@ -28,22 +28,37 @@ const ORIGEN_CONFIG: Record<string, { label: string; desc: string; icon: any; co
 
 function getNombrePersona(cuenta: any): string {
   if (cuenta.persona_nombre) return cuenta.persona_nombre
-  const m = cuenta.matricula
-  const s = cuenta.solicitud_inscripcion
-  const it = cuenta.inscripcion_taller
-  if (m?.estudiante) return `${m.estudiante.nombres || ""} ${m.estudiante.apellidos || ""}`.trim()
-  if (s?.estudiante) return `${s.estudiante.nombres || ""} ${s.estudiante.apellidos || ""}`.trim()
-  if (s?.participante_externo) return `${s.participante_externo.nombres || ""} ${s.participante_externo.apellidos || ""}`.trim()
-  if (it?.participante) return `${it.participante.nombres || ""} ${it.participante.apellidos || ""}`.trim()
-  return "—"
+
+  const extractNombre = (entidad: any) =>
+    entidad ? `${entidad.nombres || ""} ${entidad.apellidos || ""}`.trim() : ""
+
+  return extractNombre(cuenta.matricula?.estudiante)
+    || extractNombre(cuenta.solicitud_inscripcion?.estudiante)
+    || extractNombre(cuenta.solicitud_inscripcion?.participante_externo)
+    || extractNombre(cuenta.inscripcion_taller?.participante)
+    || extractNombre(cuenta.reserva_podcast?.persona)
+    || extractNombre(cuenta.reserva_podcast?.cliente_externo)
+    || extractNombre(cuenta.reserva_aula?.persona)
+    || extractNombre(cuenta.reserva_aula?.cliente_externo)
+    || extractNombre(cuenta.alquiler_equipo?.persona)
+    || "—"
 }
+
+const SERVICIO_FKS = [
+  "reserva_aula_id", "reserva_podcast_id", "alquiler_equipo_id",
+  "servicio_streaming_id", "servicio_produccion_id", "edicion_video_id",
+  "clase_extra_id", "asesoria_id", "reserva_radio_id",
+] as const
+
+const SERVICIO_TIPOS = [
+  "servicio", "aula", "podcast", "equipo", "streaming", "produccion",
+  "edicion", "radio", "clase_extra", "asesoria",
+] as const
 
 function getCuentaType(cuenta: any): string {
   if (cuenta.inscripcion_taller || cuenta.inscripcion_taller_id) return "talleres"
-  if (cuenta.reserva_aula_id || cuenta.reserva_podcast_id || cuenta.alquiler_equipo_id
-      || cuenta.servicio_streaming_id || cuenta.servicio_produccion_id || cuenta.edicion_video_id
-      || cuenta.clase_extra_id || cuenta.asesoria_id || cuenta.reserva_radio_id) return "servicios"
-  if (cuenta.tipo === "aula" || cuenta.tipo === "podcast" || cuenta.tipo === "equipo" || cuenta.tipo === "streaming" || cuenta.tipo === "produccion" || cuenta.tipo === "edicion" || cuenta.tipo === "radio" || cuenta.tipo === "clase_extra" || cuenta.tipo === "asesoria") return "servicios"
+  if (SERVICIO_FKS.some(fk => cuenta[fk])) return "servicios"
+  if (SERVICIO_TIPOS.some(t => cuenta.tipo === t)) return "servicios"
   if (cuenta.tipo === "taller" || cuenta.tipo === "talleres") return "talleres"
   const cat = cuenta.matricula?.curso_abierto?.catalogo?.categoria
     ?? cuenta.matricula?.curso_abierto?.tipo
@@ -51,17 +66,46 @@ function getCuentaType(cuenta: any): string {
     ?? cuenta.categoria
   if (cat === "taller" || cat === "talleres") return "talleres"
   if (cat === "personalizado") return "servicios"
-
   return "cursos"
 }
 
+const FK_A_TIPO: Record<string, string> = {
+  reserva_podcast_id: "Podcast",
+  reserva_aula_id: "Aula",
+  alquiler_equipo_id: "Equipo",
+  edicion_video_id: "Edición de Video",
+  reserva_radio_id: "Radio",
+  servicio_streaming_id: "Streaming",
+  servicio_produccion_id: "Producción",
+  clase_extra_id: "Clase Extra",
+  asesoria_id: "Asesoría",
+}
+
+function getServicioTipo(cuenta: any): string {
+  for (const fk of SERVICIO_FKS) if (cuenta[fk]) return FK_A_TIPO[fk] || "Servicio"
+  return "Servicio"
+}
+
 function getCuentaName(cuenta: any): string {
+  const curso = cuenta.matricula?.curso_abierto || cuenta.solicitud_inscripcion?.curso_abierto || null
+
   if (cuenta.inscripcion_taller?.taller?.nombre) return cuenta.inscripcion_taller.taller.nombre
 
-  const curso =
-    cuenta.matricula?.curso_abierto ||
-    cuenta.solicitud_inscripcion?.curso_abierto ||
-    null
+  if (cuenta.nombre_servicio) return cuenta.nombre_servicio
+
+  const tipo = getServicioTipo(cuenta)
+  const titulo = cuenta.reserva_podcast?.titulo
+    || cuenta.reserva_aula?.aula?.nombre
+    || cuenta.alquiler_equipo?.equipo?.nombre
+
+  if (titulo) return `${tipo} - ${titulo}`
+
+  const paquete = cuenta.reserva_podcast?.paquete?.nombre
+  if (paquete) return `${tipo} - ${paquete}`
+
+  for (const fk of SERVICIO_FKS) if (cuenta[fk]) return tipo
+
+  if (cuenta.curso_nombre) return cuenta.curso_nombre
 
   if (curso) {
     if (curso.nombre_instancia) return curso.nombre_instancia
@@ -77,9 +121,9 @@ function getCuentaName(cuenta: any): string {
     if (partes.length > 0) return partes.join(' — ')
   }
 
-  if (cuenta.curso_nombre) return cuenta.curso_nombre
   if (cuenta.inscripcion_taller_id) return "Taller"
-  if (cuenta.nombre_servicio) return cuenta.nombre_servicio
+  for (const fk of SERVICIO_FKS) if (cuenta[fk]) return tipo
+  for (const t of SERVICIO_TIPOS) if (cuenta.tipo === t) return getServicioTipo(cuenta)
   return "Curso"
 }
 
@@ -382,7 +426,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                       </div>
                       <div className="flex items-center gap-4 text-right shrink-0 ml-4">
                         <div className="hidden sm:block">
-                          <p className="text-[10px] opacity-40">Total</p>
+                          <p className="text-[10px] opacity-40">Total a tener</p>
                           <p className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p>
                         </div>
                         <div className="hidden sm:block">
@@ -413,7 +457,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                         >
                           <div className="px-4 py-3 border-b" style={{ backgroundColor: "oklch(0.97 0 0)", borderColor: COLORS.BORDER_SUBTLE }}>
                             <div className="grid grid-cols-4 gap-3 text-xs">
-                              <div><p className="text-[10px] opacity-40">Valor Total</p><p className="font-bold" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p></div>
+                              <div><p className="text-[10px] opacity-40">Valor Total a tener</p><p className="font-bold" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p></div>
                               <div><p className="text-[10px] opacity-40">Cobrado</p><p className="font-bold text-green-600">${item.cobrado.toLocaleString()}</p></div>
                               <div><p className="text-[10px] opacity-40">Pendiente</p><p className="font-bold text-red-600">${item.saldo.toLocaleString()}</p></div>
                               <div><p className="text-[10px] opacity-40">{hasDebtors ? "Deudores" : "Pagado"}</p><p className={cn("font-bold", hasDebtors ? "text-red-600" : "text-green-600")}>{item.deudores}/{item.personas}</p></div>
@@ -428,7 +472,6 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                 const pendiente = Number(cuenta.saldo_pendiente || 0)
                                 const abonado = Number(cuenta.monto_abonado || 0)
                                 const lineasPago = cuenta.lineas_pago || []
-                                const instructor = cuenta.instructor_nombre || null
 
                                 return (
                                      <div key={cuenta.id || Math.random()} className="px-4 py-3 transition-colors hover:bg-white/50">
@@ -441,7 +484,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                           <p className="text-xs font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
                                           <p className="text-[10px] opacity-40">
                                             Total: ${(Number(cuenta.monto_total) || 0).toLocaleString()}
-                                            {instructor && ` · Instructor: ${instructor}`}
+                                            
                                           </p>
                                         </div>
                                       </div>

@@ -51,7 +51,7 @@ export function EdicionVideoPage() {
   const [trabajos, setTrabajos] = useState<TrabajoEdicion[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [vista, setVista] = useState<"lista" | "kanban">("lista")
+  const [vista, setVista] = useState<"lista" | "pizarra">("lista")
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -221,13 +221,9 @@ export function EdicionVideoPage() {
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>
-              Servicios
-              <span className="size-1 rounded-full bg-current opacity-50" />
-              Post-Producción
-            </div>
+            
             <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-              Edición de Video
+              Edición de Videos
             </h1>
           </div>
 
@@ -267,7 +263,7 @@ export function EdicionVideoPage() {
       <div className="shrink-0 px-8 py-3 border-b bg-white/50 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-center gap-2">
           <div className="flex gap-0.5 p-0.5 bg-gray-200/70 rounded-xl">
-            {(["lista", "kanban"] as const).map(k => (
+            {(["lista", "pizarra"] as const).map(k => (
               <button
                 key={k}
                 onClick={() => setVista(k)}
@@ -276,7 +272,7 @@ export function EdicionVideoPage() {
                   vista === k ? "bg-white text-charcoal shadow-sm" : "text-charcoal/40 hover:text-charcoal/60"
                 )}
               >
-                {k === "lista" ? "Lista" : "Kanban"}
+                {k === "lista" ? "Lista" : "Pizarra"}
               </button>
             ))}
           </div>

@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authService.login(username, password)
       setUser(response.datos.usuario)
       toast.success("¡Bienvenido!", {
-        description: `Has iniciado sesión como ${response.datos.usuario.username}`,
+        description: `Has iniciado sesión como ${response.datos.usuario.persona ? `${response.datos.usuario.persona.nombres || ""} ${response.datos.usuario.persona.apellidos || ""}`.trim() : response.datos.usuario.username}`,
       })
     } catch (err: unknown) {
       if (err instanceof Error) {

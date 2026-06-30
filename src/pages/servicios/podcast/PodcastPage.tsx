@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Download02Icon } from "@hugeicons/core-free-icons"
 import { Plus } from "lucide-react"
@@ -198,14 +199,14 @@ export function PodcastPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <a
-              href="/servicios/podcast/paquetes"
+            <Link
+              to="/servicios/podcast/paquetes"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
               style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.95 0 0)" }}
             >
               <HugeiconsIcon icon={PackageIcon} size={14} />
               Gestionar Paquetes
-            </a>
+            </Link>
             <button
               onClick={() => { setEditingReserva(null); setReservaModalOpen(true) }}
               className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-violet-500/20"

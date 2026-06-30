@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Calendar03Icon, Money01Icon, Time02Icon, UserIcon } from "@hugeicons/core-free-icons"
+import { Calendar03Icon, Money01Icon, Time02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { ReservaRadio } from "@/services/radio.service"
 
@@ -9,17 +9,15 @@ export function RadioKPIs({ reservas }: { reservas: ReservaRadio[] }) {
   const totalHoy = hoyReservas.length
   const ingresosHoy = hoyReservas.reduce((sum, r) => sum + r.precio_total, 0)
   const enProgreso = reservas.filter(r => r.estado === "en_progreso" || r.estado === "confirmado").length
-  const conOperador = reservas.filter(r => r.incluye_operador && r.operador).length
 
   const items = [
     { icon: Calendar03Icon, label: "Reservas hoy", value: totalHoy, color: COLORS.ACCENT },
     { icon: Money01Icon, label: "Ingresos hoy", value: `$${ingresosHoy.toFixed(2)}`, color: "oklch(0.6 0.18 160)" },
     { icon: Time02Icon, label: "En progreso", value: enProgreso, color: "oklch(0.6 0.18 220)" },
-    { icon: UserIcon, label: "Con operador", value: conOperador, color: "oklch(0.6 0.18 40)" },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
       {items.map((item, i) => (
         <div
           key={i}

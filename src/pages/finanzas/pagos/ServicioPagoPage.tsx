@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft02Icon, Money01Icon, UserIcon, UploadIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft02Icon, Money01Icon, UserIcon, UploadIcon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
@@ -20,18 +20,60 @@ export function ServicioPagoPage() {
 
   const [monto, setMonto] = useState(state?.montoSaldo?.toString() || "0")
   const [metodoPago, setMetodoPago] = useState("efectivo")
-  const [comprobanteUrl, setComprobanteUrl] = useState("")
+  const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0])
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
   const [transacciones, setTransacciones] = useState<any[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
+  const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [cuentaValida, setCuentaValida] = useState<boolean | null>(null)
+  const [saldoActual, setSaldoActual] = useState(state?.montoSaldo ?? 0)
+  const [montoTotalCuenta, setMontoTotalCuenta] = useState(state?.montoTotal ?? 0)
+
+  const cargarCuenta = async (id: string) => {
+    try {
+      const res = await financeService.getCuentaDetalle(id)
+      const d = (res as any)?.datos
+      setSaldoActual(Number(d?.saldo_pendiente ?? 0))
+      setMontoTotalCuenta(Number(d?.monto_total ?? 0))
+      setCuentaValida(true)
+    } catch {
+      setCuentaValida(false)
+    }
+  }
+
+  const cargarTransacciones = (id: string) => {
+    financeService.getTransacciones({ cuenta_cobrar_id: id, per_page: 50 })
+      .then((res: any) => setTransacciones(res.data || []))
+      .catch(() => {})
+  }
 
   useEffect(() => {
     if (!state?.cuentaId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await financeService.getCuentaDetalle(state.cuentaId!)
+        if (cancelled) return
+        const d = (res as any)?.datos
+        setSaldoActual(Number(d?.saldo_pendiente ?? 0))
+        setMontoTotalCuenta(Number(d?.monto_total ?? 0))
+        setCuentaValida(true)
+      } catch {
+        if (!cancelled) setCuentaValida(false)
+      }
+    })()
     financeService.getTransacciones({ cuenta_cobrar_id: state.cuentaId, per_page: 50 })
-      .then((res: any) => setTransacciones(res.data || []))
+      .then((res: any) => { if (!cancelled) setTransacciones(res.data || []) })
       .catch(() => {})
+    return () => { cancelled = true }
   }, [state?.cuentaId])
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
 
   if (!state?.cuentaId) {
     return (
@@ -40,7 +82,7 @@ export function ServicioPagoPage() {
         <p className="text-xs opacity-40 max-w-xs">Este servicio no tiene una cuenta por cobrar. Registra el pago desde el módulo del servicio.</p>
         <button
           onClick={() => navigate(-1)}
-          className="px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-[0.97] text-white"
+          className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
           style={{ backgroundColor: ACCENT }}
         >
           Volver
@@ -49,46 +91,75 @@ export function ServicioPagoPage() {
     )
   }
 
-  const { cuentaId, nombre, montoTotal, montoSaldo, nombreServicio } = state
+  if (cuentaValida === false) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <p className="text-sm font-bold" style={{ color: CHARCOAL }}>La cuenta no existe</p>
+        <p className="text-xs opacity-40 max-w-xs">El ID de cuenta proporcionado no es válido o la cuenta ha sido eliminada.</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
+          style={{ backgroundColor: ACCENT }}
+        >
+          Volver
+        </button>
+      </div>
+    )
+  }
 
-  const handleUploadComprobante = async () => {
+  if (cuentaValida === null) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+        <p className="text-sm opacity-40">Verificando cuenta...</p>
+      </div>
+    )
+  }
+
+  const { cuentaId, nombre, nombreServicio } = state
+
+  const montoNum = parseFloat(monto || "0")
+  const montoValido = !isNaN(montoNum) && montoNum > 0 && montoNum <= saldoActual
+  const saldoRestante = Math.max(0, saldoActual - montoNum)
+
+  const handleFileSelect = () => {
     const file = fileRef.current?.files?.[0]
-    if (!file) { toast.error("Selecciona un archivo"); return }
-    setUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append("archivo", file)
-      const token = localStorage.getItem("auth_token")
-      const res = await api.post("/finanzas/pagos-iniciales/comprobante", fd, {
-        headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      })
-      setComprobanteUrl(res.data.data?.url || res.data.url || "")
-      toast.success("Comprobante subido")
-    } catch {
-      toast.error("Error al subir comprobante")
-    } finally {
-      setUploading(false)
-    }
+    if (!file) return
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setComprobanteFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
   }
 
   const handlePagar = async () => {
     const montoNum = parseFloat(monto)
     if (!montoNum || montoNum <= 0) { toast.error("Ingresa un monto válido"); return }
-    if (montoNum > montoSaldo) { toast.error("El monto supera el saldo pendiente"); return }
+    if (montoNum > saldoActual) { toast.error("El monto supera el saldo pendiente"); return }
     setSaving(true)
     try {
+      let comprobanteUrl = ""
+      if (comprobanteFile) {
+        const fd = new FormData()
+        fd.append("archivo", comprobanteFile)
+        const token = localStorage.getItem("auth_token")
+        const res = await api.post("/finanzas/pagos-iniciales/comprobante", fd, {
+          headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+        comprobanteUrl = res.data.data?.url || res.data.url || ""
+      }
       await financeService.registrarPago({
         cuenta_cobrar_id: cuentaId,
         monto: montoNum,
         metodo_pago: metodoPago,
         comprobante_url: comprobanteUrl || null,
+        fecha_pago: fechaPago,
       })
       toast.success("Pago registrado exitosamente")
       setMonto("0")
-      setComprobanteUrl("")
-      financeService.getTransacciones({ cuenta_cobrar_id: cuentaId, per_page: 50 })
-        .then((res: any) => setTransacciones(res.data || []))
-        .catch(() => {})
+      setComprobanteFile(null)
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+      if (fileRef.current) fileRef.current.value = ""
+      cargarCuenta(cuentaId)
+      cargarTransacciones(cuentaId)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.response?.data?.mensaje || "Error al registrar pago")
     } finally {
@@ -118,13 +189,32 @@ export function ServicioPagoPage() {
                   type="number"
                   value={monto}
                   onChange={e => setMonto(e.target.value)}
+                  onBlur={() => {
+                    const v = parseFloat(monto)
+                    if (!isNaN(v)) {
+                      if (v < 0) setMonto("0")
+                      else if (v > saldoActual) setMonto(saldoActual.toString())
+                    }
+                  }}
                   min={0}
-                  max={montoSaldo}
+                  max={saldoActual}
                   step="0.01"
-                  className="w-full pl-8 pr-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-500/10 transition-all"
-                  style={{ borderColor: BORDER }}
+                  className="w-full pl-8 pr-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-bold outline-none focus:bg-white transition-all"
+                  style={{ borderColor: monto && !montoValido ? "#dc2626" : BORDER }}
                 />
+                {monto && !montoValido && (
+                  <p className="text-[10px] text-red-600 mt-1">
+                    {montoNum <= 0 ? "Debe ser mayor a 0" : montoNum > saldoActual ? `Supera el saldo pendiente ($${saldoActual.toFixed(2)})` : "Monto inválido"}
+                  </p>
+                )}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-widest opacity-40">Fecha de pago</label>
+              <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-medium outline-none focus:bg-white transition-all"
+                style={{ borderColor: BORDER }} />
             </div>
 
             <div className="space-y-1.5">
@@ -132,7 +222,7 @@ export function ServicioPagoPage() {
               <select
                 value={metodoPago}
                 onChange={e => setMetodoPago(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-violet-500/10 transition-all"
+                className="w-full px-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-medium outline-none focus:bg-white transition-all"
                 style={{ borderColor: BORDER }}
               >
                 <option value="efectivo">Efectivo</option>
@@ -147,23 +237,48 @@ export function ServicioPagoPage() {
                 ref={fileRef}
                 accept="image/*,.pdf"
                 className="hidden"
-                onChange={() => handleUploadComprobante()}
+                onChange={handleFileSelect}
               />
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="w-full py-3 rounded-xl border-2 border-dashed text-xs font-bold transition-all hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ borderColor: BORDER, color: CHARCOAL }}
-              >
-                <HugeiconsIcon icon={UploadIcon} size={14} />
-                {uploading ? "Subiendo..." : comprobanteUrl ? "Comprobante subido" : "Subir comprobante"}
-              </button>
-              {comprobanteUrl && (
-                <p className="text-[10px] text-green-600 font-medium truncate">Subido correctamente</p>
+              {previewUrl ? (
+                <div className="space-y-2">
+                  <div className="relative rounded-xl overflow-hidden border bg-gray-50" style={{ borderColor: BORDER }}>
+                    <img
+                      src={previewUrl}
+                      alt="Vista previa del comprobante"
+                      className="w-full max-h-48 object-contain"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <HugeiconsIcon icon={Tick02Icon} size={14} className="text-green-600" />
+                    <span className="text-[11px] font-medium text-green-600">{comprobanteFile?.name}</span>
+                    <button
+                      onClick={() => {
+                        setComprobanteFile(null)
+                        if (previewUrl) URL.revokeObjectURL(previewUrl)
+                        setPreviewUrl(null)
+                        if (fileRef.current) fileRef.current.value = ""
+                      }}
+                      className="ml-auto text-[10px] font-bold opacity-40 hover:opacity-100 hover:text-red-500 transition-all"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full py-3 rounded-xl border-2 border-dashed text-xs font-bold transition-all hover:bg-gray-50 flex items-center justify-center gap-2"
+                  style={{ borderColor: BORDER, color: CHARCOAL }}
+                >
+                  <HugeiconsIcon icon={UploadIcon} size={14} />
+                  Subir comprobante
+                </button>
               )}
             </div>
 
-            <div className="py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-violet-700 px-5 flex items-center justify-between text-white">
+            <div className="py-3 rounded-2xl px-5 flex items-center justify-between text-white"
+              style={{ background: "linear-gradient(135deg, oklch(0.2 0 0), oklch(0.15 0 0))" }}
+            >
               <div className="flex items-center gap-2">
                 <HugeiconsIcon icon={Money01Icon} size={18} />
                 <span className="text-sm font-bold">Total a pagar</span>
@@ -173,8 +288,8 @@ export function ServicioPagoPage() {
 
             <button
               onClick={handlePagar}
-              disabled={saving || !monto || parseFloat(monto) <= 0}
-              className="w-full py-3.5 rounded-2xl text-sm font-bold text-white transition-all shadow-xl shadow-violet-500/20 active:scale-[0.97] disabled:opacity-40"
+              disabled={saving || !montoValido}
+              className="w-full py-3.5 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40"
               style={{ backgroundColor: ACCENT }}
             >
               {saving ? "Registrando..." : "Registrar Pago"}
@@ -184,8 +299,8 @@ export function ServicioPagoPage() {
 
         <div className="rounded-2xl border bg-white p-6 space-y-4 h-fit" style={{ borderColor: BORDER }}>
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-violet-100 flex items-center justify-center">
-              <HugeiconsIcon icon={UserIcon} size={18} style={{ color: "#7c3aed" }} />
+            <div className="size-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
+              <HugeiconsIcon icon={UserIcon} size={18} style={{ color: ACCENT }} />
             </div>
             <div>
               <p className="text-sm font-bold" style={{ color: CHARCOAL }}>{nombre || "Cliente"}</p>
@@ -195,12 +310,24 @@ export function ServicioPagoPage() {
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="p-3 rounded-xl bg-gray-50">
-              <p className="text-[10px] opacity-40">Total</p>
-              <p className="font-bold" style={{ color: CHARCOAL }}>${(montoTotal || 0).toLocaleString()}</p>
+              <p className="text-[10px] opacity-40">Total del servicio</p>
+              <p className="font-bold" style={{ color: CHARCOAL }}>${montoTotalCuenta.toFixed(2)}</p>
             </div>
             <div className="p-3 rounded-xl bg-gray-50">
               <p className="text-[10px] opacity-40">Saldo pendiente</p>
-              <p className="font-bold text-red-600">${(montoSaldo || 0).toLocaleString()}</p>
+              <p className="font-bold" style={{ color: saldoActual > 0 ? "#dc2626" : "rgb(22 163 74)" }}>
+                {saldoActual > 0 ? `$${saldoActual.toFixed(2)}` : "Pagado"}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-gray-50">
+              <p className="text-[10px] opacity-40">Total a pagar ahora</p>
+              <p className="font-bold" style={{ color: CHARCOAL }}>${montoNum.toFixed(2)}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-gray-50">
+              <p className="text-[10px] opacity-40">Saldo restante</p>
+              <p className="font-bold" style={{ color: saldoRestante > 0 ? "#dc2626" : "rgb(22 163 74)" }}>
+                {saldoRestante > 0 ? `$${saldoRestante.toFixed(2)}` : "Pagado"}
+              </p>
             </div>
           </div>
         </div>

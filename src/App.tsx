@@ -50,6 +50,11 @@ import { ServicioDetallePage } from "@/pages/finanzas/pagos/ServicioDetallePage"
 import { ServicioPagoPage } from "@/pages/finanzas/pagos/ServicioPagoPage"
 import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
 import { PagoDetallePage } from "@/pages/finanzas/pagos/PagoDetallePage"
+import { IngresosPage } from "@/pages/finanzas/ingresos/IngresosPage"
+import { IngresoDetallePage } from "@/pages/finanzas/ingresos/IngresoDetallePage"
+import { EgresosPage } from "@/pages/finanzas/egresos/EgresosPage"
+import { EgresoFormPage } from "@/pages/finanzas/egresos/EgresoFormPage"
+import { EstadisticasPage } from "@/pages/finanzas/estadisticas/EstadisticasPage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
 import {
   SecretariaDashboardPage,
@@ -85,6 +90,8 @@ import { AgendaPage } from "@/pages/agenda/AgendaPage"
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
+
+import { ScrollToTop } from "@/components/ScrollToTop"
 
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
@@ -141,6 +148,7 @@ function AppLayout() {
           bellRef={bellRef}
         />
         <main className="flex-1 overflow-y-auto">
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<HomePage />} />
 
@@ -180,7 +188,7 @@ function AppLayout() {
               <Route path="historial" element={<RoleGuard roles={["Administrador"]}><HistorialPage /></RoleGuard>} />
               <Route path="historial/:id" element={<RoleGuard roles={["Administrador"]}><PagoDetallePage /></RoleGuard>} />
               <Route path="cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasCobrarLayout /></RoleGuard>}>
-                <Route index element={<Navigate to="talleres" replace />} />
+                <Route index element={<Navigate to="cursos" replace />} />
                 <Route path="talleres" element={<RoleGuard roles={["Administrador"]}><TalleresCuentasPage /></RoleGuard>} />
                 <Route path="talleres/:id" element={<RoleGuard roles={["Administrador"]}><TallerCuentasDetallePage /></RoleGuard>} />
                 <Route path="talleres/:id/participante/:pid" element={<RoleGuard roles={["Administrador"]}><TallerParticipantePage /></RoleGuard>} />
@@ -192,6 +200,12 @@ function AppLayout() {
               </Route>
             </Route>
             <Route path="/finanzas/pagos/cursos/:cursoId/estudiante/:matriculaId/pago" element={<RoleGuard roles={["Administrador"]}><CursoEstudiantePagoPage /></RoleGuard>} />
+            <Route path="/finanzas/ingresos" element={<RoleGuard roles={["Administrador"]}><IngresosPage /></RoleGuard>} />
+            <Route path="/finanzas/ingresos/:id" element={<RoleGuard roles={["Administrador"]}><IngresoDetallePage /></RoleGuard>} />
+            <Route path="/finanzas/egresos" element={<RoleGuard roles={["Administrador"]}><EgresosPage /></RoleGuard>} />
+            <Route path="/finanzas/egresos/nuevo" element={<RoleGuard roles={["Administrador"]}><EgresoFormPage /></RoleGuard>} />
+            <Route path="/finanzas/egresos/:id/editar" element={<RoleGuard roles={["Administrador"]}><EgresoFormPage /></RoleGuard>} />
+            <Route path="/finanzas/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstadisticasPage /></RoleGuard>} />
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CertificateIcon, SearchIcon, ShieldCheck, InformationCircleIcon } from "@hugeicons/core-free-icons"
-import { Download, Copy } from "lucide-react"
+import { Download } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { certificadosService, type Certificado } from "@/services/certificados.service"
@@ -11,13 +11,13 @@ import { toast } from "sonner"
 const ESTADO_STYLES: Record<string, string> = {
   generado: "bg-sky-100 text-sky-700 border-sky-200",
   entregado: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  borrado: "bg-gray-100 text-gray-500 border-gray-200",
+  borrado: "bg-red-50 text-red-500 border-red-200",
 }
 
 const ESTADO_LABELS: Record<string, string> = {
-  generado: "Generado",
+  generado: "Disponible",
   entregado: "Entregado",
-  borrado: "Borrado",
+  borrado: "Expirado",
 }
 
 export function VerificarCertificadosPage() {
@@ -48,17 +48,12 @@ export function VerificarCertificadosPage() {
     if (e.key === "Enter") handleSearch()
   }
 
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-    toast.success("Código copiado")
-  }
-
   return (
     <div className="min-h-dvh bg-gradient-to-b from-gray-50 to-white flex flex-col">
       <header className="px-6 py-8 border-b bg-white/80 backdrop-blur-md" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-2xl mx-auto text-center space-y-3">
-          <div className="inline-flex items-center justify-center size-16 rounded-full bg-amber-100 mb-2">
-            <HugeiconsIcon icon={ShieldCheck} size={32} className="text-amber-600" />
+          <div className="flex items-center justify-center mb-2">
+            <img src="/Logo_PDF.png" alt="Logo" className="h-28 w-auto" />
           </div>
           <h1 className="text-3xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Verificar Certificados</h1>
           <p className="text-sm opacity-50 max-w-md mx-auto">
@@ -131,9 +126,6 @@ export function VerificarCertificadosPage() {
                     <div className="flex items-center gap-2">
                       <HugeiconsIcon icon={CertificateIcon} size={18} className="text-amber-500 shrink-0" />
                       <span className="font-mono text-sm font-bold" style={{ color: COLORS.ACCENT }}>{cert.codigo_certificado}</span>
-                      <button onClick={() => copyCode(cert.codigo_certificado)} className="size-7 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 shrink-0" title="Copiar código">
-                        <Copy size={12} />
-                      </button>
                     </div>
                     <p className="text-sm font-medium flex items-center gap-1.5" style={{ color: COLORS.CHARCOAL }}>
                       {cert.catalogo_curso?.color && (
@@ -149,14 +141,21 @@ export function VerificarCertificadosPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    {cert.archivo_pdf_url && (
+                    {cert.estado === "borrado" ? (
+                      <div className="text-right space-y-1">
+                        <p className="text-[11px] font-bold text-red-500">Certificado expirado</p>
+                        <p className="text-[10px] opacity-50 max-w-[200px] leading-tight">
+                          El período de descarga ha finalizado. Contacte a la academia para solicitar una copia de su certificado.
+                        </p>
+                      </div>
+                    ) : cert.archivo_pdf_url ? (
                       <button
                         onClick={() => certificadosService.descargarPdf(cert.id)}
                         className="px-4 py-2.5 rounded-xl text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 flex items-center gap-1"
                       >
                         <Download size={12} /> PDF
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </motion.div>
@@ -179,7 +178,7 @@ export function VerificarCertificadosPage() {
 
       <footer className="mt-auto px-6 py-6 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <p className="text-[10px] font-bold uppercase tracking-widest text-center opacity-30">
-          Comunicate Academy · Sistema de Verificación de Certificados
+          Verificación de Certificados
         </p>
       </footer>
     </div>

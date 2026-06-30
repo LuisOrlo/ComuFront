@@ -55,7 +55,9 @@ export interface EstudiantePanel {
   apellidos: string
   cedula: string
   curso_abierto_id: string
-  curso_nombre: string
+  catalogo_nombre: string
+  nombre_instancia?: string
+  modalidad?: string
   certificado_id?: string
   codigo_certificado?: string
   estado_certificado?: string
@@ -171,8 +173,13 @@ export const certificadosService = {
     return data.data
   },
 
-  marcarEntregado: async (id: string) => {
-    const { data } = await api.patch<CertificadoResponse>(`/academic/certificados/${id}/entregar`)
+  marcarEntregado: async (id: string, data?: { fecha_entrega?: string; metodo_entrega?: string }) => {
+    const { data: resp } = await api.patch<CertificadoResponse>(`/academic/certificados/${id}/entregar`, data)
+    return resp.data
+  },
+
+  getHistorial: async (id: string) => {
+    const { data } = await api.get<{ data: { accion: string; fecha: string; usuario?: string; detalle?: string }[] }>(`/academic/certificados/${id}/historial`)
     return data.data
   },
 

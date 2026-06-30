@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { DiscountIcon } from "@hugeicons/core-free-icons"
 import { Plus, Pencil, Trash2, X, ArrowLeft } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 import { radioService, type TarifaRadio } from "@/services/radio.service"
@@ -102,12 +102,15 @@ export function TarifasPage() {
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>
-              Servicios <span className="size-1 rounded-full bg-current opacity-50" /> Radio
-            </div>
-            <div className="flex items-center gap-4">
-              <Link to="/servicios/radio" className="size-9 flex items-center justify-center rounded-full hover:bg-black/5">
-                <ArrowLeft size={18} />
+            
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <Link
+                to="/servicios/radio"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-gray-100 bg-white"
+                style={{ color: COLORS.CHARCOAL, borderColor: COLORS.BORDER_SUBTLE }}
+              >
+                <ArrowLeft size={16} />
+                <span>Volver al Alquiler</span>
               </Link>
               <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
                 Gestionar Tarifas

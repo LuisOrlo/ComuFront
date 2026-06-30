@@ -63,13 +63,20 @@ export function PagoDetallePage() {
   const getNombreEstudiante = () => {
     if (data?.estudiante_nombre) return data.estudiante_nombre
     const cp = data?.cuenta_por_cobrar
-    const m = cp?.matricula
-    const s = cp?.solicitud_inscripcion
-    const it = cp?.inscripcion_taller
+    if (!cp) return "—"
+    const m = cp.matricula
+    const s = cp.solicitud_inscripcion
+    const it = cp.inscripcion_taller
     if (m?.estudiante) return `${m.estudiante.nombres || ""} ${m.estudiante.apellidos || ""}`.trim()
     if (s?.estudiante) return `${s.estudiante.nombres || ""} ${s.estudiante.apellidos || ""}`.trim()
     if (s?.participante_externo) return `${s.participante_externo.nombres || ""} ${s.participante_externo.apellidos || ""}`.trim()
     if (it?.participante) return `${it.participante.nombres || ""} ${it.participante.apellidos || ""}`.trim()
+    const rp = cp.reserva_podcast
+    if (rp?.persona) return `${rp.persona.nombres || ""} ${rp.persona.apellidos || ""}`.trim()
+    if (rp?.cliente_externo) return `${rp.cliente_externo.nombres || ""} ${rp.cliente_externo.apellidos || ""}`.trim()
+    const ra = cp.reserva_aula
+    if (ra?.persona) return `${ra.persona.nombres || ""} ${ra.persona.apellidos || ""}`.trim()
+    if (ra?.cliente_externo) return `${ra.cliente_externo.nombres || ""} ${ra.cliente_externo.apellidos || ""}`.trim()
     return "—"
   }
 
@@ -77,14 +84,22 @@ export function PagoDetallePage() {
     if (data?.curso_nombre) return data.curso_nombre
     if (data?.taller_nombre) return data.taller_nombre
     const cp = data?.cuenta_por_cobrar
-    const m = cp?.matricula
-    const s = cp?.solicitud_inscripcion
-    const it = cp?.inscripcion_taller
+    if (!cp) return "—"
+    const m = cp.matricula
+    const s = cp.solicitud_inscripcion
+    const it = cp.inscripcion_taller
     if (it?.taller?.nombre) return it.taller.nombre
     if (m?.curso_abierto?.nombre_instancia) return m.curso_abierto.nombre_instancia
     if (m?.curso_abierto?.catalogo?.nombre) return m.curso_abierto.catalogo.nombre
     if (s?.curso_abierto?.nombre_instancia) return s.curso_abierto.nombre_instancia
     if (s?.curso_abierto?.catalogo?.nombre) return s.curso_abierto.catalogo.nombre
+    if (cp.reserva_podcast_id) {
+      return cp.reserva_podcast?.titulo || cp.reserva_podcast?.paquete?.nombre || "Podcast"
+    }
+    if (cp.reserva_aula_id) return cp.reserva_aula?.aula?.nombre || "Aula"
+    if (cp.alquiler_equipo_id) return cp.alquiler_equipo?.equipo?.nombre || "Equipo"
+    if (cp.edicion_video_id) return "Edición de Video"
+    if (cp.reserva_radio_id) return "Radio"
     return "—"
   }
 

@@ -26,7 +26,10 @@ import {
   SchoolIcon,
   Microphone,
   RadioIcon,
-  UserIcon
+  UserIcon,
+  CoinsDollarIcon,
+  BanknoteArrowDownIcon,
+  BarChartIcon,
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
@@ -223,8 +226,10 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
         {
           label: "Finanzas",
           items: [
-            { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos", badge: "3" },
-            
+            { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
+            { icon: CoinsDollarIcon, label: "Ingresos", path: "/finanzas/ingresos" },
+            { icon: BanknoteArrowDownIcon, label: "Egresos", path: "/finanzas/egresos" },
+            { icon: BarChartIcon, label: "Estadísticas", path: "/finanzas/estadisticas" },
           ],
         },
         {
@@ -349,6 +354,10 @@ export function TopBar({
 }) {
   const { user } = useAuth()
   const roleLabel = user?.roles?.[0] || "Usuario"
+  const userDisplayName = user?.persona
+    ? `${user.persona.nombres || ""} ${user.persona.apellidos || ""}`.trim()
+    : user?.username || "Usuario"
+  const userInitial = user?.persona?.nombres?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U"
 
   return (
     <header
@@ -458,20 +467,20 @@ export function TopBar({
           />
         </div>
 
-        <div className="flex items-center gap-2.5 pl-2 ml-1 border-l" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div
-            className="flex items-center justify-center size-8 rounded-full shrink-0 text-xs font-semibold"
-            style={{ backgroundColor: ACCENT, color: "white" }}
-          >
-            {user?.username?.charAt(0).toUpperCase() || "U"}
+          <div className="flex items-center gap-2.5 pl-2 ml-1 border-l" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div
+              className="flex items-center justify-center size-8 rounded-full shrink-0 text-xs font-semibold"
+              style={{ backgroundColor: ACCENT, color: "white" }}
+            >
+              {userInitial}
+            </div>
+            <div className="hidden sm:block text-right leading-tight">
+              <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
+                {userDisplayName}
+              </p>
+              <p className="text-[11px] text-[--muted-foreground]">{roleLabel}</p>
+            </div>
           </div>
-          <div className="hidden sm:block text-right leading-tight">
-            <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
-              {user?.username || "Usuario"}
-            </p>
-            <p className="text-[11px] text-[--muted-foreground]">{roleLabel}</p>
-          </div>
-        </div>
       </div>
     </header>
   )

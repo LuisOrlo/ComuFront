@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
+import html2canvas from "html2canvas-pro"
+import { jsPDF } from "jspdf"
 
 export function CursoCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +25,8 @@ export function CursoCuentasDetallePage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [selectedModulo, setSelectedModulo] = useState<string>("todos")
+  const [exportando, setExportando] = useState(false)
+  const tablaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -105,6 +109,45 @@ export function CursoCuentasDetallePage() {
     return mods.reduce((sum: number, m: any) => sum + Number(m.abonado || m.monto_abonado || 0), 0)
   }
 
+  const handleExportPDF = async () => {
+    if (!tablaRef.current) return
+    setExportando(true)
+    try {
+      const el = tablaRef.current
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+        onclone: (doc) => {
+          const ths = doc.querySelectorAll("th:last-child, td:last-child")
+          ths.forEach(c => ((c as HTMLElement).style.display = "none"))
+        },
+      })
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const margin = 8
+      pdf.setFontSize(14)
+      pdf.setFont("helvetica", "bold")
+      pdf.text(curso.nombre_instancia || curso.nombre || "Curso", pageWidth / 2, margin + 8, { align: "center" })
+      pdf.setFontSize(9)
+      pdf.setFont("helvetica", "normal")
+      pdf.text(`Fecha: ${new Date().toLocaleDateString("es-ES")}`, pageWidth / 2, margin + 15, { align: "center" })
+      const imgY = margin + 20
+      const availableWidth = pageWidth - margin * 2
+      const availableHeight = pdf.internal.pageSize.getHeight() - imgY - margin
+      const ratio = canvas.height / canvas.width
+      let imgWidth = availableWidth
+      let imgHeight = imgWidth * ratio
+      if (imgHeight > availableHeight) { imgHeight = availableHeight; imgWidth = imgHeight / ratio }
+      pdf.addImage(imgData, "PNG", margin, imgY, imgWidth, imgHeight)
+      pdf.save(`cuentas-${curso.nombre_instancia || "curso"}.pdf`)
+      toast.success("PDF exportado")
+    } catch { toast.error("Error al exportar PDF") }
+    finally { setExportando(false) }
+  }
+
   if (loading) {
     return (
       <div className="px-8 py-6">
@@ -155,14 +198,13 @@ export function CursoCuentasDetallePage() {
               {curso.nombre_instancia || curso.nombre || "Curso"}
             </h2>
             <button
-              onClick={() => {
-                toast.info("Exportación PDF no implementada aún")
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+              onClick={handleExportPDF}
+              disabled={exportando}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
               style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}15` }}
             >
               <HugeiconsIcon icon={Download01Icon} size={14} />
-              Exportar PDF
+              {exportando ? "Exportando..." : "Exportar PDF"}
             </button>
           </div>
 
@@ -203,7 +245,7 @@ export function CursoCuentasDetallePage() {
                 )}
               </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" ref={tablaRef}>
             <table className="w-full text-left min-w-[800px]">
               <thead>
                 <tr style={{ backgroundColor: "oklch(0.97 0 0)" }}>

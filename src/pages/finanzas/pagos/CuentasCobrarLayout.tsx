@@ -4,8 +4,8 @@ import { COLORS } from "@/lib/constants"
 import { NavLink, Outlet, useLocation, useNavigate, Navigate } from "react-router"
 
 const SUB_TABS = [
-  { label: "Talleres", path: "/finanzas/pagos/cuentas/talleres" },
   { label: "Cursos", path: "/finanzas/pagos/cuentas/cursos" },
+  { label: "Talleres", path: "/finanzas/pagos/cuentas/talleres" },
   { label: "Servicios", path: "/finanzas/pagos/cuentas/servicios" },
 ]
 
@@ -14,7 +14,7 @@ export function CuentasCobrarLayout() {
   const navigate = useNavigate()
 
   if (location.pathname === "/finanzas/pagos/cuentas") {
-    return <Navigate to="/finanzas/pagos/cuentas/talleres" replace />
+    return <Navigate to="/finanzas/pagos/cuentas/cursos" replace />
   }
 
   const isSubPage = !SUB_TABS.some(tab => location.pathname === tab.path)

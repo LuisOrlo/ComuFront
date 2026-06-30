@@ -22,7 +22,7 @@ const TABS = [
   {
     label: "Cuentas por Cobrar",
     icon: InvoiceIcon,
-    path: "/finanzas/pagos/cuentas",
+    path: "/finanzas/pagos/cuentas/cursos",
   },
 ]
 

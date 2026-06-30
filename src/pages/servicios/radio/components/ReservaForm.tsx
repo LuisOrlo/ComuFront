@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { UserGroupIcon } from "@hugeicons/core-free-icons"
-import { X } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { radioService, type TarifaRadio, type ReservaRadio } from "@/services/radio.service"
 import { staffService } from "@/services/staff.service"
 import { toast } from "sonner"
 import { OperadorSelector } from "./OperadorSelector"
-
+ 
 export function ReservaForm({
   isOpen,
   onClose,
@@ -169,27 +169,34 @@ export function ReservaForm({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-5 border-b sticky top-0 bg-white z-10 rounded-t-[2rem]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>
+    <div className="w-full bg-white rounded-[2.5rem] flex flex-col min-h-0">
+      <div className="flex items-center justify-between px-8 py-6 border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div>
+          <h2 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>
             {editingReserva ? "Editar Reserva" : "Nueva Reserva"}
           </h2>
-          <button onClick={onClose} className="size-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-            <X size={16} />
-          </button>
+          <p className="text-xs opacity-50 mt-1">Complete la información para el alquiler de la cabina de radio</p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-gray-100 bg-white"
+          style={{ color: COLORS.CHARCOAL, borderColor: COLORS.BORDER_SUBTLE }}
+        >
+          <ArrowLeft size={16} />
+          <span>Volver al Alquiler</span>
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-y-auto">
+        {/* Columna Izquierda: Datos de la Reserva */}
+        <div className="lg:col-span-7 space-y-6">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Tarifa</label>
             <select
               value={tarifaId}
               onChange={e => setTarifaId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
               style={{ borderColor: COLORS.BORDER_SUBTLE }}
               required
             >
@@ -207,7 +214,7 @@ export function ReservaForm({
                 type="date"
                 value={fecha}
                 onChange={e => setFecha(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all"
+                className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
                 required
               />
@@ -218,7 +225,7 @@ export function ReservaForm({
                 type="time"
                 value={horaInicio}
                 onChange={e => setHoraInicio(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all"
+                className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
                 required
               />
@@ -234,7 +241,7 @@ export function ReservaForm({
               step={15}
               value={duracionMinutos}
               onChange={e => setDuracionMinutos(Math.max(15, parseInt(e.target.value) || 60))}
-              className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all"
+              className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
               style={{ borderColor: COLORS.BORDER_SUBTLE }}
             />
           </div>
@@ -253,6 +260,7 @@ export function ReservaForm({
                       ? "bg-charcoal text-white border-charcoal"
                       : "bg-gray-50 text-gray-400 border-gray-200 hover:border-gray-300"
                   )}
+                  style={tipoResponsable === t ? { backgroundColor: COLORS.CHARCOAL, borderColor: COLORS.CHARCOAL } : {}}
                 >
                   {t === "persona" ? "Cliente interno" : "Cliente externo"}
                 </button>
@@ -264,7 +272,7 @@ export function ReservaForm({
                 placeholder="ID de la persona (usuaria del sistema)"
                 value={personaId}
                 onChange={e => setPersonaId(e.target.value)}
-                className="w-full mt-2 px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all"
+                className="w-full mt-2 px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
               />
             ) : (
@@ -273,12 +281,15 @@ export function ReservaForm({
                 placeholder="Nombre del cliente externo"
                 value={clienteExternoNombre}
                 onChange={e => setClienteExternoNombre(e.target.value)}
-                className="w-full mt-2 px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all"
+                className="w-full mt-2 px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
               />
             )}
           </div>
+        </div>
 
+        {/* Columna Derecha: Operador, Resumen y Acciones */}
+        <div className="lg:col-span-5 space-y-6 lg:border-l lg:pl-8" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-gray-50 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="flex items-center gap-3">
               <HugeiconsIcon icon={UserGroupIcon} size={18} className="opacity-40" />
@@ -313,8 +324,8 @@ export function ReservaForm({
             />
           )}
 
-          <div className="rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/80 p-4 space-y-2 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Resumen</p>
+          <div className="rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/80 p-5 space-y-3 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Resumen de Alquiler</p>
             <div className="flex items-center justify-between">
               <span className="text-xs opacity-60">Duración</span>
               <span className="text-sm font-bold">{duracionMinutos} min</span>
@@ -325,7 +336,7 @@ export function ReservaForm({
                 <span className="text-sm font-bold">${tarifaSeleccionada.precio_por_hora.toFixed(2)}</span>
               </div>
             )}
-            <div className="border-t pt-2 flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="border-t pt-3 flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <span className="text-xs font-bold">Total estimado</span>
               <span className="text-lg font-bold" style={{ color: COLORS.ACCENT }}>${precioCalculado.toFixed(2)}</span>
             </div>
@@ -336,8 +347,8 @@ export function ReservaForm({
             <textarea
               value={observaciones}
               onChange={e => setObservaciones(e.target.value)}
-              rows={2}
-              className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all resize-none"
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all resize-none bg-gray-50/50"
               style={{ borderColor: COLORS.BORDER_SUBTLE }}
             />
           </div>
@@ -346,7 +357,7 @@ export function ReservaForm({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3.5 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50"
+              className="flex-1 py-3.5 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50 bg-white"
               style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
             >
               Cancelar
@@ -360,8 +371,8 @@ export function ReservaForm({
               {saving ? "Guardando..." : editingReserva ? "Actualizar" : "Crear Reserva"}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }

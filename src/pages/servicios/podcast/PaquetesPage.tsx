@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { Link } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PackageIcon, Edit01Icon, Tick02Icon, ArrowLeft02Icon } from "@hugeicons/core-free-icons"
@@ -65,14 +66,14 @@ export function PaquetesPage() {
       <header className="shrink-0 px-8 py-7 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <a
-              href="/servicios/podcast"
+            <Link
+              to="/servicios/podcast"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all hover:bg-black/5 active:scale-[0.97] group"
               style={{ color: COLORS.CHARCOAL }}
             >
               <HugeiconsIcon icon={ArrowLeft02Icon} size={16} className="opacity-40 group-hover:opacity-70 transition-opacity" />
               <span className="text-xs font-bold opacity-40 group-hover:opacity-70 transition-opacity">Volver a Reservas</span>
-            </a>
+            </Link>
             <div className="h-8 w-px bg-gray-200" />
             <div className="space-y-0.5">
               

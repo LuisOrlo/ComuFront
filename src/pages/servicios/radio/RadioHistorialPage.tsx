@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Clock01Icon } from "@hugeicons/core-free-icons"
 import { ArrowLeft, Eye } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 import { radioService, type ReservaRadio } from "@/services/radio.service"
@@ -61,9 +61,7 @@ export function RadioHistorialPage() {
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40" style={{ color: COLORS.CHARCOAL }}>
-              Servicios <span className="size-1 rounded-full bg-current opacity-50" /> Radio
-            </div>
+           
             <div className="flex items-center gap-4">
               <Link to="/servicios/radio" className="size-9 flex items-center justify-center rounded-full hover:bg-black/5">
                 <ArrowLeft size={18} />
