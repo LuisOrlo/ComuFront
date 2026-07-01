@@ -441,11 +441,13 @@ export const cursosService = {
    */
   async getCatalogos(
     search?: string,
-    page: number = 1
+    page: number = 1,
+    extraParams?: Record<string, string | number>
   ): Promise<CatalogoCursoResponse> {
     const params: Record<string, string | number> = {
       per_page: 15,
       page,
+      ...extraParams,
     }
 
     if (search) {
