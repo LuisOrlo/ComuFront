@@ -1,4 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
+import { useState } from "react"
 import { FileAttachmentIcon, PaymentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { FinancialProfile, LineaPagoModulo } from "@/services/estudiantes.service"
@@ -10,6 +11,7 @@ interface FinancialTabContentProps {
 }
 
 export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialTabContentProps) {
+  const [imagenExpandida, setImagenExpandida] = useState<string | null>(null)
   if (loading) {
     return (
       <div className="text-center py-20">
@@ -169,12 +171,12 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
                     <td className="px-5 py-3 text-right font-mono font-bold text-emerald-600">${t.monto.toLocaleString()}</td>
                     <td className="px-5 py-3 text-gray-500 text-xs">{metodoLabels[t.metodo_pago] || t.metodo_pago}</td>
                     <td className="px-5 py-3">
-                      {t.comprobante_url ? (
-                        <a href={t.comprobante_url} target="_blank" rel="noopener noreferrer"
+                     {t.comprobante_url ? (
+                        <button onClick={() => setImagenExpandida(t.comprobante_url)}
                           className="inline-flex items-center gap-1 text-[10px] font-bold hover:underline"
                           style={{ color: COLORS.ACCENT }}>
                           <HugeiconsIcon icon={FileAttachmentIcon} size={11} /> Ver
-                        </a>
+                        </button>
                       ) : <span className="text-gray-300 text-xs">—</span>}
                     </td>
                     <td className="px-5 py-3 text-center">
@@ -187,6 +189,23 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {imagenExpandida && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImagenExpandida(null)}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setImagenExpandida(null) }}
+            className="absolute top-4 right-4 text-white/60 hover:text-white text-sm font-bold transition-colors"
+          >
+            Cerrar [X]
+          </button>
+          <img
+            src={imagenExpandida}
+            alt="Comprobante"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
