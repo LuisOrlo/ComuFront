@@ -105,9 +105,10 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     }
 
     setMontos(prev => {
-      const nuevosMontos = { ...prev, [moduloId]: valor }
+      const nuevosMontos = { ...prev }
 
       if (excedente > 0) {
+        nuevosMontos[moduloId] = String(precio)
         let resto = excedente
         for (let i = idx + 1; i < sorted.length && resto > 0; i++) {
           const sig = sorted[i]
@@ -117,6 +118,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           resto = Math.round((resto - aplicado) * 100) / 100
         }
       } else {
+        nuevosMontos[moduloId] = valor
         for (let i = idx + 1; i < sorted.length; i++) {
           nuevosMontos[sorted[i].id] = ""
         }
@@ -279,8 +281,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                   <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Nuevo precio</label>
                   <input type="number" min="0" step="0.01" value={a.nuevoPrecio}
                     onChange={e => setAjustes(prev => ({ ...prev, [modulo.id]: { ...a, nuevoPrecio: e.target.value } }))}
+                    onWheel={e => (e.target as HTMLElement).blur()}
                     className="w-full px-3 py-2 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 mt-1 bg-white"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Motivo del ajuste</label>
@@ -306,8 +309,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                 <input type="number" min="0" step="0.01" placeholder="0.00"
                   value={montos[modulo.id] || ""}
                   onChange={e => handleMontoChange(modulo.id, e.target.value)}
+                  onWheel={e => (e.target as HTMLElement).blur()}
                   className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
               </div>
             </div>
 

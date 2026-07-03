@@ -55,6 +55,8 @@ import { IngresoDetallePage } from "@/pages/finanzas/ingresos/IngresoDetallePage
 import { EgresosPage } from "@/pages/finanzas/egresos/EgresosPage"
 import { EgresoFormPage } from "@/pages/finanzas/egresos/EgresoFormPage"
 import { EstadisticasPage } from "@/pages/finanzas/estadisticas/EstadisticasPage"
+import { CatalogoDetallePage } from "@/pages/finanzas/estadisticas/CatalogoDetallePage"
+import { EstudianteDetallePage } from "@/pages/finanzas/estadisticas/EstudianteDetallePage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
 import {
   SecretariaDashboardPage,
@@ -206,6 +208,8 @@ function AppLayout() {
             <Route path="/finanzas/egresos/nuevo" element={<RoleGuard roles={["Administrador"]}><EgresoFormPage /></RoleGuard>} />
             <Route path="/finanzas/egresos/:id/editar" element={<RoleGuard roles={["Administrador"]}><EgresoFormPage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstadisticasPage /></RoleGuard>} />
+            <Route path="/finanzas/estadisticas/catalogo/:id" element={<RoleGuard roles={["Administrador"]}><CatalogoDetallePage /></RoleGuard>} />
+            <Route path="/finanzas/estadisticas/estudiante/:id" element={<RoleGuard roles={["Administrador"]}><EstudianteDetallePage /></RoleGuard>} />
             <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 

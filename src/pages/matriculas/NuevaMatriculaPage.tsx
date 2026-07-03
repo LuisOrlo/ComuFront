@@ -236,7 +236,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   }
 
   const validateStep1 = (): boolean => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"]
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach(f => {
@@ -273,8 +273,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     const labels: Record<string, string> = {
       cedula: estudiante.tipo_id === "cedula" ? "Cédula" : "DNI",
       nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo",
+      ocupacion: "Ocupación", direccion: "Dirección", ciudad: "Residencia",
+      estado_civil: "Estado Civil", fecha_nacimiento: "Fecha de Nacimiento",
     }
-    if (["cedula", "nombres", "apellidos", "telefono", "correo"].includes(campo) && !valor.trim()) {
+    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
     if (campo === "cedula") {
@@ -458,26 +460,28 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
-            <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => setEstudiante({...estudiante, ocupacion: e.target.value})} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border" style={{ borderColor: COLORS.BORDER_SUBTLE }} /></div>
-            <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => setEstudiante({...estudiante, estado_civil: e.target.value})} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option></select></div>
-            <div><label className="block text-xs font-medium mb-1.5">Fecha de Nacimiento</label><input type="date" value={estudiante.fecha_nacimiento} onChange={e => { const fn = e.target.value; setEstudiante({...estudiante, fecha_nacimiento: fn, edad: calcularEdad(fn)}) }} className="w-full px-3.5 py-2.5 rounded-lg text-sm border" style={{ borderColor: COLORS.BORDER_SUBTLE }} /></div>
+            <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.ocupacion && errors.ocupacion && <p className="text-[11px] mt-1 text-red-500">{errors.ocupacion}</p>}</div>
+            <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
+            <div><label className="block text-xs font-medium mb-1.5">Fecha de Nacimiento</label><input type="date" value={estudiante.fecha_nacimiento} onChange={e => { const fn = e.target.value; updateEstudiante("fecha_nacimiento", fn); setEstudiante(prev => ({ ...prev, fecha_nacimiento: fn, edad: calcularEdad(fn) })) }} onBlur={() => blurEstudiante("fecha_nacimiento")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.fecha_nacimiento && errors.fecha_nacimiento ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.fecha_nacimiento && errors.fecha_nacimiento && <p className="text-[11px] mt-1 text-red-500">{errors.fecha_nacimiento}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" readOnly value={estudiante.edad} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50" /></div>
-            <div><label className="block text-xs font-medium mb-1.5">Dirección</label><input type="text" value={estudiante.direccion} onChange={e => setEstudiante({...estudiante, direccion: e.target.value})} placeholder="Av. Siempre Viva 123" className="w-full px-3.5 py-2.5 rounded-lg text-sm border" style={{ borderColor: COLORS.BORDER_SUBTLE }} /></div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Residencia</label>
-              <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value}); setCiudadOpen(true) }} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+              <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value}); const err = validateField("ciudad", e.target.value); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
               {ciudadOpen && (
                 <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border bg-white shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   {ECUADOR_CITIES.filter(c => !estudiante.ciudad || c.toLowerCase().includes(estudiante.ciudad.toLowerCase())).length === 0 ? (
                     <div className="px-3.5 py-2.5 text-sm" style={{ color: COLORS.TEXT_MUTED }}>Sin resultados</div>
                   ) : (
                     ECUADOR_CITIES.filter(c => !estudiante.ciudad || c.toLowerCase().includes(estudiante.ciudad.toLowerCase())).map(c => (
-                      <button key={c} type="button" onMouseDown={e => { e.preventDefault(); setEstudiante({...estudiante, ciudad: c}); setCiudadOpen(false) }} className="w-full text-left px-3.5 py-2 text-sm hover:bg-gray-50" style={{ color: COLORS.CHARCOAL, backgroundColor: estudiante.ciudad === c ? "oklch(0.95 0.01 260)" : "transparent" }}>{c}</button>
+                      <button key={c} type="button" onMouseDown={e => { e.preventDefault(); setEstudiante({...estudiante, ciudad: c}); setCiudadOpen(false); setErrors(prev => { const n = { ...prev }; delete n.ciudad; return n }) }} className="w-full text-left px-3.5 py-2 text-sm hover:bg-gray-50" style={{ color: COLORS.CHARCOAL, backgroundColor: estudiante.ciudad === c ? "oklch(0.95 0.01 260)" : "transparent" }}>{c}</button>
                     ))
                   )}
                 </div>
               )}
+              {touched.ciudad && errors.ciudad && <p className="text-[11px] mt-1 text-red-500">{errors.ciudad}</p>}
             </div>
+            <div><label className="block text-xs font-medium mb-1.5">Dirección</label><input type="text" value={estudiante.direccion} onChange={e => updateEstudiante("direccion", e.target.value)} onBlur={() => blurEstudiante("direccion")} placeholder="Av. Siempre Viva 123" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.direccion && errors.direccion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.direccion && errors.direccion && <p className="text-[11px] mt-1 text-red-500">{errors.direccion}</p>}</div>
+            
           </div>
           <div>
             <br />

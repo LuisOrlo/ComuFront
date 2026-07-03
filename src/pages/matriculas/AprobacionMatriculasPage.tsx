@@ -233,12 +233,28 @@ export function AprobacionMatriculasPage() {
   const startEdit = (field: string, value: string) => { setEditField(field); setEditVal(value) }
   const cancelEdit = () => { setEditField(null); setEditVal("") }
   
+  function calcularEdad(fecha: string): string {
+    if (!fecha) return ""
+    const nacimiento = new Date(fecha)
+    if (isNaN(nacimiento.getTime())) return ""
+    const hoy = new Date()
+    let edad = hoy.getFullYear() - nacimiento.getFullYear()
+    const mesDiff = hoy.getMonth() - nacimiento.getMonth()
+    if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
+      edad--
+    }
+    return edad >= 0 ? String(edad) : ""
+  }
+
   const saveEdit = async () => {
     if (!selectedId || !editField || editVal === "") return
     setSavingEdit(true)
     try {
       const data: any = {}
       data[editField] = editVal
+      if (editField === "fecha_nacimiento") {
+        data.edad = calcularEdad(editVal)
+      }
       await cursosService.actualizarEstudiante(selectedId, data)
       setSelected((prev: any) => {
         if (!prev) return prev
@@ -246,7 +262,7 @@ export function AprobacionMatriculasPage() {
         if (updated.solicitante?.datos) {
           const datos = { ...updated.solicitante.datos }
           if (datos.perfil_estudiante) {
-            datos.perfil_estudiante = { ...datos.perfil_estudiante, [editField]: editVal }
+            datos.perfil_estudiante = { ...datos.perfil_estudiante, [editField]: editVal, ...(editField === "fecha_nacimiento" ? { edad: calcularEdad(editVal) } : {}) }
           } else {
             datos[editField] = editVal
           }

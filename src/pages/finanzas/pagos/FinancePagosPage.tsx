@@ -93,7 +93,7 @@ export function FinanceResumenWrapper() {
       try {
         const [resumenData, cuentasData] = await Promise.all([
           financeService.getResumen(),
-          financeService.getCuentas({ per_page: 200, recientes: false }),
+          financeService.getCuentas({ per_page: 200, recientes: 0 }),
         ])
         setStats(resumenData)
         setCuentas(cuentasData.data)

@@ -276,7 +276,7 @@ export function HomePage() {
                 {alertasPagos.length === 0 ? (
                   <li className="px-5 py-6 text-center text-sm text-gray-400">Sin pagos pendientes</li>
                 ) : (
-                  alertasPagos.map(({ estudiante, curso, monto, dias }) => (
+                  alertasPagos.map(({ estudiante, curso, monto, dias }: { estudiante: string; curso: string; monto: number; dias: number }) => (
                     <li key={`${estudiante}-${curso}`} className="px-5 py-3 hover:bg-gray-50/50 transition-colors">
                       <div className="flex items-start gap-3">
                         <div className="flex-none flex items-center justify-center size-7 rounded-full text-xs font-semibold"

@@ -1,38 +1,51 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import api from "./auth.service"
+import api from "@/services/auth.service"
+import type { EstadisticasResponse, CatalogoDetalleResponse, EstudianteDetalleResponse } from "@/types/estadisticas"
 
-export interface CuentaPorCobrar {
-  id: string
-  monto_total: number
-  monto_abonado: number
-  saldo_pendiente: number
-  estado: "pendiente" | "abonado" | "pagado" | "anulado"
-  created_at: string
-  matricula?: any
-  solicitud_inscripcion?: any
-  inscripcion_taller?: any
+interface PagoInicialDto {
+  matricula_id?: string
+  solicitud_inscripcion_id?: string
+  inscripcion_taller_id?: string
+  monto: number
+  metodo_pago?: string
+  referencia_pago?: string
+  comprobante_url?: string | null
+  fecha_pago?: string
+  observaciones?: string
 }
 
-export interface TransaccionIngreso {
-  id: string
-  cuenta_cobrar_id: string
-  monto: number
-  metodo_pago: string
-  comprobante_url?: string
+interface PagosInicialesDto {
+  matricula_id?: string
+  inscripcion_taller_id?: string
+  solicitud_inscripcion_id?: string
+  monto_total: number
+  monto_inicial: number
   fecha_pago: string
-  registrado_por?: any
-  estado_verificacion: "pendiente" | "aprobado" | "rechazado"
+  metodo_pago: string
+  cuotas: number
   observaciones?: string
-  motivo_rechazo?: string
+}
+
+interface RegistroPagoDto extends PagoInicialDto {
+  cuenta_id: string
 }
 
 export const financeService = {
-  async getResumen() {
-    const response = await api.get("/finanzas/resumen")
-    return response.data.datos
+  async getEstadisticas(params: Record<string, string | number | undefined>) {
+    const response = await api.get<EstadisticasResponse>("/finanzas/estadisticas", { params })
+    return response.data
   },
 
-  async getCuentas(params: any) {
+  async getEstadisticasCatalogo(id: string, params: Record<string, string | number | undefined>) {
+    const response = await api.get<CatalogoDetalleResponse>(`/finanzas/estadisticas/catalogo/${id}`, { params })
+    return response.data
+  },
+
+  async getEstadisticasEstudiante(id: string, params: Record<string, string | number | undefined>) {
+    const response = await api.get<EstudianteDetalleResponse>(`/finanzas/estadisticas/estudiante/${id}`, { params })
+    return response.data
+  },
+
+  async getCuentas(params?: Record<string, string | number | undefined>) {
     const response = await api.get("/finanzas/cuentas", { params })
     return response.data
   },
@@ -42,22 +55,29 @@ export const financeService = {
     return response.data
   },
 
-  async registrarPago(data: any) {
-    const response = await api.post("/finanzas/pagos", data)
+  async registrarPago(dto: RegistroPagoDto) {
+    const response = await api.post("/finanzas/pagos", dto)
     return response.data
   },
 
-  async getTransacciones(params: any) {
+  async registrarPagosIniciales(dto: PagosInicialesDto) {
+    const response = await api.post("/finanzas/pagos-iniciales", dto)
+    return response.data
+  },
+
+  async uploadComprobantePago(formData: FormData) {
+    const response = await api.post("/finanzas/pagos-iniciales/comprobante", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    return response.data
+  },
+
+  async getTransacciones(params?: Record<string, string | number | undefined>) {
     const response = await api.get("/finanzas/transacciones", { params })
     return response.data
   },
 
-  async verificarTransaccion(id: string, data: any) {
-    const response = await api.post(`/finanzas/transacciones/${id}/verificar`, data)
-    return response.data
-  },
-
-  async getHistorial(params: any) {
+  async getHistorial(params?: Record<string, string | number | undefined>) {
     const response = await api.get("/finanzas/historial", { params })
     return response.data
   },
@@ -67,8 +87,13 @@ export const financeService = {
     return response.data
   },
 
-  async getEstudianteFinancieroCurso(cursoId: string, matriculaId: string) {
-    const response = await api.get(`/finanzas/cursos/${cursoId}/estudiante/${matriculaId}/financiero`)
+  async verificarTransaccion(id: string, dto: { estado_verificacion: string; motivo_rechazo?: string }) {
+    const response = await api.post(`/finanzas/transacciones/${id}/verificar`, dto)
+    return response.data
+  },
+
+  async getResumen() {
+    const response = await api.get("/finanzas/resumen")
     return response.data
   },
 
@@ -77,8 +102,28 @@ export const financeService = {
     return response.data
   },
 
+  async getEstudianteFinancieroCurso(cursoId: string, matriculaId: string) {
+    const response = await api.get(`/finanzas/cursos/${cursoId}/estudiante/${matriculaId}/financiero`)
+    return response.data
+  },
+
   async getTallerFinanciero(id: string) {
     const response = await api.get(`/finanzas/talleres/${id}/financiero`)
+    return response.data
+  },
+
+  async getServicioFinanciero(tipo: string, id: string) {
+    const response = await api.get(`/finanzas/servicios/${tipo}/${id}/financiero`)
+    return response.data
+  },
+
+  async pagarServicio(tipo: string, id: string, dto: { monto: number; metodo_pago: string; referencia_pago?: string }) {
+    const response = await api.post(`/finanzas/pagar-servicio/${tipo}/${id}`, dto)
+    return response.data
+  },
+
+  async getLineasPagoPorMatricula(matriculaId: string) {
+    const response = await api.get(`/finanzas/matriculas/${matriculaId}/lineas-pago`)
     return response.data
   },
 
@@ -87,23 +132,28 @@ export const financeService = {
     return response.data
   },
 
-  async getIngresos(params: any) {
+  async getIngresos(params?: Record<string, string | number | undefined>) {
     const response = await api.get("/finanzas/ingresos", { params })
     return response.data
   },
 
-  async getEgresos(params: any) {
+  async getEgresos(params?: Record<string, string | number | undefined>) {
     const response = await api.get("/finanzas/egresos", { params })
     return response.data
   },
 
-  async createEgreso(data: any) {
-    const response = await api.post("/finanzas/egresos", data)
+  async getEgreso(id: string) {
+    const response = await api.get(`/finanzas/egresos/${id}`)
     return response.data
   },
 
-  async updateEgreso(id: string, data: any) {
-    const response = await api.put(`/finanzas/egresos/${id}`, data)
+  async createEgreso(dto: Record<string, unknown>) {
+    const response = await api.post("/finanzas/egresos", dto)
+    return response.data
+  },
+
+  async updateEgreso(id: string, dto: Record<string, unknown>) {
+    const response = await api.put(`/finanzas/egresos/${id}`, dto)
     return response.data
   },
 
@@ -114,11 +164,6 @@ export const financeService = {
 
   async getEgresoCategorias() {
     const response = await api.get("/finanzas/egresos/categorias")
-    return response.data
-  },
-
-  async getEstadisticas(params: any) {
-    const response = await api.get("/finanzas/estadisticas", { params })
     return response.data
   },
 }

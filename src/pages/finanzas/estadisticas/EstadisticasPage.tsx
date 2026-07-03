@@ -1,80 +1,172 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react"
-import { COLORS } from "@/lib/constants"
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/refs */
+import { useState, useEffect, useRef } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { financeService } from "@/services/finance.service"
-import { toast } from "sonner"
-import { EstadisticasPeriodo } from "./components/EstadisticasPeriodo"
-import { EstadisticasKPIs } from "./components/EstadisticasKPIs"
-import { EstadisticasInsights } from "./components/EstadisticasInsights"
-import { EstadisticasPrincipal, EstadisticasBento } from "./components/EstadisticasCharts"
+import { PeriodoSelector } from "./components/PeriodoSelector"
+import { SkeletonEstadisticas } from "./components/SkeletonEstadisticas"
+import { ResumenEjecutivo } from "./components/ResumenEjecutivo"
+import { FlujoFinanciero } from "./components/FlujoFinanciero"
+import { ComposicionIngresos } from "./components/ComposicionIngresos"
+import { RendimientoCatalogo } from "./components/RendimientoCatalogo"
+import { DistribucionGeografica } from "./components/DistribucionGeografica"
+import { ComparativaModalidad } from "./components/ComparativaModalidad"
+import { RetencionFidelizacion } from "./components/RetencionFidelizacion"
+import { EstadoCobranza } from "./components/EstadoCobranza"
+import { ActividadServicios } from "./components/ActividadServicios"
+import { COLORS } from "@/lib/constants"
+import type { EstadisticasResponse } from "@/types/estadisticas"
 
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
+const BG = "#F4F6FA"
 
-function getDefaultDesde(p: string) {
+function getDefaultDesde(periodo: string): string {
   const now = new Date()
-  if (p === "trimestre") return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).toISOString().split("T")[0]
-  if (p === "este_año") return new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
+  if (periodo === "trimestre") return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).toISOString().split("T")[0]
+  if (periodo === "este_año") return new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
 }
 
 export function EstadisticasPage() {
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<any>(null)
   const [periodo, setPeriodo] = useState("este_mes")
   const [customDesde, setCustomDesde] = useState("")
   const [customHasta, setCustomHasta] = useState("")
+  const [fetchDesde, setFetchDesde] = useState(getDefaultDesde("este_mes"))
+  const [fetchHasta, setFetchHasta] = useState(new Date().toISOString().split("T")[0])
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null)
+  const seccionesRef = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  const load = async (d: string, h: string) => {
-    setLoading(true)
-    try {
-      const res = await financeService.getEstadisticas({ desde: d, hasta: h })
-      setData(res)
-    } catch { toast.error("Error al cargar estadísticas") }
-    finally { setLoading(false) }
+  const registerRef = (key: string) => (el: HTMLDivElement | null) => {
+    if (!el) return
+    seccionesRef.current.set(key, el)
   }
 
   useEffect(() => {
     if (periodo !== "custom") {
-      const d = getDefaultDesde(periodo)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      load(d, new Date().toISOString().split("T")[0])
+      setFetchDesde(getDefaultDesde(periodo))
+      setFetchHasta(new Date().toISOString().split("T")[0])
     }
   }, [periodo])
 
-  const applyCustom = (d: string, h: string) => { load(d, h) }
-
-  if (loading || !data) {
-    return <div className="flex items-center justify-center h-full text-sm opacity-40" style={{ backgroundColor: "#F4F6FA" }}>Cargando estadísticas...</div>
+  const applyCustom = (d: string, h: string) => {
+    setFetchDesde(d)
+    setFetchHasta(h)
   }
 
-  const m = data.metricas || {}
-  const dist = data.distribucion_categorias || data.distribucion_ingresos || []
+  const { data, isLoading, error, refetch } = useQuery<EstadisticasResponse>({
+    queryKey: ["estadisticas", fetchDesde, fetchHasta],
+    queryFn: () => financeService.getEstadisticas({ desde: fetchDesde, hasta: fetchHasta }),
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
+    retry: 1,
+  })
+
+  if (isLoading && !data) {
+    return (
+      <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+        <PeriodoSelector
+          periodo={periodo} setPeriodo={setPeriodo}
+          customDesde={customDesde} setCustomDesde={setCustomDesde}
+          customHasta={customHasta} setCustomHasta={setCustomHasta}
+          onApply={applyCustom} seccionesRef={seccionesRef}
+          loading={isLoading} data={data}
+        />
+        <div className="flex-1 overflow-auto">
+          <SkeletonEstadisticas />
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !data) {
+    return (
+      <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+        <PeriodoSelector
+          periodo={periodo} setPeriodo={setPeriodo}
+          customDesde={customDesde} setCustomDesde={setCustomDesde}
+          customHasta={customHasta} setCustomHasta={setCustomHasta}
+          onApply={applyCustom} seccionesRef={seccionesRef}
+          loading={false} data={data}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <p className="text-sm opacity-40">Error al cargar estadísticas</p>
+          <p className="text-xs opacity-25 max-w-md text-center">{(error as Error)?.message || "Error de conexión con el servidor"}</p>
+          <button onClick={() => refetch()} className="px-4 py-1.5 rounded-xl text-[10px] font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+        <PeriodoSelector
+          periodo={periodo} setPeriodo={setPeriodo}
+          customDesde={customDesde} setCustomDesde={setCustomDesde}
+          customHasta={customHasta} setCustomHasta={setCustomHasta}
+          onApply={applyCustom} seccionesRef={seccionesRef}
+          loading={false} data={data}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm opacity-40">No hay datos disponibles</p>
+        </div>
+      </div>
+    )
+  }
+
+  const m = data.metricas
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "#F4F6FA" }}>
-      <header className="shrink-0 px-8 py-6 border-b bg-white/90 backdrop-blur-md flex items-center justify-between" style={{ borderColor: BORDER }}>
-        <h1 className="text-2xl font-bold tracking-tighter" style={{ color: CHARCOAL }}>Estadísticas</h1>
-      </header>
+    <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+      <PeriodoSelector
+        periodo={periodo} setPeriodo={setPeriodo}
+        customDesde={customDesde} setCustomDesde={setCustomDesde}
+        customHasta={customHasta} setCustomHasta={setCustomHasta}
+        onApply={applyCustom} seccionesRef={seccionesRef}
+        loading={isLoading} data={data}
+      />
 
-      <div className="flex-1 overflow-auto px-6 lg:px-8 py-6 space-y-5">
-        <div className="rounded-2xl bg-white border p-5" style={{ borderColor: BORDER }}>
-          <EstadisticasPeriodo periodo={periodo} setPeriodo={setPeriodo}
-            customDesde={customDesde} setCustomDesde={setCustomDesde}
-            customHasta={customHasta} setCustomHasta={setCustomHasta}
-            onApply={applyCustom} />
+      <div className="flex-1 overflow-auto px-4 lg:px-8 py-6 space-y-5">
+        <div ref={registerRef("resumen")}>
+          <ResumenEjecutivo m={m} />
         </div>
 
-        <EstadisticasInsights distribucion={dist} ingresosVsEgresos={data.ingresos_vs_egresos} />
+        <div ref={registerRef("flujo")}>
+          <FlujoFinanciero data={data.ingresos_vs_egresos} insightText={data.insight_text} />
+        </div>
 
-        <EstadisticasKPIs m={m} />
+        <div ref={registerRef("composicion")}>
+          <ComposicionIngresos
+            distribucion={data.distribucion_categorias}
+            categoriaSeleccionada={categoriaSeleccionada}
+            onSelectCategoria={setCategoriaSeleccionada}
+          />
+        </div>
 
-        <EstadisticasPrincipal data={data.ingresos_vs_egresos} />
+        <div ref={registerRef("catalogo")}>
+          <RendimientoCatalogo data={data.catalogos_top} />
+        </div>
 
-        <EstadisticasBento
-          distribucion={dist}
-          metodoPago={data.metodo_pago}
-          diasSemana={data.dias_semana} />
+        <div ref={registerRef("geografica")}>
+          <DistribucionGeografica data={data.ciudades_top} />
+        </div>
+
+        <div ref={registerRef("modalidad")}>
+          <ComparativaModalidad data={data.modalidad} />
+        </div>
+
+        <div ref={registerRef("retencion")}>
+          <RetencionFidelizacion metricas={m} topEstudiantes={data.top_estudiantes} />
+        </div>
+
+        <div ref={registerRef("cobranza")}>
+          <EstadoCobranza data={data.cobranza} />
+        </div>
+
+        <div ref={registerRef("servicios")}>
+          <ActividadServicios data={data.actividad_servicios} />
+        </div>
       </div>
     </div>
   )

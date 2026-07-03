@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import React from "react"
+import { createRoot } from "react-dom/client"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas-pro"
 import { COLORS } from "@/lib/constants"
@@ -96,9 +99,6 @@ async function captureChart(type: string, data: any[]): Promise<string | null> {
   document.body.appendChild(div)
 
   try {
-    const { default: React } = await import("react")
-    const { createRoot } = await import("react-dom/client")
-    const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = await import("recharts")
     const PIE_COLORS = ["#059669", "#4f46e5", "#0891b2", "#d97706", "#dc2626"]
 
     const root = createRoot(div)
