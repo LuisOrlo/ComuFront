@@ -515,7 +515,7 @@ export function InstructorHorarioPage() {
                       const idStr = String(item.cursoId);
                       setSelectedCursoId(selectedCursoId && String(selectedCursoId) === idStr ? null : idStr);
                     }}
-                    className="absolute mx-0.5 rounded-lg px-2 py-1 overflow-hidden transition-all hover:brightness-110 hover:shadow-lg cursor-pointer text-left"
+                    className="absolute mx-0.5 rounded-lg px-3 py-2 overflow-hidden transition-all hover:brightness-110 hover:shadow-lg cursor-pointer text-center flex flex-col items-center justify-center"
                     style={{
                       top: `${top}%`,
                       height: `${Math.max(height, 4)}%`,
@@ -526,19 +526,19 @@ export function InstructorHorarioPage() {
                       border: "none",
                     }}
                   >
-                    <p className="text-[9px] font-bold leading-tight truncate">
+                    <p className="text-xs font-bold leading-tight truncate w-full">
                       {item.nombre}
                     </p>
-                    <p className="text-[8px] opacity-80 leading-tight truncate">
+                    <p className="text-[10px] opacity-80 leading-tight truncate w-full">
                       {item.catalogo}
                     </p>
-                    <p className="text-[8px] opacity-70 mt-0.5 flex items-center gap-1">
-                      <HugeiconsIcon icon={Clock01Icon} size={10} />
+                    <p className="text-[10px] opacity-70 mt-1 flex items-center justify-center gap-1">
+                      <HugeiconsIcon icon={Clock01Icon} size={11} />
                       {formatTime(item.horaInicio)} – {formatTime(item.horaFin)}
                     </p>
                     {item.ciudad && (
-                      <p className="text-[7px] opacity-60 flex items-center gap-0.5 truncate">
-                        <HugeiconsIcon icon={Home02Icon} size={9} />
+                      <p className="text-[9px] opacity-60 flex items-center justify-center gap-0.5 truncate w-full">
+                        <HugeiconsIcon icon={Home02Icon} size={10} />
                         {item.ciudad}
                       </p>
                     )}

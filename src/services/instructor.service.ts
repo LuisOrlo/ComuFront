@@ -12,6 +12,7 @@ export interface InstructorCurso {
   estado: string
   fecha_inicio: string
   fecha_fin: string
+  modalidad?: string
   horario: {
     nombre_referencial: string
     hora_inicio?: string

@@ -113,10 +113,125 @@ export interface SolicitudInscripcion {
   estado: string
 }
 
+export interface EventoAgenda {
+  id: string
+  tipo_evento: string
+  referencia_id: string
+  titulo: string
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  instructor_nombre?: string
+  aula_nombre?: string
+  estado?: string
+  modalidad?: string
+  color: string
+  tipo_label: string
+  ciudad_nombre?: string
+}
+
+export interface GrupoAgenda {
+  tipo: string
+  tipo_label: string
+  color: string
+  total: number
+  eventos: EventoAgenda[]
+}
+
+export interface ResumenEstudiantes {
+  total_activos: number
+  asistencia_baja: number
+  proximos_completar_modulo: number
+}
+
+export interface ReservaProxima {
+  id: string
+  tipo: "aula" | "podcast" | "radio"
+  titulo: string
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  cliente_nombre: string
+  estado: string
+}
+
+export interface ReservasProximas {
+  aulas: ReservaProxima[]
+  podcast: ReservaProxima[]
+  radio: ReservaProxima[]
+  total: number
+}
+
+export interface TareaPendiente {
+  id: string
+  tipo: "certificado" | "solicitud_vencida" | "cambio_horario"
+  descripcion: string
+  fecha: string
+  urgencia: "normal" | "alta" | "critica"
+}
+
+export interface AlertaAccion {
+  label: string
+  path: string
+}
+
+export interface Alerta {
+  id: string
+  tipo: "warning" | "danger" | "info"
+  mensaje: string
+  accion?: AlertaAccion
+}
+
+export interface SolicitudPendienteItem {
+  id: string
+  solicitante: string
+  curso: string
+  cedula: string
+  es_externo: boolean
+  fecha: string
+  tiene_comprobante: boolean
+  tiene_cedula: boolean
+}
+
+export interface DashboardDataCompleto extends DashboardData {
+  agenda_hoy: GrupoAgenda[]
+  resumen_estudiantes: ResumenEstudiantes
+  reservas_proximas: ReservasProximas
+  tareas_pendientes: TareaPendiente[]
+  solicitudes_pendientes: {
+    total: number
+    items: SolicitudPendienteItem[]
+  }
+  alertas: Alerta[]
+}
+
 export const secretariaService = {
   async getDashboard() {
     const response = await api.get("/secretaria/dashboard")
     return response.data.datos as DashboardData
+  },
+
+  async getDashboardCompleto(): Promise<DashboardDataCompleto> {
+    const [baseRes, agendaRes, estudiantesRes, reservasRes, tareasRes, solicitudesRes, alertasRes] =
+      await Promise.all([
+        api.get("/secretaria/dashboard"),
+        api.get("/secretaria/dashboard/agenda-hoy"),
+        api.get("/secretaria/dashboard/resumen-estudiantes"),
+        api.get("/secretaria/dashboard/reservas-proximas"),
+        api.get("/secretaria/dashboard/tareas-pendientes"),
+        api.get("/secretaria/dashboard/solicitudes-pendientes"),
+        api.get("/secretaria/dashboard/alertas"),
+      ])
+
+    return {
+      ...(baseRes.data.datos as DashboardData),
+      agenda_hoy: agendaRes.data.datos as GrupoAgenda[],
+      resumen_estudiantes: estudiantesRes.data.datos as ResumenEstudiantes,
+      reservas_proximas: reservasRes.data.datos as ReservasProximas,
+      tareas_pendientes: tareasRes.data.datos as TareaPendiente[],
+      solicitudes_pendientes: solicitudesRes.data.datos as { total: number; items: SolicitudPendienteItem[] },
+      alertas: alertasRes.data.datos as Alerta[],
+    }
   },
 
   async getEstudiantes(params?: Record<string, unknown>) {

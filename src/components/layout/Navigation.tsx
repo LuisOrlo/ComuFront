@@ -140,10 +140,11 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
     const groups: { label: string; items: NavItemData[] }[] = []
 
     if (!isSecretaria) {
+      const dashboardPath = isAdmin ? "/" : isInstructor ? "/instructor" : "/"
       groups.push({
         label: "Principal",
         items: [
-          { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+          { icon: LayoutDashboard, label: "Dashboard", path: dashboardPath },
         ],
       })
     }

@@ -18,7 +18,7 @@ interface EstudiantePersonal {
   cedula?: string
   correo?: string
   celular?: string
-  ciudad?: { nombre: string }
+  ciudad?: { nombre: string } | string
   perfil_estudiante?: {
     fecha_nacimiento?: string
     ocupacion?: string
@@ -43,6 +43,10 @@ function SkeletonCard() {
       </div>
     </div>
   )
+}
+
+function capitalizar(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
 const estadoCivilColor: Record<string, string> = {
@@ -92,10 +96,44 @@ export function DetalleEstudiantePage() {
 
   useEffect(() => {
     if (!id || id === "undefined") return
-    instructorService.getDetalleEstudiante(id)
-      .then(setEstudiante)
-      .catch(() => toast.error("Error al cargar datos del estudiante"))
-      .finally(() => setLoading(false))
+    const estudianteId = id
+
+    async function load() {
+      try {
+        const data = await instructorService.getDetalleEstudiante(estudianteId)
+
+        const ciudadYaDefinida = typeof data.ciudad === "string" ? !!data.ciudad : !!data.ciudad?.nombre
+        if (!ciudadYaDefinida) {
+          try {
+            const cursos = await instructorService.getMisCursos()
+            const resultadosCursos = await Promise.all(
+              cursos.map((c) =>
+                instructorService.getEstudiantesCurso(c.id).then((ests) => ({ curso: c, estudiantes: ests }))
+              )
+            )
+            for (const { curso, estudiantes } of resultadosCursos) {
+              const match = estudiantes.find(
+                (e) => e.estudiante?.id === estudianteId || e.participante_externo?.id === estudianteId
+              )
+              if (match) {
+                setEstudiante({ ...data, ciudad: { nombre: curso.ciudad.nombre } })
+                return
+              }
+            }
+          } catch {
+            // Fallback: mostrar datos sin ciudad
+          }
+        }
+
+        setEstudiante(data)
+      } catch {
+        toast.error("Error al cargar datos del estudiante")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
   }, [id])
 
   if (loading) {
@@ -153,7 +191,20 @@ export function DetalleEstudiantePage() {
   const perfil = estudiante.perfil_estudiante
   const fechaNac = perfil?.fecha_nacimiento?.split("-").reverse().join("/") || "—"
   const edad = perfil?.edad != null ? `${perfil.edad} años` : "—"
-  const estadoCivil = perfil?.estado_civil || "—"
+
+  const ciudadMostrar = (() => {
+    if (perfil?.ciudad && perfil.ciudad.trim() !== "") return capitalizar(perfil.ciudad)
+    const c = estudiante.ciudad
+    if (typeof c === "string" && c.trim() !== "") return capitalizar(c)
+    if (c && typeof c === "object" && "nombre" in c && c.nombre) return capitalizar(c.nombre)
+    return "—"
+  })()
+
+  const estadoCivil = (() => {
+    const raw = perfil?.estado_civil
+    if (!raw) return "—"
+    return capitalizar(raw)
+  })()
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -208,7 +259,7 @@ export function DetalleEstudiantePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
             <DataRow label="Correo" value={estudiante.correo || "—"} />
             <DataRow label="Celular" value={estudiante.celular || "—"} />
-            <DataRow label="Ciudad" value={perfil?.ciudad || estudiante.ciudad?.nombre || "—"} />
+            <DataRow label="Ciudad" value={ciudadMostrar} />
             <DataRow label="Direccion" value={perfil?.direccion || "—"} />
           </div>
         </div>

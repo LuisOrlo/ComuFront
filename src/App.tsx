@@ -29,6 +29,7 @@ import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPa
 import { RadioPage } from "@/pages/servicios/radio/RadioPage"
 import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
 import { TarifasPage as RadioTarifasPage } from "@/pages/servicios/radio/TarifasPage"
+import { InstructorDashboardPage } from "@/pages/instructor-portal/InstructorDashboardPage"
 import { InstructorCursosPage } from "@/pages/instructor-portal/InstructorCursosPage"
 import { InstructorCursoDetailPage } from "@/pages/instructor-portal/detalle/InstructorCursoDetailPage"
 import { AsistenciaRegistroPage } from "@/pages/instructor-portal/AsistenciaRegistroPage"
@@ -95,6 +96,15 @@ import { Toaster } from "sonner"
 
 import { ScrollToTop } from "@/components/ScrollToTop"
 
+function DashboardRouter() {
+  const { user } = useAuth()
+  const roles: string[] = user?.roles || []
+  if (roles.includes("Administrador")) return <HomePage />
+  if (roles.includes("Instructor")) return <Navigate to="/instructor" replace />
+  if (roles.includes("Secretaria")) return <Navigate to="/secretaria" replace />
+  return <Navigate to="/login" replace />
+}
+
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -152,7 +162,7 @@ function AppLayout() {
         <main className="flex-1 overflow-y-auto">
           <ScrollToTop />
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<DashboardRouter />} />
 
             {/* Admin-only routes */}
             <Route path="/cursos" element={<RoleGuard roles={["Administrador"]}><CursosPage /></RoleGuard>} />
@@ -236,6 +246,7 @@ function AppLayout() {
             <Route path="/secretaria/solicitudes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaSolicitudesPage /></RoleGuard>} />
 
             {/* Instructor portal (Admin + Instructor) */}
+            <Route path="/instructor" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorDashboardPage /></RoleGuard>} />
             <Route path="/instructor/cursos" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursosPage /></RoleGuard>} />
             <Route path="/instructor/cursos/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursoDetailPage /></RoleGuard>} />
             <Route path="/instructor/clases/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><ClasesModuloPage /></RoleGuard>} />
