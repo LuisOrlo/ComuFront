@@ -62,6 +62,14 @@ export function PagoDetallePage() {
 
   const getNombreEstudiante = () => {
     if (data?.estudiante_nombre) return data.estudiante_nombre
+
+    const lp = data?.linea_pago_modulo
+    if (lp) {
+      const m = lp.matricula
+      const e = m?.estudiante ?? m?.solicitud_inscripcion?.estudiante ?? m?.solicitud_inscripcion?.participante_externo
+      if (e?.nombres) return `${e.nombres || ""} ${e.apellidos || ""}`.trim()
+    }
+
     const cp = data?.cuenta_por_cobrar
     if (!cp) return "—"
     const m = cp.matricula
@@ -83,6 +91,15 @@ export function PagoDetallePage() {
   const getCursoNombre = () => {
     if (data?.curso_nombre) return data.curso_nombre
     if (data?.taller_nombre) return data.taller_nombre
+
+    const lp = data?.linea_pago_modulo
+    if (lp) {
+      const m = lp.matricula
+      const ca = m?.curso_abierto
+      if (ca?.nombre_instancia) return ca.nombre_instancia
+      if (ca?.catalogo?.nombre) return ca.catalogo.nombre
+    }
+
     const cp = data?.cuenta_por_cobrar
     if (!cp) return "—"
     const m = cp.matricula
@@ -105,6 +122,11 @@ export function PagoDetallePage() {
 
   const getModuloNombre = () => {
     if (data?.modulo_nombre) return data.modulo_nombre
+
+    const lp = data?.linea_pago_modulo
+    if (lp?.modulo?.nombre_modulo) return lp.modulo.nombre_modulo
+    if (lp?.modulo?.nombre) return lp.modulo.nombre
+
     const cp = data?.cuenta_por_cobrar
     const m = cp?.matricula
     if (m?.modulo?.nombre) return m.modulo.nombre

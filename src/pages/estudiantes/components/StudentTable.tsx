@@ -30,10 +30,13 @@ function SaldoCell({ saldo_pendiente, estado_pago }: { saldo_pendiente?: number;
   if (saldo_pendiente > 0) {
     return <span className="text-sm font-bold text-red-500">${saldo_pendiente.toLocaleString()}</span>
   }
-  if (saldo_pendiente === 0 && (estado_pago === "al_dia" || estado_pago === "ninguno")) {
+  if (saldo_pendiente === 0 && estado_pago === "al_dia") {
     return <span className="text-sm font-bold text-emerald-600">Completo</span>
   }
-  return <span className="text-sm font-medium text-gray-400">Sin registro</span>
+  if (saldo_pendiente === 0 && estado_pago === "ninguno") {
+    return <span className="text-sm font-medium text-gray-400">Sin registro</span>
+  }
+  return <span className="text-sm font-bold">$0</span>
 }
 
 export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect, onToggleSelectAll, variant = "estudiantes" }: StudentTableProps) {

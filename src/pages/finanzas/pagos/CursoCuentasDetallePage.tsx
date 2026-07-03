@@ -73,9 +73,9 @@ export function CursoCuentasDetallePage() {
       mods.forEach((lm: any) => {
         const mid = lm.modulo_id || lm.id
         if (map[mid]) {
-          map[mid].total += Number(lm.precio || lm.monto_total || 0)
+          map[mid].total += Number(lm.precio || lm.monto_ajustado || lm.monto_original || 0)
           map[mid].abono += Number(lm.abonado || lm.monto_abonado || 0)
-          map[mid].saldo += Number(lm.pendiente || lm.saldo_pendiente || 0)
+          map[mid].saldo += Number(lm.saldo || lm.saldo_pendiente || 0)
         }
       })
     })
@@ -303,9 +303,9 @@ export function CursoCuentasDetallePage() {
                           <>
                             {modulos.map((m: any) => {
                               const lm = modsEst.find((x: any) => (x.modulo_id || x.id) == m.id)
-                              const totalM = lm ? Number(lm.precio || lm.monto_total || 0) : 0
+                              const totalM = lm ? Number(lm.precio || lm.monto_ajustado || lm.monto_original || 0) : 0
                               const abonoM = lm ? Number(lm.abonado || lm.monto_abonado || 0) : 0
-                              const saldoM = totalM - abonoM
+                              const saldoM = lm ? Number(lm.saldo || lm.saldo_pendiente || 0) : 0
                               return (
                                 <td key={m.id} className="px-3 py-3 text-center">
                                   {lm ? (
@@ -329,9 +329,9 @@ export function CursoCuentasDetallePage() {
                         ) : selectedModulo !== "todos" ? (
                           (() => {
                             const lm = modsEst.find((x: any) => (x.modulo_id || x.id) == selectedModulo)
-                            const totalM = lm ? Number(lm.precio || lm.monto_total || 0) : 0
+                            const totalM = lm ? Number(lm.precio || lm.monto_ajustado || lm.monto_original || 0) : 0
                             const abonoM = lm ? Number(lm.abonado || lm.monto_abonado || 0) : 0
-                            const saldoM = totalM - abonoM
+                            const saldoM = lm ? Number(lm.saldo || lm.saldo_pendiente || 0) : 0
                             return (
                               <>
                                 <td className="px-3 py-3 text-right text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>${totalM.toLocaleString()}</td>

@@ -21,12 +21,49 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
     )
   }
 
-  if (!data || data.cuentas.length === 0) {
+  const tieneDatos = data && (
+    data.cuentas.length > 0 ||
+    (data.matriculas && data.matriculas.some(m => (m.lineas_pago?.length ?? 0) > 0)) ||
+    data.transacciones.length > 0
+  )
+
+  if (!tieneDatos) {
     return (
       <div className="text-center py-20">
         <p className="text-gray-500 font-medium">Este estudiante no tiene cuentas financieras registradas.</p>
       </div>
     )
+  }
+
+  const resumenReal = {
+    total_general: data.resumen.total_general > 0
+      ? data.resumen.total_general
+      : data.matriculas?.reduce((sum, m) =>
+          sum + (m.lineas_pago?.reduce((s, lp) => s + (lp.monto_ajustado ?? 0), 0) ?? 0), 0) ?? 0,
+    total_pagado: data.resumen.total_pagado > 0
+      ? data.resumen.total_pagado
+      : data.matriculas?.reduce((sum, m) =>
+          sum + (m.lineas_pago?.reduce((s, lp) => s + (lp.monto_abonado ?? 0), 0) ?? 0), 0) ?? 0,
+    total_adeudado: data.resumen.total_adeudado > 0
+      ? data.resumen.total_adeudado
+      : data.matriculas?.reduce((sum, m) =>
+          sum + (m.lineas_pago?.reduce((s, lp) => s + (lp.saldo_pendiente ?? 0), 0) ?? 0), 0) ?? 0,
+    porcentaje_pagado: data.resumen.porcentaje_pagado,
+    cuentas_pendientes: data.resumen.cuentas_pendientes,
+    cuentas_abonadas: data.resumen.cuentas_abonadas,
+    cuentas_pagadas: data.resumen.cuentas_pagadas,
+  }
+
+  if (data.resumen.total_general <= 0 && resumenReal.total_general > 0) {
+    resumenReal.porcentaje_pagado = resumenReal.total_general > 0
+      ? Math.round((resumenReal.total_pagado / resumenReal.total_general) * 100)
+      : 0
+    resumenReal.cuentas_pendientes = data.matriculas?.reduce((sum, m) =>
+      sum + (m.lineas_pago?.filter(lp => lp.estado === 'pendiente').length ?? 0), 0) ?? 0
+    resumenReal.cuentas_abonadas = data.matriculas?.reduce((sum, m) =>
+      sum + (m.lineas_pago?.filter(lp => lp.estado === 'abonado').length ?? 0), 0) ?? 0
+    resumenReal.cuentas_pagadas = data.matriculas?.reduce((sum, m) =>
+      sum + (m.lineas_pago?.filter(lp => lp.estado === 'pagado').length ?? 0), 0) ?? 0
   }
 
   const estadoClasses: Record<string, string> = {
@@ -51,21 +88,21 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
       <div className="flex items-center gap-8 py-3 border-b mb-6">
         <div>
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total General</span>
-          <div className="text-xl font-black text-gray-800 mt-0.5">${data.resumen.total_general.toLocaleString()}</div>
+          <div className="text-xl font-black text-gray-800 mt-0.5">${resumenReal.total_general.toLocaleString()}</div>
         </div>
         <div>
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pagado</span>
-          <div className="text-xl font-black text-emerald-600 mt-0.5">${data.resumen.total_pagado.toLocaleString()}</div>
+          <div className="text-xl font-black text-emerald-600 mt-0.5">${resumenReal.total_pagado.toLocaleString()}</div>
         </div>
         <div>
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Adeudado</span>
-          <div className={`text-xl font-black mt-0.5 ${data.resumen.total_adeudado > 0 ? 'text-red-500' : 'text-gray-500'}`}>
-            ${data.resumen.total_adeudado.toLocaleString()}
+          <div className={`text-xl font-black mt-0.5 ${resumenReal.total_adeudado > 0 ? 'text-red-500' : 'text-gray-500'}`}>
+            ${resumenReal.total_adeudado.toLocaleString()}
           </div>
         </div>
         <div>
           <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">% Pagado</span>
-          <div className="text-xl font-black text-gray-800 mt-0.5">{data.resumen.porcentaje_pagado}%</div>
+          <div className="text-xl font-black text-gray-800 mt-0.5">{resumenReal.porcentaje_pagado}%</div>
         </div>
       </div>
 

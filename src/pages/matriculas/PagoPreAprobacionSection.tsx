@@ -164,7 +164,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           monto: parseFloat(montos[m.id] || "0"),
         }
         const a = ajustes[m.id]
-        if (a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== getPrecioEfectivo(m)) {
+        const precioOriginal = m.precio_base ?? m.precio ?? 0
+        if (a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== precioOriginal) {
           base.monto_ajustado = parseFloat(a.nuevoPrecio || "0")
           base.motivo_ajuste = a.motivo
         }
