@@ -11,11 +11,12 @@ import { CatalogosConCursosPage } from "@/pages/catalogos/CatalogosConCursosPage
 import { CiudadesPage } from "@/pages/admin/ciudades/CiudadesPage"
 import { PersonasPage } from "@/pages/personas/PersonasPage"
 
-import { AsistenciaStaffPage } from "@/pages/asistencia/AsistenciaStaffPage"
+import { TareasPage } from "@/pages/tareas/TareasPage"
 import { CuentasPage } from "@/pages/cuentas/CuentasPage"
 
 import { NuevaMatriculaPublicaPage } from "@/pages/matriculas/NuevaMatriculaPublicaPage"
 import { AprobacionMatriculasPage } from "@/pages/matriculas/AprobacionMatriculasPage"
+import { InscribirEstudiantePage } from "@/pages/matriculas/InscribirEstudiantePage"
 import { SolicitudesInscripcionPage } from "@/pages/solicitudes-inscripcion/SolicitudesInscripcionPage"
 import { SolicitudInscripcionDetallePage } from "@/pages/solicitudes-inscripcion/SolicitudInscripcionDetallePage"
 import { AulasPage } from "@/pages/servicios/aulas/AulasPage"
@@ -59,17 +60,9 @@ import { EstadisticasPage } from "@/pages/finanzas/estadisticas/EstadisticasPage
 import { CatalogoDetallePage } from "@/pages/finanzas/estadisticas/CatalogoDetallePage"
 import { EstudianteDetallePage } from "@/pages/finanzas/estadisticas/EstudianteDetallePage"
 import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
+import { NuevoEstudiantePage } from "@/pages/estudiantes/NuevoEstudiantePage"
 import {
   SecretariaDashboardPage,
-  SecretariaPagosPage,
-  SecretariaCursosPage,
-  SecretariaEstudiantesPage,
-  SecretariaTalleresPage,
-  SecretariaCertificadosPage,
-  SecretariaAsistenciaPage,
-  SecretariaPodcastPage,
-  SecretariaEdicionVideoPage,
-  SecretariaAlquileresPage,
   SecretariaSolicitudesPage,
 } from "@/pages/secretaria"
 import { EstudiantePerfilAcademicoPage } from "@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"
@@ -165,49 +158,51 @@ function AppLayout() {
             <Route path="/" element={<DashboardRouter />} />
 
             {/* Admin-only routes */}
-            <Route path="/cursos" element={<RoleGuard roles={["Administrador"]}><CursosPage /></RoleGuard>} />
+            <Route path="/cursos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursosPage /></RoleGuard>} />
             <Route path="/cursos/nuevo" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
             <Route path="/cursos/:id/editar" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
-            <Route path="/cursos/:id" element={<RoleGuard roles={["Administrador"]}><CursoDetailPage /></RoleGuard>} />
+            <Route path="/cursos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoDetailPage /></RoleGuard>} />
             <Route path="/catalogos" element={<RoleGuard roles={["Administrador"]}><CatalogosConCursosPage /></RoleGuard>} />
             <Route path="/ciudades" element={<RoleGuard roles={["Administrador"]}><CiudadesPage /></RoleGuard>} />
             <Route path="/personas" element={<RoleGuard roles={["Administrador"]}><PersonasPage /></RoleGuard>} />
-            <Route path="/estudiantes" element={<RoleGuard roles={["Administrador"]}><EstudiantesPage /></RoleGuard>} />
-            <Route path="/estudiantes/cursos/:cursoId" element={<RoleGuard roles={["Administrador"]}><EstudiantesCursoDetallePage /></RoleGuard>} />
-            <Route path="/estudiantes/talleres/:tallerId" element={<RoleGuard roles={["Administrador"]}><EstudiantesTallerDetallePage /></RoleGuard>} />
-            <Route path="/estudiantes/ciudades/:ciudadId" element={<RoleGuard roles={["Administrador"]}><EstudiantesCiudadDetallePage /></RoleGuard>} />
-            <Route path="/estudiantes/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstudianteStatsPage /></RoleGuard>} />
-            <Route path="/estudiantes/segmentos" element={<RoleGuard roles={["Administrador"]}><EstudianteSegmentsPage /></RoleGuard>} />
-            <Route path="/estudiantes/:id/academico" element={<RoleGuard roles={["Administrador"]}><EstudiantePerfilAcademicoPage /></RoleGuard>} />
-            <Route path="/asistencia" element={<RoleGuard roles={["Administrador"]}><AsistenciaStaffPage /></RoleGuard>} />
+            <Route path="/estudiantes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesPage /></RoleGuard>} />
+            <Route path="/estudiantes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEstudiantePage /></RoleGuard>} />
+            <Route path="/estudiantes/cursos/:cursoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCursoDetallePage /></RoleGuard>} />
+            <Route path="/estudiantes/talleres/:tallerId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesTallerDetallePage /></RoleGuard>} />
+            <Route path="/estudiantes/ciudades/:ciudadId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCiudadDetallePage /></RoleGuard>} />
+            <Route path="/estudiantes/estadisticas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudianteStatsPage /></RoleGuard>} />
+            <Route path="/estudiantes/segmentos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudianteSegmentsPage /></RoleGuard>} />
+            <Route path="/estudiantes/:id/inscribir" element={<RoleGuard roles={["Administrador", "Secretaria"]}><InscribirEstudiantePage /></RoleGuard>} />
+            <Route path="/estudiantes/:id/academico" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantePerfilAcademicoPage /></RoleGuard>} />
+            <Route path="/tareas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TareasPage /></RoleGuard>} />
             <Route path="/cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasPage /></RoleGuard>} />
-            <Route path="/matriculas/*" element={<RoleGuard roles={["Administrador"]}><AprobacionMatriculasPage /></RoleGuard>} />
-            <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador"]}><SolicitudesInscripcionPage /></RoleGuard>} />
-            <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
-            <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador"]}><AulasPage /></RoleGuard>} />
-            <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador"]}><AulasGestionPage /></RoleGuard>} />
-            <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador"]}><EquiposPage /></RoleGuard>} />
-            <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador"]}><AlquileresListPage /></RoleGuard>} />
-            <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador"]}><PodcastPage /></RoleGuard>} />
-            <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador"]}><PaquetesPage /></RoleGuard>} />
-            <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador"]}><EdicionVideoPage /></RoleGuard>} />
-            <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador"]}><RadioPage /></RoleGuard>} />
-            <Route path="/servicios/radio/historial" element={<RoleGuard roles={["Administrador"]}><RadioHistorialPage /></RoleGuard>} />
-            <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador"]}><RadioTarifasPage /></RoleGuard>} />
-            <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador"]}><FinancePagosPage /></RoleGuard>}>
+            <Route path="/matriculas/*" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionMatriculasPage /></RoleGuard>} />
+            <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudesInscripcionPage /></RoleGuard>} />
+            <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
+            <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasPage /></RoleGuard>} />
+            <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasGestionPage /></RoleGuard>} />
+            <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EquiposPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquileresListPage /></RoleGuard>} />
+            <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PodcastPage /></RoleGuard>} />
+            <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PaquetesPage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoPage /></RoleGuard>} />
+            <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioPage /></RoleGuard>} />
+            <Route path="/servicios/radio/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioHistorialPage /></RoleGuard>} />
+            <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioTarifasPage /></RoleGuard>} />
+            <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><FinancePagosPage /></RoleGuard>}>
               <Route index element={<Navigate to="resumen" replace />} />
-              <Route path="resumen" element={<RoleGuard roles={["Administrador"]}><FinanceResumenWrapper /></RoleGuard>} />
-              <Route path="historial" element={<RoleGuard roles={["Administrador"]}><HistorialPage /></RoleGuard>} />
-              <Route path="historial/:id" element={<RoleGuard roles={["Administrador"]}><PagoDetallePage /></RoleGuard>} />
-              <Route path="cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasCobrarLayout /></RoleGuard>}>
+              <Route path="resumen" element={<RoleGuard roles={["Administrador", "Secretaria"]}><FinanceResumenWrapper /></RoleGuard>} />
+              <Route path="historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPage /></RoleGuard>} />
+              <Route path="historial/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PagoDetallePage /></RoleGuard>} />
+              <Route path="cuentas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CuentasCobrarLayout /></RoleGuard>}>
                 <Route index element={<Navigate to="cursos" replace />} />
-                <Route path="talleres" element={<RoleGuard roles={["Administrador"]}><TalleresCuentasPage /></RoleGuard>} />
-                <Route path="talleres/:id" element={<RoleGuard roles={["Administrador"]}><TallerCuentasDetallePage /></RoleGuard>} />
-                <Route path="talleres/:id/participante/:pid" element={<RoleGuard roles={["Administrador"]}><TallerParticipantePage /></RoleGuard>} />
-                <Route path="cursos" element={<RoleGuard roles={["Administrador"]}><CursosCuentasPage /></RoleGuard>} />
-                <Route path="cursos/:id" element={<RoleGuard roles={["Administrador"]}><CursoCuentasDetallePage /></RoleGuard>} />
-                <Route path="servicios" element={<RoleGuard roles={["Administrador"]}><ServiciosCuentasPage /></RoleGuard>} />
-                <Route path="servicios/:name" element={<RoleGuard roles={["Administrador"]}><ServicioDetallePage /></RoleGuard>} />
+                <Route path="talleres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TalleresCuentasPage /></RoleGuard>} />
+                <Route path="talleres/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TallerCuentasDetallePage /></RoleGuard>} />
+                <Route path="talleres/:id/participante/:pid" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TallerParticipantePage /></RoleGuard>} />
+                <Route path="cursos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursosCuentasPage /></RoleGuard>} />
+                <Route path="cursos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoCuentasDetallePage /></RoleGuard>} />
+                <Route path="servicios" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServiciosCuentasPage /></RoleGuard>} />
+                <Route path="servicios/:name" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServicioDetallePage /></RoleGuard>} />
                 <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador"]}><ServicioPagoPage /></RoleGuard>} />
               </Route>
             </Route>
@@ -220,29 +215,20 @@ function AppLayout() {
             <Route path="/finanzas/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstadisticasPage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas/catalogo/:id" element={<RoleGuard roles={["Administrador"]}><CatalogoDetallePage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas/estudiante/:id" element={<RoleGuard roles={["Administrador"]}><EstudianteDetallePage /></RoleGuard>} />
-            <Route path="/certificados" element={<RoleGuard roles={["Administrador"]}><CertificadosPage /></RoleGuard>} />
-            <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
+            <Route path="/certificados" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CertificadosPage /></RoleGuard>} />
+            <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 
             {/* Agenda */}
-            <Route path="/agenda" element={<RoleGuard roles={["Administrador"]}><AgendaPage /></RoleGuard>} />
+            <Route path="/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AgendaPage /></RoleGuard>} />
 
             {/* Talleres admin */}
-            <Route path="/talleres" element={<RoleGuard roles={["Administrador"]}><TalleresPage /></RoleGuard>} />
+            <Route path="/talleres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TalleresPage /></RoleGuard>} />
             <Route path="/talleres/nuevo" element={<RoleGuard roles={["Administrador"]}><TallerFormPage /></RoleGuard>} />
-            <Route path="/talleres/:id" element={<RoleGuard roles={["Administrador"]}><TallerDetallePage /></RoleGuard>} />
+            <Route path="/talleres/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TallerDetallePage /></RoleGuard>} />
             <Route path="/talleres/:id/editar" element={<RoleGuard roles={["Administrador"]}><TallerFormPage /></RoleGuard>} />
 
             {/* Secretaria routes */}
             <Route path="/secretaria" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaDashboardPage /></RoleGuard>} />
-            <Route path="/secretaria/estudiantes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaEstudiantesPage /></RoleGuard>} />
-            <Route path="/secretaria/cursos" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCursosPage /></RoleGuard>} />
-            <Route path="/secretaria/talleres" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaTalleresPage /></RoleGuard>} />
-            <Route path="/secretaria/pagos" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaPagosPage /></RoleGuard>} />
-            <Route path="/secretaria/certificados" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaCertificadosPage /></RoleGuard>} />
-            <Route path="/secretaria/asistencia" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaAsistenciaPage /></RoleGuard>} />
-            <Route path="/secretaria/podcast" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaPodcastPage /></RoleGuard>} />
-            <Route path="/secretaria/edicion-video" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaEdicionVideoPage /></RoleGuard>} />
-            <Route path="/secretaria/alquileres" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaAlquileresPage /></RoleGuard>} />
             <Route path="/secretaria/solicitudes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaSolicitudesPage /></RoleGuard>} />
 
             {/* Instructor portal (Admin + Instructor) */}

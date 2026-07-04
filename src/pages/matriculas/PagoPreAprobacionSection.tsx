@@ -172,7 +172,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         return base
       })
     onSubmit(pagos, metodoPagoInicial || "efectivo")
-  }, [modulos, montos, ajustes, getPrecioEfectivo, onSubmit, metodoPagoInicial])
+  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,

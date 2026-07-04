@@ -75,22 +75,30 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange, onS
             <tr><td colSpan={6} className="p-10 text-center opacity-40">Cargando...</td></tr>
           ) : data.length === 0 ? (
             <tr><td colSpan={6} className="p-10 text-center opacity-40">Sin ingresos</td></tr>
-          ) : data.map((item: any) => (
-            <tr key={item.id} onClick={() => navigate(`/finanzas/ingresos/${item.id}`)}
-              className="hover:bg-gray-50 cursor-pointer transition-colors">
-              <td className="px-3 py-2 text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(item.fecha_pago)}</td>
-              <td className="px-3 py-2 text-xs truncate max-w-[160px]" style={{ color: CHARCOAL }}>{item.concepto || "—"}</td>
-              <td className="px-3 py-2 text-xs" style={{ color: CHARCOAL }}>{item.estudiante_nombre || "—"}</td>
-              <td className="px-3 py-2">
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
-                  style={{ backgroundColor: CAT_COLORS[item.categoria] || "oklch(0.4 0.02 0 / 0.12)", color: CAT_TEXT[item.categoria] || "#6b7280" }}>
-                  {item.categoria}
-                </span>
-              </td>
-              <td className="px-3 py-2 text-xs font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>${Number(item.monto || 0).toLocaleString()}</td>
-              <td className="px-3 py-2 text-xs capitalize opacity-60">{item.metodo_pago}</td>
-            </tr>
-          ))}
+          ) : data.map((item: any) => {
+            const esEgreso = item.tipo_movimiento === "egreso"
+            return (
+              <tr key={`${item.tipo_movimiento}-${item.id}`} onClick={() => navigate(esEgreso ? `/finanzas/egresos/${item.id}/editar` : `/finanzas/ingresos/${item.id}`)}
+                className="hover:bg-gray-50 cursor-pointer transition-colors">
+                <td className="px-3 py-2 text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(item.fecha_pago)}</td>
+                <td className="px-3 py-2 text-xs truncate max-w-[160px]" style={{ color: CHARCOAL }}>
+                  {esEgreso && <span className="px-1.5 py-0.5 mr-1.5 rounded-full text-[7px] font-bold uppercase bg-red-100 text-red-700">Egreso</span>}
+                  {item.concepto || "—"}
+                </td>
+                <td className="px-3 py-2 text-xs" style={{ color: CHARCOAL }}>{item.estudiante_nombre || "—"}</td>
+                <td className="px-3 py-2">
+                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
+                    style={{ backgroundColor: esEgreso ? "oklch(0.55 0.15 30 / 0.1)" : (CAT_COLORS[item.categoria] || "oklch(0.4 0.02 0 / 0.12)"), color: esEgreso ? "#dc2626" : (CAT_TEXT[item.categoria] || "#6b7280") }}>
+                    {item.categoria}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-xs font-bold" style={{ color: esEgreso ? "#dc2626" : "oklch(0.55 0.15 150)" }}>
+                  {esEgreso ? "-" : "+" }${Number(item.monto || 0).toLocaleString()}
+                </td>
+                <td className="px-3 py-2 text-xs capitalize opacity-60">{item.metodo_pago}</td>
+              </tr>
+            )
+          })}
         </tbody>
         {data.length > 0 && (
           <tfoot>

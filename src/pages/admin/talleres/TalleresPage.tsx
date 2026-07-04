@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
+import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpenIcon, Add01Icon, Search01Icon,
@@ -27,6 +28,7 @@ const ESTADO_BADGE: Record<string, { bg: string; text: string }> = {
 
 export function TalleresPage() {
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const [talleres, setTalleres] = useState<Taller[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -118,11 +120,11 @@ export function TalleresPage() {
               <h1 className="text-xl font-bold" style={{ color: CHARCOAL }}>Talleres</h1>
               
             </div>
-            <button onClick={() => navigate("/talleres/nuevo")}
+            {isAdmin && (<button onClick={() => navigate("/talleres/nuevo")}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
               style={{ backgroundColor: ACCENT }}>
               <HugeiconsIcon icon={Add01Icon} size={14} />Nuevo Taller
-            </button>
+            </button>)}
           </div>
         </div>
       </div>
@@ -251,14 +253,14 @@ export function TalleresPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                          <button onClick={() => navigate(`/talleres/${t.id}/editar`)}
+                          {isAdmin && (<button onClick={() => navigate(`/talleres/${t.id}/editar`)}
                             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: TEXT_MUTED }}>
                             <HugeiconsIcon icon={Edit01Icon} size={14} />
-                          </button>
-                          <button onClick={() => setDeleteTarget(t)}
+                          </button>)}
+                          {isAdmin && (<button onClick={() => setDeleteTarget(t)}
                             className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" style={{ color: TEXT_MUTED }}>
                             <HugeiconsIcon icon={Delete01Icon} size={14} />
-                          </button>
+                          </button>)}
                           <button onClick={() => navigate(`/talleres/${t.id}`)}
                             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: ACCENT }}>
                             <HugeiconsIcon icon={ArrowRight01Icon} size={14} />

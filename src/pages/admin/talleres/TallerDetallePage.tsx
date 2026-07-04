@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon, Edit01Icon, Delete01Icon, Download01Icon,
@@ -31,6 +32,7 @@ type Tab = "info" | "participantes" | "pagos" | "asistencia"
 export function TallerDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const [taller, setTaller] = useState<Taller | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("info")
@@ -155,10 +157,10 @@ export function TallerDetallePage() {
                 }}>
                 {taller.estado}
               </span>
-              <button onClick={() => navigate(`/talleres/${id}/editar`)}
+              {isAdmin && (<button onClick={() => navigate(`/talleres/${id}/editar`)}
                 className="p-2 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: TEXT_MUTED }}>
                 <HugeiconsIcon icon={Edit01Icon} size={16} />
-              </button>
+              </button>)}
             </div>
           </div>
         </div>
@@ -315,10 +317,10 @@ export function TallerDetallePage() {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-right">
-                          <button onClick={() => setDeleteTarget(ins)}
+                          {isAdmin && (<button onClick={() => setDeleteTarget(ins)}
                             className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" style={{ color: TEXT_MUTED }}>
                             <HugeiconsIcon icon={Delete01Icon} size={14} />
-                          </button>
+                          </button>)}
                         </td>
                       </tr>
                     ))}

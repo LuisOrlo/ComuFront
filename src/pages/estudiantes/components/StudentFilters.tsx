@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Search01Icon, UserGroupIcon, AlertCircleIcon, Coins01Icon, CheckmarkCircle02Icon,
+  Search01Icon, UserGroupIcon, AlertCircleIcon, Coins01Icon, CheckmarkCircle02Icon, Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { Segment } from "@/services/estudiantes.service"
@@ -16,6 +16,8 @@ interface StudentFiltersProps {
   segments: Segment[]
   activeSegmentId: string | null
   onSegmentClick: (s: Segment | null) => void
+  conFaltas: boolean
+  onConFaltasChange: (v: boolean) => void
 }
 
 const filters = [
@@ -41,6 +43,8 @@ export function StudentFilters({
   segments,
   activeSegmentId,
   onSegmentClick,
+  conFaltas,
+  onConFaltasChange,
 }: StudentFiltersProps) {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-4">
@@ -82,25 +86,40 @@ export function StudentFilters({
         ))}
       </div>
 
-      {segments.length > 0 && (
-        <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Segmentos:</span>
-          <div className="flex gap-1.5 overflow-x-auto">
-            {segments.map((seg) => (
-              <button
-                key={seg.id}
-                onClick={() => onSegmentClick(activeSegmentId === seg.id ? null : seg)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all border ${
-                  activeSegmentId === seg.id ? 'text-white border-transparent shadow-sm' : 'text-gray-600 bg-white border-gray-200 hover:border-gray-300'
-                }`}
-                style={activeSegmentId === seg.id ? { backgroundColor: COLORS.ACCENT } : {}}
-              >
-                {seg.nombre}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+        <button
+          onClick={() => onConFaltasChange(!conFaltas)}
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all border ${
+            conFaltas ? 'text-white border-transparent shadow-sm' : 'text-gray-600 bg-white border-gray-200 hover:border-gray-300'
+          }`}
+          style={conFaltas ? { backgroundColor: COLORS.ACCENT } : {}}
+        >
+          <span className="flex items-center gap-1.5">
+            {conFaltas && <HugeiconsIcon icon={Cancel01Icon} size={12} />}
+            Con faltas
+          </span>
+        </button>
+
+        {segments.length > 0 && (
+          <>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Segmentos:</span>
+            <div className="flex gap-1.5 overflow-x-auto">
+              {segments.map((seg) => (
+                <button
+                  key={seg.id}
+                  onClick={() => onSegmentClick(activeSegmentId === seg.id ? null : seg)}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all border ${
+                    activeSegmentId === seg.id ? 'text-white border-transparent shadow-sm' : 'text-gray-600 bg-white border-gray-200 hover:border-gray-300'
+                  }`}
+                  style={activeSegmentId === seg.id ? { backgroundColor: COLORS.ACCENT } : {}}
+                >
+                  {seg.nombre}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

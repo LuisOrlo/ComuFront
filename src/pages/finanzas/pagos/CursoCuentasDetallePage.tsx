@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useRef } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -22,6 +23,7 @@ import { jsPDF } from "jspdf"
 export function CursoCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [selectedModulo, setSelectedModulo] = useState<string>("todos")
@@ -342,14 +344,14 @@ export function CursoCuentasDetallePage() {
                           })()
                         ) : null}
                         <td className="px-3 py-3">
-                          <button
+                          {isAdmin && (<button
                             onClick={() => navigate(`/finanzas/pagos/cursos/${id}/estudiante/${e.matricula_id}/pago`)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
                             style={{ backgroundColor: COLORS.ACCENT }}
                           >
                             <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
                             Registrar cobro
-                          </button>
+                          </button>)}
                         </td>
                       </tr>
                     )

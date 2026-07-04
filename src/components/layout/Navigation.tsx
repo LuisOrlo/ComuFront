@@ -172,31 +172,35 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
         {
           label: "Académico",
           items: [
-            { icon: UserIcon, label: "Estudiantes", path: "/secretaria/estudiantes" },
-            { icon: GraduationCapIcon, label: "Cursos", path: "/secretaria/cursos" },
-            { icon: BookOpenIcon, label: "Talleres", path: "/secretaria/talleres" },
-            { icon: CertificateIcon, label: "Certificados", path: "/secretaria/certificados" },
+            { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
+            { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
+            { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
+            { icon: AiLearningIcon, label: "Matrículas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
+            { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
           ],
         },
         {
-          label: "Cobranzas",
+          label: "Finanzas",
           items: [
-            { icon: MoneyIcon, label: "Pagos y abonos", path: "/secretaria/pagos" },
-          ],
-        },
-        {
-          label: "Servicios",
-          items: [
-            { icon: Microphone, label: "Podcast", path: "/secretaria/podcast" },
-            { icon: VideoIcon, label: "Edición de Video", path: "/secretaria/edicion-video" },
-            { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/secretaria/alquileres" },
+            { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
           ],
         },
         {
           label: "Operaciones",
           items: [
-            { icon: CalendarIcon, label: "Asistencia", path: "/secretaria/asistencia" },
+            { icon: CalendarIcon, label: "Agenda", path: "/agenda" },
+            { icon: CalendarIcon, label: "Tareas", path: "/tareas" },
             { icon: UserCheckIcon, label: "Solicitudes", path: "/secretaria/solicitudes" },
+          ],
+        },
+        {
+          label: "Servicios",
+          items: [
+            { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+            { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+            { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
+            { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
+            { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
           ],
         },
       )
@@ -219,7 +223,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
           label: "Gestión",
           items: [
             { icon: UserCheckIcon, label: "Personal", path: "/personas" },
-            { icon: CalendarIcon, label: "Asistencia", path: "/asistencia" },
+            { icon: CalendarIcon, label: "Tareas", path: "/tareas" },
             { icon: SettingsIcon, label: "Cuentas", path: "/cuentas" },
             { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },
           ],

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router"
+import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AddCircleIcon,
@@ -20,6 +21,7 @@ type Vista = "tabla" | "cards"
 
 export function CursosPage() {
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const [vista, setVista] = useState<Vista>("tabla")
   const [cursos, setCursos] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,6 +136,7 @@ export function CursosPage() {
               </h1>
               
             </div>
+            {isAdmin && (
             <button
               onClick={() => navigate("/cursos/nuevo")}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all duration-200 active:scale-[0.97] select-none"
@@ -145,6 +148,7 @@ export function CursosPage() {
               <HugeiconsIcon icon={AddCircleIcon} size={18} />
               Nuevo Curso
             </button>
+            )}
           </header>
 
           {/* Filtros */}
@@ -240,7 +244,7 @@ export function CursosPage() {
           {/* Tabla o Cards */}
           {!loading && cursos.length > 0 && (
             vista === "tabla" ? (
-              <CourseTable cursos={cursos} onView={handleViewCurso} onEdit={handleEditCurso} onDelete={(id) => { const c = cursos.find(x => x.id === id); handleDeleteCurso(id, c?.nombre || "curso") }} />
+              <CourseTable cursos={cursos} onView={handleViewCurso} onEdit={isAdmin ? handleEditCurso : undefined} onDelete={isAdmin ? (id) => { const c = cursos.find(x => x.id === id); handleDeleteCurso(id, c?.nombre || "curso") } : undefined} />
             ) : (
               <CourseCardGrid cursos={cursos} />
             )

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useParams, Link } from "react-router"
+import { useParams, useSearchParams, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -23,10 +23,11 @@ import { toast } from "sonner"
 
 export function InstructorCursoDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("info")
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "info")
 
   const loadData = async () => {
     try {
@@ -241,8 +242,8 @@ export function InstructorCursoDetailPage() {
                         <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{modulo.nombre_modulo}</p>
                       </div>
                       <div className="text-right shrink-0 ml-4">
-                        <span className="block text-[10px] uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Ponderación</span>
-                        <span className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>{modulo.ponderacion}%</span>
+                        <span className="block text-[10px] uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Peso en nota final</span>
+                        <span className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>{modulo.ponderacion || "—"}%</span>
                       </div>
                     </div>
                   ))}
@@ -260,13 +261,12 @@ export function InstructorCursoDetailPage() {
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Promedio</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: "#f1f3f5" }}>
                   {estudiantes.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-8 py-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                      <td colSpan={4} className="px-8 py-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
                         No hay estudiantes matriculados en este curso.
                       </td>
                     </tr>
@@ -320,17 +320,6 @@ export function InstructorCursoDetailPage() {
                               {promedio}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                              style={{
-                                backgroundColor: e.estado === "activo" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-                                color: e.estado === "activo" ? "#10b981" : "#ef4444",
-                              }}
-                            >
-                              {e.estado}
-                            </span>
-                          </td>
                         </tr>
                       )
                     })
@@ -341,39 +330,44 @@ export function InstructorCursoDetailPage() {
           )}
 
           {activeTab === "attendance" && (
-            <div className="max-w-2xl mx-auto">
-              <div className="text-center mb-8">
-                <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Gestión de Asistencia</h3>
-                <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>Selecciona un módulo para registrar la asistencia de sus clases.</p>
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-10">
+                <h3 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Gestión de Asistencia</h3>
+                <p className="text-sm mt-1.5" style={{ color: COLORS.TEXT_MUTED }}>Selecciona un módulo para registrar la asistencia de sus clases.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {curso.modulos.map((modulo: ModuloResumen) => (
                   <Link
                     key={modulo.id}
                     to={`/instructor/clases/${curso.id}/${modulo.id}`}
-                    className="group flex items-center justify-between p-5 rounded-2xl bg-white transition-all hover:shadow-md active:scale-[0.99]"
-                    style={{ border: "1px solid #f1f3f5" }}
+                    className="group flex flex-col p-6 rounded-2xl bg-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]"
+                    style={{ border: "1px solid #e8eaed" }}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start gap-5 mb-4">
                       <div
-                        className="size-11 rounded-xl flex items-center justify-center"
+                        className="size-14 rounded-2xl flex items-center justify-center shrink-0"
                         style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)` }}
                       >
-                        <HugeiconsIcon icon={CheckListIcon} size={20} style={{ color: COLORS.ACCENT }} />
+                        <HugeiconsIcon icon={CheckListIcon} size={26} style={{ color: COLORS.ACCENT }} />
                       </div>
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
                           Módulo {modulo.numero_orden}
                         </span>
-                        <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{modulo.nombre_modulo}</p>
+                        <p className="text-base font-bold mt-1 truncate" style={{ color: COLORS.CHARCOAL }}>{modulo.nombre_modulo}</p>
                       </div>
                     </div>
-                    <span
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all group-hover:brightness-110"
-                      style={{ backgroundColor: COLORS.ACCENT }}
-                    >
-                      Ver Clases
-                    </span>
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t" style={{ borderColor: "#f1f3f5" }}>
+                      <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                        {modulo.ponderacion || "—"}% del curso
+                      </span>
+                      <span
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all group-hover:brightness-110 group-hover:shadow-md"
+                        style={{ backgroundColor: COLORS.ACCENT }}
+                      >
+                        Ir a Clases
+                      </span>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -381,42 +375,42 @@ export function InstructorCursoDetailPage() {
           )}
 
           {activeTab === "grades" && (
-            <div className="max-w-2xl mx-auto">
-              <div className="text-center mb-8">
-                <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registro de Calificaciones</h3>
-                <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>Las notas se registran por módulo. Selecciona el módulo correspondiente.</p>
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-10">
+                <h3 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Registro de Calificaciones</h3>
+                <p className="text-sm mt-1.5" style={{ color: COLORS.TEXT_MUTED }}>Las notas se registran por módulo. Selecciona el módulo correspondiente.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {curso.modulos.map((modulo: ModuloResumen) => (
                   <Link
                     key={modulo.id}
                     to={`/instructor/notas/${curso.id}/${modulo.id}`}
-                    className="group flex items-center justify-between p-5 rounded-2xl bg-white transition-all hover:shadow-md active:scale-[0.99]"
-                    style={{ border: "1px solid #f1f3f5" }}
+                    className="group flex flex-col p-6 rounded-2xl bg-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]"
+                    style={{ border: "1px solid #e8eaed" }}
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start gap-5 mb-4">
                       <div
-                        className="size-11 rounded-xl flex items-center justify-center"
+                        className="size-14 rounded-2xl flex items-center justify-center shrink-0"
                         style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)` }}
                       >
-                        <HugeiconsIcon icon={AssignmentsIcon} size={20} style={{ color: COLORS.ACCENT }} />
+                        <HugeiconsIcon icon={AssignmentsIcon} size={26} style={{ color: COLORS.ACCENT }} />
                       </div>
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
                           Módulo {modulo.numero_orden}
                         </span>
-                        <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{modulo.nombre_modulo}</p>
+                        <p className="text-base font-bold mt-1 truncate" style={{ color: COLORS.CHARCOAL }}>{modulo.nombre_modulo}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
-                        {modulo.ponderacion}% de la nota final
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t" style={{ borderColor: "#f1f3f5" }}>
+                      <span className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>
+                        {modulo.ponderacion || "—"}% de la nota final
                       </span>
                       <div
-                        className="size-9 rounded-xl flex items-center justify-center transition-all group-hover:bg-opacity-80"
+                        className="size-10 rounded-xl flex items-center justify-center transition-all group-hover:shadow-md"
                         style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}
                       >
-                        <HugeiconsIcon icon={ArrowRight01Icon} size={18} />
+                        <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
                       </div>
                     </div>
                   </Link>

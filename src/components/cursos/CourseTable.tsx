@@ -110,8 +110,9 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                       >
                         <HugeiconsIcon icon={ViewIcon} size={16} />
                       </button>
+                      {onEdit && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); onEdit?.(c.id) }}
+                        onClick={(e) => { e.stopPropagation(); onEdit(c.id) }}
                         className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
                         style={{ color: COLORS.TEXT_MUTED }}
                         onMouseEnter={(e) => {
@@ -125,8 +126,10 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                       >
                         <HugeiconsIcon icon={Edit01Icon} size={16} />
                       </button>
+                      )}
+                      {onDelete && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); onDelete?.(c.id) }}
+                        onClick={(e) => { e.stopPropagation(); onDelete(c.id) }}
                         className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
                         style={{ color: COLORS.TEXT_MUTED }}
                         onMouseEnter={(e) => {
@@ -140,6 +143,7 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>

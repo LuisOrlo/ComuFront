@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, AddCircleIcon } from "@hugeicons/core-free-icons"
 import { useStudentProfile } from "../hooks/useStudentProfile"
 import { ProfileHeader } from "../sections/ProfileHeader"
 import { InfoTabContent } from "../sections/InfoTabContent"
@@ -90,13 +90,23 @@ export function EstudiantePerfilAcademicoPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <Link
-        to="/estudiantes"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 mb-6 transition-colors"
-      >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver a listado de estudiantes
-      </Link>
+      <div className="flex items-center justify-between mb-2">
+        <Link
+          to="/estudiantes"
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+          Volver a listado de estudiantes
+        </Link>
+        <Link
+          to={`/estudiantes/${id}/inscribir`}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.97]"
+          style={{ backgroundColor: COLORS.ACCENT }}
+        >
+          <HugeiconsIcon icon={AddCircleIcon} size={16} />
+          Inscribir a nuevo curso/taller
+        </Link>
+      </div>
 
       <ProfileHeader
         estudiante={{

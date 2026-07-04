@@ -8,6 +8,11 @@ import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { estudiantesService, type Segment } from "@/services/estudiantes.service"
 
 export function TodosTab() {
+  const [segments, setSegments] = useState<Segment[]>([])
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null)
+  const [conFaltas, setConFaltas] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+
   const {
     estudiantes,
     loading,
@@ -23,11 +28,7 @@ export function TodosTab() {
     clearSelection,
     loadPage,
     deleteStudents,
-  } = useStudentList()
-
-  const [segments, setSegments] = useState<Segment[]>([])
-  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null)
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  } = useStudentList({ extraFilters: { con_faltas: conFaltas ? '1' : undefined } as Record<string, string | number | undefined> })
   const [deleting, setDeleting] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
 
@@ -83,6 +84,8 @@ export function TodosTab() {
           segments={segments}
           activeSegmentId={activeSegmentId}
           onSegmentClick={handleSegmentClick}
+          conFaltas={conFaltas}
+          onConFaltasChange={(v) => { setConFaltas(v); setActiveSegmentId(null) }}
         />
       </div>
 

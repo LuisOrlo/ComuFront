@@ -50,7 +50,7 @@ export function ClasesModuloPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Link
-        to={`/instructor/cursos/${cursoId}`}
+        to={`/instructor/cursos/${cursoId}?tab=attendance`}
         className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
         style={{ color: COLORS.TEXT_MUTED }}
       >

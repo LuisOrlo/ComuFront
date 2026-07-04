@@ -188,11 +188,45 @@ export interface Segment {
   created_at: string
 }
 
+export interface AsistenciaRegistro {
+  fecha: string
+  hora_inicio: string
+  hora_fin: string
+  estado: string
+  asistio: boolean
+  observaciones: string | null
+}
+
+export interface AsistenciasPorModulo {
+  modulo_id: string
+  modulo_nombre: string
+  registros: AsistenciaRegistro[]
+  total_ausencias: number
+  total_tardanzas: number
+  total_justificados: number
+}
+
+export interface AsistenciasMatricula {
+  matricula_id: string
+  curso: string
+  total_ausencias: number
+  total_tardanzas: number
+  total_justificados: number
+  modulos: AsistenciasPorModulo[]
+}
+
+export interface AsistenciasResponse {
+  estudiante_id: string
+  matriculas: AsistenciasMatricula[]
+}
+
 export interface SegmentCriteria {
   estado_pago?: string
   cursos_min?: number
   cursos_max?: number
   promedio_min?: number
+  ausencias_min?: number
+  tardanzas_min?: number
 }
 
 export interface ImportValidateResult {
@@ -280,6 +314,11 @@ export const estudiantesService = {
 
   async getAcademicProfile(id: string): Promise<AcademicProfile> {
     const response = await api.get(`/personas/estudiantes/${id}/academic-profile`)
+    return response.data.datos
+  },
+
+  async getAsistencias(id: string): Promise<AsistenciasResponse> {
+    const response = await api.get(`/personas/estudiantes/${id}/asistencias`)
     return response.data.datos
   },
 

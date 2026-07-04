@@ -74,16 +74,16 @@ export function FlujoFinanciero({ data, insightText }: { data: MesFinanciero[]; 
           )}
           {mode === "lineas" && (
             <>
-              <Line type="monotone" dataKey="ingresos" stroke={GREEN} strokeWidth={2} dot={{ r: 3 }} name="Ingresos" />
-              <Line type="monotone" dataKey="egresos" stroke={ORANGE} strokeWidth={2} dot={{ r: 3 }} name="Egresos" />
-              <Line type="monotone" dataKey="balance" stroke={BLUE} strokeWidth={2} strokeDasharray="6 3" dot={{ r: 3 }} name="Balance" />
+              <Line type="monotone" dataKey="ingresos" stroke={GREEN} strokeWidth={2.5} dot={{ r: 4 }} name="Ingresos" />
+              <Line type="monotone" dataKey="egresos" stroke={ORANGE} strokeWidth={2.5} dot={{ r: 4 }} name="Egresos" />
+              <Line type="monotone" dataKey="balance" stroke={BLUE} strokeWidth={2} strokeDasharray="6 3" dot={{ r: 4 }} name="Balance" />
             </>
           )}
           {mode === "area" && (
             <>
-              <Area type="monotone" dataKey="ingresos" stroke={GREEN} fill="rgba(22,163,74,0.1)" name="Ingresos" />
-              <Area type="monotone" dataKey="egresos" stroke={ORANGE} fill="rgba(249,115,22,0.1)" name="Egresos" />
-              <Line type="monotone" dataKey="balance" stroke={BLUE} strokeWidth={2} dot={false} name="Balance" />
+              <Area type="monotone" dataKey="ingresos" stroke={GREEN} strokeWidth={2.5} fill="rgba(22,163,74,0.12)" dot={{ r: 4 }} name="Ingresos" />
+              <Area type="monotone" dataKey="egresos" stroke={ORANGE} strokeWidth={2.5} fill="rgba(249,115,22,0.12)" dot={{ r: 4 }} name="Egresos" />
+              <Line type="monotone" dataKey="balance" stroke={BLUE} strokeWidth={2.5} dot={{ r: 4 }} name="Balance" />
             </>
           )}
         </ComposedChart>

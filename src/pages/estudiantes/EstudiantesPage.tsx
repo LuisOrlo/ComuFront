@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Link, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreHorizontalIcon, BarChartIcon, LayersIcon } from "@hugeicons/core-free-icons"
+import { MoreHorizontalIcon, BarChartIcon, LayersIcon, AddCircleIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { TodosTab } from "./tabs/TodosTab"
 import { CursosTab } from "./tabs/CursosTab"
@@ -85,6 +85,14 @@ export function EstudiantesPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/estudiantes/nuevo"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition-all hover:brightness-110"
+            style={{ backgroundColor: COLORS.ACCENT }}
+          >
+            <HugeiconsIcon icon={AddCircleIcon} size={16} />
+            Nuevo Estudiante
+          </Link>
           <div className="relative">
             <button
               onClick={() => setActionsOpen(!actionsOpen)}

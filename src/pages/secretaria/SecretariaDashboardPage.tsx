@@ -299,16 +299,16 @@ export function SecretariaDashboardPage() {
   }
 
   const stats = [
-    { icon: Wallet01Icon, label: "Pagos pendientes", value: data.pagos_pendientes_hoy, sub: "Por verificar hoy", color: "oklch(0.55 0.18 15)", path: "/secretaria/pagos" },
-    { icon: UserGroupIcon, label: "Estudiantes activos", value: data.resumen_estudiantes.total_activos, sub: "Con matrícula activa", color: "oklch(0.58 0.16 145)", path: "/secretaria/estudiantes" },
+    { icon: Wallet01Icon, label: "Pagos pendientes", value: data.pagos_pendientes_hoy, sub: "Por verificar hoy", color: "oklch(0.55 0.18 15)", path: "/finanzas/pagos" },
+    { icon: UserGroupIcon, label: "Estudiantes activos", value: data.resumen_estudiantes.total_activos, sub: "Con matrícula activa", color: "oklch(0.58 0.16 145)", path: "/estudiantes" },
     { icon: AddCircleIcon, label: "Solicitudes", value: data.solicitudes_pendientes.total, sub: "Pendientes de aprobar", color: "oklch(0.62 0.16 245)", path: "/secretaria/solicitudes" },
     { icon: CalendarIcon, label: "Eventos hoy", value: totalEventosHoy, sub: "En la agenda del día", color: ACCENT, path: "#" },
   ]
 
   const serviciosActivos = [
-    { label: "Podcast", value: data.estado_servicios.podcast_activas, icon: Microphone, color: "oklch(0.62 0.18 304)", path: "/secretaria/podcast" },
-    { label: "Edición Video", value: data.estado_servicios.edicion_pendientes, icon: VideoIcon, color: "oklch(0.58 0.16 145)", path: "/secretaria/edicion-video" },
-    { label: "Alquileres", value: data.estado_servicios.alquileres_activos, icon: AiFolderIcon, color: ACCENT, path: "/secretaria/alquileres" },
+    { label: "Podcast", value: data.estado_servicios.podcast_activas, icon: Microphone, color: "oklch(0.62 0.18 304)", path: "/servicios/podcast" },
+    { label: "Edición Video", value: data.estado_servicios.edicion_pendientes, icon: VideoIcon, color: "oklch(0.58 0.16 145)", path: "/servicios/edicion-video" },
+    { label: "Alquileres", value: data.estado_servicios.alquileres_activos, icon: AiFolderIcon, color: ACCENT, path: "/servicios/equipos/alquileres" },
   ]
 
   return (
@@ -662,7 +662,7 @@ export function SecretariaDashboardPage() {
                         key={curso.id}
                         className="group transition-colors hover:bg-gray-50/60 cursor-pointer"
                         style={{ borderBottom: `1px solid ${BORDER}` }}
-                        onClick={() => navigate("/secretaria/cursos")}
+                onClick={() => navigate("/cursos")}
                       >
                         <td className="px-5 py-3.5">
                           <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>{curso.nombre}</p>

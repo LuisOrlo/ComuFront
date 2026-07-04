@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useState } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import { FileAttachmentIcon, PaymentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { FinancialProfile, LineaPagoModulo } from "@/services/estudiantes.service"
@@ -11,6 +12,7 @@ interface FinancialTabContentProps {
 }
 
 export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialTabContentProps) {
+  const { isAdmin } = usePermission()
   const [imagenExpandida, setImagenExpandida] = useState<string | null>(null)
   if (loading) {
     return (
@@ -160,7 +162,7 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
                   {matricula.curso.nombre}
                   {matricula.curso.instancia ? ` — ${matricula.curso.instancia}` : ''}
                 </span>
-                {onPagoInicial && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
+                {isAdmin && onPagoInicial && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
                   <button onClick={() => onPagoInicial({
                     lineasPagoIds: matricula.lineas_pago.map(lp => lp.id),
                     matriculaId: matricula.id,

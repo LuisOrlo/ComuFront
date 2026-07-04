@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -70,6 +71,7 @@ function CategoriaBadge({ categoria }: { categoria: string }) {
 }
 
 export function CatalogosConCursosPage() {
+  const { isAdmin } = usePermission()
   const fileRef = useRef<HTMLInputElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
@@ -278,14 +280,14 @@ export function CatalogosConCursosPage() {
             {catalogos.length} catálogos &middot; {cursos.length} cursos activos
           </p>
         </div>
-        <button
+        {isAdmin && (<button
           onClick={openCreateCatalogo}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg"
           style={{ backgroundColor: COLORS.ACCENT }}
         >
           <Plus size={16} />
           Nuevo Catálogo
-        </button>
+        </button>)}
       </header>
 
       <div className="flex-1 flex overflow-hidden">
@@ -362,18 +364,18 @@ export function CatalogosConCursosPage() {
                       </span>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <button
+                      {isAdmin && (<button
                         onClick={(e) => { e.stopPropagation(); openEditCatalogo(cat) }}
                         className="size-7 flex items-center justify-center rounded-lg bg-white/20 backdrop-blur text-white hover:bg-white/40 transition-colors"
                       >
                         <Pencil size={12} />
-                      </button>
-                      <button
+                      </button>)}
+                      {isAdmin && (<button
                         onClick={(e) => { e.stopPropagation(); handleDeleteCatalogo(cat.id, cat.nombre) }}
                         className="size-7 flex items-center justify-center rounded-lg bg-white/20 backdrop-blur text-white hover:bg-red-400/60 transition-colors"
                       >
                         <Trash2 size={12} />
-                      </button>
+                      </button>)}
                     </div>
                   </div>
                 </div>

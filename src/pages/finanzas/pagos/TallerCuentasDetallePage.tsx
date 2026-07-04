@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -20,6 +21,7 @@ import { useParams, useNavigate, NavLink } from "react-router"
 export function TallerCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
 
@@ -185,7 +187,7 @@ export function TallerCuentasDetallePage() {
                                 <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
                                 Pagado completo
                               </span>
-                            ) : (
+                            ) : isAdmin ? (
                               <button
                                 onClick={() => navigate(`/finanzas/pagos/cuentas/talleres/${tallerId}/participante/${participanteId}`)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
@@ -194,7 +196,7 @@ export function TallerCuentasDetallePage() {
                                 Registrar cobro
                                 <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </td>
                       </tr>

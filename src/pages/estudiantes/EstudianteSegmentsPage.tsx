@@ -138,6 +138,8 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
     cursos_min: undefined as number | undefined,
     cursos_max: undefined as number | undefined,
     promedio_min: undefined as number | undefined,
+    ausencias_min: undefined as number | undefined,
+    tardanzas_min: undefined as number | undefined,
   })
   const [saving, setSaving] = useState(false)
 
@@ -150,13 +152,15 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
       if (criterios.cursos_min !== undefined) cleanCriterios.cursos_min = criterios.cursos_min
       if (criterios.cursos_max !== undefined) cleanCriterios.cursos_max = criterios.cursos_max
       if (criterios.promedio_min !== undefined) cleanCriterios.promedio_min = criterios.promedio_min
+      if (criterios.ausencias_min !== undefined) cleanCriterios.ausencias_min = criterios.ausencias_min
+      if (criterios.tardanzas_min !== undefined) cleanCriterios.tardanzas_min = criterios.tardanzas_min
 
       await estudiantesService.createSegment({ nombre, descripcion: descripcion || undefined, criterios: cleanCriterios })
       toast.success("Segmento creado")
       onOpenChange(false)
       setNombre("")
       setDescripcion("")
-      setCriterios({ estado_pago: "todos", cursos_min: undefined, cursos_max: undefined, promedio_min: undefined })
+      setCriterios({ estado_pago: "todos", cursos_min: undefined, cursos_max: undefined, promedio_min: undefined, ausencias_min: undefined, tardanzas_min: undefined })
       onCreated()
     } catch {
       toast.error("Error al crear segmento")
@@ -218,6 +222,14 @@ function CreateSegmentDialog({ open, onOpenChange, onCreated }: { open: boolean;
               <div className="space-y-1.5 col-span-2">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Promedio Minimo</label>
                 <input type="number" min={0} max={10} step={0.1} value={criterios.promedio_min ?? ""} onChange={e => setCriterios({ ...criterios, promedio_min: e.target.value ? Number(e.target.value) : undefined })} placeholder="Sin minimo de promedio" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Ausencias Minimas</label>
+                <input type="number" min={0} value={criterios.ausencias_min ?? ""} onChange={e => setCriterios({ ...criterios, ausencias_min: e.target.value ? Number(e.target.value) : undefined })} placeholder="Sin minimo" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Tardanzas Minimas</label>
+                <input type="number" min={0} value={criterios.tardanzas_min ?? ""} onChange={e => setCriterios({ ...criterios, tardanzas_min: e.target.value ? Number(e.target.value) : undefined })} placeholder="Sin minimo" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-4 border-t">

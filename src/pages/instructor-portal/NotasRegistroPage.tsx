@@ -89,7 +89,7 @@ export function NotasRegistroPage() {
 
       await instructorService.registrarNotas(moduloId!, payload)
       toast.success("Notas guardadas correctamente")
-      navigate(`/instructor/cursos/${cursoId}`)
+      navigate(`/instructor/cursos/${cursoId}?tab=grades`)
     } catch {
       toast.error("Error al guardar las notas")
     } finally {
@@ -128,7 +128,7 @@ export function NotasRegistroPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link
-        to={`/instructor/cursos/${cursoId}`}
+        to={`/instructor/cursos/${cursoId}?tab=grades`}
         className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
         style={{ color: COLORS.TEXT_MUTED }}
       >
@@ -367,7 +367,7 @@ export function NotasRegistroPage() {
 
           <div className="mt-12 flex justify-end gap-4">
             <Link
-              to={`/instructor/cursos/${cursoId}`}
+              to={`/instructor/cursos/${cursoId}?tab=grades`}
               className="px-6 py-3 rounded-xl font-bold transition-all"
               style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.TEXT_MUTED }}
             >

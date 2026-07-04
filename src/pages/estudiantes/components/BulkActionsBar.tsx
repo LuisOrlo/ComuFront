@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Delete02Icon, Download04Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { usePermission } from "@/hooks/usePermission"
 
 interface BulkActionsBarProps {
   selectedCount: number
@@ -9,6 +10,7 @@ interface BulkActionsBarProps {
 }
 
 export function BulkActionsBar({ selectedCount, onClear, onDelete, onExport }: BulkActionsBarProps) {
+  const { isAdmin } = usePermission()
   if (selectedCount === 0) return null
 
   return (
@@ -24,13 +26,13 @@ export function BulkActionsBar({ selectedCount, onClear, onDelete, onExport }: B
           <HugeiconsIcon icon={Download04Icon} size={14} />
           Exportar
         </button>
-        <button
+        {isAdmin && (<button
           onClick={onDelete}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
         >
           <HugeiconsIcon icon={Delete02Icon} size={14} />
           Eliminar
-        </button>
+        </button>)}
         <button
           onClick={onClear}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors"

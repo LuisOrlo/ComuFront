@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PencilEdit01Icon, Mail01Icon, SmartPhone01Icon,
@@ -24,6 +25,7 @@ interface ProfileHeaderProps {
 }
 
 export function ProfileHeader({ estudiante, totalCursos, estadoPago, saldoPendiente, onUpdate, saving }: ProfileHeaderProps) {
+  const { isAdmin } = usePermission()
   const [editing, setEditing] = useState(false)
   const [nombres, setNombres] = useState("")
   const [apellidos, setApellidos] = useState("")
@@ -61,7 +63,7 @@ export function ProfileHeader({ estudiante, totalCursos, estadoPago, saldoPendie
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-white">{estudiante.nombre_completo}</h1>
-              {!editing && (
+              {!editing && isAdmin && (
                 <button onClick={handleStartEdit} className="size-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
                   <HugeiconsIcon icon={PencilEdit01Icon} size={13} className="text-white/60" />
                 </button>

@@ -54,6 +54,7 @@ export function HistorialPage() {
   }, [searchInput])
 
   function getNombreEstudiante(t: any): string {
+    if (t.tipo_movimiento === "egreso") return t.estudiante_nombre || "—"
     if (t.modulo_nombre || t.linea_pago_modulo) return t.estudiante_nombre || "—"
     const cp = t.cuenta_por_cobrar
     if (!cp) return t.estudiante_nombre || "—"
@@ -70,6 +71,7 @@ export function HistorialPage() {
   }
 
   function getCursoNombre(t: any): string {
+    if (t.tipo_movimiento === "egreso") return t.categoria_nombre || t.curso_nombre || ""
     if (t.modulo_nombre || t.linea_pago_modulo) return t.curso_nombre || ""
     const cp = t.cuenta_por_cobrar
     if (!cp) return t.curso_nombre || ""
@@ -90,6 +92,8 @@ export function HistorialPage() {
   function esPagoPorModulo(t: any): boolean {
     return !!(t.modulo_nombre || t.linea_pago_modulo)
   }
+
+  const esEgreso = (t: any) => t.tipo_movimiento === "egreso"
 
   const clientFiltered = useMemo(() => {
     if (!search) return allTransacciones
@@ -229,7 +233,13 @@ export function HistorialPage() {
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.2, ease: "easeOut" }}
                               whileHover={{ x: 4 }}
-                              onClick={() => navigate(`/finanzas/pagos/historial/${t.id}`)}
+                              onClick={() => {
+                                if (esEgreso(t)) {
+                                  navigate(`/finanzas/egresos/${t.id}/editar`)
+                                } else {
+                                  navigate(`/finanzas/pagos/historial/${t.id}`)
+                                }
+                              }}
                               className="w-full text-left p-4 rounded-xl border transition-all hover:shadow-sm flex items-center justify-between gap-4 group"
                               style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.99 0 0)" }}
                             >
@@ -245,26 +255,32 @@ export function HistorialPage() {
                                     {getNombreEstudiante(t)}
                                   </p>
                                   <p className="text-[10px] opacity-40 truncate">
-                                    {esPagoPorModulo(t) && t.modulo_nombre
-                                      ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulo_nombre}`
-                                      : (getCursoNombre(t) || t.metodo_pago)}
+                                    {esEgreso(t)
+                                      ? `${getCursoNombre(t) || t.metodo_pago}`
+                                      : esPagoPorModulo(t) && t.modulo_nombre
+                                        ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulo_nombre}`
+                                        : (getCursoNombre(t) || t.metodo_pago)}
                                   </p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-4 shrink-0">
                                 <div className="text-right">
-                                  <p className="text-sm font-black" style={{ color: "oklch(0.55 0.15 150)" }}>
-                                    +${Number(t.monto || 0).toLocaleString()}
+                                  <p className="text-sm font-black" style={{ color: esEgreso(t) ? "oklch(0.55 0.15 30)" : "oklch(0.55 0.15 150)" }}>
+                                    {esEgreso(t) ? "-" : "+"}${Number(t.monto || 0).toLocaleString()}
                                   </p>
                                   <p className="text-[10px] opacity-40 capitalize">{t.metodo_pago}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {t.comprobante_url && <HugeiconsIcon icon={ImageIcon} size={14} className="opacity-30" />}
-                                  {esPagoPorModulo(t) && (
+                                  {esEgreso(t) ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-red-100 text-red-700">
+                                      Egreso
+                                    </span>
+                                  ) : esPagoPorModulo(t) ? (
                                     <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-purple-100 text-purple-700">
                                       Módulo
                                     </span>
-                                  )}
+                                  ) : null}
                                   <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-bold uppercase", badgeEstado(t.estado_verificacion))}>
                                     {t.estado_verificacion}
                                   </span>

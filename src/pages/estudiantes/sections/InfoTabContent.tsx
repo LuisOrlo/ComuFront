@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import type { Estudiante, AcademicProfile } from "@/services/estudiantes.service"
 import { TransferCursoModal } from "@/components/estudiantes/TransferCursoModal"
 import { COLORS } from "@/lib/constants"
@@ -21,6 +22,7 @@ function formatDate(dateStr?: string): string {
 }
 
 export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoTabContentProps) {
+  const { isAdmin } = usePermission()
   const [transferMatricula, setTransferMatricula] = useState<{
     id: string
     curso: string
@@ -126,14 +128,14 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
                     Asistencia: {matricula.porcentaje_asistencia}%
                   </p>
                 </div>
-                <button
+                {isAdmin && (<button
                   onClick={() => setTransferMatricula(matricula)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all hover:scale-[0.97] active:scale-[0.95] shrink-0"
                   style={{ backgroundColor: COLORS.ACCENT }}
                 >
                   <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} size={13} />
                   Transferir
-                </button>
+                </button>)}
               </div>
             ))}
           </div>

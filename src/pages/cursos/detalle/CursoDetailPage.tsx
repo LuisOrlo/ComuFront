@@ -1,4 +1,5 @@
 import { useState, useEffect, type CSSProperties } from "react"
+import { usePermission } from "@/hooks/usePermission"
 import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -45,6 +46,7 @@ const estadoConfig: Record<string, { bg: string; text: string; label: string }> 
 export function CursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<ModuloData[]>([])
   const [matriculas, setMatriculas] = useState<MatriculaDetallada[]>([])
@@ -146,10 +148,10 @@ export function CursoDetailPage() {
                   </span>
                 </div>
               </div>
-              <button onClick={() => setShowDeleteConfirm(true)}
+              {isAdmin && (<button onClick={() => setShowDeleteConfirm(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-black/5 text-charcoal/60 hover:bg-red-50 hover:text-red-600 active:scale-95">
                 <Trash2 size={14} />Eliminar
-              </button>
+              </button>)}
             </div>
           </div>
         </div>
@@ -409,13 +411,14 @@ function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; lab
 function ModuleField({ label, value, modId, field, type = "text", onUpdate }: {
   label: string; value?: string; modId: string; field: string; type?: string; onUpdate: (id: string, data: Record<string, unknown>) => void
 }) {
+  const { isAdmin } = usePermission()
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value || "")
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>{label}</span>
-        {!editing && <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium hover:underline" style={{ color: COLORS.ACCENT }}>Editar</button>}
+        {!editing && isAdmin && <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium hover:underline" style={{ color: COLORS.ACCENT }}>Editar</button>}
       </div>
       {editing ? (
         <div className="flex gap-2">

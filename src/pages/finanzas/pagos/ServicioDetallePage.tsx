@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useLocation, useNavigate } from "react-router"
+import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft02Icon, UserIcon, AiFolderIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -30,6 +31,7 @@ function getNombrePersona(entry: any): string {
 export function ServicioDetallePage() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
   const state = location.state as any
 
   if (!state) {
@@ -131,6 +133,7 @@ export function ServicioDetallePage() {
                     </td>
                     <td className="p-3">
                       {!pagado && cuentaId ? (
+                        isAdmin ? (
                         <button
                           onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${cuentaId}`, {
                             state: { cuentaId, nombre, montoTotal, montoSaldo, nombreServicio: name },
@@ -140,6 +143,7 @@ export function ServicioDetallePage() {
                         >
                           Registrar cobro
                         </button>
+                        ) : null
                       ) : pagado ? (
                         <span className="text-[10px] font-bold text-green-600">Completo</span>
                       ) : null}

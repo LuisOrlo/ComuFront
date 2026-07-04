@@ -166,4 +166,9 @@ export const financeService = {
     const response = await api.get("/finanzas/egresos/categorias")
     return response.data
   },
+
+  async getPersonalDisponible(): Promise<Array<{ id: string; nombre_completo: string; tipo: string }>> {
+    const response = await api.get("/finanzas/egresos/personal-disponible")
+    return response.data.data
+  },
 }

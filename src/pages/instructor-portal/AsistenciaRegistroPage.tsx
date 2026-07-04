@@ -103,7 +103,7 @@ export function AsistenciaRegistroPage() {
 
       await instructorService.registrarAsistencia(claseId!, payload)
       toast.success("Asistencia guardada correctamente")
-      navigate(`/instructor/cursos/${cursoId}`)
+      navigate(`/instructor/cursos/${cursoId}?tab=attendance`)
     } catch {
       toast.error("Error al guardar la asistencia")
     } finally {
@@ -144,7 +144,7 @@ export function AsistenciaRegistroPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link
-        to={`/instructor/cursos/${cursoId}`}
+        to={`/instructor/cursos/${cursoId}?tab=attendance`}
         className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
         style={{ color: COLORS.TEXT_MUTED }}
       >
@@ -395,7 +395,7 @@ export function AsistenciaRegistroPage() {
 
           <div className="mt-12 flex justify-end gap-4">
             <Link
-              to={`/instructor/cursos/${cursoId}`}
+              to={`/instructor/cursos/${cursoId}?tab=attendance`}
               className="px-6 py-3 rounded-xl font-bold transition-all"
               style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.TEXT_MUTED }}
             >
