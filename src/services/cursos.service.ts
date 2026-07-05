@@ -779,6 +779,13 @@ export const cursosService = {
     const response = await api.get<NotificacionesResponse>("/academic/notificaciones")
     return response.data
   },
+
+  async deleteArchivoSolicitud(solicitudId: string, campo: "archivo_comprobante_url" | "archivo_cedula_url") {
+    const response = await api.delete(`/academic/solicitudes-inscripcion/${solicitudId}/archivo`, {
+      data: { campo },
+    })
+    return response.data
+  },
 }
 
 export default api

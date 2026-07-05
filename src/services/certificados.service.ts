@@ -62,6 +62,7 @@ export interface EstudiantePanel {
   codigo_certificado?: string
   estado_certificado?: string
   archivo_pdf_url?: string
+  archivo_purgado?: boolean
 }
 
 export interface PanelEstudiantesResponse {

@@ -20,7 +20,6 @@ import {
   ArrowRightIcon,
   AiFolderIcon,
   AiLearningIcon,
-  ClockIcon,
   BookmarkIcon,
   Logout03Icon,
   SchoolIcon,
@@ -241,8 +240,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
           label: "Operaciones",
           items: [
             { icon: CalendarIcon, label: "Agenda", path: "/agenda" },
-            { icon: ClockIcon, label: "Horarios", path: "/horarios" },
-            { icon: BookmarkIcon, label: "Asesorías", path: "/asesorias" },
+            
           ],
         },
         {

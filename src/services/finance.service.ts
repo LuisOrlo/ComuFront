@@ -171,4 +171,12 @@ export const financeService = {
     const response = await api.get("/finanzas/egresos/personal-disponible")
     return response.data.data
   },
+
+  async deleteComprobante(id: string, tipoMovimiento: "ingreso" | "egreso") {
+    const endpoint = tipoMovimiento === "ingreso"
+      ? `/finanzas/transacciones-ingreso/${id}/archivo`
+      : `/finanzas/transacciones-egreso/${id}/archivo`
+    const response = await api.delete(endpoint, { data: { campo: "comprobante_url" } })
+    return response.data
+  },
 }

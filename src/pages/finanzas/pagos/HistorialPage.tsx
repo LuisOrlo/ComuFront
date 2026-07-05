@@ -8,10 +8,12 @@ import {
   InvoiceIcon,
   ImageIcon,
   Cancel01Icon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
 
@@ -20,6 +22,8 @@ const DEBOUNCE_MS = 350
 export function HistorialPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [deletingGroup, setDeletingGroup] = useState<string | null>(null)
+  const [deleteModalData, setDeleteModalData] = useState<{ items: any[]; date: string } | null>(null)
   const [allTransacciones, setAllTransacciones] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
@@ -140,6 +144,40 @@ export function HistorialPage() {
 
   const hasResults = groupedByDate.length > 0
 
+  const handleDeleteGroupComprobantes = async () => {
+    if (!deleteModalData) return
+    const { items, date } = deleteModalData
+    setDeleteModalData(null)
+    const conComprobante = items.filter((t: any) => t.comprobante_url && !t.deleting)
+    if (conComprobante.length === 0) {
+      toast.error("No hay comprobantes para eliminar en este grupo")
+      return
+    }
+    setDeletingGroup(date)
+    try {
+      await Promise.all(conComprobante.map((t: any) =>
+        financeService.deleteComprobante(t.id, t.tipo_movimiento === "egreso" ? "egreso" : "ingreso")
+      ))
+      toast.success(`${conComprobante.length} comprobante(s) eliminados`)
+      setAllTransacciones(prev => prev.map(t => {
+        if (conComprobante.find((c: any) => c.id === t.id)) return { ...t, comprobante_url: null, comprobante_purgado: true }
+        return t
+      }))
+    } catch { toast.error("Error al eliminar comprobantes") }
+    finally { setDeletingGroup(null) }
+  }
+
+  const handleDeleteSingleComprobante = async (t: any, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await financeService.deleteComprobante(t.id, t.tipo_movimiento === "egreso" ? "egreso" : "ingreso")
+      toast.success("Comprobante eliminado")
+      setAllTransacciones(prev => prev.map(item =>
+        item.id === t.id ? { ...item, comprobante_url: null, comprobante_purgado: true } : item
+      ))
+    } catch { toast.error("Error al eliminar comprobante") }
+  }
+
   return (
     <div className="px-8 py-6">
       <motion.div
@@ -224,6 +262,16 @@ export function HistorialPage() {
                         <span className="text-xs opacity-30">
                           {items.length} movimiento{items.length !== 1 ? "s" : ""}
                         </span>
+                        {items.some((t: any) => t.comprobante_url && !t.comprobante_purgado) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteModalData({ items, date }) }}
+                            disabled={deletingGroup === date}
+                            className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          >
+                            <HugeiconsIcon icon={Delete02Icon} size={12} />
+                            {deletingGroup === date ? "Eliminando..." : "Eliminar comprobantes"}
+                          </button>
+                        )}
                       </div>
                       <div className="space-y-2 pl-12">
                           {items.map((t: any) => (
@@ -235,7 +283,7 @@ export function HistorialPage() {
                               whileHover={{ x: 4 }}
                               onClick={() => {
                                 if (esEgreso(t)) {
-                                  navigate(`/finanzas/egresos/${t.id}/editar`)
+                                  navigate(`/finanzas/egresos/${t.id}`)
                                 } else {
                                   navigate(`/finanzas/pagos/historial/${t.id}`)
                                 }
@@ -271,7 +319,23 @@ export function HistorialPage() {
                                   <p className="text-[10px] opacity-40 capitalize">{t.metodo_pago}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {t.comprobante_url && <HugeiconsIcon icon={ImageIcon} size={14} className="opacity-30" />}
+                                  {t.comprobante_url && !t.comprobante_purgado && (
+                                    <>
+                                      <HugeiconsIcon icon={ImageIcon} size={14} className="opacity-30" />
+                                      <button
+                                        onClick={(e) => handleDeleteSingleComprobante(t, e)}
+                                        className="text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 transition-colors bg-white"
+                                        title="Eliminar comprobante"
+                                      >
+                                        ✕
+                                      </button>
+                                    </>
+                                  )}
+                                  {t.comprobante_purgado && (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-red-400 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                                      <HugeiconsIcon icon={ImageIcon} size={10} /> Eliminado
+                                    </span>
+                                  )}
                                   {esEgreso(t) ? (
                                     <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-red-100 text-red-700">
                                       Egreso
@@ -297,6 +361,18 @@ export function HistorialPage() {
           </div>
         )}
       </motion.div>
+
+      <ConfirmationModal
+        isOpen={deleteModalData !== null}
+        title="Eliminar comprobantes del almacenamiento"
+        message={`¿Eliminar ${deleteModalData?.items.filter((t: any) => t.comprobante_url).length || 0} comprobante(s) del almacenamiento? Los registros históricos se conservarán. Esta acción es irreversible.`}
+        confirmText="Eliminar comprobantes"
+        cancelText="Cancelar"
+        isLoading={false}
+        icon="danger"
+        onConfirm={handleDeleteGroupComprobantes}
+        onCancel={() => setDeleteModalData(null)}
+      />
     </div>
   )
 }

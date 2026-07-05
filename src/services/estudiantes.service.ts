@@ -7,6 +7,8 @@ export interface Estudiante {
   cedula?: string
   correo?: string
   celular?: string
+  cedula_photo_url?: string | null
+  cedula_purgado?: boolean
   es_activo: boolean
   total_cursos: number
   estado_pago: "deudor" | "abonado" | "al_dia" | "ninguno"
@@ -387,5 +389,12 @@ export const estudiantesService = {
       responseType: "blob"
     })
     return response.data
-  }
+  },
+
+  async deleteArchivoCedula(personaId: string) {
+    const response = await api.delete(`/academic/personas/${personaId}/archivo`, {
+      data: { campo: "cedula_photo_url" },
+    })
+    return response.data
+  },
 }

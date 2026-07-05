@@ -56,6 +56,7 @@ import { IngresosPage } from "@/pages/finanzas/ingresos/IngresosPage"
 import { IngresoDetallePage } from "@/pages/finanzas/ingresos/IngresoDetallePage"
 import { EgresosPage } from "@/pages/finanzas/egresos/EgresosPage"
 import { EgresoFormPage } from "@/pages/finanzas/egresos/EgresoFormPage"
+import { EgresoDetallePage } from "@/pages/finanzas/egresos/EgresoDetallePage"
 import { EstadisticasPage } from "@/pages/finanzas/estadisticas/EstadisticasPage"
 import { CatalogoDetallePage } from "@/pages/finanzas/estadisticas/CatalogoDetallePage"
 import { EstudianteDetallePage } from "@/pages/finanzas/estadisticas/EstudianteDetallePage"
@@ -212,6 +213,7 @@ function AppLayout() {
             <Route path="/finanzas/egresos" element={<RoleGuard roles={["Administrador"]}><EgresosPage /></RoleGuard>} />
             <Route path="/finanzas/egresos/nuevo" element={<RoleGuard roles={["Administrador"]}><EgresoFormPage /></RoleGuard>} />
             <Route path="/finanzas/egresos/:id/editar" element={<RoleGuard roles={["Administrador"]}><EgresoFormPage /></RoleGuard>} />
+            <Route path="/finanzas/egresos/:id" element={<RoleGuard roles={["Administrador"]}><EgresoDetallePage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstadisticasPage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas/catalogo/:id" element={<RoleGuard roles={["Administrador"]}><CatalogoDetallePage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas/estudiante/:id" element={<RoleGuard roles={["Administrador"]}><EstudianteDetallePage /></RoleGuard>} />

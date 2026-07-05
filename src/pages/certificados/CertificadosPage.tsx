@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { SearchIcon, BadgeCheckIcon } from "@hugeicons/core-free-icons"
-import { X, Trash2, FileText, Eye, MoreHorizontal, Download } from "lucide-react"
+import { createPortal } from "react-dom"
+import { X, Trash2, FileText, Eye, MoreHorizontal, Download, Upload } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -54,6 +55,7 @@ export function CertificadosPage() {
   const [total, setTotal] = useState(0)
 
   const [detailCert, setDetailCert] = useState<Certificado | null>(null)
+  const [detailPurgado, setDetailPurgado] = useState(false)
   const [historial, setHistorial] = useState<any[]>([])
   const [detailOpen, setDetailOpen] = useState(false)
 
@@ -161,7 +163,7 @@ export function CertificadosPage() {
     try {
       setDeleteSubmitting(true)
       await certificadosService.removePdf(deleteModal.id)
-      toast.success("Certificado borrado (registro conservado)")
+      toast.success("PDF eliminado del almacenamiento (registro histórico conservado)")
       setDeleteModal(null)
       loadPanel()
     } catch { toast.error("Error al borrar certificado") }
@@ -185,7 +187,7 @@ export function CertificadosPage() {
     setBulkDeleting(true)
     try {
       await Promise.all(certIds.map(id => certificadosService.removePdf(id)))
-      toast.success(`${certIds.length} certificado(s) borrados`)
+      toast.success(`${certIds.length} PDF(s) eliminados`)
       setSelectedIds(new Set())
       loadPanel()
     } catch { toast.error("Error al borrar certificados") }
@@ -198,6 +200,25 @@ export function CertificadosPage() {
     setSelectedIds(next)
   }
 
+  const handleReuploadPdf = (row: EstudiantePanel) => {
+    if (!row.certificado_id) { toast.error("El estudiante no tiene certificado"); return }
+    const input = document.createElement("input")
+    input.type = "file"; input.accept = ".pdf,application/pdf"
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      if (file.size > 512 * 1024) { toast.error("El PDF no debe superar los 500 KB"); return }
+      try {
+        const form = new FormData()
+        form.append("pdf", file)
+        await certificadosService.uploadPdf(row.certificado_id!, form)
+        toast.success("PDF re-subido correctamente")
+        loadPanel()
+      } catch { toast.error("Error al re-subir PDF") }
+    }
+    input.click()
+  }
+
   const openDetail = async (certId: string) => {
     try {
       const [cert, hist] = await Promise.all([
@@ -205,6 +226,7 @@ export function CertificadosPage() {
         certificadosService.getHistorial(certId),
       ])
       setDetailCert(cert)
+      setDetailPurgado((cert as any).archivo_purgado === true)
       setHistorial(hist || [])
       setDetailOpen(true)
     } catch { toast.error("Error al cargar detalle") }
@@ -358,6 +380,12 @@ export function CertificadosPage() {
                             style={{ backgroundColor: GREEN }}>
                             <HugeiconsIcon icon={BadgeCheckIcon} size={13} /> Emitir
                           </button>
+                        ) : row.archivo_purgado ? (
+                          <button onClick={() => handleReuploadPdf(row)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 border"
+                            style={{ color: AMBER, borderColor: `${AMBER}40`, backgroundColor: `${AMBER}08` }}>
+                            <Upload size={13} /> Re-subir PDF
+                          </button>
                         ) : row.archivo_pdf_url ? (
                           <button onClick={() => certificadosService.descargarPdf(row.certificado_id!)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 border"
@@ -366,18 +394,20 @@ export function CertificadosPage() {
                           </button>
                         ) : null}
 
-                        <div className="relative">
-                          <button ref={el => { menuBtnRefs.current[row.matricula_id] = el }}
-                            onClick={(e) => {
-                              if (menuOpen === row.matricula_id) { setMenuOpen(null); return }
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
-                              setMenuOpen(row.matricula_id)
-                            }}
-                            className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-200/60 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal size={16} />
-                          </button>
-                        </div>
+                        {row.certificado_id && (
+                          <div className="relative">
+                            <button ref={el => { menuBtnRefs.current[row.matricula_id] = el }}
+                              onClick={(e) => {
+                                if (menuOpen === row.matricula_id) { setMenuOpen(null); return }
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                                setMenuOpen(row.matricula_id)
+                              }}
+                              className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-200/60 transition-colors">
+                              <MoreHorizontal size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )
@@ -397,8 +427,8 @@ export function CertificadosPage() {
         )}
       </div>
 
-      {/* Context menu (fixed, outside scroll) */}
-      {menuOpen && (
+      {/* Context menu (portal to body) */}
+      {menuOpen && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
           <div className="fixed z-50 bg-white rounded-xl shadow-xl border py-1 min-w-[160px]"
@@ -409,21 +439,37 @@ export function CertificadosPage() {
                   className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
                   <Eye size={13} /> Ver certificado
                 </button>
-                {rows.find(r => r.matricula_id === menuOpen)?.archivo_pdf_url && (
-                  <button onClick={() => { const certId = rows.find(r => r.matricula_id === menuOpen)?.certificado_id; if (certId) { certificadosService.descargarPdf(certId); setMenuOpen(null) } }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
-                    <Download size={13} /> Descargar
-                  </button>
-                )}
+                {(() => {
+                  const menuRow = rows.find(r => r.matricula_id === menuOpen)
+                  if (!menuRow) return null
+                  if (menuRow.archivo_purgado) {
+                    return (
+                      <button onClick={() => { handleReuploadPdf(menuRow); setMenuOpen(null) }}
+                        className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-amber-50 flex items-center gap-2 text-amber-600">
+                        <Upload size={13} /> Re-subir PDF
+                      </button>
+                    )
+                  }
+                  if (menuRow.archivo_pdf_url) {
+                    return (
+                      <button onClick={() => { const certId = menuRow.certificado_id; if (certId) { certificadosService.descargarPdf(certId); setMenuOpen(null) } }}
+                        className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
+                        <Download size={13} /> Descargar
+                      </button>
+                    )
+                  }
+                  return null
+                })()}
                 <div className="border-t my-1" style={{ borderColor: BORDER }} />
                 <button onClick={() => { const row = rows.find(r => r.matricula_id === menuOpen); if (row) { openDeleteModal(row); setMenuOpen(null) } }}
                   className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-red-50 flex items-center gap-2 text-red-600">
-                  <Trash2 size={13} /> Eliminar
+                  <Trash2 size={13} /> Eliminar PDF
                 </button>
               </>
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {/* Emitir modal - 2 columns */}
@@ -499,23 +545,53 @@ export function CertificadosPage() {
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-3">Historial</p>
                   <div className="relative pl-8 border-l-2 space-y-4" style={{ borderColor: `${COLORS.ACCENT}20` }}>
-                    {historial.map((h: any, i: number) => (
+                    {historial.map((h: any, i: number) => {
+                      const dotColor = h.accion.includes("Archivo eliminado") ? "#EF4444"
+                        : h.accion === "Archivo restaurado" ? AMBER
+                        : h.accion === "Borrado" ? GRAY
+                        : h.accion === "Entregado" ? BLUE : GREEN
+                      return (
                       <div key={i} className="relative -left-[33px] flex items-start gap-3">
-                        <div className="size-3 rounded-full border-2 border-white shrink-0 mt-0.5" style={{ backgroundColor: h.accion === "Borrado" ? GRAY : h.accion === "Entregado" ? BLUE : GREEN }} />
+                        <div className="size-3 rounded-full border-2 border-white shrink-0 mt-0.5" style={{ backgroundColor: dotColor }} />
                         <div>
                           <p className="text-xs font-bold">{h.accion}</p>
                           <p className="text-[10px] opacity-50">{h.fecha}{h.detalle ? ` · ${h.detalle}` : ""}{h.usuario ? ` · ${h.usuario}` : ""}</p>
                         </div>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
-              {detailCert.archivo_pdf_url && (
+              {detailCert.archivo_pdf_url && !detailPurgado && (
                 <button onClick={() => certificadosService.descargarPdf(detailCert.id)}
                   className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
                   style={{ color: GREEN, backgroundColor: `${GREEN}10` }}>
                   <Eye size={15} /> Ver y descargar PDF
+                </button>
+              )}
+              {detailPurgado && (
+                <button onClick={() => {
+                  const input = document.createElement("input")
+                  input.type = "file"; input.accept = ".pdf,application/pdf"
+                  input.onchange = async (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (!file) return
+                    if (file.size > 512 * 1024) { toast.error("El PDF no debe superar los 500 KB"); return }
+                    try {
+                      const form = new FormData()
+                      form.append("pdf", file)
+                      await certificadosService.uploadPdf(detailCert.id, form)
+                      toast.success("PDF re-subido correctamente")
+                      setDetailPurgado(false)
+                      loadPanel()
+                    } catch { toast.error("Error al re-subir PDF") }
+                  }
+                  input.click()
+                }}
+                  className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                  style={{ color: AMBER, backgroundColor: `${AMBER}10` }}>
+                  <Upload size={15} /> Re-subir PDF
                 </button>
               )}
             </div>
@@ -528,18 +604,18 @@ export function CertificadosPage() {
         {deleteModal && (
           <ModalOverlay onClose={() => setDeleteModal(null)}>
             <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: BORDER }}>
-              <h2 className="text-xl font-bold" style={{ color: CHARCOAL }}>Borrar Certificado</h2>
+              <h2 className="text-xl font-bold" style={{ color: CHARCOAL }}>Eliminar PDF del certificado</h2>
               <button onClick={() => setDeleteModal(null)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-3 text-sm">
-              <p style={{ color: CHARCOAL }}>¿Borrar el certificado de <strong>{deleteModal.nombre}</strong> — {deleteModal.curso}?</p>
-              <p className="opacity-50">El certificado pasará a estado <strong>Borrado</strong>. El registro histórico se conservará pero no podrá volver a Generado o Entregado.</p>
+              <p style={{ color: CHARCOAL }}>¿Eliminar el archivo PDF del certificado de <strong>{deleteModal.nombre}</strong> — {deleteModal.curso}?</p>
+              <p className="opacity-50">El archivo físico se eliminará del almacenamiento. El registro histórico del certificado y el enlace original se conservarán como constancia. Puede volver a subir un PDF posteriormente.</p>
             </div>
             <div className="px-6 py-5 bg-gray-50/80 border-t flex justify-end gap-3" style={{ borderColor: BORDER }}>
               <button onClick={() => setDeleteModal(null)} className="px-6 py-3 rounded-xl text-sm font-bold opacity-50">Cancelar</button>
               <button onClick={confirmDelete} disabled={deleteSubmitting}
                 className="px-8 py-3 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 disabled:opacity-50">
-                {deleteSubmitting ? "Borrando..." : "Borrar certificado"}</button>
+                {deleteSubmitting ? "Eliminando..." : "Eliminar PDF"}</button>
             </div>
           </ModalOverlay>
         )}

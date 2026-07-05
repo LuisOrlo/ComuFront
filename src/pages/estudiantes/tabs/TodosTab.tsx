@@ -6,12 +6,14 @@ import { BulkActionsBar } from "../components/BulkActionsBar"
 import { StudentExportDialog } from "../components/StudentExportDialog"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { estudiantesService, type Segment } from "@/services/estudiantes.service"
+import { toast } from "sonner"
 
 export function TodosTab() {
   const [segments, setSegments] = useState<Segment[]>([])
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null)
   const [conFaltas, setConFaltas] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteCedulasOpen, setConfirmDeleteCedulasOpen] = useState(false)
 
   const {
     estudiantes,
@@ -30,6 +32,7 @@ export function TodosTab() {
     deleteStudents,
   } = useStudentList({ extraFilters: { con_faltas: conFaltas ? '1' : undefined } as Record<string, string | number | undefined> })
   const [deleting, setDeleting] = useState(false)
+  const [deletingCedulas, setDeletingCedulas] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
 
   useEffect(() => {
@@ -60,6 +63,30 @@ export function TodosTab() {
     setDeleting(false)
     setConfirmDeleteOpen(false)
   }, [selectedArray, deleteStudents])
+
+  const handleBulkDeleteCedulas = useCallback(async () => {
+    if (selectedArray.length === 0) return
+    setDeletingCedulas(true)
+    try {
+      const results = await Promise.allSettled(
+        selectedArray.map(id => estudiantesService.deleteArchivoCedula(id))
+      )
+      const success = results.filter(r => r.status === "fulfilled" && (r.value as { eliminado?: boolean })?.eliminado !== false).length
+      const failed = results.filter(r => {
+        if (r.status === "rejected") return true
+        return (r.value as { eliminado?: boolean })?.eliminado === false
+      }).length
+      if (success > 0) {
+        toast.success(`${success} cédula(s) eliminadas del almacenamiento`)
+      }
+      if (failed > 0) {
+        toast.warning(`${failed} estudiante(s) sin foto de cédula o ya eliminada`)
+      }
+    } catch { toast.error("Error al procesar la eliminación") }
+    setDeletingCedulas(false)
+    setConfirmDeleteCedulasOpen(false)
+    clearSelection()
+  }, [selectedArray, clearSelection])
 
   const studentRows: StudentRow[] = estudiantes.map(e => ({
     id: e.id,
@@ -95,6 +122,7 @@ export function TodosTab() {
           onClear={clearSelection}
           onDelete={() => setConfirmDeleteOpen(true)}
           onExport={() => setExportOpen(true)}
+          onDeleteCedulas={() => setConfirmDeleteCedulasOpen(true)}
         />
       </div>
 
@@ -156,6 +184,18 @@ export function TodosTab() {
         icon="trash"
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmDeleteCedulasOpen}
+        title="Eliminar fotos de cédula"
+        message={`¿Eliminar las fotos de cédula de ${selectedArray.length} estudiante(s) del almacenamiento? Los registros se conservarán como constancia histórica. Esta acción es irreversible.`}
+        confirmText="Eliminar cédulas"
+        cancelText="Cancelar"
+        isLoading={deletingCedulas}
+        icon="danger"
+        onConfirm={handleBulkDeleteCedulas}
+        onCancel={() => setConfirmDeleteCedulasOpen(false)}
       />
     </div>
   )

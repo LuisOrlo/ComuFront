@@ -11,7 +11,7 @@ interface ConfirmationModalProps {
   isLoading?: boolean
   onConfirm: () => void | Promise<void>
   onCancel: () => void
-  icon?: "trash" | "warning" | "info"
+  icon?: "trash" | "warning" | "info" | "danger"
 }
 
 export function ConfirmationModal({
@@ -31,6 +31,7 @@ export function ConfirmationModal({
   const getIcon = () => {
     switch (icon) {
       case "trash":
+      case "danger":
         return <Trash2 size={32} style={{ color: "#ef4444" }} />
       case "warning":
         return <AlertTriangle size={32} style={{ color: "#f59e0b" }} />

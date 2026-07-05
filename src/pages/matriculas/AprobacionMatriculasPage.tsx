@@ -130,6 +130,9 @@ export function AprobacionMatriculasPage() {
 
   // Upload comprobante
   const [uploadingComprobante, setUploadingComprobante] = useState(false)
+  const [deletingComprobante, setDeletingComprobante] = useState(false)
+  const [deletingCedula, setDeletingCedula] = useState(false)
+  const [deleteArchivoModal, setDeleteArchivoModal] = useState<{ type: "comprobante" | "cedula"; label: string } | null>(null)
   const comprobanteRef = useRef<HTMLInputElement>(null)
 
   // Filtros solo para aprobadas
@@ -395,6 +398,30 @@ export function AprobacionMatriculasPage() {
       toast.success("Comprobante subido")
     } catch { toast.error("Error al subir comprobante") }
     finally { setUploadingComprobante(false) }
+  }
+
+  const handleDeleteComprobante = async () => {
+    setDeleteArchivoModal(null)
+    if (!selectedId) return
+    setDeletingComprobante(true)
+    try {
+      await cursosService.deleteArchivoSolicitud(selectedId, "archivo_comprobante_url")
+      toast.success("Comprobante eliminado")
+      setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, url: null, comprobante_purgado: true } } }))
+    } catch { toast.error("Error al eliminar comprobante") }
+    finally { setDeletingComprobante(false) }
+  }
+
+  const handleDeleteCedula = async () => {
+    setDeleteArchivoModal(null)
+    if (!selectedId) return
+    setDeletingCedula(true)
+    try {
+      await cursosService.deleteArchivoSolicitud(selectedId, "archivo_cedula_url")
+      toast.success("Cédula eliminada")
+      setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_url: null, cedula_purgado: true } } }))
+    } catch { toast.error("Error al eliminar cédula") }
+    finally { setDeletingCedula(false) }
   }
 
   const handleApproveWithPayment = async (pagos: any[], metodoPago: string) => {
@@ -842,22 +869,42 @@ export function AprobacionMatriculasPage() {
                                            <HugeiconsIcon icon={Upload05Icon} size={16} />
                                            {uploadingComprobante ? "Subiendo..." : selected.pago?.comprobante?.url ? "Cambiar comprobante" : "Subir comprobante"}
                                          </button>
-                                         {selected.pago?.comprobante?.url && (
-                                           <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                                             className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                             style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                             <HugeiconsIcon icon={Image01Icon} size={16} />
-                                             {expandedComprobante ? "Ocultar" : "Ver"}
-                                           </button>
-                                         )}
-                                       </div>
-                                        {expandedComprobante && selected.pago?.comprobante?.url && (
-                                          <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                            <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                              className="w-full object-contain max-h-[400px]"
-                                              onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
-                                          </div>
-                                        )}
+                                           {selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
+                                             <>
+                                             <button onClick={() => setExpandedComprobante(!expandedComprobante)}
+                                               className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
+                                               style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                               <HugeiconsIcon icon={Image01Icon} size={16} />
+                                               {expandedComprobante ? "Ocultar" : "Ver"}
+                                             </button>
+                                             <button onClick={() => setDeleteArchivoModal({ type: "comprobante", label: "comprobante de pago" })} disabled={deletingComprobante}
+                                               className="p-3 rounded-xl border flex items-center justify-center gap-1 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                                               style={{ borderColor: COLORS.BORDER_SUBTLE, color: "oklch(0.50 0.15 10)" }}>
+                                               Eliminar
+                                             </button>
+                                             </>
+                                           )}
+                                        </div>
+                                          {expandedComprobante && selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
+                                            <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                              <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
+                                                className="w-full object-contain max-h-[400px]"
+                                                onError={(e) => {
+                                                  const target = e.target as HTMLImageElement
+                                                  target.style.display = 'none'
+                                                  setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, comprobante_purgado: true } } }))
+                                                }}
+                                                onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
+                                            </div>
+                                          )}
+                                          {selected.pago?.comprobante?.comprobante_purgado && (
+                                            <div className="p-3 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
+                                                <HugeiconsIcon icon={Image01Icon} size={12} />
+                                                Comprobante eliminado del almacenamiento
+                                              </span>
+                                            </div>
+                                          )}
                                       </div>
                                       {selected?.estado?.valor === "pendiente_validacion" && selected?.curso?.id && (
                                         <PagoPreAprobacionSection
@@ -902,20 +949,39 @@ export function AprobacionMatriculasPage() {
                                       )}
                                     </Section>
                                     <Section title="Documento de Identidad" icon={Image01Icon}>
-                                      {selected.pago?.comprobante?.cedula_url ? (
+                                      {selected.pago?.comprobante?.cedula_url && !selected.pago?.comprobante?.cedula_purgado ? (
                                         <div>
                                           <div className="flex items-center justify-between mb-2">
                                             <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                            <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                              className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                              <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                              <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
+                                                className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
+                                                <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                              </button>
+                                              <button onClick={() => setDeleteArchivoModal({ type: "cedula", label: "cédula de identidad" })} disabled={deletingCedula}
+                                                className="flex items-center gap-1 text-[10px] font-semibold disabled:opacity-50"
+                                                style={{ color: "oklch(0.50 0.15 10)" }}>
+                                                {deletingCedula ? "..." : "✕ Eliminar"}
+                                              </button>
+                                            </div>
                                           </div>
                                           <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
                                             className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement
+                                              target.style.display = 'none'
+                                              setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_purgado: true } } }))
+                                            }}
                                             onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
-                                       </div>
-                                     ) : (
+                                        </div>
+                                      ) : selected.pago?.comprobante?.cedula_purgado ? (
+                                        <div className="p-5 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
+                                            <HugeiconsIcon icon={Image01Icon} size={12} />
+                                            Cédula eliminada del almacenamiento
+                                          </span>
+                                        </div>
+                                      ) : (
                                        <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                                          <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
                                          <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
@@ -1189,40 +1255,71 @@ export function AprobacionMatriculasPage() {
                                      <HugeiconsIcon icon={Upload05Icon} size={16} />
                                         {uploadingComprobante ? "Subiendo..." : selected.pago?.comprobante?.url ? "Cambiar comprobante" : "Subir comprobante"}
                                    </button>
-                                   {selected.pago?.comprobante?.url && (
-                                     <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                                       className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                       <HugeiconsIcon icon={Image01Icon} size={16} />
-                                       {expandedComprobante ? "Ocultar" : "Ver"}
-                                     </button>
-                                   )}
-                                 </div>
-                                  {expandedComprobante && selected.pago?.comprobante?.url && (
-                                    <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                      <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                        className="w-full object-contain max-h-[400px]"
-                                        onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
-                                    </div>
-                                  )}
-                                </div>
-                              </Section>
-
-                               <Section title="Documento de Identidad" icon={Image01Icon}>
-                                 {selected.pago?.comprobante?.cedula_url ? (
-                                   <div>
-                                     <div className="flex items-center justify-between mb-2">
-                                       <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                       <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                         className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                         <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                   {selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
+                                       <>
+                                       <button onClick={() => setExpandedComprobante(!expandedComprobante)}
+                                         className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
+                                         style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                                         <HugeiconsIcon icon={Image01Icon} size={16} />
+                                         {expandedComprobante ? "Ocultar" : "Ver"}
                                        </button>
-                                     </div>
-                                     <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
-                                       className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                       onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
+                                       <button onClick={() => setDeleteArchivoModal({ type: "comprobante", label: "comprobante de pago" })} disabled={deletingComprobante}
+                                         className="p-3 rounded-xl border flex items-center justify-center gap-1 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                                         style={{ borderColor: COLORS.BORDER_SUBTLE, color: "oklch(0.50 0.15 10)" }}>
+                                         Eliminar
+                                       </button>
+                                       </>
+                                     )}
+                                   </div>
+                                     {expandedComprobante && selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
+                                       <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                         <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
+                                           className="w-full object-contain max-h-[400px]"
+                                           onError={(e) => {
+                                             const target = e.target as HTMLImageElement
+                                             target.style.display = 'none'
+                                             setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, comprobante_purgado: true } } }))
+                                           }}
+                                           onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
+                                       </div>
+                                     )}
+                                    {selected.pago?.comprobante?.comprobante_purgado && (
+                                      <div className="p-3 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
+                                          <HugeiconsIcon icon={Image01Icon} size={12} />
+                                          Comprobante eliminado del almacenamiento
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
-                                ) : (
+                               </Section>
+
+                                <Section title="Documento de Identidad" icon={Image01Icon}>
+                                  {selected.pago?.comprobante?.cedula_url ? (
+                                    <div>
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
+                                        <div className="flex items-center gap-2">
+                                          <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
+                                            className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
+                                            <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
+                                          </button>
+                                          <button onClick={() => setDeleteArchivoModal({ type: "cedula", label: "cédula de identidad" })} disabled={deletingCedula}
+                                            className="flex items-center gap-1 text-[10px] font-semibold disabled:opacity-50"
+                                            style={{ color: "oklch(0.50 0.15 10)" }}>
+                                            {deletingCedula ? "..." : "✕ Eliminar"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
+                                        className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                                        onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
+                                   </div>
+                                 ) : selected.pago?.comprobante?.cedula_purgado ? (
+                                   <div className="p-5 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                     <p className="text-[10px] font-bold text-red-400">Cédula eliminada del almacenamiento</p>
+                                   </div>
+                                 ) : (
                                   <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                                     <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
                                     <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
@@ -1304,6 +1401,18 @@ export function AprobacionMatriculasPage() {
         isLoading={actionLoading}
         onConfirm={handleReject}
         onCancel={() => setConfirmAction(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteArchivoModal !== null}
+        title="Eliminar archivo del almacenamiento"
+        message={`¿Eliminar la imagen de la ${deleteArchivoModal?.label} del almacenamiento? El registro se conservará como constancia histórica. Esta acción es irreversible.`}
+        confirmText="Eliminar archivo"
+        cancelText="Cancelar"
+        isLoading={deleteArchivoModal?.type === "comprobante" ? deletingComprobante : deletingCedula}
+        icon="danger"
+        onConfirm={() => deleteArchivoModal?.type === "comprobante" ? handleDeleteComprobante() : handleDeleteCedula()}
+        onCancel={() => setDeleteArchivoModal(null)}
       />
     </div>
   )

@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Delete02Icon, Download04Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Delete02Icon, Download04Icon, Cancel01Icon, ImageIcon } from "@hugeicons/core-free-icons"
 import { usePermission } from "@/hooks/usePermission"
 
 interface BulkActionsBarProps {
@@ -7,9 +7,10 @@ interface BulkActionsBarProps {
   onClear: () => void
   onDelete: () => void
   onExport: () => void
+  onDeleteCedulas?: () => void
 }
 
-export function BulkActionsBar({ selectedCount, onClear, onDelete, onExport }: BulkActionsBarProps) {
+export function BulkActionsBar({ selectedCount, onClear, onDelete, onExport, onDeleteCedulas }: BulkActionsBarProps) {
   const { isAdmin } = usePermission()
   if (selectedCount === 0) return null
 
@@ -19,6 +20,15 @@ export function BulkActionsBar({ selectedCount, onClear, onDelete, onExport }: B
         {selectedCount} seleccionado{selectedCount !== 1 ? 's' : ''}
       </span>
       <div className="flex items-center gap-2 ml-auto">
+        {onDeleteCedulas && (
+          <button
+            onClick={onDeleteCedulas}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <HugeiconsIcon icon={ImageIcon} size={14} />
+            Eliminar cédulas
+          </button>
+        )}
         <button
           onClick={onExport}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"

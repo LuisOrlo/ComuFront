@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, AddCircleIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, AddCircleIcon, ImageIcon, Delete02Icon } from "@hugeicons/core-free-icons"
 import { useStudentProfile } from "../hooks/useStudentProfile"
 import { ProfileHeader } from "../sections/ProfileHeader"
 import { InfoTabContent } from "../sections/InfoTabContent"
@@ -9,6 +9,9 @@ import { OverviewTabContent } from "../sections/OverviewTabContent"
 import { AcademicTabContent } from "../sections/AcademicTabContent"
 import { FinancialTabContent } from "../sections/FinancialTabContent"
 import { PagoInicialMatriculaModal } from "../components/PagoInicialMatriculaModal"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { estudiantesService } from "@/services/estudiantes.service"
+import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
 
 const tabs = [
@@ -26,6 +29,9 @@ export function EstudiantePerfilAcademicoPage() {
     matriculaId: string
     cursoNombre: string
   } | null>(null)
+  const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
+  const [deletingCedula, setDeletingCedula] = useState(false)
+  const [cedulaPurgado, setCedulaPurgado] = useState(false)
   const {
     studentData,
     academicData,
@@ -38,6 +44,9 @@ export function EstudiantePerfilAcademicoPage() {
     saving,
     refreshData,
   } = useStudentProfile(id)
+
+  const cedulaUrl = studentData?.cedula_photo_url
+  const isCedulaPurgado = cedulaPurgado || (studentData?.cedula_purgado === true)
 
   if (loading) {
     return (
@@ -88,6 +97,18 @@ export function EstudiantePerfilAcademicoPage() {
 
   const saldoPendiente = resumen?.total_adeudado || studentData?.saldo_pendiente || 0
 
+  const handleDeleteCedula = async () => {
+    if (!id) return
+    setDeleteCedulaOpen(false)
+    setDeletingCedula(true)
+    try {
+      await estudiantesService.deleteArchivoCedula(id)
+      toast.success("Foto de cédula eliminada")
+      setCedulaPurgado(true)
+    } catch { toast.error("Error al eliminar cédula") }
+    finally { setDeletingCedula(false) }
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-2">
@@ -123,6 +144,61 @@ export function EstudiantePerfilAcademicoPage() {
         saldoPendiente={saldoPendiente}
         onUpdate={(fields) => updateStudentInfo(fields)}
         saving={saving}
+      />
+
+      <div className="bg-white border rounded-2xl p-4 mb-6 flex items-center gap-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex items-center gap-3">
+          <HugeiconsIcon icon={ImageIcon} size={18} style={{ color: COLORS.ACCENT }} />
+          <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>Foto de Cédula</span>
+        </div>
+
+        {isCedulaPurgado ? (
+          <div className="flex items-center gap-4 flex-1">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
+              <HugeiconsIcon icon={ImageIcon} size={12} />
+              Cédula eliminada del almacenamiento
+            </span>
+          </div>
+        ) : cedulaUrl ? (
+          <div className="flex items-center gap-4 flex-1">
+            <div className="size-16 rounded-xl border overflow-hidden bg-gray-50 shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <img src={cedulaUrl.replace(/^https?:\/\/localhost(?::\d+)?/, "")} alt="Cédula"
+                className="w-full h-full object-cover" />
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={cedulaUrl.replace(/^https?:\/\/localhost(?::\d+)?/, "")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg text-[10px] font-bold border hover:bg-gray-50 transition-colors"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              >
+                Ver completa
+              </a>
+              <button onClick={() => setDeleteCedulaOpen(true)} disabled={deletingCedula}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-red-500 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50">
+                <HugeiconsIcon icon={Delete02Icon} size={12} className="inline mr-1" />
+                Eliminar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-xs opacity-50">Sin foto de cédula</span>
+          </div>
+        )}
+      </div>
+
+      <ConfirmationModal
+        isOpen={deleteCedulaOpen}
+        title="Eliminar foto de cédula"
+        message="¿Eliminar la foto de cédula del almacenamiento? El registro se conservará como constancia histórica. Esta acción es irreversible."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isLoading={deletingCedula}
+        icon="danger"
+        onConfirm={handleDeleteCedula}
+        onCancel={() => setDeleteCedulaOpen(false)}
       />
 
       <div className="bg-white border rounded-2xl overflow-hidden">

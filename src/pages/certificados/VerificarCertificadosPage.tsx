@@ -148,6 +148,13 @@ export function VerificarCertificadosPage() {
                           El período de descarga ha finalizado. Contacte a la academia para solicitar una copia de su certificado.
                         </p>
                       </div>
+                    ) : (cert as Certificado & { archivo_purgado?: boolean }).archivo_purgado ? (
+                      <div className="text-right space-y-1">
+                        <p className="text-[11px] font-bold text-amber-600">Archivo no disponible</p>
+                        <p className="text-[10px] opacity-50 max-w-[200px] leading-tight">
+                          El certificado es válido pero el archivo PDF fue removido del almacenamiento. Contacte a la academia para solicitar una copia.
+                        </p>
+                      </div>
                     ) : cert.archivo_pdf_url ? (
                       <button
                         onClick={() => certificadosService.descargarPdf(cert.id)}

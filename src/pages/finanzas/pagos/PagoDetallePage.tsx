@@ -13,10 +13,12 @@ import {
   ImageIcon,
   UserIcon,
   Note01Icon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
 
@@ -26,6 +28,8 @@ export function PagoDetallePage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [modalImage, setModalImage] = useState<string | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -131,6 +135,18 @@ export function PagoDetallePage() {
     const m = cp?.matricula
     if (m?.modulo?.nombre) return m.modulo.nombre
     return null
+  }
+
+  const handleDeleteComprobante = async () => {
+    if (!id) return
+    setDeleteModalOpen(false)
+    setDeleting(true)
+    try {
+      await financeService.deleteComprobante(id, "ingreso")
+      toast.success("Comprobante eliminado")
+      setData((prev: any) => prev ? { ...prev, comprobante_url: null, comprobante_purgado: true } : prev)
+    } catch { toast.error("Error al eliminar comprobante") }
+    finally { setDeleting(false) }
   }
 
   if (loading) {
@@ -245,7 +261,24 @@ export function PagoDetallePage() {
           </div>
         </div>
 
-        {data.comprobante_url && (
+        {data.comprobante_purgado ? (
+          <div
+            className="rounded-2xl border bg-white p-6"
+            style={{ borderColor: COLORS.BORDER_SUBTLE }}
+          >
+            <h3 className="text-sm font-black uppercase tracking-wider opacity-40 flex items-center gap-2 mb-4" style={{ color: COLORS.CHARCOAL }}>
+              <HugeiconsIcon icon={ImageIcon} size={16} />
+              Comprobante de Pago
+            </h3>
+            <div className="p-4 rounded-xl border bg-red-50/50 text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-red-200 bg-white">
+                <HugeiconsIcon icon={ImageIcon} size={14} style={{ color: "oklch(0.5 0.15 20)" }} />
+                <span className="text-xs font-bold text-red-500">Comprobante eliminado del almacenamiento</span>
+              </div>
+              <p className="text-[10px] opacity-50 mt-2">El registro histórico se conserva como constancia</p>
+            </div>
+          </div>
+        ) : data.comprobante_url ? (
           <div
             className="rounded-2xl border bg-white p-6"
             style={{ borderColor: COLORS.BORDER_SUBTLE }}
@@ -255,17 +288,27 @@ export function PagoDetallePage() {
                 <HugeiconsIcon icon={ImageIcon} size={16} />
                 Comprobante de Pago
               </h3>
-              <a
-                href={data.comprobante_url}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}15` }}
-              >
-                <HugeiconsIcon icon={Download01Icon} size={14} />
-                Descargar
-              </a>
+              <div className="flex items-center gap-2">
+                <a
+                  href={data.comprobante_url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                  style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}15` }}
+                >
+                  <HugeiconsIcon icon={Download01Icon} size={14} />
+                  Descargar
+                </a>
+                <button
+                  onClick={() => setDeleteModalOpen(true)}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  <HugeiconsIcon icon={Delete02Icon} size={14} />
+                  {deleting ? "Eliminando..." : "Eliminar"}
+                </button>
+              </div>
             </div>
             <div
               className="rounded-xl border overflow-hidden cursor-pointer"
@@ -279,7 +322,7 @@ export function PagoDetallePage() {
               />
             </div>
           </div>
-        )}
+        ) : null}
       </motion.div>
 
       {modalImage && (
@@ -302,6 +345,17 @@ export function PagoDetallePage() {
           </div>
         </div>
       )}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        title="Eliminar comprobante"
+        message="¿Eliminar la imagen del comprobante del almacenamiento? El registro histórico se conservará como constancia."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isLoading={deleting}
+        icon="danger"
+        onConfirm={handleDeleteComprobante}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
     </div>
   )
 }
