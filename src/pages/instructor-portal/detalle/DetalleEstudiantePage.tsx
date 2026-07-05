@@ -189,7 +189,9 @@ export function DetalleEstudiantePage() {
   }
 
   const perfil = estudiante.perfil_estudiante
-  const fechaNac = perfil?.fecha_nacimiento?.split("-").reverse().join("/") || "—"
+  const fechaNac = perfil?.fecha_nacimiento
+  ? new Date(perfil.fecha_nacimiento).toLocaleDateString("es-EC")
+  : "—";
   const edad = perfil?.edad != null ? `${perfil.edad} años` : "—"
 
   const ciudadMostrar = (() => {

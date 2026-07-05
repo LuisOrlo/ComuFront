@@ -19,11 +19,13 @@ import {
   type EstudianteCurso,
   type ModuloResumen,
 } from "@/services/instructor.service"
+import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 
 export function InstructorCursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
+  const { user } = useAuth()
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,11 +81,18 @@ export function InstructorCursoDetailPage() {
   const getEstudianteCedula = (e: EstudianteCurso) =>
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
-  const handleDescargarAsistencia = () => {
+  const handleDescargarAsistencia = async () => {
     if (!curso) return
     const horario = curso.horario?.nombre_referencial ?? "Sin horario"
     const nombres = estudiantes.map(e => getEstudianteName(e))
-    generarListadoAsistenciaPDF(curso.nombre_instancia, horario, nombres)
+    const instructorName = user?.persona
+      ? `${user.persona.nombres || ""} ${user.persona.apellidos || ""}`.trim() || user.username
+      : curso.instructor
+        ? typeof curso.instructor === "string"
+          ? curso.instructor
+          : `${curso.instructor.nombres} ${curso.instructor.apellidos}`
+        : undefined
+    await generarListadoAsistenciaPDF(curso.nombre_instancia, horario, nombres, instructorName)
     toast.success("Listado de asistencia descargado")
   }
 
@@ -129,18 +138,13 @@ export function InstructorCursoDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={handleDescargarAsistencia}
-                className="shrink-0 px-4 py-2.5 rounded-2xl text-xs font-bold border backdrop-blur-sm flex items-center gap-2 transition-all hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                  borderColor: "rgba(255,255,255,0.15)",
-                  color: "white",
-                }}
-              >
-                <HugeiconsIcon icon={Download04Icon} size={14} />
-                Descargar Listado
-              </button>
+             <button
+  onClick={handleDescargarAsistencia}
+  className="shrink-0 px-4 py-2.5 rounded-2xl text-xs font-bold border border-emerald-500 bg-emerald-500 text-white flex items-center gap-2 transition-all duration-200 hover:bg-emerald-600 hover:border-emerald-600 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+>
+  <HugeiconsIcon icon={Download04Icon} size={14} />
+  Descargar Listado
+</button>
               <div
                 className="shrink-0 px-5 py-2.5 rounded-2xl text-center border backdrop-blur-sm"
                 style={{

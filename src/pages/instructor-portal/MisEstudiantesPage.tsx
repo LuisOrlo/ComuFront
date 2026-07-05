@@ -100,7 +100,7 @@ export function MisEstudiantesPage() {
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Promedio</th>
-                  <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
+                  
                   <th className="px-5 py-4" />
                 </tr>
               </thead>
@@ -149,17 +149,7 @@ export function MisEstudiantesPage() {
                         {e.promedio_notas > 0 ? e.promedio_notas.toFixed(1) : "—"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-center">
-                      <span
-                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
-                        style={{
-                          backgroundColor: e.estado === "activo" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-                          color: e.estado === "activo" ? "#10b981" : "#ef4444",
-                        }}
-                      >
-                        {e.estado}
-                      </span>
-                    </td>
+                    
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center gap-3 ">
                         {!!e.estudianteId && (

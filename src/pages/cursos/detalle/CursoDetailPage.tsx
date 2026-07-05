@@ -16,11 +16,12 @@ import {
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
 import { toast } from "sonner"
 
-type Tab = "info" | "modulos" | "estudiantes"
+type Tab = "info" | "modulos" | "estudiantes" | "asistencia"
 
 interface ModuloData {
   id: string
@@ -159,11 +160,11 @@ export function CursoDetailPage() {
         <div className="max-w-[1100px] mx-auto px-6 py-6 space-y-6">
           {/* Tabs */}
           <div className="flex gap-1 rounded-lg border p-0.5 w-fit" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            {(["info", "modulos", "estudiantes"] as Tab[]).map(t => (
+            {(["info", "modulos", "estudiantes", "asistencia"] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className="px-5 py-2 rounded-md text-xs font-semibold transition-all duration-180 capitalize"
                 style={{ backgroundColor: tab === t ? COLORS.CHARCOAL : "transparent", color: tab === t ? "white" : COLORS.TEXT_MUTED }}>
-                {t === "modulos" ? "Módulos" : t === "info" ? "Información" : `Estudiantes (${matriculas.length})`}
+                {t === "modulos" ? "Módulos" : t === "info" ? "Información" : t === "estudiantes" ? `Estudiantes (${matriculas.length})` : "Asistencia"}
               </button>
             ))}
           </div>
@@ -271,6 +272,15 @@ export function CursoDetailPage() {
             </div>
           )}
 
+          {/* Tab: Asistencia */}
+          {tab === "asistencia" && (
+            <CursoAsistenciaSection
+              cursoId={id!}
+              cursoNombre={curso.nombre}
+              modulos={modulos}
+            />
+          )}
+
           {/* Tab: Estudiantes */}
           {tab === "estudiantes" && (
             <div className="space-y-4">
@@ -302,21 +312,44 @@ export function CursoDetailPage() {
                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                       <HugeiconsIcon icon={Download01Icon} size={14} />PDF
                     </button>
-                    <button onClick={() => {
-                      if (!curso) return
-                      const nombres = matriculas.map(m => {
-                        const e = m.estudiante
-                        const ext = m.solicitud_inscripcion?.participante_externo
-                        const sol = m.solicitud_inscripcion?.estudiante
-                        return [e?.nombres || ext?.nombres || sol?.nombres || "", e?.apellidos || ext?.apellidos || sol?.apellidos || ""]
-                          .filter(Boolean).join(" ") || "—"
-                      })
-                      generarListadoAsistenciaPDF(curso.nombre, `${curso.horaInicio || ""} - ${curso.horaFin || ""}`, nombres)
-                      toast.success("Listado de asistencia descargado")
-                    }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.98]"
-                      style={{ backgroundColor: COLORS.ACCENT }}>
-                      <HugeiconsIcon icon={Download01Icon} size={14} />Listado Asistencia
-                    </button>
+                    <button
+  onClick={async () => {
+    if (!curso) return;
+
+    const nombres = matriculas.map((m) => {
+      const e = m.estudiante;
+      const ext = m.solicitud_inscripcion?.participante_externo;
+      const sol = m.solicitud_inscripcion?.estudiante;
+
+      return (
+        [e?.nombres || ext?.nombres || sol?.nombres || "", e?.apellidos || ext?.apellidos || sol?.apellidos || ""]
+          .filter(Boolean)
+          .join(" ") || "—"
+      );
+    });
+
+    await generarListadoAsistenciaPDF(
+      curso.nombre,
+      `${curso.horaInicio || ""} - ${curso.horaFin || ""}`,
+      nombres,
+      curso.instructor ?? undefined
+    );
+
+    toast.success("Listado de asistencia descargado");
+  }}
+  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold
+             bg-emerald-600 text-white
+             border border-emerald-600
+             transition-all duration-200
+             hover:bg-emerald-700
+             hover:border-emerald-700
+             hover:shadow-lg
+             hover:-translate-y-0.5
+             active:scale-[0.98]"
+>
+  <HugeiconsIcon icon={Download01Icon} size={14} />
+  Listado Asistencia
+</button>
                   </div>
                 </div>
               )}

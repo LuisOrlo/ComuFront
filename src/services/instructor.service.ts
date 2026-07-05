@@ -23,6 +23,7 @@ export interface InstructorCurso {
   ciudad: {
     nombre: string
   }
+  instructor?: { nombres: string; apellidos: string } | string
   modulos: ModuloResumen[]
 }
 
