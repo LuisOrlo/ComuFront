@@ -16,7 +16,7 @@ import {
 import { COLORS } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import { useParams, useNavigate, NavLink } from "react-router"
+import { useParams, useNavigate } from "react-router"
 
 export function TallerCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -45,6 +45,7 @@ export function TallerCuentasDetallePage() {
   const getPagoTypeLabel = (participante: any) => {
     if (participante.lineas_pago_modulo) return "Por Módulo"
     if (participante.pago_unico) return "Pago Único"
+    if (participante.tipo_pago) return participante.tipo_pago.charAt(0).toUpperCase() + participante.tipo_pago.slice(1)
     return "—"
   }
 
@@ -76,13 +77,7 @@ export function TallerCuentasDetallePage() {
 
   return (
     <div className="px-8 py-6">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40 mb-3" style={{ color: COLORS.CHARCOAL }}>
-        <NavLink to="/finanzas/pagos" className="hover:underline">Finanzas</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <NavLink to="/finanzas/pagos/cuentas/talleres" className="hover:underline">Talleres</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <span>{taller.nombre || "Detalle"}</span>
-      </div>
+      
 
       <button
         onClick={() => navigate("/finanzas/pagos/cuentas/talleres")}
@@ -155,7 +150,7 @@ export function TallerCuentasDetallePage() {
                   </tr>
                 ) : (
                   participantes.map((p: any) => {
-                    const nombre = p.estudiante_nombre || p.participante_nombre || (p.participante ? `${p.participante.nombres || ""} ${p.participante.apellidos || ""}`.trim() : "—")
+                    const nombre = p.estudiante_nombre || p.participante_nombre || (p.nombres ? `${p.nombres || ""} ${p.apellidos || ""}`.trim() : (p.participante ? `${p.participante.nombres || ""} ${p.participante.apellidos || ""}`.trim() : "—"))
                     const pagadoCompleto = Number(p.saldo_pendiente || p.saldo || 0) <= 0
                     const tallerId = id
                     const participanteId = p.id || p.participante_id

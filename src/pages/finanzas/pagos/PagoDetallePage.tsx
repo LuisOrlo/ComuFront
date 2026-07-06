@@ -82,7 +82,7 @@ export function PagoDetallePage() {
     if (m?.estudiante) return `${m.estudiante.nombres || ""} ${m.estudiante.apellidos || ""}`.trim()
     if (s?.estudiante) return `${s.estudiante.nombres || ""} ${s.estudiante.apellidos || ""}`.trim()
     if (s?.participante_externo) return `${s.participante_externo.nombres || ""} ${s.participante_externo.apellidos || ""}`.trim()
-    if (it?.participante) return `${it.participante.nombres || ""} ${it.participante.apellidos || ""}`.trim()
+    if (it?.nombres) return `${it.nombres || ""} ${it.apellidos || ""}`.trim()
     const rp = cp.reserva_podcast
     if (rp?.persona) return `${rp.persona.nombres || ""} ${rp.persona.apellidos || ""}`.trim()
     if (rp?.cliente_externo) return `${rp.cliente_externo.nombres || ""} ${rp.cliente_externo.apellidos || ""}`.trim()

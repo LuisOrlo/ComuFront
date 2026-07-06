@@ -26,7 +26,7 @@ interface PagosInicialesDto {
 }
 
 interface RegistroPagoDto extends PagoInicialDto {
-  cuenta_id: string
+  cuenta_cobrar_id: string
 }
 
 export const financeService = {

@@ -1,17 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
   UserIcon,
   Calendar02Icon,
+  PaymentIcon,
+  Upload05Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import { useParams, useNavigate, NavLink } from "react-router"
+import { useParams, useNavigate } from "react-router"
 
 export function TallerParticipantePage() {
   const { id: tallerId, pid: participanteId } = useParams<{ id: string; pid: string }>()
@@ -19,6 +21,11 @@ export function TallerParticipantePage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [modalImage, setModalImage] = useState<string | null>(null)
+  const [montoPago, setMontoPago] = useState("")
+  const [metodoPago, setMetodoPago] = useState("efectivo")
+  const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
+  const [savingPago, setSavingPago] = useState(false)
+  const comprobanteRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -34,6 +41,48 @@ export function TallerParticipantePage() {
     }
     load()
   }, [tallerId, participanteId])
+
+  const recargarDatos = async () => {
+    if (!tallerId || !participanteId) return
+    try {
+      const res = await financeService.getHistorialParticipanteTaller(tallerId, participanteId)
+      setData(res.datos || res.data || res)
+    } catch { /* silent */ }
+  }
+
+  const handleRegistrarPago = async () => {
+    const monto = parseFloat(montoPago) || 0
+    if (monto <= 0) { toast.error("Ingresa un monto válido"); return }
+    if (!data?.cuenta_id) { toast.error("No se encontró la cuenta del participante"); return }
+    setSavingPago(true)
+    try {
+      let comprobanteUrl: string | null = null
+      if (comprobanteFile) {
+        const form = new FormData()
+        form.append("archivo", comprobanteFile)
+        const uploadRes = await financeService.uploadComprobantePago(form)
+        comprobanteUrl = uploadRes?.data?.url || uploadRes?.url || null
+      }
+      await financeService.registrarPago({
+        cuenta_cobrar_id: data.cuenta_id,
+        monto,
+        metodo_pago: metodoPago,
+        fecha_pago: new Date().toISOString().split("T")[0],
+        comprobante_url: comprobanteUrl,
+      })
+      toast.success("Pago registrado correctamente")
+      setMontoPago("")
+      setComprobanteFile(null)
+      await recargarDatos()
+    } catch (err) {
+      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al registrar pago")
+    } finally { setSavingPago(false) }
+  }
+
+  const handleComprobanteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) setComprobanteFile(file)
+  }
 
   const badgeEstado = (estado: string) => {
     if (estado === "aprobado") return "bg-green-100 text-green-700"
@@ -80,15 +129,7 @@ export function TallerParticipantePage() {
 
   return (
     <div className="px-8 py-6">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40 mb-3" style={{ color: COLORS.CHARCOAL }}>
-        <NavLink to="/finanzas/pagos" className="hover:underline">Finanzas</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <NavLink to="/finanzas/pagos/cuentas/talleres" className="hover:underline">Talleres</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <NavLink to={`/finanzas/pagos/cuentas/talleres/${tallerId}`} className="hover:underline">{tallerNombre}</NavLink>
-        <span className="size-1 rounded-full bg-current opacity-50" />
-        <span>{nombreParticipante}</span>
-      </div>
+      
 
       <button
         onClick={() => navigate(`/finanzas/pagos/cuentas/talleres/${tallerId}`)}
@@ -127,7 +168,7 @@ export function TallerParticipantePage() {
             <div>
               <p className="text-[10px] font-bold uppercase opacity-40">Precio</p>
               <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>
-                ${Number(data.precio_taller || data.monto_total || 0).toLocaleString()}
+                ${Number(data.monto_total || data.precio_taller || 0).toLocaleString()}
               </p>
             </div>
             <div>
@@ -227,6 +268,73 @@ export function TallerParticipantePage() {
               </div>
             </div>
           )}
+        </div>
+
+        <div
+          className="rounded-2xl border bg-white p-6"
+          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+        >
+          <h3 className="text-base font-black mb-4 flex items-center gap-2" style={{ color: COLORS.CHARCOAL }}>
+            <HugeiconsIcon icon={PaymentIcon} size={18} style={{ color: COLORS.ACCENT }} />
+            Registrar Nuevo Pago
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
+                Monto
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={montoPago}
+                  onChange={e => setMontoPago(e.target.value)}
+                  onWheel={e => (e.target as HTMLElement).blur()}
+                  placeholder="0.00"
+                  disabled={savingPago}
+                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none bg-white"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
+                Método de pago
+              </label>
+              <select
+                value={metodoPago}
+                onChange={e => setMetodoPago(e.target.value)}
+                disabled={savingPago}
+                className="w-full px-3 py-2.5 border rounded-xl text-sm outline-none bg-white"
+                style={{ borderColor: COLORS.BORDER_SUBTLE }}
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia / Depósito</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleComprobanteChange} />
+            <button
+              onClick={() => comprobanteRef.current?.click()}
+              disabled={savingPago}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-gray-50 transition-colors"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}
+            >
+              <HugeiconsIcon icon={Upload05Icon} size={14} />
+              {comprobanteFile ? comprobanteFile.name : "Subir comprobante"}
+            </button>
+            <button
+              onClick={handleRegistrarPago}
+              disabled={savingPago}
+              className="px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98]"
+              style={{ backgroundColor: COLORS.ACCENT, opacity: savingPago ? 0.6 : 1 }}
+            >
+              {savingPago ? "Registrando..." : "Registrar Pago"}
+            </button>
+          </div>
         </div>
       </motion.div>
 

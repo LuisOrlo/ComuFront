@@ -5,53 +5,21 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   CheckmarkCircle04Icon,
   Cancel01Icon,
-  UserIcon,
-  BookOpenIcon,
-  PaymentIcon,
-  CalendarIcon,
-  MailIcon,
-  CallIcon,
   SearchIcon,
-  Image01Icon,
-  Edit01Icon,
-  Upload05Icon,
   FilterIcon,
   Calendar03Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { RejectModal } from "@/components/RejectModal"
 import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services/cursos.service"
 import { tallerService } from "@/services/taller.service"
-import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "./PagoPreAprobacionSection"
+import type { PagoPreAprobacionRef } from "./PagoPreAprobacionSection"
+import { SolicitudCursoDetail } from "./SolicitudCursoDetail"
+import { TallerInscripcionCard } from "./TallerInscripcionCard"
+import { ImageZoom } from "./ImageZoom"
+import { calcularEdad } from "./AprobacionUtils"
 import { toast } from "sonner"
-
-function ImageZoom({ url, onClose }: { url: string; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose() }}
-      tabIndex={0}
-    >
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 size-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 6L6 18M6 6l12 12" />
-        </svg>
-      </button>
-      <img
-        src={url}
-        alt="Imagen ampliada"
-        className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      />
-    </div>
-  )
-}
 
 export function AprobacionMatriculasPage() {
   const [solicitudes, setSolicitudes] = useState<any[]>([])
@@ -91,7 +59,7 @@ export function AprobacionMatriculasPage() {
     setEditTallerField(null); setEditTallerVal(""); setTallerEditId(null)
   }
 
-  const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string; paymentMonto?: number; paymentTipo?: string; paymentMetodo?: string } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string; paymentMonto?: number; paymentTipo?: string; paymentMetodo?: string; precioAjustado?: number } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [expandedComprobante, setExpandedComprobante] = useState(false)
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
@@ -101,12 +69,10 @@ export function AprobacionMatriculasPage() {
   const pagoRef = useRef<PagoPreAprobacionRef>(null)
   const [montoModulo1Valido, setMontoModulo1Valido] = useState(false)
 
-  // Edición de pago
   const [editPagoField, setEditPagoField] = useState<string | null>(null)
   const [editPagoVal, setEditPagoVal] = useState("")
   const [savingPagoEdit, setSavingPagoEdit] = useState(false)
 
-  // Edición de curso
   const [editCursoField, setEditCursoField] = useState<string | null>(null)
   const [editCursoVal, setEditCursoVal] = useState("")
   const [savingCursoEdit, setSavingCursoEdit] = useState(false)
@@ -128,20 +94,17 @@ export function AprobacionMatriculasPage() {
     })
   }, [cursosAbiertosList, searchCursoQuery])
 
-  // Upload comprobante
   const [uploadingComprobante, setUploadingComprobante] = useState(false)
   const [deletingComprobante, setDeletingComprobante] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [deleteArchivoModal, setDeleteArchivoModal] = useState<{ type: "comprobante" | "cedula"; label: string } | null>(null)
   const comprobanteRef = useRef<HTMLInputElement>(null)
 
-  // Filtros solo para aprobadas
   const [filtroFechaDesde, setFiltroFechaDesde] = useState("")
   const [filtroFechaHasta, setFiltroFechaHasta] = useState("")
   const [filtroCursoId, setFiltroCursoId] = useState("")
   const [catalogosFiltro, setCatalogosFiltro] = useState<CatalogoCurso[]>([])
 
-  // Edición inline
   const [editField, setEditField] = useState<string | null>(null)
   const [editVal, setEditVal] = useState("")
   const [savingEdit, setSavingEdit] = useState(false)
@@ -235,19 +198,6 @@ export function AprobacionMatriculasPage() {
 
   const startEdit = (field: string, value: string) => { setEditField(field); setEditVal(value) }
   const cancelEdit = () => { setEditField(null); setEditVal("") }
-  
-  function calcularEdad(fecha: string): string {
-    if (!fecha) return ""
-    const nacimiento = new Date(fecha)
-    if (isNaN(nacimiento.getTime())) return ""
-    const hoy = new Date()
-    let edad = hoy.getFullYear() - nacimiento.getFullYear()
-    const mesDiff = hoy.getMonth() - nacimiento.getMonth()
-    if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
-      edad--
-    }
-    return edad >= 0 ? String(edad) : ""
-  }
 
   const saveEdit = async () => {
     if (!selectedId || !editField || editVal === "") return
@@ -444,20 +394,18 @@ export function AprobacionMatriculasPage() {
     if (!confirmAction) return
     setActionLoading(true)
     try {
-      if (confirmAction.paymentMonto !== undefined) {
-        await tallerService.actualizarInscripcion(confirmAction.id, {
-          monto_pagado: confirmAction.paymentMonto,
-          tipo_pago: confirmAction.paymentTipo,
-          metodo_pago: confirmAction.paymentMetodo,
-          fecha_pago: new Date().toISOString().split("T")[0],
-        })
-      }
-      await tallerService.verificarPago(confirmAction.id)
-      toast.success("Pago de taller verificado correctamente")
+      await tallerService.verificarPago(confirmAction.id, {
+        precio_ajustado: confirmAction.precioAjustado,
+        monto_pagado: confirmAction.paymentMonto ?? 0,
+        tipo_pago: confirmAction.paymentTipo,
+        metodo_pago: confirmAction.paymentMetodo,
+        fecha_pago: new Date().toISOString().split("T")[0],
+      })
+      toast.success("Inscripción a taller aprobada correctamente")
       setConfirmAction(null)
       cargarTallerInscripciones()
     } catch (err) {
-      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al verificar pago")
+      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al aprobar taller")
     } finally { setActionLoading(false) }
   }
 
@@ -555,6 +503,25 @@ export function AprobacionMatriculasPage() {
 
   const totalPendientes = solicitudes.filter(s => s.estado === "pendiente_validacion").length
 
+  const detailProps = {
+    loadingDetail, refreshing,
+    editField, editVal, savingEdit,
+    startEdit, setEditVal, saveEdit, cancelEdit,
+    editPagoField, editPagoVal, savingPagoEdit,
+    setEditPagoField, setEditPagoVal, savePagoEdit,
+    editCursoField, editCursoVal, savingCursoEdit,
+    setEditCursoField, setEditCursoVal,
+    searchCursoQuery, setSearchCursoQuery,
+    filteredCursosAbiertos, saveCursoEdit, loadCursosAbiertos,
+    getCursoNombre,
+    expandedComprobante, setExpandedComprobante, setExpandedImageUrl,
+    uploadingCedula, uploadingComprobante, deletingComprobante, deletingCedula,
+    cedulaRef, comprobanteRef,
+    handleUploadCedula, handleUploadComprobante, setDeleteArchivoModal, setSelected,
+    pagoRef, montoModulo1Valido, setMontoModulo1Valido, handleApproveWithPayment,
+    actionLoading, setConfirmAction,
+  }
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
        <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -583,7 +550,6 @@ export function AprobacionMatriculasPage() {
               </div>
            </div>
 
-           {/* Secondary status filter */}
            <div className="flex gap-1 rounded-lg border p-0.5 bg-white inline-flex" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
              {[{ value: "pendientes" as const, label: "Pendientes" }, { value: "aprobados" as const, label: "Aprobados" }, { value: "rechazados" as const, label: "Rechazados" }].map(f => (
                <button key={f.value} onClick={() => { setStatusFilter(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
@@ -595,7 +561,6 @@ export function AprobacionMatriculasPage() {
              ))}
            </div>
 
-           {/* Filtros extra solo para Aprobadas */}
             {mainTab !== "talleres" && statusFilter === "aprobados" && (
               <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                <HugeiconsIcon icon={FilterIcon} size={14} style={{ color: COLORS.TEXT_MUTED }} />
@@ -653,7 +618,7 @@ export function AprobacionMatriculasPage() {
                            onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
                            onChange={setEditTallerVal} onSave={saveTallerEdit}
                            onCancel={cancelTallerEdit}
-                            onApprove={(monto, tipoPago, metodo) => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller", paymentMonto: monto, paymentTipo: tipoPago, paymentMetodo: metodo })}
+                            onApprove={(monto, tipoPago, metodo, precioAjustado) => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller", paymentMonto: monto, paymentTipo: tipoPago, paymentMetodo: metodo, precioAjustado })}
                            onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
                            onExpandImage={setExpandedImageUrl}
                          />
@@ -681,10 +646,13 @@ export function AprobacionMatriculasPage() {
                     {grupo.items.map(s => {
                       const isSelected = selectedId === s.id
                       return (
-                        <div key={s.id} className="bg-white rounded-xl border overflow-hidden transition-all"
+                        <div key={s.id} className="bg-white rounded-xl overflow-hidden transition-all border"
                           style={{
-                            borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                            borderTopColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                            borderRightColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                            borderBottomColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
                             borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
+                            borderLeftColor: s.curso_abierto?.catalogo?.color ? s.curso_abierto.catalogo.color : (isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE),
                           }}>
                           <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
                             <div className="size-12 rounded-lg flex items-center justify-center shrink-0 text-base font-bold"
@@ -698,330 +666,19 @@ export function AprobacionMatriculasPage() {
                               <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                                 {s.curso_abierto?.nombre_instancia || s.curso_abierto?.catalogo?.nombre || "Sin curso"}
                               </p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <Tag color={COLORS.ACCENT}>${s.monto_solicitado}</Tag>
-                                <Tag>{(s.tipo_pago || "").toUpperCase()}</Tag>
-                              </div>
                             </div>
                             <HugeiconsIcon icon={isSelected ? Cancel01Icon : CheckmarkCircle04Icon} size={18}
                               style={{ color: isSelected ? COLORS.TEXT_MUTED : COLORS.ACCENT }} />
                           </button>
-                           {isSelected && (
-                              <div className={cn("border-t px-5 py-5 space-y-5 transition-opacity duration-200 relative", refreshing && "opacity-60")} style={{ borderColor: COLORS.BORDER_SUBTLE, background: "oklch(0.985 0 0)" }}>
-                               {refreshing && (
-                                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-pulse" />
-                               )}
-                              {loadingDetail ? (
-                                <div className="p-4 text-center text-xs" style={{ color: COLORS.TEXT_MUTED }}>Cargando detalle...</div>
-                              ) : selected ? (
-                                <>
-                                  <Section title="Datos del Estudiante" icon={UserIcon}>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <EF icon={UserIcon} label="Nombres" field="nombres" data={selected.solicitante?.datos}
-                                        editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                      <EF icon={UserIcon} label="Apellidos" field="apellidos" data={selected.solicitante?.datos}
-                                        editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                      <EF icon={SearchIcon} label="Cédula" field="cedula" data={selected.solicitante?.datos} bold
-                                        editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                      <EF icon={MailIcon} label="Correo" field="correo" data={selected.solicitante?.datos}
-                                        editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                      <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
-                                        editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                        <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
-                                        <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={selected.solicitante?.datos}
-                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                        <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={selected.solicitante?.datos}
-                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                        <EF icon={UserIcon} label="Dirección" field="direccion" data={selected.solicitante?.datos}
-                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                        <EF icon={UserIcon} label="Ciudad" field="ciudad" data={selected.solicitante?.datos}
-                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                        <EF icon={Calendar03Icon} label="Fecha Nacimiento" field="fecha_nacimiento" data={selected.solicitante?.datos}
-                                          editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="date" />
-                                       </div>
-                                   </Section>
-                                    <Section title="Curso" icon={BookOpenIcon}>
-                                      <div className="grid grid-cols-2 gap-3">
-                                        {editCursoField === "curso" ? (
-                                         <div className="col-span-2 space-y-2.5">
-                                           <div className="flex items-center gap-2 text-xs">
-                                             <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                             <span style={{ color: COLORS.TEXT_MUTED }}>Buscar y seleccionar curso:</span>
-                                           </div>
-                                           <input
-                                             type="text"
-                                             placeholder="Escribe el nombre del curso..."
-                                             value={searchCursoQuery}
-                                             onChange={e => setSearchCursoQuery(e.target.value)}
-                                             className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
-                                             style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                             disabled={savingCursoEdit}
-                                           />
-                                           <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                             {filteredCursosAbiertos.length === 0 ? (
-                                               <div className="p-3 text-xs text-center text-gray-500">No se encontraron cursos</div>
-                                             ) : (
-                                               filteredCursosAbiertos.map((c: any) => {
-                                                 const isSelected = editCursoVal === c.id
-                                                 return (
-                                                   <button
-                                                     key={c.id}
-                                                     type="button"
-                                                     onClick={() => setEditCursoVal(c.id)}
-                                                     className={cn(
-                                                       "w-full text-left p-2.5 text-xs flex flex-col gap-0.5 hover:bg-gray-50 transition-colors",
-                                                       isSelected && "bg-blue-50/50 hover:bg-blue-50 font-semibold"
-                                                     )}
-                                                     style={isSelected ? { borderLeft: `3px solid ${COLORS.ACCENT}` } : {}}
-                                                   >
-                                                     <div className="flex justify-between items-center gap-2">
-                                                       <span style={{ color: COLORS.CHARCOAL }}>{c.nombre || c.id}</span>
-                                                       {isSelected && <span className="text-[10px] text-blue-600 font-bold shrink-0">Seleccionado</span>}
-                                                     </div>
-                                                     <div className="flex gap-2 text-[10px] opacity-60">
-                                                        {c.semestre && <span>Sem.: {c.semestre}</span>}
-                                                        {c.fechaInicio && <span>Inicio: {c.fechaInicio}</span>}
-                                                        {c.precioBase && <span>${c.precioBase}</span>}
-                                                     </div>
-                                                   </button>
-                                                 )
-                                               })
-                                             )}
-                                           </div>
-                                           <div className="flex gap-2">
-                                             <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
-                                               {savingCursoEdit ? "Guardando..." : "Confirmar curso"}
-                                             </button>
-                                             <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
-                                               Cancelar
-                                             </button>
-                                           </div>
-                                         </div>
-                                       ) : (
-                                         <>
-                                           <div className="flex items-center gap-2 text-xs group col-span-2">
-                                             <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                             <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Curso</span>
-                                              <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{getCursoNombre()}</span>
-                                             <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); setSearchCursoQuery(""); loadCursosAbiertos() }}
-                                               className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                               <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                             </button>
-                                           </div>
-                                           <InfoItem icon={CalendarIcon} label="Inicio" value={selected.curso?.fechas?.inicio?.split("T")[0] || "—"} />
-                                           <InfoItem icon={PaymentIcon} label="Precio" value={`$${selected.curso?.precio_base || 0}`} bold />
-                                         </>
-                                       )}
-                                     </div>
-                                   </Section>
-                                    <Section title="Pago" icon={PaymentIcon}>
-                                      <div className="grid grid-cols-2 gap-3">
-                                        {editPagoField === "pago_fecha" ? (
-                                         <div className="flex items-center gap-2 col-span-2">
-                                           <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                           <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
-                                           <input type="date" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                             className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
-                                           <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                             {savingPagoEdit ? "..." : "Guardar"}
-                                           </button>
-                                           <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                             Cancelar
-                                           </button>
-                                         </div>
-                                       ) : (
-                                         <div className="flex items-center gap-2 text-xs group">
-                                           <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                           <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha</span>
-                                           <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "—"}</span>
-                                           <button onClick={() => { setEditPagoField("pago_fecha"); setEditPagoVal(selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "") }}
-                                             className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                             <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                           </button>
-                                         </div>
-                                       )}
-                                        {editPagoField === "pago_comprobante" ? (
-                                          <div className="flex items-center gap-2 col-span-2">
-                                            <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                            <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Comprobante:</span>
-                                            <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                              className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
-                                              <option value="transferencia">Transferencia / Depósito</option>
-                                              <option value="efectivo">Efectivo</option>
-                                            </select>
-                                            <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                              {savingPagoEdit ? "..." : "Guardar"}
-                                            </button>
-                                            <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                              Cancelar
-                                            </button>
-                                          </div>
-                                        ) : (
-                                          <div className="flex items-center gap-2 text-xs group">
-                                            <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                            <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Comprobante</span>
-                                            <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{(selected.pago?.comprobante?.tipo || "—").toUpperCase()}</span>
-                                            <button onClick={() => { setEditPagoField("pago_comprobante"); setEditPagoVal(selected.pago?.comprobante?.tipo || "") }}
-                                              className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                              <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                            </button>
-                                          </div>
-                                        )}
-                                     </div>
-                                     <div className="mt-3 space-y-2">
-                                       <div className="flex gap-2">
-                                         <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleUploadComprobante} />
-                                         <button onClick={() => comprobanteRef.current?.click()} disabled={uploadingComprobante}
-                                           className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                           style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT, opacity: uploadingComprobante ? 0.6 : 1 }}>
-                                           <HugeiconsIcon icon={Upload05Icon} size={16} />
-                                           {uploadingComprobante ? "Subiendo..." : selected.pago?.comprobante?.url ? "Cambiar comprobante" : "Subir comprobante"}
-                                         </button>
-                                           {selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
-                                             <>
-                                             <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                                               className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                               style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                               <HugeiconsIcon icon={Image01Icon} size={16} />
-                                               {expandedComprobante ? "Ocultar" : "Ver"}
-                                             </button>
-                                             <button onClick={() => setDeleteArchivoModal({ type: "comprobante", label: "comprobante de pago" })} disabled={deletingComprobante}
-                                               className="p-3 rounded-xl border flex items-center justify-center gap-1 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
-                                               style={{ borderColor: COLORS.BORDER_SUBTLE, color: "oklch(0.50 0.15 10)" }}>
-                                               Eliminar
-                                             </button>
-                                             </>
-                                           )}
-                                        </div>
-                                          {expandedComprobante && selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
-                                            <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                              <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                                className="w-full object-contain max-h-[400px]"
-                                                onError={(e) => {
-                                                  const target = e.target as HTMLImageElement
-                                                  target.style.display = 'none'
-                                                  setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, comprobante_purgado: true } } }))
-                                                }}
-                                                onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
-                                            </div>
-                                          )}
-                                          {selected.pago?.comprobante?.comprobante_purgado && (
-                                            <div className="p-3 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
-                                                <HugeiconsIcon icon={Image01Icon} size={12} />
-                                                Comprobante eliminado del almacenamiento
-                                              </span>
-                                            </div>
-                                          )}
-                                      </div>
-                                      {selected?.estado?.valor === "pendiente_validacion" && selected?.curso?.id && (
-                                        <PagoPreAprobacionSection
-                                          ref={pagoRef}
-                                          cursoAbiertoId={selected.curso.id}
-                                          cursoNombre={getCursoNombre()}
-                                          metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
-                                          onMontoModulo1Change={setMontoModulo1Valido}
-                                          onSubmit={(pagos, metodoPago) => handleApproveWithPayment(pagos, metodoPago)}
-                                        />
-                                      )}
-                                      {selected?.lineas_pago?.modulos?.length > 0 && (
-                                        <div className="mt-3 p-4 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pagos</span>
-                                            <span className="text-[10px] font-bold" style={{ color: COLORS.ACCENT }}>
-                                              {selected.lineas_pago.modulos_pagados}/{selected.lineas_pago.modulos_count} módulos pagados
-                                            </span>
-                                          </div>
-                                          {selected.lineas_pago.modulos.map((lp: any, i: number) => (
-                                            <div key={i} className="flex items-center justify-between text-[10px]">
-                                              <span style={{ color: COLORS.CHARCOAL }}>{lp.modulo_nombre}</span>
-                                              <div className="flex items-center gap-3">
-                                                <span className="opacity-50">${lp.monto_ajustado.toLocaleString()}</span>
-                                                <span className="font-medium" style={{ color: lp.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
-                                                  ${lp.monto_abonado.toLocaleString()}
-                                                </span>
-                                                <span className={cn("text-[8px] font-bold uppercase px-1 py-0.5 rounded-full",
-                                                  lp.estado === "pagado" ? "bg-green-100 text-green-700" :
-                                                  lp.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                                                )}>{lp.estado === "pagado" ? "Pagado" : lp.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
-                                              </div>
-                                            </div>
-                                          ))}
-                                          <div className="border-t pt-2 mt-2 flex justify-between text-[10px] font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                            <span style={{ color: COLORS.CHARCOAL }}>Total abonado</span>
-                                            <span style={{ color: "oklch(0.55 0.15 150)" }}>
-                                              ${selected.lineas_pago.total_abonado.toLocaleString()} de ${selected.lineas_pago.total_esperado.toLocaleString()}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Section>
-                                    <Section title="Documento de Identidad" icon={Image01Icon}>
-                                      {selected.pago?.comprobante?.cedula_url && !selected.pago?.comprobante?.cedula_purgado ? (
-                                        <div>
-                                          <div className="flex items-center justify-between mb-2">
-                                            <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                            <div className="flex items-center gap-2">
-                                              <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                                className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                                <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                                              </button>
-                                              <button onClick={() => setDeleteArchivoModal({ type: "cedula", label: "cédula de identidad" })} disabled={deletingCedula}
-                                                className="flex items-center gap-1 text-[10px] font-semibold disabled:opacity-50"
-                                                style={{ color: "oklch(0.50 0.15 10)" }}>
-                                                {deletingCedula ? "..." : "✕ Eliminar"}
-                                              </button>
-                                            </div>
-                                          </div>
-                                          <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
-                                            className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                            onError={(e) => {
-                                              const target = e.target as HTMLImageElement
-                                              target.style.display = 'none'
-                                              setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_purgado: true } } }))
-                                            }}
-                                            onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
-                                        </div>
-                                      ) : selected.pago?.comprobante?.cedula_purgado ? (
-                                        <div className="p-5 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
-                                            <HugeiconsIcon icon={Image01Icon} size={12} />
-                                            Cédula eliminada del almacenamiento
-                                          </span>
-                                        </div>
-                                      ) : (
-                                       <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                         <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
-                                         <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                                         <button type="button" onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                           className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
-                                           style={{ backgroundColor: COLORS.ACCENT, opacity: uploadingCedula ? 0.6 : 1 }}>
-                                           <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
-                                           {uploadingCedula ? "Subiendo..." : "Subir foto de cédula"}
-                                         </button>
-                                       </div>
-                                     )}
-                                      <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                                    </Section>
-                                   {selected?.estado?.valor === "pendiente_validacion" && (
-                                     <div className="flex gap-3 pt-3">
-                                       <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
-                                         className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
-                                         style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-                                         <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
-                                       </button>
-                                       <button
-                                        onClick={() => pagoRef.current?.submit()}
-                                        disabled={actionLoading || !montoModulo1Valido}
-                                         className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
-                                         style={{ backgroundColor: COLORS.ACCENT }}>
-                                         <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
-                                       </button>
-                                     </div>
-                                   )}
-                                </>
-                              ) : null}
-                            </div>
+                          {isSelected && (
+                            <SolicitudCursoDetail
+                              selected={selected}
+                              solicitudRaw={s}
+                              showLineasPago
+                              cursoInicio={selected.curso?.fechas?.inicio?.split("T")[0] || "—"}
+                              cursoPrecio={selected.curso?.precio_base || 0}
+                              {...detailProps}
+                            />
                           )}
                         </div>
                       )
@@ -1035,10 +692,13 @@ export function AprobacionMatriculasPage() {
               {solicitudesFiltradas.map(s => {
                 const isSelected = selectedId === s.id
                 return (
-                    <div key={s.id} className="bg-white rounded-xl border overflow-hidden transition-all"
+                    <div key={s.id} className="bg-white rounded-xl overflow-hidden transition-all border"
                       style={{
-                        borderColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                        borderTopColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                        borderRightColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+                        borderBottomColor: isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
                         borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
+                        borderLeftColor: s.curso_abierto?.catalogo?.color ? s.curso_abierto.catalogo.color : (isSelected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE),
                       }}>
                       <button onClick={() => viewDetail(s.id)} className="w-full text-left p-5 flex items-center gap-4">
                         <div className="size-12 rounded-lg flex items-center justify-center shrink-0 text-base font-bold"
@@ -1052,333 +712,20 @@ export function AprobacionMatriculasPage() {
                           <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                             {s.curso_abierto?.nombre_instancia || s.curso_abierto?.catalogo?.nombre || "Sin curso"}
                           </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Tag color={COLORS.ACCENT}>${s.monto_solicitado}</Tag>
-                          <Tag>{(s.tipo_pago || "").toUpperCase()}</Tag>
-                          <Tag color={s.estado === "pendiente_validacion" ? "oklch(0.55 0.12 90)" : s.estado === "matricula_creada" ? "oklch(0.50 0.10 140)" : "oklch(0.50 0.15 10)"}>
-                            {s.estado === "pendiente_validacion" ? "Pendiente" : s.estado === "matricula_creada" ? "Aprobada" : "Rechazada"}
-                          </Tag>
                         </div>
-                      </div>
                       <HugeiconsIcon icon={isSelected ? Cancel01Icon : CheckmarkCircle04Icon} size={18}
                         style={{ color: isSelected ? COLORS.TEXT_MUTED : COLORS.ACCENT }} />
                     </button>
 
                      {isSelected && (
-                       <div className={cn("border-t px-5 py-5 space-y-5 transition-opacity duration-200 relative", refreshing && "opacity-60")} style={{ borderColor: COLORS.BORDER_SUBTLE, background: "oklch(0.985 0 0)" }}>
-                         {refreshing && (
-                           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-pulse" />
-                         )}
-                        {loadingDetail ? (
-                          <div className="p-4 text-center text-xs" style={{ color: COLORS.TEXT_MUTED }}>Cargando detalle...</div>
-                        ) : selected ? (
-                          <>
-                            <Section title="Datos del Estudiante" icon={UserIcon}>
-                              <div className="grid grid-cols-2 gap-3">
-                                <EF icon={UserIcon} label="Nombres" field="nombres" data={selected.solicitante?.datos}
-                                  editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                <EF icon={UserIcon} label="Apellidos" field="apellidos" data={selected.solicitante?.datos}
-                                  editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                 <EF icon={SearchIcon} label="Cédula" field="cedula" data={selected.solicitante?.datos} bold
-                                   editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                 <EF icon={MailIcon} label="Correo" field="correo" data={selected.solicitante?.datos}
-                                   editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                  <EF icon={CallIcon} label="Teléfono" field="celular" data={selected.solicitante?.datos}
-                                    editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                    <InfoItem icon={Calendar03Icon} label="Edad" value={getFieldValue(selected.solicitante?.datos, "edad")} />
-                                    <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={selected.solicitante?.datos}
-                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                    <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={selected.solicitante?.datos}
-                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                    <EF icon={UserIcon} label="Dirección" field="direccion" data={selected.solicitante?.datos}
-                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                    <EF icon={UserIcon} label="Ciudad" field="ciudad" data={selected.solicitante?.datos}
-                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
-                                    <EF icon={Calendar03Icon} label="Fecha Nacimiento" field="fecha_nacimiento" data={selected.solicitante?.datos}
-                                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="date" />
-                                 </div>
-                              </Section>
-
-                               <Section title="Curso" icon={BookOpenIcon}>
-                                 <div className="grid grid-cols-2 gap-3">
-                                   {editCursoField === "curso" ? (
-                                    <div className="col-span-2 space-y-2.5">
-                                      <div className="flex items-center gap-2 text-xs">
-                                        <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                        <span style={{ color: COLORS.TEXT_MUTED }}>Buscar y seleccionar curso:</span>
-                                      </div>
-                                      <input
-                                        type="text"
-                                        placeholder="Escribe el nombre del curso..."
-                                        value={searchCursoQuery}
-                                        onChange={e => setSearchCursoQuery(e.target.value)}
-                                        className="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white placeholder-gray-400 focus:ring-1 focus:ring-blue-500"
-                                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                        disabled={savingCursoEdit}
-                                      />
-                                      <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                        {filteredCursosAbiertos.length === 0 ? (
-                                          <div className="p-3 text-xs text-center text-gray-500">No se encontraron cursos</div>
-                                        ) : (
-                                          filteredCursosAbiertos.map((c: any) => {
-                                            const isSelected = editCursoVal === c.id
-                                            return (
-                                              <button
-                                                key={c.id}
-                                                type="button"
-                                                onClick={() => setEditCursoVal(c.id)}
-                                                className={cn(
-                                                  "w-full text-left p-2.5 text-xs flex flex-col gap-0.5 hover:bg-gray-50 transition-colors",
-                                                  isSelected && "bg-blue-50/50 hover:bg-blue-50 font-semibold"
-                                                )}
-                                                style={isSelected ? { borderLeft: `3px solid ${COLORS.ACCENT}` } : {}}
-                                              >
-                                                <div className="flex justify-between items-center gap-2">
-                                                  <span style={{ color: COLORS.CHARCOAL }}>{c.nombre || c.id}</span>
-                                                  {isSelected && <span className="text-[10px] text-blue-600 font-bold shrink-0">Seleccionado</span>}
-                                                </div>
-                                                <div className="flex gap-2 text-[10px] opacity-60">
-                                                  {c.semestre && <span>Sem.: {c.semestre}</span>}
-                                                  {c.fecha_inicio && <span>Inicio: {c.fecha_inicio.split("T")[0]}</span>}
-                                                  {c.precio_base && <span>${c.precio_base}</span>}
-                                                </div>
-                                              </button>
-                                            )
-                                          })
-                                        )}
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <button onClick={saveCursoEdit} disabled={savingCursoEdit} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingCursoEdit ? 0.6 : 1 }}>
-                                          {savingCursoEdit ? "Guardando..." : "Confirmar curso"}
-                                        </button>
-                                        <button onClick={() => { setEditCursoField(null); setEditCursoVal("") }} disabled={savingCursoEdit} className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
-                                          Cancelar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <div className="flex items-center gap-2 text-xs group col-span-2">
-                                        <HugeiconsIcon icon={BookOpenIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                        <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Curso</span>
-                                        <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>{selected.curso?.nombre || "—"}</span>
-                                        <button onClick={() => { setEditCursoField("curso"); setEditCursoVal(selected.curso?.id || ""); setSearchCursoQuery(""); loadCursosAbiertos() }}
-                                          className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                          <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                        </button>
-                                      </div>
-                                      <InfoItem icon={CalendarIcon} label="Inicio" value={selected.curso?.fechas?.inicio?.split("T")[0] || "—"} />
-                                      <InfoItem icon={PaymentIcon} label="Precio" value={`$${selected.curso?.precio_base || 0}`} bold />
-                                    </>
-                                  )}
-                                </div>
-                              </Section>
-
-                             <Section title="Pago" icon={PaymentIcon}>
-                               <div className="grid grid-cols-2 gap-3">
-                                 {editPagoField === "pago_monto" ? (
-                                   <div className="flex items-center gap-2 col-span-2">
-                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                     <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Monto:</span>
-                                      <input type="number" step="0.01" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)} placeholder="0.00"
-                                        className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
-                                      <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                        {savingPagoEdit ? "..." : "Guardar"}
-                                      </button>
-                                      <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                        Cancelar
-                                     </button>
-                                   </div>
-                                 ) : (
-                                   <div className="flex items-center gap-2 text-xs group">
-                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                     <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Monto</span>
-                                     <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 700 }}>${selected.pago?.monto_solicitado}</span>
-                                     <button onClick={() => { setEditPagoField("pago_monto"); setEditPagoVal(String(selected.pago?.monto_solicitado || "")) }}
-                                       className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                       <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                     </button>
-                                   </div>
-                                 )}
-                                 {editPagoField === "pago_tipo" ? (
-                                   <div className="flex items-center gap-2 col-span-2">
-                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                     <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                                     <select value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                       className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none bg-white" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit}>
-                                       <option value="transferencia">Transferencia</option>
-                                       <option value="deposito">Depósito</option>
-                                       <option value="efectivo">Efectivo</option>
-                                     </select>
-                                     <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                       {savingPagoEdit ? "..." : "Guardar"}
-                                     </button>
-                                     <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                       Cancelar
-                                     </button>
-                                   </div>
-                                 ) : (
-                                   <div className="flex items-center gap-2 text-xs group">
-                                     <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                     <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Tipo</span>
-                                      <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{(selected.pago?.tipo_pago || "—").toUpperCase()}</span>
-                                      <button onClick={() => { setEditPagoField("pago_tipo"); setEditPagoVal(selected.pago?.tipo_pago || "") }}
-                                       className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                       <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                     </button>
-                                   </div>
-                                 )}
-                                  {editPagoField === "pago_fecha" ? (
-                                    <div className="flex items-center gap-2 col-span-2">
-                                      <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                      <span className="shrink-0 text-xs" style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
-                                      <input type="date" value={editPagoVal} onChange={e => setEditPagoVal(e.target.value)}
-                                        className="flex-1 px-2 py-1.5 text-xs border rounded-lg outline-none" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={savingPagoEdit} />
-                                      <button onClick={savePagoEdit} disabled={savingPagoEdit} className="text-xs font-medium px-2 py-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: savingPagoEdit ? 0.6 : 1 }}>
-                                        {savingPagoEdit ? "..." : "Guardar"}
-                                      </button>
-                                      <button onClick={() => { setEditPagoField(null); setEditPagoVal("") }} disabled={savingPagoEdit} className="text-xs px-2 py-1 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>
-                                        Cancelar
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-2 text-xs group">
-                                      <HugeiconsIcon icon={CalendarIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                                      <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Fecha</span>
-                                       <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: 500 }}>{selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "—"}</span>
-                                       <button onClick={() => { setEditPagoField("pago_fecha"); setEditPagoVal(selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "") }}
-                                        className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                                        <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                      </button>
-                                    </div>
-                                  )}
-                                  <InfoItem icon={PaymentIcon} label="Comprobante" value={(selected.pago?.comprobante?.tipo || "—").toUpperCase()} />
-                                </div>
-                               <div className="mt-3 space-y-2">
-                                 <div className="flex gap-2">
-                                   <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleUploadComprobante} />
-                                   <button onClick={() => comprobanteRef.current?.click()} disabled={uploadingComprobante}
-                                     className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                     style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT, opacity: uploadingComprobante ? 0.6 : 1 }}>
-                                     <HugeiconsIcon icon={Upload05Icon} size={16} />
-                                        {uploadingComprobante ? "Subiendo..." : selected.pago?.comprobante?.url ? "Cambiar comprobante" : "Subir comprobante"}
-                                   </button>
-                                   {selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
-                                       <>
-                                       <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                                         className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                                         style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                                         <HugeiconsIcon icon={Image01Icon} size={16} />
-                                         {expandedComprobante ? "Ocultar" : "Ver"}
-                                       </button>
-                                       <button onClick={() => setDeleteArchivoModal({ type: "comprobante", label: "comprobante de pago" })} disabled={deletingComprobante}
-                                         className="p-3 rounded-xl border flex items-center justify-center gap-1 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
-                                         style={{ borderColor: COLORS.BORDER_SUBTLE, color: "oklch(0.50 0.15 10)" }}>
-                                         Eliminar
-                                       </button>
-                                       </>
-                                     )}
-                                   </div>
-                                     {expandedComprobante && selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado && (
-                                       <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                         <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
-                                           className="w-full object-contain max-h-[400px]"
-                                           onError={(e) => {
-                                             const target = e.target as HTMLImageElement
-                                             target.style.display = 'none'
-                                             setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, comprobante_purgado: true } } }))
-                                           }}
-                                           onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
-                                       </div>
-                                     )}
-                                    {selected.pago?.comprobante?.comprobante_purgado && (
-                                      <div className="p-3 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-50 px-3 py-1.5 rounded-full border border-red-200">
-                                          <HugeiconsIcon icon={Image01Icon} size={12} />
-                                          Comprobante eliminado del almacenamiento
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                               </Section>
-
-                                <Section title="Documento de Identidad" icon={Image01Icon}>
-                                  {selected.pago?.comprobante?.cedula_url ? (
-                                    <div>
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                                        <div className="flex items-center gap-2">
-                                          <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                            className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                                            <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                                          </button>
-                                          <button onClick={() => setDeleteArchivoModal({ type: "cedula", label: "cédula de identidad" })} disabled={deletingCedula}
-                                            className="flex items-center gap-1 text-[10px] font-semibold disabled:opacity-50"
-                                            style={{ color: "oklch(0.50 0.15 10)" }}>
-                                            {deletingCedula ? "..." : "✕ Eliminar"}
-                                          </button>
-                                        </div>
-                                      </div>
-                                      <img src={fixImageUrl(selected.pago.comprobante.cedula_url)} alt="Cédula"
-                                        className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                        onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.cedula_url))} />
-                                   </div>
-                                 ) : selected.pago?.comprobante?.cedula_purgado ? (
-                                   <div className="p-5 rounded-xl border text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                     <p className="text-[10px] font-bold text-red-400">Cédula eliminada del almacenamiento</p>
-                                   </div>
-                                 ) : (
-                                  <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                    <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
-                                    <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                                    <button type="button" onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                                      className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
-                                      style={{ backgroundColor: COLORS.ACCENT, opacity: uploadingCedula ? 0.6 : 1 }}>
-                                      <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
-                                      {uploadingCedula ? "Subiendo..." : "Subir foto de cédula"}
-                                    </button>
-                                  </div>
-                                )}
-                                <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                              </Section>
-
-                              {s.estado === "pendiente_validacion" && selected?.curso?.id && (
-                                <PagoPreAprobacionSection
-                                  ref={pagoRef}
-                                  cursoAbiertoId={selected.curso.id}
-                                  cursoNombre={getCursoNombre()}
-                                  metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
-                                  onMontoModulo1Change={setMontoModulo1Valido}
-                                  onSubmit={(pagos, metodoPago) => handleApproveWithPayment(pagos, metodoPago)}
-                                />
-                              )}
-                             {s.estado === "pendiente_validacion" ? (
-                               <div className="flex gap-3 pt-3">
-                                 <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
-                                   className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
-                                   style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-                                   <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
-                                 </button>
-                                 <button
-                                   onClick={() => pagoRef.current?.submit()}
-                                    disabled={actionLoading || !montoModulo1Valido}
-                                   className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
-                                   style={{ backgroundColor: COLORS.ACCENT }}>
-                                   <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
-                                 </button>
-                               </div>
-                             ) : (
-                               <div className="flex gap-3 pt-3">
-                                 <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}
-                                   className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
-                                   style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-                                   <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
-                                 </button>
-                               </div>
-                             )}
-                          </>
-                        ) : null}
-                      </div>
+                       <SolicitudCursoDetail
+                         selected={selected}
+                         solicitudRaw={s}
+                         showLineasPago={false}
+                         cursoInicio={selected.curso?.fechas?.inicio?.split("T")[0] || "—"}
+                         cursoPrecio={selected.curso?.precio_base || 0}
+                         {...detailProps}
+                       />
                     )}
                   </div>
                 )
@@ -1394,9 +741,9 @@ export function AprobacionMatriculasPage() {
 
       <ConfirmationModal
         isOpen={confirmAction?.type === "aprobar" && confirmAction?.origen === "taller" && !!confirmAction}
-        title="Verificar Pago de Taller"
-        message="Se confirmará el pago del participante en el taller."
-        confirmText="Verificar Pago"
+        title="Aprobar Inscripción a Taller"
+        message="Se aprobará la inscripción del participante en el taller."
+        confirmText="Aprobar"
         cancelText="Cancelar"
         isLoading={actionLoading}
         icon="info"
@@ -1424,305 +771,4 @@ export function AprobacionMatriculasPage() {
       />
     </div>
   )
-}
-
-function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerField, editTallerVal, savingTallerEdit, onToggle, onEdit, onChange, onSave, onCancel, onApprove, onReject, onExpandImage }: {
-  ins: any; isExpanded: boolean; puedeVerificar: boolean
-  editTallerField: string | null; editTallerVal: string; savingTallerEdit: boolean
-  onToggle: () => void; onEdit: (f: string, v: string) => void; onChange: (v: string) => void
-  onSave: () => void; onCancel: () => void; onApprove: (monto: number, tipoPago: string, metodoPago: string) => void; onReject: () => void
-  onExpandImage?: (url: string) => void
-}) {
-  const cedulaRef = useRef<HTMLInputElement>(null)
-  const comprobanteRef = useRef<HTMLInputElement>(null)
-  const [uploadingCedula, setUploadingCedula] = useState(false)
-  const [uploadingComprobante, setUploadingComprobante] = useState(false)
-  const [expandedComprobante, setExpandedComprobante] = useState(false)
-
-  const [, forceUpdate] = useState(0)
-  const [tallerMonto, setTallerMonto] = useState(String(ins.monto_pagado || ins.taller?.precio || 0))
-
-  const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingCedula(true)
-    try {
-      await tallerService.subirCedula(ins.id, file)
-      toast.success("Cédula subida")
-      forceUpdate(n => n + 1)
-    } catch { toast.error("Error al subir cédula") }
-    finally { setUploadingCedula(false) }
-  }
-
-  const handleUploadComprobante = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingComprobante(true)
-    try {
-      await tallerService.subirComprobante(ins.id, file)
-      toast.success("Comprobante subido")
-      forceUpdate(n => n + 1)
-    } catch { toast.error("Error al subir comprobante") }
-    finally { setUploadingComprobante(false) }
-  }
-
-  const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : "—"
-
-  return (
-    <div className="bg-white rounded-2xl border overflow-hidden transition-all"
-      style={{ borderColor: isExpanded ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderLeft: `3px solid ${COLORS.ACCENT}` }}>
-      <button onClick={onToggle} className="w-full text-left p-5 flex items-center gap-4">
-        <div className="size-12 rounded-xl flex items-center justify-center shrink-0 text-base font-bold"
-          style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
-          {(ins.nombres || "?")[0]}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{ins.nombres} {ins.apellidos}</p>
-          <p className="text-xs truncate mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-            {ins.cedula} · {ins.correo} · {ins.taller?.nombre || "Taller"}
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            <Tag color={COLORS.ACCENT}>${Number(ins.monto_pagado || 0).toFixed(2)}</Tag>
-            <Tag>{ins.tipo_pago}</Tag>
-            <Tag color={ins.pago_verificado ? "oklch(0.50 0.10 140)" : "oklch(0.55 0.12 90)"}>
-              {ins.pago_verificado ? "Pagado" : "Pendiente"}
-            </Tag>
-          </div>
-        </div>
-        <HugeiconsIcon icon={isExpanded ? Cancel01Icon : CheckmarkCircle04Icon} size={18}
-          style={{ color: isExpanded ? COLORS.TEXT_MUTED : COLORS.ACCENT }} />
-      </button>
-      {isExpanded && (
-        <div className="border-t px-5 py-5 space-y-5" style={{ borderColor: COLORS.BORDER_SUBTLE, background: "oklch(0.985 0 0)" }}>
-          <Section title="Datos del Participante" icon={UserIcon}>
-            <div className="grid grid-cols-2 gap-3">
-              <EF icon={UserIcon} label="Nombres" field="nombres" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <EF icon={UserIcon} label="Apellidos" field="apellidos" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <EF icon={SearchIcon} label="Cédula" field="cedula" data={ins} bold
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <EF icon={MailIcon} label="Correo" field="correo" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <EF icon={CallIcon} label="Teléfono" field="telefono" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-               <EF icon={UserIcon} label="Dirección" field="direccion" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-               <InfoItem icon={UserIcon} label="Ciudad" value={ins.ciudad || "—"} />
-              <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}
-                editField={editTallerField} editVal={editTallerVal}
-                onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-              <InfoItem icon={Calendar03Icon} label="Fecha Nacimiento" value={formatDate(ins.fecha_nacimiento)} />
-              <InfoItem icon={Calendar03Icon} label="Edad" value={ins.edad ? `${ins.edad} años` : "—"} />
-            </div>
-          </Section>
-          <Section title="Taller" icon={BookOpenIcon}>
-            <InfoItem icon={BookOpenIcon} label="Taller" value={ins.taller?.nombre || "—"} bold />
-            <InfoItem icon={CalendarIcon} label="Fecha" value={ins.taller?.fecha ? new Date(ins.taller.fecha).toLocaleDateString('es-ES') : "—"} />
-            <InfoItem icon={PaymentIcon} label="Precio" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold />
-          </Section>
-          <Section title="Pago" icon={PaymentIcon}>
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs">
-                <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-                <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Precio taller</span>
-                <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${Number(ins.taller?.precio || 0).toFixed(2)}</span>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
-                  Monto a cobrar
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={tallerMonto}
-                    onChange={e => setTallerMonto(e.target.value)}
-                    onWheel={e => (e.target as HTMLElement).blur()}
-                    className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span style={{ color: COLORS.TEXT_MUTED }}>Tipo de pago</span>
-                <span
-                  className="text-xs font-bold px-2 py-1 rounded-lg"
-                  style={{
-                    backgroundColor: Number(tallerMonto) >= Number(ins.taller?.precio || 0) ? "oklch(0.55 0.15 150 / 0.12)" : "oklch(0.65 0.15 75 / 0.12)",
-                    color: Number(tallerMonto) >= Number(ins.taller?.precio || 0) ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)",
-                  }}
-                >
-                  {Number(tallerMonto) >= Number(ins.taller?.precio || 0) ? "COMPLETO" : "ABONO"}
-                </span>
-              </div>
-              <InfoItem icon={PaymentIcon} label="Método de pago" value={ins.metodo_pago || "—"} />
-              <InfoItem icon={CalendarIcon} label="Fecha de Pago" value={formatDate(ins.fecha_pago)} />
-            </div>
-            <div className="mt-3 space-y-2">
-              <div className="flex gap-2">
-                <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleUploadComprobante} />
-                <button onClick={() => comprobanteRef.current?.click()} disabled={uploadingComprobante}
-                  className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT, opacity: uploadingComprobante ? 0.6 : 1 }}>
-                  <HugeiconsIcon icon={Upload05Icon} size={16} />
-                  {uploadingComprobante ? "Subiendo..." : ins.comprobante_url ? "Cambiar comprobante" : "Subir comprobante"}
-                </button>
-                {ins.comprobante_url && (
-                  <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                    className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold hover:bg-white transition-colors"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Image01Icon} size={16} />
-                    {expandedComprobante ? "Ocultar" : "Ver"}
-                  </button>
-                )}
-              </div>
-              {expandedComprobante && ins.comprobante_url && (
-                <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <img src={fixImageUrl(ins.comprobante_url)} alt="Comprobante" className="w-full object-contain max-h-[400px]"
-                    onClick={() => onExpandImage?.(fixImageUrl(ins.comprobante_url))} />
-                </div>
-              )}
-            </div>
-          </Section>
-          <Section title="Documento de Identidad" icon={Image01Icon}>
-            {ins.cedula_url ? (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-medium opacity-40">Imagen actual</span>
-                  <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                    className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                  </button>
-                </div>
-                <img src={fixImageUrl(ins.cedula_url)} alt="Cédula" className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                  onClick={() => onExpandImage?.(fixImageUrl(ins.cedula_url))} />
-              </div>
-            ) : (
-              <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <p className="text-xs mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
-                <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                <button type="button" onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                  className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
-                  style={{ backgroundColor: COLORS.ACCENT, opacity: uploadingCedula ? 0.6 : 1 }}>
-                  <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
-                  {uploadingCedula ? "Subiendo..." : "Subir foto de cédula"}
-                </button>
-              </div>
-            )}
-            <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-          </Section>
-          {puedeVerificar && (
-            <div className="flex gap-3 pt-3">
-              <button onClick={onReject}
-                className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
-                style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-                <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
-              </button>
-              <button onClick={() => {
-                const monto = parseFloat(tallerMonto) || 0
-                const tipoPago = monto >= Number(ins.taller?.precio || 0) ? "completo" : "abono"
-                onApprove(monto, tipoPago, ins.metodo_pago || "efectivo")
-              }}
-                className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97]"
-                style={{ backgroundColor: COLORS.ACCENT }}>
-                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Verificar Pago
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Section({ title, icon, children }: { title: string; icon: any; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <HugeiconsIcon icon={icon} size={14} style={{ color: COLORS.ACCENT }} />
-        <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>{title}</h4>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function InfoItem({ icon, label, value, bold }: { icon: any; label: string; value: string; bold?: boolean }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <HugeiconsIcon icon={icon} size={14} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-      <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">{label}</span>
-      <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: bold ? 700 : 500 }}>{value}</span>
-    </div>
-  )
-}
-
-function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, onSave, onCancel, bold, saving, inputType }: {
-  icon: any; label: string; field: string; data: any
-  editField: string | null; editVal: string
-  onEdit: (f: string, v: string) => void; onChange: (v: string) => void; onSave: () => void; onCancel: () => void
-  bold?: boolean; saving?: boolean; inputType?: string
-}) {
-  const raw = data?.perfil_estudiante?.[field] ?? data?.[field]
-  const value = raw ?? "—"
-  if (editField === field) {
-    return (
-      <div className="flex items-center gap-2 col-span-2">
-        <HugeiconsIcon icon={icon} size={14} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-        <span className="shrink-0 text-sm" style={{ color: COLORS.TEXT_MUTED }}>{label}:</span>
-        <input type={inputType || "text"} value={editVal} onChange={e => onChange(e.target.value)} placeholder={`Ingrese ${label.toLowerCase()}`}
-          className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none bg-white shadow-sm focus:ring-2 focus:ring-blue-200 transition-shadow" style={{ borderColor: COLORS.ACCENT }} autoFocus disabled={saving} />
-        <button onClick={onSave} disabled={saving} className="text-xs font-medium px-3 py-2 rounded-lg" style={{ backgroundColor: COLORS.ACCENT, color: "white", opacity: saving ? 0.6 : 1 }}>
-          {saving ? "..." : "Guardar"}
-        </button>
-        <button onClick={onCancel} disabled={saving} className="text-xs px-3 py-2 rounded-lg hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED, opacity: saving ? 0.6 : 1 }}>
-          Cancelar
-        </button>
-      </div>
-    )
-  }
-  return (
-    <div className="flex items-center gap-2 text-sm group">
-      <HugeiconsIcon icon={icon} size={14} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
-      <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">{label}</span>
-      <span className="truncate" style={{ color: COLORS.CHARCOAL, fontWeight: bold ? 700 : 500 }}>{value}</span>
-      <button type="button" onClick={() => onEdit(field, value !== "—" ? value : "")}
-        className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-        <HugeiconsIcon icon={Edit01Icon} size={14} />
-      </button>
-    </div>
-  )
-}
-
-function Tag({ children, color }: { children: React.ReactNode; color?: string }) {
-  return (
-    <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
-      style={{ backgroundColor: color ? `color-mix(in srgb, ${color} 12%, transparent)` : "oklch(0.96 0 0)", color: color || COLORS.TEXT_MUTED }}>
-      {children}
-    </span>
-  )
-}
-
-function getFieldValue(datos: any, field: string): string {
-  if (!datos) return "—"
-  const val = datos.perfil_estudiante?.[field] ?? datos[field]
-  if (field === "edad" && val != null) return `${val} años`
-  return val ?? "—"
-}
-
-function fixImageUrl(url: string): string {
-  if (!url) return url
-  return url.replace(/^https?:\/\/localhost(?::\d+)?/, "")
 }

@@ -154,8 +154,8 @@ export const tallerService = {
     return res.data
   },
 
-  async verificarPago(id: string) {
-    const res = await api.post(`${PREFIX}/inscripciones-talleres/${id}/verificar-pago`)
+  async verificarPago(id: string, data?: Record<string, unknown>) {
+    const res = await api.post(`${PREFIX}/inscripciones-talleres/${id}/verificar-pago`, data || {})
     return res.data
   },
 

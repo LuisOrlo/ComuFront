@@ -35,7 +35,7 @@ function getNombrePersona(cuenta: any): string {
   return extractNombre(cuenta.matricula?.estudiante)
     || extractNombre(cuenta.solicitud_inscripcion?.estudiante)
     || extractNombre(cuenta.solicitud_inscripcion?.participante_externo)
-    || extractNombre(cuenta.inscripcion_taller?.participante)
+    || extractNombre(cuenta.inscripcion_taller)
     || extractNombre(cuenta.reserva_podcast?.persona)
     || extractNombre(cuenta.reserva_podcast?.cliente_externo)
     || extractNombre(cuenta.reserva_aula?.persona)

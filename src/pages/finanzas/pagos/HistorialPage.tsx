@@ -64,7 +64,7 @@ export function HistorialPage() {
     if (!cp) return t.estudiante_nombre || "—"
     const candidates = [
       cp.matricula?.estudiante, cp.solicitud_inscripcion?.estudiante,
-      cp.solicitud_inscripcion?.participante_externo, cp.inscripcion_taller?.participante,
+      cp.solicitud_inscripcion?.participante_externo, cp.inscripcion_taller,
       cp.reserva_podcast?.persona, cp.reserva_podcast?.cliente_externo,
       cp.reserva_aula?.persona, cp.reserva_aula?.cliente_externo,
     ]

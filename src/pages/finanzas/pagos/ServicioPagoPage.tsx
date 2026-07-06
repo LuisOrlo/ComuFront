@@ -146,7 +146,7 @@ export function ServicioPagoPage() {
         comprobanteUrl = res.data.data?.url || res.data.url || ""
       }
       await financeService.registrarPago({
-        cuenta_id: cuentaId,
+        cuenta_cobrar_id: cuentaId,
         monto: montoNum,
         metodo_pago: metodoPago,
         comprobante_url: comprobanteUrl || null,
