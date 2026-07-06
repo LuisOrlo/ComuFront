@@ -26,6 +26,11 @@ const ESTADO_BADGE: Record<string, { bg: string; text: string }> = {
   cancelado: { bg: "oklch(0.93 0.06 20)", text: "oklch(0.55 0.15 20)" },
 }
 
+const MODALIDAD_BADGE: Record<string, { bg: string; text: string }> = {
+  presencial: { bg: "oklch(0.9 0.06 250)", text: "oklch(0.4 0.14 250)" },
+  virtual: { bg: "oklch(0.92 0.08 290)", text: "oklch(0.45 0.15 290)" },
+}
+
 export function TalleresPage() {
   const navigate = useNavigate()
   const { isAdmin } = usePermission()
@@ -108,8 +113,6 @@ export function TalleresPage() {
       return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`
     } catch { return f }
   }
-
-  const formatHora = (h?: string) => h ? h.substring(0, 5) : "—"
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
@@ -206,7 +209,7 @@ export function TalleresPage() {
                     <th className="text-left font-semibold px-5 py-3" style={{ color: TEXT_MUTED }}>Taller</th>
                     <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Instructor</th>
                     <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Fecha</th>
-                    <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Horario</th>
+                    <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Modalidad</th>
                     <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Precio</th>
                     <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Inscritos</th>
                     <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Estado</th>
@@ -229,8 +232,14 @@ export function TalleresPage() {
                       <td className="px-4 py-3.5 whitespace-nowrap" style={{ color: CHARCOAL }}>
                         {t.fecha ? formatFecha(t.fecha) : "—"}{t.fecha_fin ? ` - ${formatFecha(t.fecha_fin)}` : ""}
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap" style={{ color: CHARCOAL }}>
-                        {t.fecha_fin ? `${t.horarios?.length || 0} días` : `${formatHora(t.hora_inicio)} - ${formatHora(t.hora_fin)}`}
+                      <td className="px-4 py-3.5">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize"
+                          style={{
+                            backgroundColor: MODALIDAD_BADGE[t.modalidad ?? ""]?.bg || "oklch(0.95 0 0)",
+                            color: MODALIDAD_BADGE[t.modalidad ?? ""]?.text || TEXT_MUTED,
+                          }}>
+                          {t.modalidad || "—"}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5 font-semibold" style={{ color: CHARCOAL }}>
                         ${Number(t.precio || 0).toFixed(2)}
@@ -248,7 +257,7 @@ export function TalleresPage() {
                             backgroundColor: ESTADO_BADGE[t.estado]?.bg || "oklch(0.95 0 0)",
                             color: ESTADO_BADGE[t.estado]?.text || TEXT_MUTED,
                           }}>
-                          {t.estado}
+                          {t.estado.charAt(0).toUpperCase() + t.estado.slice(1)}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-right">

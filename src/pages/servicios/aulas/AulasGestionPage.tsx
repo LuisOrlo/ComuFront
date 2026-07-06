@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon, Home02Icon, Money01Icon, UserGroupIcon, ArrowLeft02Icon } from "@hugeicons/core-free-icons"
@@ -83,14 +84,14 @@ export function AulasGestionPage() {
       <header className="shrink-0 px-8 py-7 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <a
-              href="/servicios/aulas"
+            <Link
+              to="/servicios/aulas"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all hover:bg-black/5 active:scale-[0.97] group"
               style={{ color: COLORS.CHARCOAL }}
             >
               <HugeiconsIcon icon={ArrowLeft02Icon} size={16} className="opacity-40 group-hover:opacity-70 transition-opacity" />
               <span className="text-xs font-bold opacity-40 group-hover:opacity-70 transition-opacity">Volver a Reservas</span>
-            </a>
+            </Link>
             <div className="h-8 w-px bg-gray-200" />
             <div className="space-y-0.5">
               
@@ -223,7 +224,7 @@ export function AulasGestionPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl"
+              className="relative bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
             >
               <div className="p-8 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div className="space-y-1">
@@ -237,55 +238,75 @@ export function AulasGestionPage() {
                 </button>
               </div>
 
-              <div className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Nombre del Aula</label>
-                      <input
-                        type="text"
-                        value={aulaForm.nombre}
-                        onChange={e => setAulaForm({ ...aulaForm, nombre: e.target.value })}
-                        className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        placeholder="Ej. Estudio de Producción A"
-                      />
+              <div className="p-8 space-y-6">
+                {/* Nombre del Aula */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Nombre del Aula</label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-4 text-charcoal/40 flex items-center pointer-events-none">
+                      <HugeiconsIcon icon={Home02Icon} size={18} />
                     </div>
+                    <input
+                      type="text"
+                      value={aulaForm.nombre}
+                      onChange={e => setAulaForm({ ...aulaForm, nombre: e.target.value })}
+                      className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                      placeholder="Ej. Estudio de Producción A"
+                    />
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Capacidad</label>
-                        <input
-                          type="number"
-                          value={aulaForm.capacidad}
-                          onChange={e => setAulaForm({ ...aulaForm, capacidad: parseInt(e.target.value) || 0 })}
-                          className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
+                {/* Grid Capacidad y Precio */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Capacidad (PAX)</label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-4 text-charcoal/40 flex items-center pointer-events-none">
+                        <HugeiconsIcon icon={UserGroupIcon} size={18} />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Precio por Hora ($)</label>
-                        <input
-                          type="number"
-                          value={aulaForm.precio_hora}
-                          onChange={e => setAulaForm({ ...aulaForm, precio_hora: parseFloat(e.target.value) || 0 })}
-                          className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                      </div>
+                      <input
+                        type="number"
+                        value={aulaForm.capacidad}
+                        onChange={e => setAulaForm({ ...aulaForm, capacidad: parseInt(e.target.value) || 0 })}
+                        className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                        placeholder="10"
+                        min="1"
+                      />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Características</label>
-                    <textarea
-                      value={aulaForm.caracteristicas}
-                      onChange={e => setAulaForm({ ...aulaForm, caracteristicas: e.target.value })}
-                      className="w-full h-[calc(100%-28px)] px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 resize-none"
-                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                      placeholder="Equipamiento, capacidad técnica, notas..."
-                    />
+                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Precio por Hora ($)</label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-4 text-charcoal/40 flex items-center pointer-events-none">
+                        <HugeiconsIcon icon={Money01Icon} size={18} />
+                      </div>
+                      <input
+                        type="number"
+                        value={aulaForm.precio_hora}
+                        onChange={e => setAulaForm({ ...aulaForm, precio_hora: parseFloat(e.target.value) || 0 })}
+                        className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
                   </div>
+                </div>
+
+                {/* Características */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Características / Equipamiento</label>
+                  <textarea
+                    value={aulaForm.caracteristicas}
+                    onChange={e => setAulaForm({ ...aulaForm, caracteristicas: e.target.value })}
+                    className="w-full h-32 px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 resize-none"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                    placeholder="Describe el equipamiento, capacidad técnica, proyector, sonido, aire acondicionado, etc..."
+                  />
                 </div>
               </div>
 

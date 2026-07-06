@@ -152,14 +152,13 @@ export function TallerFormPage() {
   }, [])
 
   const toggleDia = (dia: number) => {
-    setDiasSeleccionados(prev => {
-      if (prev.includes(dia)) {
-        setHorarios(h => h.filter(x => x.dia_semana !== dia))
-        return prev.filter(d => d !== dia)
-      }
+    if (diasSeleccionados.includes(dia)) {
+      setHorarios(h => h.filter(x => x.dia_semana !== dia))
+      setDiasSeleccionados(prev => prev.filter(d => d !== dia))
+    } else {
       setHorarios(h => [...h, { dia_semana: dia, hora_inicio: form.hora_inicio, hora_fin: form.hora_fin, aula: "" }])
-      return [...prev, dia].sort()
-    })
+      setDiasSeleccionados(prev => [...prev, dia].sort())
+    }
   }
 
   const updateHorario = (dia: number, field: "hora_inicio" | "hora_fin" | "aula", value: string) => {
@@ -185,8 +184,12 @@ export function TallerFormPage() {
       if (!multiDia) {
         delete data.fecha_fin
       }
-      if (multiDia && horarios.length > 0) {
-        data.horarios = horarios
+      if (multiDia) {
+        if (horarios.length > 0) {
+          data.hora_inicio = horarios[0].hora_inicio
+          data.hora_fin = horarios[0].hora_fin
+          data.horarios = horarios
+        }
       }
       if (isEdit) {
         await tallerService.actualizar(id!, data)

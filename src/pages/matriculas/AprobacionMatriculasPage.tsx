@@ -91,7 +91,7 @@ export function AprobacionMatriculasPage() {
     setEditTallerField(null); setEditTallerVal(""); setTallerEditId(null)
   }
 
-  const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string; paymentMonto?: number; paymentTipo?: string; paymentMetodo?: string } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [expandedComprobante, setExpandedComprobante] = useState(false)
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
@@ -444,6 +444,14 @@ export function AprobacionMatriculasPage() {
     if (!confirmAction) return
     setActionLoading(true)
     try {
+      if (confirmAction.paymentMonto !== undefined) {
+        await tallerService.actualizarInscripcion(confirmAction.id, {
+          monto_pagado: confirmAction.paymentMonto,
+          tipo_pago: confirmAction.paymentTipo,
+          metodo_pago: confirmAction.paymentMetodo,
+          fecha_pago: new Date().toISOString().split("T")[0],
+        })
+      }
       await tallerService.verificarPago(confirmAction.id)
       toast.success("Pago de taller verificado correctamente")
       setConfirmAction(null)
@@ -645,7 +653,7 @@ export function AprobacionMatriculasPage() {
                            onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
                            onChange={setEditTallerVal} onSave={saveTallerEdit}
                            onCancel={cancelTallerEdit}
-                           onApprove={() => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller" })}
+                            onApprove={(monto, tipoPago, metodo) => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller", paymentMonto: monto, paymentTipo: tipoPago, paymentMetodo: metodo })}
                            onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
                            onExpandImage={setExpandedImageUrl}
                          />
@@ -1422,7 +1430,7 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
   ins: any; isExpanded: boolean; puedeVerificar: boolean
   editTallerField: string | null; editTallerVal: string; savingTallerEdit: boolean
   onToggle: () => void; onEdit: (f: string, v: string) => void; onChange: (v: string) => void
-  onSave: () => void; onCancel: () => void; onApprove: () => void; onReject: () => void
+  onSave: () => void; onCancel: () => void; onApprove: (monto: number, tipoPago: string, metodoPago: string) => void; onReject: () => void
   onExpandImage?: (url: string) => void
 }) {
   const cedulaRef = useRef<HTMLInputElement>(null)
@@ -1432,6 +1440,7 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
   const [expandedComprobante, setExpandedComprobante] = useState(false)
 
   const [, forceUpdate] = useState(0)
+  const [tallerMonto, setTallerMonto] = useState(String(ins.monto_pagado || ins.taller?.precio || 0))
 
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1522,11 +1531,44 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
             <InfoItem icon={PaymentIcon} label="Precio" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold />
           </Section>
           <Section title="Pago" icon={PaymentIcon}>
-            <div className="grid grid-cols-2 gap-3">
-              <InfoItem icon={PaymentIcon} label="Monto" value={`$${Number(ins.monto_pagado || 0).toFixed(2)}`} bold />
-              <InfoItem icon={PaymentIcon} label="Tipo" value={ins.tipo_pago || "—"} />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs">
+                <HugeiconsIcon icon={PaymentIcon} size={13} className="shrink-0" style={{ color: COLORS.TEXT_MUTED }} />
+                <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0">Precio taller</span>
+                <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${Number(ins.taller?.precio || 0).toFixed(2)}</span>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
+                  Monto a cobrar
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={tallerMonto}
+                    onChange={e => setTallerMonto(e.target.value)}
+                    onWheel={e => (e.target as HTMLElement).blur()}
+                    className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span style={{ color: COLORS.TEXT_MUTED }}>Tipo de pago</span>
+                <span
+                  className="text-xs font-bold px-2 py-1 rounded-lg"
+                  style={{
+                    backgroundColor: Number(tallerMonto) >= Number(ins.taller?.precio || 0) ? "oklch(0.55 0.15 150 / 0.12)" : "oklch(0.65 0.15 75 / 0.12)",
+                    color: Number(tallerMonto) >= Number(ins.taller?.precio || 0) ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)",
+                  }}
+                >
+                  {Number(tallerMonto) >= Number(ins.taller?.precio || 0) ? "COMPLETO" : "ABONO"}
+                </span>
+              </div>
+              <InfoItem icon={PaymentIcon} label="Método de pago" value={ins.metodo_pago || "—"} />
               <InfoItem icon={CalendarIcon} label="Fecha de Pago" value={formatDate(ins.fecha_pago)} />
-              <InfoItem icon={PaymentIcon} label="Método" value={ins.metodo_pago || "—"} />
             </div>
             <div className="mt-3 space-y-2">
               <div className="flex gap-2">
@@ -1588,7 +1630,11 @@ function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerFiel
                 style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
                 <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
               </button>
-              <button onClick={onApprove}
+              <button onClick={() => {
+                const monto = parseFloat(tallerMonto) || 0
+                const tipoPago = monto >= Number(ins.taller?.precio || 0) ? "completo" : "abono"
+                onApprove(monto, tipoPago, ins.metodo_pago || "efectivo")
+              }}
                 className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97]"
                 style={{ backgroundColor: COLORS.ACCENT }}>
                 <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Verificar Pago

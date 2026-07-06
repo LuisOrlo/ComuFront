@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react"
+import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Link03Icon, UserIcon, GraduationCapIcon,
@@ -501,7 +502,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       )}
 
       {paso === 2 && (
-        <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="rounded-xl border p-5 space-y-6 bg-white shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="flex items-center gap-0">
             {[{ key: "modalidad", label: "Modalidad" }, { key: "ciudad", label: "Ciudad" }, { key: "tipo", label: "Tipo" }, { key: "catalogo", label: "Curso" }, { key: "lista", label: "Disponibles" }].map((s, i) => {
               const stepOrder = ["modalidad", "ciudad", "tipo", "catalogo", "lista"]
@@ -524,173 +525,227 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             })}
           </div>
 
-          {subStep === "modalidad" && (
-            <div className="space-y-4">
-              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu modalidad</p>
-              <div className="grid grid-cols-2 gap-3">
-                {["presencial", "virtual"].map(mod => (
-                  <button key={mod} onClick={() => { setSelectedModalidad(mod); setSelectedCiudadId(null); setSelectedCiudadNombre(""); setSelectedTipo(""); setCatalogoFilter(""); setSelectedCatalogoNombre(""); if (mod === "virtual") { setSubStep("tipo") } else setSubStep("ciudad") }}
-                    className="rounded-xl border-2 p-6 text-center cursor-pointer transition-all hover:shadow-md"
-                    style={{ borderColor: selectedModalidad === mod ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
-                    <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3"
-                      style={{ backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 15%, transparent)` : "oklch(0.93 0 0)" }}>
-                      <HugeiconsIcon icon={mod === "presencial" ? UserIcon : GraduationCapIcon} size={22}
-                        style={{ color: selectedModalidad === mod ? COLORS.ACCENT : "oklch(0.55 0 0)" }} />
-                    </div>
-                    <div className="text-sm font-bold" style={{ color: selectedModalidad === mod ? COLORS.ACCENT : COLORS.CHARCOAL }}>
-                      {mod === "presencial" ? "Presencial" : "Virtual"}
-                    </div>
-                    <div className="text-[11px] mt-1" style={{ color: COLORS.TEXT_MUTED }}>
-                      {mod === "presencial" ? "Clases en nuestras instalaciones con instructor en vivo" : "Clases en línea en vivo desde cualquier lugar"}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-              {subStep === "ciudad" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
-                <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
-                <button onClick={() => setSubStep("modalidad")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Regresar</button>
-              </div>
-              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona la ciudad donde deseas estudiar</p>
-              <p className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>Las ciudades mostradas cuentan actualmente con cursos, talleres o cursos personalizados disponibles.</p>
-              {ciudades.length === 0 ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
-                  {loadingCursos ? "Cargando ciudades..." : "No hay ciudades disponibles"}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {ciudades.map(c => (
-                    <button key={c.id} onClick={() => { setSelectedCiudadId(c.id); setSelectedCiudadNombre(c.nombre); setSubStep("tipo") }}
-                      className="px-4 py-3 rounded-lg text-sm font-medium border transition-all hover:shadow-sm text-left"
-                      style={{ borderColor: selectedCiudadId === c.id ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedCiudadId === c.id ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white", color: selectedCiudadId === c.id ? COLORS.ACCENT : COLORS.CHARCOAL }}>
-                      {c.nombre}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {subStep === "tipo" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
-                <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
-                {selectedModalidad === "presencial" && (
-                  <>
-                    <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>|</span>
-                    <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Ciudad:</span>
-                    <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedCiudadNombre}</span>
-                  </>
-                )}
-                <button onClick={() => selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
-              </div>
-              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona el tipo de programa que deseas estudiar</p>
-              {loadingCursos ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Verificando programas disponibles...</div>
-              ) : availableTipos.length === 0 ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay programas disponibles para esta modalidad{selectedModalidad === "presencial" && selectedCiudadNombre ? " y ciudad" : ""}</div>
-              ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {availableTipos.map(t => (
-                  <button key={t.key} onClick={() => { setSelectedTipo(t.key); setCatalogoFilter(""); setSelectedCatalogoNombre(""); setSelectedCourseId(""); setSubStep(t.key === "taller" ? "lista" : "catalogo") }}
-                    className="rounded-xl border-2 p-6 text-center cursor-pointer transition-all hover:shadow-md"
-                    style={{ borderColor: selectedTipo === t.key ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedTipo === t.key ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
-                    <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3"
-                      style={{ backgroundColor: selectedTipo === t.key ? `color-mix(in srgb, ${COLORS.ACCENT} 15%, transparent)` : "oklch(0.93 0 0)" }}>
-                      <HugeiconsIcon icon={GraduationCapIcon} size={22}
-                        style={{ color: selectedTipo === t.key ? COLORS.ACCENT : "oklch(0.55 0 0)" }} />
-                    </div>
-                    <div className="text-sm font-bold" style={{ color: selectedTipo === t.key ? COLORS.ACCENT : COLORS.CHARCOAL }}>
-                      {t.label}
-                    </div>
-                    <div className="text-[11px] mt-1" style={{ color: COLORS.TEXT_MUTED }}>{t.desc}</div>
-                  </button>
-                  ))}
-                </div>
-            )}
-            </div>
-          )}
-
-          {subStep === "catalogo" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
-                <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
-                {selectedModalidad === "presencial" && (
-                  <>
-                    <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>|</span>
-                    <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Ciudad:</span>
-                    <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedCiudadNombre}</span>
-                  </>
-                )}
-                <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>|</span>
-                <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedTipo === "curso" ? "Curso" : selectedTipo === "taller" ? "Taller" : "Personalizado"}</span>
-                <button onClick={() => setSubStep("tipo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
-              </div>
-              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona el curso que deseas estudiar</p>
-              {loadingCursos ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando cursos...</div>
-              ) : catalogos.length === 0 ? (
-                <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay cursos disponibles</div>
-              ) : (() => {
-                const availableCatalogoIds = new Set(cursosAbiertos.map(c => c.catalogo?.id).filter(Boolean))
-                const filtrados = catalogos
-                  .filter(c => c.es_activo !== false)
-                  .filter(c => c.categoria === (selectedTipo === "curso" ? "regular" : selectedTipo))
-                  .filter(c => availableCatalogoIds.has(c.id))
-                if (filtrados.length === 0) {
-                  return <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay {selectedTipo === "curso" ? "cursos" : selectedTipo === "taller" ? "talleres" : "cursos personalizados"} disponibles para esta ciudad y modalidad</div>
-                }
-                return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-1">
-                  {filtrados.map(cat => (
-                    <button key={cat.id} onClick={() => { setCatalogoFilter(cat.id); setSelectedCatalogoNombre(cat.nombre); setSubStep("lista") }}
-                      className="rounded-lg border-2 p-4 cursor-pointer transition-all hover:shadow-md text-left"
-                      style={{ borderColor: catalogoFilter === cat.id ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: catalogoFilter === cat.id ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold leading-snug" style={{ color: catalogoFilter === cat.id ? COLORS.ACCENT : COLORS.CHARCOAL }}>{cat.nombre}</span>
-                        <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded" style={{
-                          backgroundColor: cat.categoria === "regular" ? "oklch(0.92 0.08 220)" : cat.categoria === "taller" ? "oklch(0.92 0.05 80)" : "oklch(0.92 0.05 160)",
-                          color: cat.categoria === "regular" ? "oklch(0.45 0.12 220)" : cat.categoria === "taller" ? "oklch(0.55 0.12 70)" : "oklch(0.45 0.12 160)"
-                        }}>
-                          {cat.categoria === "regular" ? "Curso" : cat.categoria === "taller" ? "Taller" : "Personalizado"}
-                        </span>
+          <AnimatePresence mode="wait">
+            {subStep === "modalidad" && (
+              <motion.div
+                key="modalidad"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-4"
+              >
+                <p className="text-sm font-medium" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu modalidad</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {["presencial", "virtual"].map(mod => (
+                    <button key={mod} onClick={() => { setSelectedModalidad(mod); setSelectedCiudadId(null); setSelectedCiudadNombre(""); setSelectedTipo(""); setCatalogoFilter(""); setSelectedCatalogoNombre(""); if (mod === "virtual") { setSubStep("tipo") } else setSubStep("ciudad") }}
+                      className="rounded-xl border-2 p-6 text-center cursor-pointer transition-all hover:shadow-md active:scale-[0.98]"
+                      style={{ borderColor: selectedModalidad === mod ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
+                      <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3"
+                        style={{ backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 15%, transparent)` : "oklch(0.93 0 0)" }}>
+                        <HugeiconsIcon icon={mod === "presencial" ? UserIcon : GraduationCapIcon} size={22}
+                          style={{ color: selectedModalidad === mod ? COLORS.ACCENT : "oklch(0.55 0 0)" }} />
                       </div>
-                      {cat.descripcion && <p className="text-[11px] mt-1.5 line-clamp-2" style={{ color: COLORS.TEXT_MUTED }}>{cat.descripcion}</p>}
+                      <div className="text-sm font-bold" style={{ color: selectedModalidad === mod ? COLORS.ACCENT : COLORS.CHARCOAL }}>
+                        {mod === "presencial" ? "Presencial" : "Virtual"}
+                      </div>
+                      <div className="text-[11px] mt-1" style={{ color: COLORS.TEXT_MUTED }}>
+                        {mod === "presencial" ? "Clases en nuestras instalaciones con instructor en vivo" : "Clases en línea en vivo desde cualquier lugar"}
+                      </div>
                     </button>
                   ))}
                 </div>
-              )})()}
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {subStep === "lista" && (
-            <>
-              <div className="flex items-center gap-2 flex-wrap">
-                {selectedTipo === "taller" ? (
-                  <>
-                    <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-                    <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>Taller</span>
-                    <button onClick={() => setSubStep("tipo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
-                  </>
+            {subStep === "ciudad" && (
+              <motion.div
+                key="ciudad"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
+                  <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
+                  <button onClick={() => setSubStep("modalidad")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Regresar</button>
+                </div>
+                <p className="text-sm font-medium" style={{ color: COLORS.TEXT_MUTED }}>Selecciona la ciudad donde deseas estudiar</p>
+                <p className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>Las ciudades mostradas cuentan actualmente con cursos, talleres o cursos personalizados disponibles.</p>
+                {ciudades.length === 0 ? (
+                  <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                    {loadingCursos ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="h-12 rounded-lg bg-gray-50 border animate-pulse" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                        ))}
+                      </div>
+                    ) : "No hay ciudades disponibles"}
+                  </div>
                 ) : (
-                  <>
-                    <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Curso seleccionado:</span>
-                    <span className="text-sm font-bold" style={{ color: COLORS.ACCENT }}>{selectedCatalogoNombre}</span>
-                    <button onClick={() => setSubStep("catalogo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
-                  </>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {ciudades.map(c => (
+                      <button key={c.id} onClick={() => { setSelectedCiudadId(c.id); setSelectedCiudadNombre(c.nombre); setSubStep("tipo") }}
+                        className="px-4 py-3 rounded-lg text-sm font-medium border transition-all hover:shadow-sm text-left active:scale-[0.98]"
+                        style={{ borderColor: selectedCiudadId === c.id ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedCiudadId === c.id ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white", color: selectedCiudadId === c.id ? COLORS.ACCENT : COLORS.CHARCOAL }}>
+                        {c.nombre}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1">
+              </motion.div>
+            )}
+
+            {subStep === "tipo" && (
+              <motion.div
+                key="tipo"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
+                  <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
+                  {selectedModalidad === "presencial" && (
+                    <>
+                      <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>|</span>
+                      <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Ciudad:</span>
+                      <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedCiudadNombre}</span>
+                    </>
+                  )}
+                  <button onClick={() => selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
+                </div>
+                <p className="text-sm font-medium" style={{ color: COLORS.TEXT_MUTED }}>Selecciona el tipo de programa que deseas estudiar</p>
                 {loadingCursos ? (
-                  <div className="col-span-full py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-32 rounded-xl bg-gray-50 border animate-pulse" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                    ))}
+                  </div>
+                ) : availableTipos.length === 0 ? (
+                  <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay programas disponibles para esta modalidad{selectedModalidad === "presencial" && selectedCiudadNombre ? " y ciudad" : ""}</div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {availableTipos.map(t => (
+                      <button key={t.key} onClick={() => { setSelectedTipo(t.key); setCatalogoFilter(""); setSelectedCatalogoNombre(""); setSelectedCourseId(""); setSubStep(t.key === "taller" ? "lista" : "catalogo") }}
+                        className="rounded-xl border-2 p-6 text-center cursor-pointer transition-all hover:shadow-md active:scale-[0.98]"
+                        style={{ borderColor: selectedTipo === t.key ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedTipo === t.key ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
+                        <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3"
+                          style={{ backgroundColor: selectedTipo === t.key ? `color-mix(in srgb, ${COLORS.ACCENT} 15%, transparent)` : "oklch(0.93 0 0)" }}>
+                          <HugeiconsIcon icon={GraduationCapIcon} size={22}
+                            style={{ color: selectedTipo === t.key ? COLORS.ACCENT : "oklch(0.55 0 0)" }} />
+                        </div>
+                        <div className="text-sm font-bold" style={{ color: selectedTipo === t.key ? COLORS.ACCENT : COLORS.CHARCOAL }}>
+                          {t.label}
+                        </div>
+                        <div className="text-[11px] mt-1" style={{ color: COLORS.TEXT_MUTED }}>{t.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {subStep === "catalogo" && (
+              <motion.div
+                key="catalogo"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
+                  <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
+                  {selectedModalidad === "presencial" && (
+                    <>
+                      <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>|</span>
+                      <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Ciudad:</span>
+                      <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedCiudadNombre}</span>
+                    </>
+                  )}
+                  <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>|</span>
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
+                  <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{selectedTipo === "curso" ? "Curso" : selectedTipo === "taller" ? "Taller" : "Personalizado"}</span>
+                  <button onClick={() => setSubStep("tipo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
+                </div>
+                <p className="text-sm font-medium" style={{ color: COLORS.TEXT_MUTED }}>Selecciona el curso que deseas estudiar</p>
+                {loadingCursos ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-24 rounded-lg bg-gray-50 border animate-pulse" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                    ))}
+                  </div>
+                ) : catalogos.length === 0 ? (
+                  <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay cursos disponibles</div>
+                ) : (() => {
+                  const availableCatalogoIds = new Set(cursosAbiertos.map(c => c.catalogo?.id).filter(Boolean))
+                  const filtrados = catalogos
+                    .filter(c => c.es_activo !== false)
+                    .filter(c => c.categoria === (selectedTipo === "curso" ? "regular" : selectedTipo))
+                    .filter(c => availableCatalogoIds.has(c.id))
+                  if (filtrados.length === 0) {
+                    return <div className="py-8 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>No hay {selectedTipo === "curso" ? "cursos" : selectedTipo === "taller" ? "talleres" : "cursos personalizados"} disponibles para esta ciudad y modalidad</div>
+                  }
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-1">
+                      {filtrados.map(cat => (
+                        <button key={cat.id} onClick={() => { setCatalogoFilter(cat.id); setSelectedCatalogoNombre(cat.nombre); setSubStep("lista") }}
+                          className="rounded-lg border-2 p-4 cursor-pointer transition-all hover:shadow-md text-left active:scale-[0.98]"
+                          style={{ borderColor: catalogoFilter === cat.id ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: catalogoFilter === cat.id ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold leading-snug" style={{ color: catalogoFilter === cat.id ? COLORS.ACCENT : COLORS.CHARCOAL }}>{cat.nombre}</span>
+                            <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded" style={{
+                              backgroundColor: cat.categoria === "regular" ? "oklch(0.92 0.08 220)" : cat.categoria === "taller" ? "oklch(0.92 0.05 80)" : "oklch(0.92 0.05 160)",
+                              color: cat.categoria === "regular" ? "oklch(0.45 0.12 220)" : cat.categoria === "taller" ? "oklch(0.55 0.12 70)" : "oklch(0.45 0.12 160)"
+                            }}>
+                              {cat.categoria === "regular" ? "Curso" : cat.categoria === "taller" ? "Taller" : "Personalizado"}
+                            </span>
+                          </div>
+                          {cat.descripcion && <p className="text-[11px] mt-1.5 line-clamp-2" style={{ color: COLORS.TEXT_MUTED }}>{cat.descripcion}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </motion.div>
+            )}
+
+            {subStep === "lista" && (
+              <motion.div
+                key="lista"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedTipo === "taller" ? (
+                    <>
+                      <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
+                      <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>Taller</span>
+                      <button onClick={() => setSubStep("tipo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Curso seleccionado:</span>
+                      <span className="text-sm font-bold" style={{ color: COLORS.ACCENT }}>{selectedCatalogoNombre}</span>
+                      <button onClick={() => setSubStep("catalogo")} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
+                    </>
+                  )}
+                </div>
+                {loadingCursos ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-32 rounded-lg bg-gray-50 border animate-pulse" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                    ))}
+                  </div>
                 ) : (() => {
                   const items: { tipo: "curso" | "taller"; id: string }[] = []
                   if (selectedTipo === "taller") {
@@ -718,65 +773,69 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                     )
                   }
 
-                  return items.map(item => {
-                    const selected = selectedCourseId === item.id
-                    if (item.tipo === "taller") {
-                      const t = talleres.find(t => t.id === item.id)
-                      if (!t) return null
-                      return (
-                        <div key={t.id} onClick={() => setSelectedCourseId(t.id)}
-                          className="rounded-lg border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md relative"
-                          style={{ borderTopColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderRightColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderBottomColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
-                          <div className="flex justify-between items-start">
-                            <div className="min-w-0 flex-1">
-                              <div className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1"
-                                style={{ backgroundColor: "oklch(0.92 0.05 80)", color: "oklch(0.55 0.12 70)" }}>Taller</div>
-                              <h3 className="text-sm font-bold leading-tight" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{t.nombre}</h3>
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1">
+                      {items.map(item => {
+                        const selected = selectedCourseId === item.id
+                        if (item.tipo === "taller") {
+                          const t = talleres.find(t => t.id === item.id)
+                          if (!t) return null
+                          return (
+                            <div key={t.id} onClick={() => setSelectedCourseId(t.id)}
+                              className="rounded-lg border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98]"
+                              style={{ borderTopColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderRightColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderBottomColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
+                              <div className="flex justify-between items-start">
+                                <div className="min-w-0 flex-1">
+                                  <div className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1"
+                                    style={{ backgroundColor: "oklch(0.92 0.05 80)", color: "oklch(0.55 0.12 70)" }}>Taller</div>
+                                  <h3 className="text-sm font-bold leading-tight" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{t.nombre}</h3>
+                                </div>
+                                <div className="text-sm font-black text-emerald-600 ml-1 shrink-0">${Number(t.precio || 0).toFixed(2)}</div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-2 mt-2 text-xs">
+                                <div className="col-span-2"><span className="font-semibold text-orange-600">Instructor: </span>{t.instructor ? `${t.instructor.nombres} ${t.instructor.apellidos}` : "Por asignar"}</div>
+                                <div className="mt-1"><span className="font-semibold text-blue-600">Fecha: </span>{t.fecha ? new Date(t.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                <div className="mt-1"><span className="font-semibold text-blue-600">Horario: </span>{t.hora_inicio?.substring(0, 5)} - {t.hora_fin?.substring(0, 5)}</div>
+                                <div className="col-span-2 mt-1"><span className="font-semibold text-purple-600">Modalidad: </span>{(t.modalidad || "").toUpperCase()}</div>
+                              </div>
+                              {selected && <div className="absolute top-1 right-1"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
                             </div>
-                            <div className="text-sm font-black text-emerald-600 ml-1 shrink-0">${Number(t.precio || 0).toFixed(2)}</div>
+                          )
+                        }
+                        const ca = cursosAbiertos.find(c => c.id === item.id)
+                        if (!ca) return null
+                        const horario = ca.horarios?.[0]
+                        return (
+                          <div key={ca.id} onClick={() => setSelectedCourseId(ca.id)}
+                            className="rounded-lg border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98]"
+                            style={{ borderColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
+                            <div className="flex justify-between items-start">
+                              <div className="min-w-0 flex-1">
+                                <div className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1"
+                                  style={{ backgroundColor: "oklch(0.92 0.08 220)", color: "oklch(0.45 0.12 220)" }}>Curso</div>
+                                <h3 className="text-sm font-bold leading-tight" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
+                              </div>
+                              <div className="text-sm font-black text-emerald-600 ml-1 shrink-0">${Number(ca.precio_base || 0).toFixed(2)}</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-2 mt-2 text-xs">
+                              <div className="col-span-2"><span className="font-semibold text-orange-600">Instructor: </span>{ca.docente?.nombres} {ca.docente?.apellidos || "Por asignar"}</div>
+                              <div className="mt-1"><span className="font-semibold text-blue-600">Inicio: </span>{ca.fecha_inicio ? new Date(ca.fecha_inicio).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}</div>
+                              <div className="mt-1"><span className="font-semibold text-blue-600">Fin: </span>{ca.fecha_fin ? new Date(ca.fecha_fin).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}</div>
+                              <div className="col-span-2 mt-1"><span className="font-semibold text-purple-600">Modalidad: </span>{(ca.modalidad || "").toUpperCase()}</div>
+                              {horario && <div className="col-span-2 mt-1"><span className="font-semibold text-gray-500">Horario: </span>{horario.dia} | {horario.hora_inicio?.substring(0, 5)} - {horario.hora_fin?.substring(0, 5)}</div>}
+                            </div>
+                            {selected && <div className="absolute top-0.5 right-0.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
                           </div>
-                          <div className="grid grid-cols-2 gap-x-2 mt-2 text-xs">
-                            <div className="col-span-2"><span className="font-semibold text-orange-600">Instructor: </span>{t.instructor ? `${t.instructor.nombres} ${t.instructor.apellidos}` : "Por asignar"}</div>
-                            <div className="mt-1"><span className="font-semibold text-blue-600">Fecha: </span>{t.fecha ? new Date(t.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
-                            <div className="mt-1"><span className="font-semibold text-blue-600">Horario: </span>{t.hora_inicio?.substring(0, 5)} - {t.hora_fin?.substring(0, 5)}</div>
-                            <div className="col-span-2 mt-1"><span className="font-semibold text-purple-600">Modalidad: </span>{(t.modalidad || "").toUpperCase()}</div>
-                          </div>
-                          {selected && <div className="absolute top-1 right-1"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
-                        </div>
-                      )
-                    }
-                    const ca = cursosAbiertos.find(c => c.id === item.id)
-                    if (!ca) return null
-                    const horario = ca.horarios?.[0]
-                    return (
-                      <div key={ca.id} onClick={() => setSelectedCourseId(ca.id)}
-                        className="rounded-lg border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md relative"
-                        style={{ borderColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
-                        <div className="flex justify-between items-start">
-                          <div className="min-w-0 flex-1">
-                            <div className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1"
-                              style={{ backgroundColor: "oklch(0.92 0.08 220)", color: "oklch(0.45 0.12 220)" }}>Curso</div>
-                            <h3 className="text-sm font-bold leading-tight" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
-                          </div>
-                          <div className="text-sm font-black text-emerald-600 ml-1 shrink-0">${Number(ca.precio_base || 0).toFixed(2)}</div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-2 mt-2 text-xs">
-                          <div className="col-span-2"><span className="font-semibold text-orange-600">Instructor: </span>{ca.docente?.nombres} {ca.docente?.apellidos || "Por asignar"}</div>
-                          <div className="mt-1"><span className="font-semibold text-blue-600">Inicio: </span>{ca.fecha_inicio ? new Date(ca.fecha_inicio).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}</div>
-                          <div className="mt-1"><span className="font-semibold text-blue-600">Fin: </span>{ca.fecha_fin ? new Date(ca.fecha_fin).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}</div>
-                          <div className="col-span-2 mt-1"><span className="font-semibold text-purple-600">Modalidad: </span>{(ca.modalidad || "").toUpperCase()}</div>
-                          {horario && <div className="col-span-2 mt-1"><span className="font-semibold text-gray-500">Horario: </span>{horario.dia} | {horario.hora_inicio?.substring(0, 5)} - {horario.hora_fin?.substring(0, 5)}</div>}
-                        </div>
-                        {selected && <div className="absolute top-0.5 right-0.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
-                      </div>
-                    )
-                  })
+                        )
+                      })}
+                    </div>
+                  )
                 })()}
-              </div>
-            </>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div className="flex justify-between pt-2">
+          <div className="flex justify-between pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <button onClick={() => {
               if (subStep === "modalidad") setPaso(1)
               else if (subStep === "ciudad") setSubStep("modalidad")
@@ -789,7 +848,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                 if (selectedTipo === "taller") setSubStep("tipo")
                 else setSubStep("catalogo")
               }
-            }} className="px-4 py-2 rounded-lg text-xs font-semibold border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            }} className="px-4 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               Anterior
             </button>
             <button onClick={() => {
@@ -805,7 +864,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               }
               else if (subStep === "catalogo" && catalogoFilter) setSubStep("lista")
             }} disabled={subStep === "modalidad" ? !selectedModalidad : subStep === "ciudad" ? !selectedCiudadId : subStep === "tipo" ? !selectedTipo : subStep === "catalogo" ? !catalogoFilter : !selectedCourseId}
-              className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: COLORS.ACCENT }}>
+              className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 transition-all active:scale-[0.98]" style={{ backgroundColor: COLORS.ACCENT }}>
               {subStep === "lista" ? "Siguiente" : "Continuar"}
             </button>
           </div>

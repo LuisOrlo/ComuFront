@@ -53,8 +53,8 @@ export function TareaFormPanel({ isOpen, tarea, staff, onClose, onSave }: TareaF
       setPersonaId(tarea.persona_id)
       const p = staff.find((s) => s.id === tarea.persona_id)
       setPersonaSearch(p ? p.nombre_completo : "")
-      setFechaInicio(tarea.fecha_inicio)
-      setFechaFin(tarea.fecha_fin || "")
+      setFechaInicio(tarea.fecha_inicio?.split("T")[0] || "")
+      setFechaFin(tarea.fecha_fin?.split("T")[0] || "")
     } else {
       resetForm()
     }

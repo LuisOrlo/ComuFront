@@ -8,7 +8,6 @@ import {
   ClockIcon,
   UserIcon,
   LocationIcon,
-  MoneyIcon,
   NoteIcon,
   CapIcon,
   Download01Icon,
@@ -173,9 +172,8 @@ export function CursoDetailPage() {
           {tab === "info" && (
             <div className="space-y-6">
               {/* Stats row */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 <StatCard icon={<HugeiconsIcon icon={CapIcon} size={18} />} label="Capacidad" value={`${curso.estudiantes}/${curso.capacidad}`} subtitle={progreso > 0 ? `${progreso}% ocupado` : undefined} />
-                <StatCard icon={<HugeiconsIcon icon={MoneyIcon} size={18} />} label="Precio base" value={`$${curso.precioBase.toFixed(2)}`} />
                 <StatCard icon={<HugeiconsIcon icon={CalendarIcon} size={18} />} label="Inicio" value={curso.fechaInicio ? new Date(curso.fechaInicio + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
                 <StatCard icon={<HugeiconsIcon icon={CalendarIcon} size={18} />} label="Fin" value={curso.fechaFin ? new Date(curso.fechaFin + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
                 <StatCard icon={<HugeiconsIcon icon={ClockIcon} size={18} />} label="Horario" value={curso.horaInicio && curso.horaFin ? `${curso.horaInicio} - ${curso.horaFin}` : "—"} />
@@ -189,7 +187,34 @@ export function CursoDetailPage() {
                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${curso.totalModulos > 0 ? (curso.moduloActual / curso.totalModulos) * 100 : 0}%`, backgroundColor: COLORS.ACCENT }} />
                    </div>
                    <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>{curso.moduloActual}/{curso.totalModulos}</span>
-                 </div>
+               </div>
+                </div>
+
+               {/* Precios de módulos */}
+               <div className="p-5 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
+                 <h3 className="text-sm font-semibold mb-3" style={{ color: COLORS.CHARCOAL }}>Precios de módulos por persona</h3>
+                 {modulos.length === 0 ? (
+                   <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Sin módulos asignados</p>
+                 ) : (
+                   <div className="space-y-2">
+                      {[...modulos].sort((a, b) => (a.numero_orden ?? 999) - (b.numero_orden ?? 999)).map((mod, idx) => (
+                        <div key={mod.id} className="flex items-center justify-between py-1">
+                         <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>
+                           {mod.numero_orden || idx + 1}. {mod.nombre_modulo || "Sin definir"}
+                         </span>
+                         <span className="text-sm font-semibold" style={{ color: COLORS.ACCENT }}>
+                           {mod.precio_base != null ? `$${Number(mod.precio_base).toFixed(2)}` : "—"}
+                         </span>
+                       </div>
+                     ))}
+                     <div className="border-t pt-2 mt-2 flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                       <span className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Total</span>
+                       <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
+                         ${modulos.reduce((sum, m) => sum + (Number(m.precio_base) || 0), 0).toFixed(2)}
+                       </span>
+                     </div>
+                   </div>
+                 )}
                </div>
 
                {/* Horarios y días */}
@@ -240,8 +265,8 @@ export function CursoDetailPage() {
                   <p className="text-sm font-medium">Sin módulos asignados</p>
                 </div>
                ) : (
-                   modulos.map((mod, idx: number) => {
-                   const estado = calcularEstadoModulo(mod.fecha_inicio, mod.fecha_fin)
+                   [...modulos].sort((a, b) => (a.numero_orden ?? 999) - (b.numero_orden ?? 999)).map((mod, idx: number) => {
+                    const estado = calcularEstadoModulo(mod.fecha_inicio, mod.fecha_fin)
                    return (
                       <div key={mod.id} className="p-5 rounded-xl border hover:shadow-sm transition-shadow" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}>
                         <div className="flex items-center gap-3 mb-4">

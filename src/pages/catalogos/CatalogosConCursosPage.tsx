@@ -153,7 +153,7 @@ export function CatalogosConCursosPage() {
     setCatalogoForm({
       nombre: cat.nombre,
       descripcion: cat.descripcion || "",
-      categoria: cat.categoria as Categoria,
+      categoria: "regular",
       imagen: cat.imagen || "",
       imagenFile: null,
       color: cat.color || "#3B82F6",
@@ -169,10 +169,6 @@ export function CatalogosConCursosPage() {
     setCatalogoForm(emptyForm)
     setCatalogoTouched({})
     setCatalogoFieldErrors({})
-  }
-
-  const handleCategoriaChange = (cat: Categoria) => {
-    setCatalogoForm((prev) => ({ ...prev, categoria: cat }))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,7 +204,7 @@ export function CatalogosConCursosPage() {
       const payload = {
         nombre: catalogoForm.nombre,
         descripcion: catalogoForm.descripcion || undefined,
-        categoria: catalogoForm.categoria,
+        categoria: "regular" as const,
         imagen: imagenUrl?.startsWith("blob:") ? undefined : imagenUrl || undefined,
         color: catalogoForm.color || undefined,
       }
@@ -316,10 +312,19 @@ export function CatalogosConCursosPage() {
             />
           </div>
           {catalogos.length === 0 ? (
-            <div className="text-center py-12">
-              <HugeiconsIcon icon={BookOpen01Icon} size={32} style={{ color: COLORS.TEXT_MUTED }} />
-              <p className="text-xs mt-2" style={{ color: COLORS.TEXT_MUTED }}>No hay catálogos</p>
-            </div>
+            <div className="flex flex-col items-center justify-center py-12">
+  <HugeiconsIcon
+    icon={BookOpen01Icon}
+    size={32}
+    style={{ color: COLORS.TEXT_MUTED }}
+  />
+  <p
+    className="text-xs mt-2"
+    style={{ color: COLORS.TEXT_MUTED }}
+  >
+    No hay catálogos
+  </p>
+</div>
           ) : catalogos.map((cat) => {
             const isSelected = selectedCatalogoId === cat.id
             const imgUrl = getImageUrl(cat.imagen)
@@ -472,10 +477,19 @@ export function CatalogosConCursosPage() {
               )
             })
           ) : (
-            <div className="text-center py-12">
-              <HugeiconsIcon icon={GraduationCapIcon} size={32} style={{ color: COLORS.TEXT_MUTED }} />
-              <p className="text-xs mt-2" style={{ color: COLORS.TEXT_MUTED }}>Selecciona un catálogo</p>
-            </div>
+            <div className="flex flex-col items-center justify-center py-12">
+  <HugeiconsIcon
+    icon={GraduationCapIcon}
+    size={32}
+    style={{ color: COLORS.TEXT_MUTED }}
+  />
+  <p
+    className="text-xs mt-2"
+    style={{ color: COLORS.TEXT_MUTED }}
+  >
+    Selecciona un catálogo
+  </p>
+</div>
           )}
         </div>
 
@@ -566,10 +580,18 @@ export function CatalogosConCursosPage() {
               )
             })
           ) : (
-            <div className="text-center py-12">
-              <Users size={32} style={{ color: COLORS.TEXT_MUTED }} />
-              <p className="text-xs mt-2" style={{ color: COLORS.TEXT_MUTED }}>Selecciona un curso</p>
-            </div>
+            <div className="flex flex-col items-center justify-center py-12">
+  <Users
+    size={32}
+    style={{ color: COLORS.TEXT_MUTED }}
+  />
+  <p
+    className="text-xs mt-2"
+    style={{ color: COLORS.TEXT_MUTED }}
+  >
+    Selecciona un curso
+  </p>
+</div>
           )}
         </div>
       </div>
@@ -647,29 +669,6 @@ export function CatalogosConCursosPage() {
                   </div>
                   {/* RIGHT: Form */}
                   <div className="p-5 sm:p-6 space-y-5 overflow-y-auto lg:max-h-[calc(92vh-100px)]">
-                    <div>
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 mb-2 block">
-                        Tipo de Curso
-                      </label>
-                      <div className="flex gap-1.5">
-                        {(["regular", "taller", "personalizado"] as const).map((cat) => (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => handleCategoriaChange(cat)}
-                            className={cn(
-                              "flex-1 py-2.5 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all active:scale-[0.97]",
-                              catalogoForm.categoria === cat
-                                ? "text-white shadow-lg"
-                                : "bg-black/5 text-charcoal/60 hover:bg-black/10"
-                            )}
-                            style={catalogoForm.categoria === cat ? { backgroundColor: COLORS.ACCENT } : {}}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
                         Color Identificador

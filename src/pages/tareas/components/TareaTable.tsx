@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
+import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon, Delete01Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -63,17 +64,8 @@ function SortIcon({ field, sortField, sortDir }: { field: string; sortField: str
 
 function StatusBadge({ estado, tareaId, onTareaUpdate }: { estado: string; tareaId: string; onTareaUpdate: () => void }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    if (open) document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [open])
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
 
   async function handleChange(nuevoEstado: string) {
     try {
@@ -89,9 +81,14 @@ function StatusBadge({ estado, tareaId, onTareaUpdate }: { estado: string; tarea
   const color = ESTADO_COLORS[estado] || COLORS.TEXT_MUTED
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
+    <div className="relative inline-flex">
+      <button ref={btnRef}
+        onClick={() => {
+          if (open) { setOpen(false); return }
+          const rect = btnRef.current!.getBoundingClientRect()
+          setMenuPos({ top: rect.bottom + 4, left: rect.left })
+          setOpen(true)
+        }}
         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-all hover:opacity-80"
         style={{
           backgroundColor: `${color}18`,
@@ -104,22 +101,22 @@ function StatusBadge({ estado, tareaId, onTareaUpdate }: { estado: string; tarea
           <path d="M1 1l3 3 3-3" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && (
-        <div
-          className="absolute z-20 top-full mt-1 left-0 w-36 bg-white rounded-lg border shadow-lg py-1"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-        >
-          {ESTADOS.filter((e) => e !== estado).map((e) => (
-            <button
-              key={e}
-              onClick={() => handleChange(e)}
-              className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 transition-colors"
-              style={{ color: ESTADO_COLORS[e] }}
-            >
-              {ESTADO_LABELS[e]}
-            </button>
-          ))}
-        </div>
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed z-50 bg-white rounded-lg border shadow-lg py-1 min-w-[140px]"
+            style={{ top: menuPos.top, left: menuPos.left, borderColor: COLORS.BORDER_SUBTLE }}>
+            {ESTADOS.filter((e) => e !== estado).map((e) => (
+              <button key={e}
+                onClick={() => handleChange(e)}
+                className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 transition-colors"
+                style={{ color: ESTADO_COLORS[e] }}>
+                {ESTADO_LABELS[e]}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
     </div>
   )
@@ -127,7 +124,8 @@ function StatusBadge({ estado, tareaId, onTareaUpdate }: { estado: string; tarea
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "—"
-  const d = new Date(dateStr + "T12:00:00")
+  const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T12:00:00")
+  if (isNaN(d.getTime())) return "—"
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })
 }
 
@@ -166,7 +164,7 @@ export function TareaTable({
   }
 
   return (
-    <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="bg-white rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -192,9 +190,9 @@ export function TareaTable({
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
               >
                 <td className="px-4 py-3">
-                  <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>{t.titulo}</p>
+                  <p className="text-sm font-medium break-words" style={{ color: COLORS.CHARCOAL }}>{t.titulo}</p>
                   {t.descripcion && (
-                    <p className="text-xs mt-0.5 line-clamp-1" style={{ color: COLORS.TEXT_MUTED }}>{t.descripcion}</p>
+                    <p className="text-xs mt-0.5 break-words" style={{ color: COLORS.TEXT_MUTED }}>{t.descripcion}</p>
                   )}
                 </td>
                 <td className="px-4 py-3">

@@ -107,6 +107,26 @@ export function TallerDetallePage() {
 
   const formatHora = (h?: string) => h ? h.substring(0, 5) : "—"
 
+  const generarDiasDelRango = (fechaInicio: string, fechaFin: string, horaInicio?: string, horaFin?: string) => {
+    const dias: { id: string; dia_semana: number; hora_inicio: string; hora_fin: string; aula: null }[] = []
+    const start = new Date(fechaInicio)
+    const end = new Date(fechaFin)
+    const current = new Date(start)
+    let idx = 0
+    while (current <= end) {
+      const jsDay = current.getDay()
+      dias.push({
+        id: `inferred-${idx++}`,
+        dia_semana: jsDay === 0 ? 7 : jsDay,
+        hora_inicio: horaInicio ?? "—",
+        hora_fin: horaFin ?? "—",
+        aula: null,
+      })
+      current.setDate(current.getDate() + 1)
+    }
+    return dias
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center" style={{ color: TEXT_MUTED }}>Cargando...</div>
   }
@@ -139,12 +159,8 @@ export function TallerDetallePage() {
               <h1 className="text-xl font-bold" style={{ color: CHARCOAL }}>{taller.nombre}</h1>
               <p className="text-sm mt-0.5 flex items-center gap-2" style={{ color: TEXT_MUTED }}>
                 <span>{formatFecha(taller.fecha)}{taller.fecha_fin ? ` - ${formatFecha(taller.fecha_fin)}` : ""}</span>
-                {!taller.fecha_fin && (
-                  <>
-                    <span>·</span>
-                    <span>{formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}</span>
-                  </>
-                )}
+                <span>·</span>
+                <span>{formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}</span>
                 <span>·</span>
                 <span>{taller.modalidad?.toUpperCase()}</span>
               </p>
@@ -201,14 +217,12 @@ export function TallerDetallePage() {
                     {formatFecha(taller.fecha)}{taller.fecha_fin ? ` - ${formatFecha(taller.fecha_fin)}` : ""}
                   </p>
                 </div>
-                {!taller.fecha_fin && (
-                  <div>
-                    <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Horario</p>
-                    <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                      {formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Horario</p>
+                  <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
+                    {formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}
+                  </p>
+                </div>
                 <div>
                   <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Modalidad</p>
                   <p className="text-sm font-semibold capitalize" style={{ color: CHARCOAL }}>{taller.modalidad}</p>
@@ -224,11 +238,14 @@ export function TallerDetallePage() {
                   </p>
                 </div>
               </div>
-              {taller.fecha_fin && taller.horarios && taller.horarios.length > 0 && (
+              {taller.fecha_fin && (
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: BORDER }}>
                   <p className="text-[11px] font-medium mb-2" style={{ color: TEXT_MUTED }}>Horarios por día</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {taller.horarios.map((h: any) => {
+                    {(taller.horarios && taller.horarios.length > 0
+                      ? taller.horarios
+                      : generarDiasDelRango(taller.fecha!, taller.fecha_fin!, taller.hora_inicio, taller.hora_fin)
+                    ).map((h: any) => {
                       const dias = ["", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
                       return (
                         <div key={h.id} className="px-3 py-2 rounded-lg border text-xs" style={{ borderColor: BORDER }}>

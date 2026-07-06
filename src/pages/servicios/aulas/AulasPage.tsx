@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
+import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -289,14 +290,14 @@ export function AulasPage() {
             </h1>
           </div>
           
-          <a
-            href="/servicios/aulas/gestion"
+          <Link
+            to="/servicios/aulas/gestion"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
             style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.95 0 0)" }}
           >
             <HugeiconsIcon icon={PackageIcon} size={14} />
             Gestionar Aulas
-          </a>
+          </Link>
         </div>
       </header>
 
