@@ -21,13 +21,14 @@ import { Section, InfoItem, EF } from "./AprobacionHelpers"
 import { fixImageUrl } from "./AprobacionUtils"
 import { toast } from "sonner"
 
-export function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerField, editTallerVal, savingTallerEdit, onToggle, onEdit, onChange, onSave, onCancel, onApprove, onReject, onExpandImage }: {
+export function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTallerField, editTallerVal, savingTallerEdit, onToggle, onEdit, onChange, onSave, onCancel, onApprove, onReject, onExpandImage, onAfterMutate }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ins: any; isExpanded: boolean; puedeVerificar: boolean
   editTallerField: string | null; editTallerVal: string; savingTallerEdit: boolean
   onToggle: () => void; onEdit: (f: string, v: string) => void; onChange: (v: string) => void
   onSave: () => void; onCancel: () => void; onApprove: (monto: number, tipoPago: string, metodoPago: string, precioAjustado: number) => void; onReject: () => void
   onExpandImage?: (url: string) => void
+  onAfterMutate?: () => void
 }) {
   const cedulaRef = useRef<HTMLInputElement>(null)
   const comprobanteRef = useRef<HTMLInputElement>(null)
@@ -37,7 +38,10 @@ export function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTal
 
   const [, forceUpdate] = useState(0)
   const precioBase = Number(ins.taller?.precio || 0)
-  const [precioAjustado, setPrecioAjustado] = useState(precioBase)
+  // Si la inscripcion ya fue aprobada, monto_pagado contiene el precio ajustado
+  const [precioAjustado, setPrecioAjustado] = useState(
+    ins.pago_verificado && ins.monto_pagado > 0 ? Number(ins.monto_pagado) : precioBase
+  )
   const [editingPrecio, setEditingPrecio] = useState(false)
   const [precioInput, setPrecioInput] = useState("")
   const [motivoAjuste, setMotivoAjuste] = useState("")
@@ -113,6 +117,7 @@ export function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTal
       await tallerService.subirCedula(ins.id, file)
       toast.success("Cédula subida")
       forceUpdate(n => n + 1)
+      onAfterMutate?.()
     } catch { toast.error("Error al subir cédula") }
     finally { setUploadingCedula(false) }
   }
@@ -125,6 +130,7 @@ export function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTal
       await tallerService.subirComprobante(ins.id, file)
       toast.success("Comprobante subido")
       forceUpdate(n => n + 1)
+      onAfterMutate?.()
     } catch { toast.error("Error al subir comprobante") }
     finally { setUploadingComprobante(false) }
   }
@@ -173,7 +179,9 @@ export function TallerInscripcionCard({ ins, isExpanded, puedeVerificar, editTal
                <EF icon={UserIcon} label="Dirección" field="direccion" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
-               <InfoItem icon={UserIcon} label="Ciudad" value={ins.ciudad || "—"} />
+               <EF icon={UserIcon} label="Ciudad" field="ciudad" data={ins}
+                 editField={editTallerField} editVal={editTallerVal}
+                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />
               <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}
                 editField={editTallerField} editVal={editTallerVal}
                 onEdit={onEdit} onChange={onChange} onSave={onSave} onCancel={onCancel} saving={savingTallerEdit} />

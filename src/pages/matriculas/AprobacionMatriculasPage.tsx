@@ -39,14 +39,22 @@ export function AprobacionMatriculasPage() {
   const [savingTallerEdit, setSavingTallerEdit] = useState(false)
   const [tallerEditId, setTallerEditId] = useState<string | null>(null)
 
+  const silentRefreshTalleres = useCallback(async () => {
+    try {
+      const res = await tallerService.listarInscripcionesPendientes({ per_page: 200 })
+      setTallerInscripciones((res as any).data || [])
+    } catch { /* silent */ }
+  }, [])
+
   const saveTallerEdit = async () => {
     if (!tallerEditId || !editTallerField || editTallerVal === "") return
     setSavingTallerEdit(true)
     try {
-      const updated = await tallerService.actualizarInscripcion(tallerEditId, { [editTallerField]: editTallerVal })
-      setTallerInscripciones(prev => prev.map(i => i.id === tallerEditId ? { ...i, ...(updated.data || updated) } : i))
-      toast.success("Dato actualizado correctamente")
+      await tallerService.actualizarInscripcion(tallerEditId, { [editTallerField]: editTallerVal })
       setEditTallerField(null); setEditTallerVal(""); setTallerEditId(null)
+      const res = await tallerService.listarInscripcionesPendientes({ per_page: 200 })
+      setTallerInscripciones((res as any).data || [])
+      toast.success("Dato actualizado correctamente")
     } catch { toast.error("Error al actualizar") }
     finally { setSavingTallerEdit(false) }
   }
@@ -619,9 +627,10 @@ export function AprobacionMatriculasPage() {
                            onChange={setEditTallerVal} onSave={saveTallerEdit}
                            onCancel={cancelTallerEdit}
                             onApprove={(monto, tipoPago, metodo, precioAjustado) => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller", paymentMonto: monto, paymentTipo: tipoPago, paymentMetodo: metodo, precioAjustado })}
-                           onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
-                           onExpandImage={setExpandedImageUrl}
-                         />
+                            onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
+                            onExpandImage={setExpandedImageUrl}
+                            onAfterMutate={silentRefreshTalleres}
+                          />
                       ))}
                     </div>
                   </div>
