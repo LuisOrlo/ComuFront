@@ -6,11 +6,13 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon, Edit01Icon, Delete01Icon, Download01Icon,
   UserGroupIcon, CalendarIcon, Money01Icon, CheckmarkCircle01Icon,
-  CheckmarkCircle04Icon, Cancel01Icon, Image01Icon,
-  Search01Icon,
+  Image01Icon, Search01Icon, Download04Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { tallerService, type Taller, type InscripcionTaller } from "@/services/taller.service"
+import { tallerService, type Taller, type InscripcionTaller, type AsistenciaEstudiante } from "@/services/taller.service"
+import { generarListadoAsistenciaPDF, generarReporteAsistenciaPDF, generarListadoParticipantesPDF, type EstudianteReporte, type ParticipanteReporte } from "@/lib/generarAsistenciaPDF"
+import { ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
+import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -32,7 +34,7 @@ type Tab = "info" | "participantes" | "pagos" | "asistencia"
 export function TallerDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = usePermission()
+  const { isAdmin, isSecretaria } = usePermission()
   const [taller, setTaller] = useState<Taller | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("info")
@@ -42,6 +44,14 @@ export function TallerDetallePage() {
   const [deleteTarget, setDeleteTarget] = useState<InscripcionTaller | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [financieroData, setFinancieroData] = useState<any>(null)
+  const [transacciones, setTransacciones] = useState<any[]>([])
+  const [loadingPagos, setLoadingPagos] = useState(false)
+  const [comprobanteModalUrl, setComprobanteModalUrl] = useState<string | null>(null)
+  const [detalleAsistencias, setDetalleAsistencias] = useState<Record<string, AsistenciaEstudiante[]>>({})
+  const [cargandoDetalleAsistencia, setCargandoDetalleAsistencia] = useState(false)
+  const [editandoSesionId, setEditandoSesionId] = useState<string | null>(null)
+  const [editsLocal, setEditsLocal] = useState<Record<string, { estado: string; observaciones: string }>>({})
 
   useEffect(() => {
     if (!id) return
@@ -61,6 +71,84 @@ export function TallerDetallePage() {
       .finally(() => setLoadingInscripciones(false))
   }, [id, tab, searchParticipantes, refreshKey])
 
+  useEffect(() => {
+    if (!id || tab !== "pagos") return
+    const loadPagosData = async () => {
+      setLoadingPagos(true)
+      try {
+        const res = await financeService.getTallerFinanciero(id)
+        const data = res.datos || res.data || res
+        setFinancieroData(data)
+
+        const participantes = data.participantes || []
+        const historiales = await Promise.all(
+          participantes.map((p: any) =>
+            financeService.getHistorialParticipanteTaller(id, p.id)
+              .then(r => ({
+                participanteId: p.id,
+                nombre: p.estudiante_nombre || `${p.nombres || ""} ${p.apellidos || ""}`.trim(),
+                data: r.datos || r.data || r,
+              }))
+              .catch(() => null)
+          )
+        )
+
+        const allTransacciones: any[] = []
+        historiales.forEach(h => {
+          if (!h) return
+          const trans = h.data.transacciones || []
+          trans.forEach((t: any) => {
+            allTransacciones.push({
+              id: t.id,
+              participante_nombre: h.nombre,
+              participante_id: h.participanteId,
+              monto: t.monto || 0,
+              metodo_pago: t.metodo_pago || "—",
+              fecha_pago: t.fecha_pago || null,
+              estado_verificacion: t.estado_verificacion || "pendiente",
+              comprobante_url: t.comprobante_url || null,
+              observaciones: t.observaciones || null,
+            })
+          })
+        })
+        setTransacciones(allTransacciones)
+      } catch {
+        toast.error("Error al cargar datos financieros")
+      } finally {
+        setLoadingPagos(false)
+      }
+    }
+    loadPagosData()
+  }, [id, tab])
+
+  useEffect(() => {
+    if (!id || tab !== "asistencia") return
+    if (!taller?.asistencias?.length) return
+
+    const cargarDetalles = async () => {
+      setCargandoDetalleAsistencia(true)
+      const resultados: Record<string, AsistenciaEstudiante[]> = {}
+
+      await Promise.all(
+        taller.asistencias!.map(async (a) => {
+          try {
+            const res = await tallerService.listarAsistenciaEstudiantes(id!, a.id)
+            const data = (res as any).estudiantes || []
+            resultados[a.id] = data
+          } catch {
+            resultados[a.id] = []
+          }
+        })
+      )
+
+      setDetalleAsistencias(resultados)
+      setCargandoDetalleAsistencia(false)
+    }
+
+    cargarDetalles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, tab, refreshKey])
+
   const handleDeleteInscripcion = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -73,28 +161,86 @@ export function TallerDetallePage() {
     finally { setDeleting(false) }
   }
 
-  const togglePago = async (insc: InscripcionTaller) => {
-    try {
-      await tallerService.verificarPago(insc.id)
-      setInscripciones(prev => prev.map(i =>
-        i.id === insc.id ? { ...i, pago_verificado: !i.pago_verificado } : i
-      ))
-      toast.success(insc.pago_verificado ? "Pago pendiente" : "Pago verificado")
-    } catch { toast.error("Error al cambiar estado de pago") }
+  const iniciarEdicionAsistencia = (sesionId: string) => {
+    const estudiantes = detalleAsistencias[sesionId]
+    if (!estudiantes) return
+    setEditandoSesionId(sesionId)
+    const initial: Record<string, { estado: string; observaciones: string }> = {}
+    estudiantes.forEach(e => {
+      const key = e.inscripcion_taller_id || `ext-${e.participante_externo_id}`
+      initial[key] = {
+        estado: e.estado || (e.asistio ? "presente" : "ausente"),
+        observaciones: e.observaciones || "",
+      }
+    })
+    setEditsLocal(initial)
   }
 
-  const handleExport = async () => {
-    if (!id) return
-    try {
-      const res = await tallerService.exportarParticipantes(id)
-      const blob = new Blob([res.csv], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url; a.download = res.filename || "participantes.csv"; a.click()
-      URL.revokeObjectURL(url)
-      toast.success(`Exportados ${res.total} participantes`)
-    } catch { toast.error("Error al exportar") }
+  const handleCambiarEstado = (estudianteKey: string, estado: string) => {
+    setEditsLocal(prev => ({
+      ...prev,
+      [estudianteKey]: { ...prev[estudianteKey], estado },
+    }))
   }
+
+  const guardarEdicionAsistencia = async (sesionId: string) => {
+    if (!id) return
+    const estudiantes = detalleAsistencias[sesionId]
+    if (!estudiantes) return
+    try {
+      const payload = {
+        estudiantes: estudiantes.map(e => {
+          const key = e.inscripcion_taller_id || `ext-${e.participante_externo_id}`
+          const edit = editsLocal[key]
+          return {
+            inscripcion_taller_id: e.inscripcion_taller_id,
+            participante_externo_id: e.participante_externo_id,
+            asistio: edit?.estado === "presente" || edit?.estado === "tardanza",
+            estado: edit?.estado || "presente",
+            observaciones: edit?.observaciones || null,
+          }
+        }),
+      }
+      await tallerService.registrarAsistenciaEstudiantes(id, sesionId, payload)
+      toast.success("Asistencia actualizada")
+      setEditandoSesionId(null)
+      setEditsLocal({})
+      const [updatedTaller, res] = await Promise.all([
+        tallerService.obtener(id),
+        tallerService.listarAsistenciaEstudiantes(id, sesionId),
+      ])
+      setTaller(updatedTaller)
+      const data = (res as any).estudiantes || []
+      setDetalleAsistencias(prev => ({ ...prev, [sesionId]: data }))
+    } catch {
+      toast.error("Error al guardar cambios")
+    }
+  }
+
+  const cancelarEdicionAsistencia = () => {
+    setEditandoSesionId(null)
+    setEditsLocal({})
+  }
+
+  const getEstudianteName = (e: AsistenciaEstudiante) => {
+    if (e.inscripcion_taller) {
+      return `${e.inscripcion_taller.nombres} ${e.inscripcion_taller.apellidos}`
+    }
+    return "—"
+  }
+
+  const getEstudianteCedula = (e: AsistenciaEstudiante) =>
+    e.inscripcion_taller?.cedula ?? "—"
+
+  const getEstudianteCiudad = (e: AsistenciaEstudiante) =>
+    e.inscripcion_taller?.ciudad ?? "—"
+
+  const ESTADO_OPCIONES = [
+    { value: "presente", label: "Presente", color: "#10b981" },
+    { value: "tardanza", label: "Tardanza", color: "#f59e0b" },
+    { value: "ausente", label: "Ausente", color: "#ef4444" },
+    { value: "justificado", label: "Justificado", color: "#3b82f6" },
+  ]
 
   const formatFecha = (f?: string) => {
     if (!f) return "—"
@@ -143,8 +289,6 @@ export function TallerDetallePage() {
   ]
 
   const inscritosActivos = inscripciones.filter(i => i.estado === "activo")
-  const totalIngresos = inscripciones.reduce((s, i) => s + Number(i.monto_pagado || 0), 0)
-  const pagosVerificados = inscripciones.filter(i => i.pago_verificado).length
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
@@ -278,21 +422,43 @@ export function TallerDetallePage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs" style={{ color: TEXT_MUTED }}>{inscritosActivos.length} inscritos</span>
-                <button onClick={handleExport}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
-                  style={{ borderColor: BORDER, color: CHARCOAL }}>
-                  <HugeiconsIcon icon={Download01Icon} size={14} />CSV
-                </button>
                 <button onClick={async () => {
-                  if (!id) return
                   try {
-                    const blob = await tallerService.exportarParticipantesPdf(id)
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement("a"); a.href = url; a.download = "participantes.pdf"; a.click()
-                    URL.revokeObjectURL(url)
+                    const activos = inscripciones.filter(i => i.estado === "activo")
+                    let mapaFinanciero: Record<string, { monto_abonado: number; monto_total: number; saldo_pendiente: number }> = {}
+                    try {
+                      const resFin = await financeService.getTallerFinanciero(id!)
+                      const data = resFin.datos || resFin.data || resFin
+                      const participantesFin = data.participantes || []
+                      for (const p of participantesFin) {
+                        mapaFinanciero[p.id] = {
+                          monto_abonado: Number(p.monto_abonado) || 0,
+                          monto_total: Number(p.monto_total) || Number(taller?.precio) || 0,
+                          saldo_pendiente: Number(p.saldo_pendiente) || 0,
+                        }
+                      }
+                    } catch { /* usa monto_pagado de inscripcion como fallback */ }
+                    const participantes: ParticipanteReporte[] = activos.map(ins => {
+                      const fin = mapaFinanciero[ins.id]
+                      const pagado = fin ? fin.monto_abonado : (Number(ins.monto_pagado) || 0)
+                      const total = fin ? fin.monto_total : (Number(taller?.precio) || 0)
+                      return {
+                        nombres: ins.nombres,
+                        apellidos: ins.apellidos,
+                        cedula: ins.cedula,
+                        telefono: ins.telefono || "",
+                        montoPagado: pagado,
+                        saldoPendiente: Math.max(0, total - pagado),
+                      }
+                    })
+                    await generarListadoParticipantesPDF(taller?.nombre || "", participantes)
                     toast.success("PDF descargado")
-                  } catch { toast.error("Error al exportar PDF") }
-                }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : "Error desconocido"
+                    toast.error(`Error al generar PDF: ${msg}`)
+                  }
+                }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
                   style={{ borderColor: BORDER, color: CHARCOAL }}>
                   <HugeiconsIcon icon={Download01Icon} size={14} />PDF
                 </button>
@@ -350,110 +516,304 @@ export function TallerDetallePage() {
 
         {tab === "pagos" && (
           <div className="space-y-5">
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Total Recaudado", value: `$${totalIngresos.toFixed(2)}`, color: "oklch(0.45 0.12 140)" },
-                { label: "Pagos Verificados", value: pagosVerificados, color: "oklch(0.55 0.18 72)" },
-                { label: "Pendientes", value: inscripciones.filter(i => !i.pago_verificado).length, color: "oklch(0.55 0.15 20)" },
-              ].map(s => (
-                <div key={s.label} className="bg-white rounded-xl border p-4" style={{ borderColor: BORDER }}>
-                  <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>{s.label}</p>
-                  <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
-                </div>
-              ))}
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+  <div
+    className="bg-white rounded-xl border p-4"
+    style={{ borderColor: BORDER }}
+  >
+    <p
+      className="text-[11px] font-medium mb-1"
+      style={{ color: TEXT_MUTED }}
+    >
+      Total Recaudado
+    </p>
+
+    <p className="text-2xl font-bold">
+      <span style={{ color: "oklch(0.45 0.12 140)" }}>
+        ${Number(financieroData?.totales?.recaudado || 0).toFixed(2)}
+      </span>
+
+      <span style={{ color: TEXT_MUTED }}> / </span>
+
+      <span style={{ color: "oklch(0.58 0.18 250)" }}>
+        ${Number(financieroData?.totales?.esperado || 0).toFixed(2)}
+      </span>
+    </p>
+  </div>
+
+  <div
+    className="bg-white rounded-xl border p-4"
+    style={{ borderColor: BORDER }}
+  >
+    <p
+      className="text-[11px] font-medium mb-1"
+      style={{ color: TEXT_MUTED }}
+    >
+      Pagos Verificados
+    </p>
+
+    <p
+      className="text-2xl font-bold"
+      style={{ color: "oklch(0.55 0.18 72)" }}
+    >
+      {transacciones.filter(t => t.estado_verificacion === "aprobado").length}
+    </p>
+  </div>
+</div>
 
             <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
               <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
                 <p className="text-xs font-semibold" style={{ color: CHARCOAL }}>Detalle de Pagos</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b" style={{ borderColor: BORDER }}>
-                      <th className="text-left font-semibold px-5 py-3" style={{ color: TEXT_MUTED }}>Participante</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Tipo</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Monto</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Método</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Comprobante</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inscripciones.filter(i => i.monto_pagado).map(ins => (
-                      <tr key={ins.id} className="border-b" style={{ borderColor: BORDER }}>
-                        <td className="px-5 py-3 font-semibold" style={{ color: CHARCOAL }}>{ins.nombres} {ins.apellidos}</td>
-                        <td className="px-4 py-3 capitalize" style={{ color: CHARCOAL }}>{ins.tipo_pago}</td>
-                        <td className="px-4 py-3 font-semibold" style={{ color: CHARCOAL }}>${Number(ins.monto_pagado).toFixed(2)}</td>
-                        <td className="px-4 py-3 capitalize" style={{ color: CHARCOAL }}>{ins.metodo_pago || "—"}</td>
-                        <td className="px-4 py-3">
-                          {ins.comprobante_url ? (
-                            <a href={ins.comprobante_url} target="_blank" rel="noreferrer"
-                              className="text-xs font-semibold hover:underline" style={{ color: ACCENT }}>
-                              <HugeiconsIcon icon={Image01Icon} size={13} className="inline mr-1" />Ver
-                            </a>
-                          ) : "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button onClick={() => togglePago(ins)}
-                            className="inline-flex items-center gap-1 text-xs font-semibold"
-                            style={{ color: ins.pago_verificado ? "oklch(0.45 0.12 140)" : "oklch(0.55 0.15 20)" }}>
-                            <HugeiconsIcon icon={ins.pago_verificado ? CheckmarkCircle04Icon : Cancel01Icon} size={13} />
-                            {ins.pago_verificado ? "Verificado" : "Pendiente"}
-                          </button>
-                        </td>
+                {loadingPagos ? (
+                  <div className="p-12 text-center text-sm" style={{ color: TEXT_MUTED }}>Cargando...</div>
+                ) : transacciones.length === 0 ? (
+                  <div className="p-12 text-center text-sm" style={{ color: TEXT_MUTED }}>Sin pagos registrados</div>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: BORDER }}>
+                        <th className="text-left font-semibold px-5 py-3" style={{ color: TEXT_MUTED }}>Participante</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Fecha</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Monto</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Método</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Comprobante</th>
                       </tr>
-                    ))}
-                    {inscripciones.filter(i => i.monto_pagado).length === 0 && (
-                      <tr><td colSpan={6} className="p-8 text-center text-sm" style={{ color: TEXT_MUTED }}>Sin pagos registrados</td></tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {transacciones.map(t => (
+                        <tr key={t.id} className="border-b" style={{ borderColor: BORDER }}>
+                          <td className="px-5 py-3 font-semibold" style={{ color: CHARCOAL }}>{t.participante_nombre}</td>
+                          <td className="px-4 py-3" style={{ color: CHARCOAL }}>
+                            {t.fecha_pago ? formatFecha(t.fecha_pago.split(" ")[0]) : "—"}
+                          </td>
+                          <td className="px-4 py-3 font-semibold" style={{ color: CHARCOAL }}>${Number(t.monto).toFixed(2)}</td>
+                          <td className="px-4 py-3 capitalize" style={{ color: CHARCOAL }}>{t.metodo_pago}</td>
+                          <td className="px-4 py-3">
+                            {t.comprobante_url ? (
+                              <button onClick={() => setComprobanteModalUrl(t.comprobante_url)}
+                                className="inline-flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: ACCENT }}>
+                                <HugeiconsIcon icon={Image01Icon} size={13} />Ver
+                              </button>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
+
+            {comprobanteModalUrl && (
+              <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+                onClick={() => setComprobanteModalUrl(null)}>
+                <div className="relative flex items-center justify-center p-6" style={{ maxWidth: "min(90vw, 1200px)", maxHeight: "90vh" }}>
+                  <button onClick={(e) => { e.stopPropagation(); setComprobanteModalUrl(null); }}
+                    className="absolute -top-8 right-0 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors">
+                    Cerrar [X]
+                  </button>
+                  <img src={comprobanteModalUrl} alt="Comprobante"
+                    className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl" />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {tab === "asistencia" && (
-          <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
-            <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
-              <p className="text-xs font-semibold" style={{ color: CHARCOAL }}>Registro de Asistencia</p>
-            </div>
-            <div className="p-5">
-              {taller.asistencias && taller.asistencias.length > 0 ? (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b" style={{ borderColor: BORDER }}>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Fecha</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Asistieron</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Capacidad</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>%</th>
-                      <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {taller.asistencias.map(a => (
-                      <tr key={a.id} className="border-b" style={{ borderColor: BORDER }}>
-                        <td className="px-4 py-3" style={{ color: CHARCOAL }}>{formatFecha(a.fecha_sesion)}</td>
-                        <td className="px-4 py-3 font-semibold" style={{ color: CHARCOAL }}>{a.asistentes}</td>
-                        <td className="px-4 py-3" style={{ color: CHARCOAL }}>{a.capacidad_registrada}</td>
-                        <td className="px-4 py-3 font-semibold" style={{ color: a.capacidad_registrada > 0 ? "oklch(0.45 0.12 140)" : TEXT_MUTED }}>
-                          {a.capacidad_registrada > 0 ? Math.round((a.asistentes / a.capacidad_registrada) * 100) + "%" : "—"}
-                        </td>
-                        <td className="px-4 py-3" style={{ color: TEXT_MUTED }}>{a.observaciones || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="text-center py-8">
+          <div className="space-y-5">
+            {inscripciones.length > 0 && (
+              <div className="flex justify-end">
+                <button onClick={() => {
+                  const activos = inscripciones.filter(i => i.estado === "activo")
+                  const nombres = activos.map(i => `${i.nombres} ${i.apellidos}`)
+                  const horario = `${taller?.hora_inicio || "—"} - ${taller?.hora_fin || "—"}`
+                  const instructorName = taller?.instructor
+                    ? `${taller.instructor.nombres} ${taller.instructor.apellidos}`
+                    : undefined
+                  generarListadoAsistenciaPDF(taller?.nombre || "", horario, nombres, instructorName)
+                    .then(() => toast.success("Listado descargado"))
+                    .catch(() => toast.error("Error al generar PDF"))
+                }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 transition-all">
+                  <HugeiconsIcon icon={Download04Icon} size={12} />Descargar Listado
+                </button>
+              </div>
+            )}
+            {taller.asistencias && taller.asistencias.length > 0 ? (
+              <div className="space-y-5">
+                {cargandoDetalleAsistencia ? (
+                  <div className="bg-white rounded-xl border p-12 text-center text-sm" style={{ borderColor: BORDER, color: TEXT_MUTED }}>
+                    Cargando detalle de asistencias...
+                  </div>
+                ) : (
+                  taller.asistencias.map(sesion => {
+                    const estudiantes = detalleAsistencias[sesion.id] || []
+                    const editando = editandoSesionId === sesion.id
+                    const pct = sesion.capacidad_registrada > 0
+                      ? Math.round((sesion.asistentes / sesion.capacidad_registrada) * 100)
+                      : 0
+
+                    return (
+                      <div key={sesion.id} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: BORDER }}>
+                        <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0 space-y-3">
+                              <p className="text-sm font-bold" style={{ color: CHARCOAL }}>
+                                {formatFecha(sesion.fecha_sesion)}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-1.5 text-xs" style={{ color: TEXT_MUTED }}>
+                                  <HugeiconsIcon icon={UserGroupIcon} size={14} />
+                                  <span>
+                                    <strong style={{ color: CHARCOAL }}>{sesion.asistentes}</strong>
+                                    <span className="mx-0.5">/</span>
+                                    <strong style={{ color: CHARCOAL }}>{sesion.capacidad_registrada}</strong>
+                                    {" asistentes"}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md"
+                                  style={{
+                                    backgroundColor: pct >= 70 ? "#d1fae5" : pct >= 50 ? "#fef3c7" : "#fee2e2",
+                                    color: pct >= 70 ? "#065f46" : pct >= 50 ? "#92400e" : "#991b1b"
+                                  }}>
+                                  {pct}%
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button onClick={() => {
+                                const reporte: EstudianteReporte[] = estudiantes.map(e => ({
+                                  nombres: e.inscripcion_taller?.nombres || "—",
+                                  apellidos: e.inscripcion_taller?.apellidos || "—",
+                                  cedula: e.inscripcion_taller?.cedula || "—",
+                                  ciudad: e.inscripcion_taller?.ciudad || "—",
+                                  asistio: e.asistio,
+                                }))
+                                const instructorName = taller?.instructor
+                                  ? `${taller.instructor.nombres} ${taller.instructor.apellidos}`
+                                  : undefined
+                                generarReporteAsistenciaPDF(
+                                  taller?.nombre || "",
+                                  formatFecha(sesion.fecha_sesion),
+                                  reporte,
+                                  instructorName,
+                                ).then(() => toast.success("Reporte descargado"))
+                                  .catch(() => toast.error("Error al generar PDF"))
+                              }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all"
+                                style={{ borderColor: BORDER, color: ACCENT, backgroundColor: `color-mix(in srgb, ${ACCENT} 8%, transparent)` }}>
+                                <HugeiconsIcon icon={Download04Icon} size={12} />Descargar Reporte
+                              </button>
+                              {(isAdmin || isSecretaria) && !editando && (
+                                <button onClick={() => iniciarEdicionAsistencia(sesion.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all"
+                                  style={{ borderColor: BORDER, color: ACCENT, backgroundColor: `color-mix(in srgb, ${ACCENT} 8%, transparent)` }}>
+                                  <HugeiconsIcon icon={Edit01Icon} size={12} />Editar
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {sesion.observaciones && (
+                            <div className="mt-3 pt-3 border-t" style={{ borderColor: BORDER }}>
+                              <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: TEXT_MUTED }}>Observaciones</p>
+                              <p className="text-sm" style={{ color: CHARCOAL }}>{sesion.observaciones}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="overflow-x-auto">
+                          {estudiantes.length === 0 ? (
+                            <div className="p-8 text-center text-sm" style={{ color: TEXT_MUTED }}>
+                              No hay estudiantes registrados en esta sesión
+                            </div>
+                          ) : (
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b" style={{ borderColor: BORDER }}>
+                                  <th className="text-left font-semibold px-5 py-3" style={{ color: TEXT_MUTED }}>Nombres</th>
+                                  <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Apellidos</th>
+                                  <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Cédula</th>
+                                  <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Ciudad</th>
+                                  <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Asistió</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+              {estudiantes.map(est => {
+                                  const key = est.inscripcion_taller_id || `ext-${est.participante_externo_id}`
+                                  const edit = editando ? editsLocal[key] : undefined
+                                  const estadoActual = edit?.estado || est.estado || (est.asistio ? "presente" : "ausente")
+                                  const badge = ESTADO_ASISTENCIA_BADGE[estadoActual] || ESTADO_ASISTENCIA_BADGE.ausente
+                                  return (
+                                    <tr key={est.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: BORDER }}>
+                                      <td className="px-5 py-3 font-semibold whitespace-nowrap" style={{ color: CHARCOAL }}>
+                                        {getEstudianteName(est)}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: CHARCOAL }}>
+                                        {est.inscripcion_taller?.apellidos || "—"}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: TEXT_MUTED }}>
+                                        {getEstudianteCedula(est)}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap" style={{ color: TEXT_MUTED }}>
+                                        {getEstudianteCiudad(est)}
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        {editando ? (
+                                          <select
+                                            value={estadoActual}
+                                            onChange={e => handleCambiarEstado(key, e.target.value)}
+                                            className="px-2 py-1 rounded border text-[11px] font-semibold outline-none"
+                                            style={{ borderColor: BORDER }}
+                                          >
+                                            {ESTADO_OPCIONES.map(op => (
+                                              <option key={op.value} value={op.value}>{op.label}</option>
+                                            ))}
+                                          </select>
+                                        ) : (
+                                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold"
+                                            style={{ backgroundColor: badge.bg, color: badge.text }}>
+                                            {badge.label}
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                        {editando && (
+                          <div className="px-5 py-3 border-t flex items-center justify-end gap-2" style={{ borderColor: BORDER, backgroundColor: "#fafafa" }}>
+                            <button onClick={cancelarEdicionAsistencia}
+                              className="px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                              style={{ borderColor: BORDER, color: TEXT_MUTED }}>
+                              Cancelar
+                            </button>
+                            <button onClick={() => guardarEdicionAsistencia(sesion.id)}
+                              className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97]"
+                              style={{ backgroundColor: ACCENT }}>
+                              Guardar Cambios
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
+                <div className="p-12 text-center">
                   <p className="text-sm" style={{ color: TEXT_MUTED }}>No hay registros de asistencia</p>
                   <p className="text-xs mt-1" style={{ color: TEXT_MUTED }}>
-                    La asistencia se registra el día del evento desde el panel del instructor
+                    Registra la asistencia el día del evento
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </main>

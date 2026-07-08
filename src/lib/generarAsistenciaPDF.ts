@@ -8,6 +8,8 @@ const MUTED_RGB: [number, number, number] = [156, 163, 175]
 const FOOTER_LINE_RGB: [number, number, number] = [200, 200, 200]
 const FOOTER_TEXT_RGB: [number, number, number] = [180, 180, 180]
 const WHITE_RGB: [number, number, number] = [255, 255, 255]
+const GREEN_RGB: [number, number, number] = [5, 150, 105]
+const RED_RGB: [number, number, number] = [185, 28, 28]
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -290,4 +292,519 @@ export async function generarListadoAsistenciaPDF(
 
   const safeName = nombreCurso.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, "").trim()
   doc.save(`listado-asistencia-${safeName}.pdf`)
+}
+
+export interface EstudianteReporte {
+  nombres: string
+  apellidos: string
+  cedula?: string
+  ciudad?: string
+  asistio: boolean
+}
+
+export async function generarReporteAsistenciaPDF(
+  nombreCurso: string,
+  fechaSesion: string,
+  estudiantes: EstudianteReporte[],
+  instructor?: string,
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const margin = 14
+  const pageW = 210
+  const contentW = pageW - 2 * margin
+  const fechaImpresion = formatDate(new Date())
+
+  const presentCount = estudiantes.filter(e => e.asistio).length
+  const totalCount = estudiantes.length
+  const pct = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
+
+  const colW = [10, 76, 34, 34, 34]
+  const colX: number[] = []
+  let cx = margin
+  for (const w of colW) {
+    colX.push(cx)
+    cx += w
+  }
+  const tableW = colW.reduce((a, b) => a + b, 0)
+  const rowH = 7
+  const headerH = 8
+
+  function drawTableHeader(y: number) {
+    doc.setFillColor(...ACCENT_RGB)
+    doc.rect(margin, y, tableW, headerH, "F")
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(7)
+    doc.setTextColor(...WHITE_RGB)
+
+    const hdrs = ["N°", "Participante", "Cédula", "Ciudad", "Asistió"]
+    for (let i = 0; i < hdrs.length; i++) {
+      if (i === 1) {
+        doc.text(hdrs[i], colX[i] + 2, y + 5)
+      } else {
+        doc.text(hdrs[i], colX[i] + colW[i] / 2, y + 5, { align: "center" })
+      }
+    }
+
+    doc.setDrawColor(...WHITE_RGB)
+    doc.setLineWidth(0.15)
+    for (let c = 1; c < colX.length; c++) {
+      doc.line(colX[c], y, colX[c], y + headerH)
+    }
+  }
+
+  // ── Top orange band ──
+  doc.setFillColor(...ACCENT_RGB)
+  doc.rect(0, 0, pageW, 36, "F")
+
+  try {
+    const logoImg = await loadImage("/Logo_PDF.png")
+    doc.addImage(logoImg, "PNG", margin, 7, 25, 20)
+  } catch {
+    // logo non-critical
+  }
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(20)
+  doc.setTextColor(...WHITE_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
+
+  doc.setFontSize(11)
+  doc.text("REPORTE DE ASISTENCIA", pageW / 2, 27, { align: "center" })
+
+  // ── Info box ──
+  let y = 42
+  const infoBoxH = 28
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, y, contentW, infoBoxH)
+
+  const colMid = contentW / 2
+  const leftCol = [
+    { label: "Curso:", value: nombreCurso },
+    { label: "Fecha:", value: fechaSesion },
+    { label: "Instructor:", value: instructor || "—" },
+  ]
+  const rightCol = [
+    { label: "Asistieron:", value: `${presentCount} de ${totalCount}` },
+    { label: "Porcentaje:", value: `${pct}%` },
+  ]
+
+  doc.setFontSize(8.5)
+  doc.setTextColor(...TEXT_RGB)
+
+  const maxRows = Math.max(leftCol.length, rightCol.length)
+  let iy = y + 5.5
+  for (let r = 0; r < maxRows; r++) {
+    const leftItem = leftCol[r]
+    if (leftItem) {
+      doc.setFont("helvetica", "bold")
+      doc.text(leftItem.label, margin + 4, iy)
+      const labelW = doc.getTextWidth(leftItem.label)
+      doc.setFont("helvetica", "normal")
+      doc.text(leftItem.value, margin + 4 + labelW + 2, iy)
+    }
+
+    const rightItem = rightCol[r]
+    if (rightItem) {
+      const rx = margin + colMid
+      doc.setFont("helvetica", "bold")
+      doc.text(rightItem.label, rx + 4, iy)
+      const labelW = doc.getTextWidth(rightItem.label)
+      doc.setFont("helvetica", "normal")
+      doc.text(rightItem.value, rx + 4 + labelW + 2, iy)
+    }
+
+    iy += 5
+  }
+
+  // ── Table title ──
+  y = y + infoBoxH + 6
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(10)
+  doc.setTextColor(...TEXT_RGB)
+  doc.text("DETALLE DE ASISTENCIA", margin, y)
+  y += 3
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.5)
+  doc.line(margin, y, margin + contentW, y)
+  y += 5
+
+  drawTableHeader(y)
+  y += headerH
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(8.5)
+  doc.setTextColor(...TEXT_RGB)
+
+  estudiantes.forEach((est, idx) => {
+    if (y + rowH > 270) {
+      doc.addPage()
+      y = 20
+      drawTableHeader(y)
+      y += headerH
+    }
+
+    const num = idx + 1
+    const nombreCompleto = `${est.nombres} ${est.apellidos}`
+
+    if (idx % 2 === 0) {
+      doc.setFillColor(...GRAY_ROW_RGB)
+      doc.rect(margin, y, tableW, rowH, "F")
+    }
+
+    doc.setTextColor(...TEXT_RGB)
+    doc.text(`${num}`, colX[0] + colW[0] / 2, y + 5, { align: "center" })
+
+    doc.text(nombreCompleto, colX[1] + 2, y + 5)
+
+    doc.text(est.cedula || "—", colX[2] + colW[2] / 2, y + 5, { align: "center" })
+
+    doc.text(est.ciudad || "—", colX[3] + colW[3] / 2, y + 5, { align: "center" })
+
+    if (est.asistio) {
+      doc.setTextColor(...GREEN_RGB)
+      doc.setFont("helvetica", "bold")
+      doc.text("Sí", colX[4] + colW[4] / 2, y + 5, { align: "center" })
+    } else {
+      doc.setTextColor(...RED_RGB)
+      doc.setFont("helvetica", "bold")
+      doc.text("No", colX[4] + colW[4] / 2, y + 5, { align: "center" })
+    }
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(...TEXT_RGB)
+
+    doc.setDrawColor(...BORDER_RGB)
+    doc.setLineWidth(0.2)
+    for (let c = 1; c < colX.length; c++) {
+      doc.line(colX[c], y, colX[c], y + rowH)
+    }
+    doc.line(margin, y + rowH, margin + tableW, y + rowH)
+
+    y += rowH
+  })
+
+  // ── Summary ──
+  y += 6
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, y, contentW, 14)
+
+  doc.setFontSize(9)
+  doc.setTextColor(...TEXT_RGB)
+  doc.setFont("helvetica", "bold")
+  doc.text(`Total: ${totalCount} estudiantes  |  Asistieron: ${presentCount}  |  Ausentes: ${totalCount - presentCount}  |  Porcentaje: ${pct}%`, margin + 4, y + 9)
+
+  // ── Footer ──
+  const totalPages = doc.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...FOOTER_LINE_RGB)
+    doc.setLineWidth(0.3)
+    doc.line(margin, 285, pageW - margin, 285)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7)
+    doc.setTextColor(...FOOTER_TEXT_RGB)
+    doc.text(
+      `Comunikate  |  Página ${i} de ${totalPages}  |  Generado: ${fechaImpresion}`,
+      margin,
+      291,
+    )
+  }
+
+  const safeName = nombreCurso.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, "").trim()
+  doc.save(`reporte-asistencia-${safeName}.pdf`)
+}
+
+export interface ParticipanteReporte {
+  nombres: string
+  apellidos: string
+  cedula: string
+  telefono: string
+  montoPagado: number
+  saldoPendiente: number
+}
+
+export async function generarListadoParticipantesPDF(
+  nombreTaller: string,
+  participantes: ParticipanteReporte[],
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const margin = 14
+  const pageW = 210
+  const contentW = pageW - 2 * margin
+  const fechaImpresion = formatDate(new Date())
+
+  const colW = [8, 62, 28, 24, 30, 30]
+  const colX: number[] = []
+  let cx = margin
+  for (const w of colW) {
+    colX.push(cx)
+    cx += w
+  }
+  const tableW = colW.reduce((a, b) => a + b, 0)
+  const rowH = 7
+  const headerH = 8
+
+  function drawTableHeader(y: number) {
+    doc.setFillColor(...ACCENT_RGB)
+    doc.rect(margin, y, tableW, headerH, "F")
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(7)
+    doc.setTextColor(...WHITE_RGB)
+
+    const hdrs = ["N°", "Participante", "Cédula", "Teléfono", "Pagado", "Saldo"]
+    for (let i = 0; i < hdrs.length; i++) {
+      if (i === 1) {
+        doc.text(hdrs[i], colX[i] + 2, y + 5)
+      } else {
+        doc.text(hdrs[i], colX[i] + colW[i] / 2, y + 5, { align: "center" })
+      }
+    }
+
+    doc.setDrawColor(...WHITE_RGB)
+    doc.setLineWidth(0.15)
+    for (let c = 1; c < colX.length; c++) {
+      doc.line(colX[c], y, colX[c], y + headerH)
+    }
+  }
+
+  // ── Top orange band ──
+  doc.setFillColor(...ACCENT_RGB)
+  doc.rect(0, 0, pageW, 36, "F")
+
+  try {
+    const logoImg = await loadImage("/Logo_PDF.png")
+    doc.addImage(logoImg, "PNG", margin, 7, 25, 20)
+  } catch {
+    // logo non-critical
+  }
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(20)
+  doc.setTextColor(...WHITE_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
+
+  doc.setFontSize(11)
+  doc.text("LISTADO DE PARTICIPANTES", pageW / 2, 27, { align: "center" })
+
+  // ── Info box ──
+  let y = 42
+  const infoBoxH = 18
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, y, contentW, infoBoxH)
+
+  doc.setFontSize(8.5)
+  doc.setTextColor(...TEXT_RGB)
+
+  doc.setFont("helvetica", "bold")
+  doc.text("Taller:", margin + 4, y + 7)
+  const labelW = doc.getTextWidth("Taller:")
+  doc.setFont("helvetica", "normal")
+  doc.text(nombreTaller, margin + 4 + labelW + 2, y + 7)
+
+  doc.setFont("helvetica", "bold")
+  doc.text("Participantes:", margin + 4, y + 14)
+  doc.setFont("helvetica", "normal")
+  doc.text(`${participantes.length}`, margin + 4 + doc.getTextWidth("Participantes:") + 2, y + 14)
+
+  doc.setFont("helvetica", "bold")
+  const fechaLabel = "Fecha:"
+  doc.text(fechaLabel, margin + contentW / 2 + 4, y + 7)
+  doc.setFont("helvetica", "normal")
+  doc.text(fechaImpresion, margin + contentW / 2 + 4 + doc.getTextWidth(fechaLabel) + 2, y + 7)
+
+  // ── Table title ──
+  y = y + infoBoxH + 6
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(10)
+  doc.setTextColor(...TEXT_RGB)
+  doc.text("PARTICIPANTES INSCRITOS", margin, y)
+  y += 3
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.5)
+  doc.line(margin, y, margin + contentW, y)
+  y += 5
+
+  drawTableHeader(y)
+  y += headerH
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(8)
+  doc.setTextColor(...TEXT_RGB)
+
+  let totalPagado = 0
+  let totalSaldo = 0
+
+  participantes.forEach((p, idx) => {
+    if (y + rowH > 270) {
+      doc.addPage()
+      y = 20
+      drawTableHeader(y)
+      y += headerH
+    }
+
+    const num = idx + 1
+    const nombreCompleto = `${p.nombres} ${p.apellidos}`
+
+    if (idx % 2 === 0) {
+      doc.setFillColor(...GRAY_ROW_RGB)
+      doc.rect(margin, y, tableW, rowH, "F")
+    }
+
+    doc.setTextColor(...TEXT_RGB)
+    doc.text(`${num}`, colX[0] + colW[0] / 2, y + 5, { align: "center" })
+    doc.text(nombreCompleto, colX[1] + 2, y + 5)
+    doc.text(p.cedula || "—", colX[2] + colW[2] / 2, y + 5, { align: "center" })
+    doc.text(p.telefono || "—", colX[3] + colW[3] / 2, y + 5, { align: "center" })
+    doc.text(`$${Number(p.montoPagado).toFixed(2)}`, colX[4] + colW[4] / 2, y + 5, { align: "center" })
+    doc.text(`$${Number(p.saldoPendiente).toFixed(2)}`, colX[5] + colW[5] / 2, y + 5, { align: "center" })
+
+    totalPagado += p.montoPagado
+    totalSaldo += p.saldoPendiente
+
+    doc.setDrawColor(...BORDER_RGB)
+    doc.setLineWidth(0.2)
+    for (let c = 1; c < colX.length; c++) {
+      doc.line(colX[c], y, colX[c], y + rowH)
+    }
+    doc.line(margin, y + rowH, margin + tableW, y + rowH)
+
+    y += rowH
+  })
+
+  // ── Totals ──
+  y += 4
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, y, contentW, 10)
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(9)
+  doc.setTextColor(...TEXT_RGB)
+  const totalText = `Total participantes: ${participantes.length}  |  Total pagado: $${Number(totalPagado).toFixed(2)}  |  Total pendiente: $${Number(totalSaldo).toFixed(2)}`
+  doc.text(totalText, margin + 4, y + 7)
+
+  // ── Footer ──
+  const totalPages = doc.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...FOOTER_LINE_RGB)
+    doc.setLineWidth(0.3)
+    doc.line(margin, 285, pageW - margin, 285)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7)
+    doc.setTextColor(...FOOTER_TEXT_RGB)
+    doc.text(
+      `Comunikate  |  Página ${i} de ${totalPages}  |  Generado: ${fechaImpresion}`,
+      margin,
+      291,
+    )
+  }
+
+  const safeName = nombreTaller.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, "").trim()
+  doc.save(`listado-participantes-${safeName}.pdf`)
+}
+
+export interface ParticipanteCursoReporte {
+  nombres: string
+  apellidos: string
+  cedula: string
+  correo: string
+  fechaInscripcion: string
+}
+
+export async function generarListadoParticipantesCursoPDF(
+  cursoNombre: string,
+  participantes: ParticipanteCursoReporte[],
+  cursoId: string,
+) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  const margin = 14
+  const pageW = 210
+  const contentW = pageW - 2 * margin
+
+  const colW = [8, 65, 28, 55, 26]
+  const colX: number[] = []
+  let cx = margin
+  for (const w of colW) { colX.push(cx); cx += w }
+  const tableW = colW.reduce((a, b) => a + b, 0)
+
+  doc.setFillColor(...ACCENT_RGB)
+  doc.rect(0, 0, pageW, 36, "F")
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(20)
+  doc.setTextColor(...WHITE_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
+  doc.setFontSize(11)
+  doc.text("LISTADO DE PARTICIPANTES", pageW / 2, 27, { align: "center" })
+
+  let y = 42
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, y, contentW, 16)
+  doc.setFontSize(8.5)
+  doc.setTextColor(...TEXT_RGB)
+  doc.setFont("helvetica", "bold")
+  const lw = doc.getTextWidth("Curso:")
+  doc.text("Curso:", margin + 4, y + 7)
+  doc.setFont("helvetica", "normal")
+  doc.text(cursoNombre, margin + 4 + lw + 2, y + 7)
+  doc.setFont("helvetica", "bold")
+  const lw2 = doc.getTextWidth("Total:")
+  doc.text("Total:", margin + 4, y + 13)
+  doc.setFont("helvetica", "normal")
+  doc.text(`${participantes.length} estudiante${participantes.length !== 1 ? "s" : ""}`, margin + 4 + lw2 + 2, y + 13)
+
+  y += 16 + 6
+
+  doc.setFillColor(...ACCENT_RGB)
+  doc.rect(margin, y, tableW, 8, "F")
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(7)
+  doc.setTextColor(...WHITE_RGB)
+  const hdrs = ["N°", "Estudiante", "Cédula", "Correo", "Inscripción"]
+  for (let i = 0; i < hdrs.length; i++) {
+    const align = i === 1 ? ("left" as const) : ("center" as const)
+    const xOff = i === 1 ? 2 : colW[i] / 2
+    doc.text(hdrs[i], colX[i] + xOff, y + 5, { align })
+  }
+  y += 8
+
+  const rowH = 7
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(7.5)
+  doc.setTextColor(...TEXT_RGB)
+  participantes.forEach((p, i) => {
+    if (y + rowH > 287) {
+      doc.addPage()
+      y = margin
+      doc.setFillColor(...ACCENT_RGB)
+      doc.rect(margin, y, tableW, 8, "F")
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7)
+      doc.setTextColor(...WHITE_RGB)
+      for (let j = 0; j < hdrs.length; j++) {
+        const a2 = j === 1 ? "left" as const : "center" as const
+        const xo2 = j === 1 ? 2 : colW[j] / 2
+        doc.text(hdrs[j], colX[j] + xo2, y + 5, { align: a2 })
+      }
+      y += 8
+    }
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 245, 245)
+      doc.rect(margin, y, tableW, rowH, "F")
+    }
+    const nombre = [p.nombres, p.apellidos].filter(Boolean).join(" ") || "—"
+    doc.text(String(i + 1), colX[0] + colW[0] / 2, y + 5, { align: "center" })
+    doc.text(nombre, colX[1] + 2, y + 5)
+    doc.text(p.cedula, colX[2] + colW[2] / 2, y + 5, { align: "center" })
+    doc.text(p.correo, colX[3] + colW[3] / 2, y + 5, { align: "center" })
+    doc.text(p.fechaInscripcion, colX[4] + colW[4] / 2, y + 5, { align: "center" })
+    y += rowH
+  })
+
+  doc.save(`participantes_${cursoId}.pdf`)
 }

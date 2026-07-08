@@ -679,7 +679,7 @@ export function AprobacionMatriculasPage() {
                             <HugeiconsIcon icon={isSelected ? Cancel01Icon : CheckmarkCircle04Icon} size={18}
                               style={{ color: isSelected ? COLORS.TEXT_MUTED : COLORS.ACCENT }} />
                           </button>
-                          {isSelected && (
+                          {isSelected && selected && (
                             <SolicitudCursoDetail
                               selected={selected}
                               solicitudRaw={s}

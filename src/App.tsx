@@ -39,6 +39,7 @@ import { ClasesModuloPage } from "@/pages/instructor-portal/ClasesModuloPage"
 import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorarioPage"
 import { MisEstudiantesPage } from "@/pages/instructor-portal/MisEstudiantesPage"
 import { DetalleEstudiantePage } from "@/pages/instructor-portal/detalle/DetalleEstudiantePage"
+import { InstructorTallerDetailPage } from "@/pages/instructor-portal/InstructorTallerDetailPage"
 import { FinancePagosPage, FinanceResumenWrapper } from "@/pages/finanzas/pagos/FinancePagosPage"
 import { CuentasCobrarLayout } from "@/pages/finanzas/pagos/CuentasCobrarLayout"
 import { TalleresCuentasPage } from "@/pages/finanzas/pagos/TalleresCuentasPage"
@@ -246,7 +247,8 @@ function AppLayout() {
 
             {/* Instructor talleres */}
             <Route path="/instructor/talleres" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorTalleresPage /></RoleGuard>} />
-            <Route path="/instructor/talleres/:id/asistencia" element={<RoleGuard roles={["Administrador", "Instructor"]}><AsistenciaTallerPage /></RoleGuard>} />
+            <Route path="/instructor/talleres/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorTallerDetailPage /></RoleGuard>} />
+            <Route path="/instructor/talleres/:id/asistencia" element={<RoleGuard roles={["Administrador", "Secretaria", "Instructor"]}><AsistenciaTallerPage /></RoleGuard>} />
             <Route path="/instructor/talleres/:id/participantes" element={<RoleGuard roles={["Administrador", "Instructor"]}><ParticipantesTallerPage /></RoleGuard>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

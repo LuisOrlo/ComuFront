@@ -42,6 +42,12 @@ export interface InscripcionTaller {
   cedula: string
   correo: string
   telefono?: string
+  ciudad?: string
+  ocupacion?: string
+  direccion?: string
+  estado_civil?: string
+  fecha_nacimiento?: string
+  edad?: number
   fecha_inscripcion: string
   estado: string
   tipo_pago?: string
@@ -53,6 +59,17 @@ export interface InscripcionTaller {
   taller?: Taller
 }
 
+export interface AsistenciaEstudiante {
+  id: string
+  asistencia_taller_id: string
+  inscripcion_taller_id: string | null
+  participante_externo_id: string | null
+  asistio: boolean
+  estado: string
+  observaciones: string | null
+  inscripcion_taller?: InscripcionTaller | null
+}
+
 export interface AsistenciaTaller {
   id: string
   taller_id: string
@@ -60,6 +77,7 @@ export interface AsistenciaTaller {
   asistentes: number
   capacidad_registrada: number
   observaciones?: string
+  estudiantes?: AsistenciaEstudiante[]
 }
 
 export interface TallerStats {
@@ -185,6 +203,16 @@ export const tallerService = {
 
   async registrarAsistencia(tallerId: string, data: Record<string, unknown>) {
     const res = await api.post(`${PREFIX}/talleres/${tallerId}/asistencias`, data)
+    return res.data
+  },
+
+  async listarAsistenciaEstudiantes(tallerId: string, asistenciaId: string) {
+    const res = await api.get(`${PREFIX}/talleres/${tallerId}/asistencias/${asistenciaId}/estudiantes`)
+    return res.data
+  },
+
+  async registrarAsistenciaEstudiantes(tallerId: string, asistenciaId: string, data: Record<string, unknown>) {
+    const res = await api.post(`${PREFIX}/talleres/${tallerId}/asistencias/${asistenciaId}/estudiantes`, data)
     return res.data
   },
 

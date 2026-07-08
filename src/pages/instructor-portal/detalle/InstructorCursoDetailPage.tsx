@@ -10,26 +10,36 @@ import {
   AssignmentsIcon,
   ArrowRight01Icon,
   Download04Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
-import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { COLORS, ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
+import { generarListadoAsistenciaPDF, generarReporteAsistenciaPDF, type EstudianteReporte } from "@/lib/generarAsistenciaPDF"
 import {
   instructorService,
   type InstructorCurso,
   type EstudianteCurso,
   type ModuloResumen,
+  type ClaseItem,
+  type AsistenciaClaseEstudiante,
 } from "@/services/instructor.service"
 import { useAuth } from "@/context/AuthContext"
+import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 
 export function InstructorCursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
+  const { isAdmin } = usePermission()
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "info")
+  const [clasesPorModulo, setClasesPorModulo] = useState<Record<string, ClaseItem[]>>({})
+  const [asistenciasPorClase, setAsistenciasPorClase] = useState<Record<string, AsistenciaClaseEstudiante[]>>({})
+  const [cargandoClases, setCargandoClases] = useState(false)
+  const [editandoClaseId, setEditandoClaseId] = useState<string | null>(null)
+  const [editsLocalCurso, setEditsLocalCurso] = useState<Record<string, { estado: string; observaciones: string }>>({})
 
   const loadData = async () => {
     try {
@@ -54,6 +64,45 @@ export function InstructorCursoDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
+  useEffect(() => {
+    if (!id || !curso || activeTab !== "attendance") return
+
+    const cargarClasesYAsistencias = async () => {
+      setCargandoClases(true)
+      const modulos = curso.modulos
+
+      // Cargar clases por módulo
+      const clasesMap: Record<string, ClaseItem[]> = {}
+      const resultadosClases = await Promise.all(
+        modulos.map(m => instructorService.getClasesModulo(m.id).then(clases => ({ moduloId: m.id, clases })))
+      )
+      resultadosClases.forEach(({ moduloId, clases }) => {
+        clasesMap[moduloId] = clases
+      })
+      setClasesPorModulo(clasesMap)
+
+      // Cargar asistencias por clase (solo las que tienen asistencia registrada)
+      const todasClases = Object.values(clasesMap).flat()
+      const clasesConAsistencia = todasClases.filter(c => c.asistencia_registrada)
+
+      const asistenciasMap: Record<string, AsistenciaClaseEstudiante[]> = {}
+      await Promise.all(
+        clasesConAsistencia.map(async (clase) => {
+          try {
+            const data = await instructorService.getAsistenciaClase(clase.id)
+            asistenciasMap[clase.id] = data
+          } catch {
+            asistenciasMap[clase.id] = []
+          }
+        })
+      )
+      setAsistenciasPorClase(asistenciasMap)
+      setCargandoClases(false)
+    }
+
+    cargarClasesYAsistencias()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, curso, activeTab])
 
   if (loading)
     return (
@@ -80,6 +129,76 @@ export function InstructorCursoDetailPage() {
 
   const getEstudianteCedula = (e: EstudianteCurso) =>
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
+
+  const getNombreAsistenciaClase = (e: AsistenciaClaseEstudiante) => {
+    if (e.estudiante) return `${e.estudiante.nombres} ${e.estudiante.apellidos}`
+    if (e.participante_externo) return `${e.participante_externo.nombres} ${e.participante_externo.apellidos}`
+    return "—"
+  }
+
+  const getCedulaAsistenciaClase = (e: AsistenciaClaseEstudiante) =>
+    e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
+
+  const getCiudadAsistenciaClase = (e: AsistenciaClaseEstudiante) =>
+    e.estudiante?.ciudad ?? "—"
+
+  const ESTADO_OPCIONES_CURSO = [
+    { value: "presente", label: "Presente", color: "#10b981" },
+    { value: "tardanza", label: "Tardanza", color: "#f59e0b" },
+    { value: "ausente", label: "Ausente", color: "#ef4444" },
+    { value: "justificado", label: "Justificado", color: "#3b82f6" },
+  ]
+
+  const iniciarEdicionClase = (claseId: string) => {
+    const asistencias = asistenciasPorClase[claseId]
+    if (!asistencias) return
+    setEditandoClaseId(claseId)
+    const initial: Record<string, { estado: string; observaciones: string }> = {}
+    asistencias.forEach(a => {
+      initial[a.matricula_id] = {
+        estado: a.estado || (a.asistio ? "presente" : "ausente"),
+        observaciones: a.observaciones || "",
+      }
+    })
+    setEditsLocalCurso(initial)
+  }
+
+  const handleCambiarEstadoCurso = (matriculaId: string, estado: string) => {
+    setEditsLocalCurso(prev => ({
+      ...prev,
+      [matriculaId]: { ...prev[matriculaId], estado },
+    }))
+  }
+
+  const guardarEdicionClase = async (claseId: string) => {
+    const asistencias = asistenciasPorClase[claseId]
+    if (!asistencias) return
+    try {
+      const asistenciasPayload = asistencias.map(a => ({
+        matricula_id: a.matricula_id,
+        asistio: editsLocalCurso[a.matricula_id]?.estado === "presente" || editsLocalCurso[a.matricula_id]?.estado === "tardanza",
+        estado: editsLocalCurso[a.matricula_id]?.estado || "presente",
+        observaciones: editsLocalCurso[a.matricula_id]?.observaciones || "",
+      }))
+      await instructorService.registrarAsistencia(claseId, asistenciasPayload)
+      toast.success("Asistencia actualizada")
+      const data = await instructorService.getAsistenciaClase(claseId)
+      setAsistenciasPorClase(prev => ({ ...prev, [claseId]: data }))
+      setEditandoClaseId(null)
+      setEditsLocalCurso({})
+    } catch {
+      toast.error("Error al guardar cambios")
+    }
+  }
+
+  const formatFechaCorta = (f?: string) => {
+    if (!f) return "—"
+    try {
+      const d = new Date(f)
+      const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+      return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`
+    } catch { return f }
+  }
 
   const handleDescargarAsistencia = async () => {
     if (!curso) return
@@ -334,47 +453,217 @@ export function InstructorCursoDetailPage() {
           )}
 
           {activeTab === "attendance" && (
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-10">
-                <h3 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Gestión de Asistencia</h3>
-                <p className="text-sm mt-1.5" style={{ color: COLORS.TEXT_MUTED }}>Selecciona un módulo para registrar la asistencia de sus clases.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {curso.modulos.map((modulo: ModuloResumen) => (
-                  <Link
-                    key={modulo.id}
-                    to={`/instructor/clases/${curso.id}/${modulo.id}`}
-                    className="group flex flex-col p-6 rounded-2xl bg-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]"
-                    style={{ border: "1px solid #e8eaed" }}
-                  >
-                    <div className="flex items-start gap-5 mb-4">
-                      <div
-                        className="size-14 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)` }}
-                      >
-                        <HugeiconsIcon icon={CheckListIcon} size={26} style={{ color: COLORS.ACCENT }} />
-                      </div>
-                      <div className="min-w-0">
+            <div className="max-w-5xl mx-auto space-y-5">
+              <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registro de Asistencia por Clase</h3>
+
+              {cargandoClases ? (
+                <div className="bg-white rounded-xl border p-12 text-center text-sm" style={{ borderColor: "#f1f3f5", color: COLORS.TEXT_MUTED }}>
+                  Cargando clases y asistencias...
+                </div>
+              ) : Object.keys(clasesPorModulo).length === 0 ? (
+                <div className="bg-white rounded-xl border p-12 text-center" style={{ borderColor: "#f1f3f5" }}>
+                  <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>No se encontraron clases para este curso.</p>
+                </div>
+              ) : (
+                curso.modulos.map(modulo => {
+                  const clases = clasesPorModulo[modulo.id]
+                  if (!clases || clases.length === 0) return null
+
+                  return (
+                    <div key={modulo.id} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#f1f3f5" }}>
+                      <div className="px-5 py-3 border-b" style={{ borderColor: "#f1f3f5", backgroundColor: "#fafafa" }}>
                         <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
                           Módulo {modulo.numero_orden}
                         </span>
-                        <p className="text-base font-bold mt-1 truncate" style={{ color: COLORS.CHARCOAL }}>{modulo.nombre_modulo}</p>
+                        <span className="text-sm font-bold ml-3" style={{ color: COLORS.CHARCOAL }}>
+                          {modulo.nombre_modulo}
+                        </span>
+                        <span className="text-xs ml-3" style={{ color: COLORS.TEXT_MUTED }}>
+                          {clases.filter(c => c.asistencia_registrada).length}/{clases.length} clases con asistencia
+                        </span>
+                      </div>
+
+                      <div className="divide-y" style={{ borderColor: "#f1f3f5" }}>
+                        {clases.map(clase => {
+                          const asistencias = asistenciasPorClase[clase.id] || []
+                          const editando = editandoClaseId === clase.id
+                          const asistentes = asistencias.filter(a => a.asistio).length
+                          const total = asistencias.length
+                          const pct = total > 0 ? Math.round((asistentes / total) * 100) : 0
+
+                          return (
+                            <div key={clase.id} className="px-5 py-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0 space-y-3">
+                                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
+                                    {formatFechaCorta(clase.fecha_clase)}
+                                  </p>
+                                  {clase.asistencia_registrada ? (
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <div className="flex items-center gap-1.5 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                                        <HugeiconsIcon icon={UserGroupIcon} size={14} />
+                                        <span>
+                                          <strong style={{ color: COLORS.CHARCOAL }}>{asistentes}</strong>
+                                          <span className="mx-0.5">/</span>
+                                          <strong style={{ color: COLORS.CHARCOAL }}>{total}</strong>
+                                          {" asistentes"}
+                                        </span>
+                                      </div>
+                                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md"
+                                        style={{
+                                          backgroundColor: pct >= 70 ? "#d1fae5" : pct >= 50 ? "#fef3c7" : "#fee2e2",
+                                          color: pct >= 70 ? "#065f46" : pct >= 50 ? "#92400e" : "#991b1b"
+                                        }}>
+                                        {pct}%
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
+                                      style={{ backgroundColor: "oklch(0.93 0.06 20)", color: "oklch(0.55 0.15 20)" }}>
+                                      Sin registro
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                {clase.asistencia_registrada ? (
+                                  <button onClick={() => {
+                                    const reporte: EstudianteReporte[] = asistencias.map(a => ({
+                                      nombres: a.estudiante?.nombres || a.participante_externo?.nombres || "—",
+                                      apellidos: a.estudiante?.apellidos || a.participante_externo?.apellidos || "—",
+                                      cedula: a.estudiante?.cedula || a.participante_externo?.cedula || "—",
+                                      ciudad: a.estudiante?.ciudad || "—",
+                                      asistio: a.asistio,
+                                    }))
+                                    generarReporteAsistenciaPDF(
+                                      curso.nombre_instancia,
+                                      formatFechaCorta(clase.fecha_clase),
+                                      reporte,
+                                    ).then(() => toast.success("Reporte descargado"))
+                                      .catch(() => toast.error("Error al generar PDF"))
+                                  }}
+                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-semibold border transition-all"
+                                    style={{ borderColor: "#f1f3f5", color: COLORS.ACCENT }}>
+                                    <HugeiconsIcon icon={Download04Icon} size={12} />Reporte
+                                  </button>
+                                ) : (
+                                  <button onClick={() => {
+                                    const nombres = asistencias.length > 0
+                                      ? asistencias.map(a => `${a.estudiante?.nombres || a.participante_externo?.nombres || "—"} ${a.estudiante?.apellidos || a.participante_externo?.apellidos || "—"}`)
+                                      : estudiantes.map(e => getEstudianteName(e))
+                                    const horario = curso.horario?.nombre_referencial ?? "Sin horario"
+                                    generarListadoAsistenciaPDF(curso.nombre_instancia, horario, nombres)
+                                      .then(() => toast.success("Listado descargado"))
+                                      .catch(() => toast.error("Error al generar PDF"))
+                                  }}
+                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-bold border border-emerald-500 bg-emerald-500 text-white transition-all"
+                                    style={{ borderColor: "#10b981" }}>
+                                    <HugeiconsIcon icon={Download04Icon} size={12} />Listado
+                                  </button>
+                                )}
+                                {!editando && isAdmin && (
+                                  <button onClick={() => iniciarEdicionClase(clase.id)}
+                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-semibold border transition-all"
+                                    style={{ borderColor: "#f1f3f5", color: COLORS.ACCENT }}>
+                                    <HugeiconsIcon icon={Edit01Icon} size={12} />Editar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                              {clase.observaciones && (
+                                <div className="mt-3 pt-3 border-t" style={{ borderColor: "#f1f3f5" }}>
+                                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: COLORS.TEXT_MUTED }}>Observaciones</p>
+                                  <p className="text-sm" style={{ color: COLORS.CHARCOAL }}>{clase.observaciones}</p>
+                                </div>
+                              )}
+
+                              {clase.asistencia_registrada && (
+                                <div className="overflow-x-auto rounded-lg border" style={{ borderColor: "#f1f3f5" }}>
+                                  {asistencias.length === 0 ? (
+                                    <div className="p-6 text-center text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                                      Sin datos de asistencia
+                                    </div>
+                                  ) : (
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="border-b" style={{ borderColor: "#f1f3f5" }}>
+                                          <th className="text-left font-semibold px-4 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Nombres</th>
+                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Apellidos</th>
+                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
+                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Ciudad</th>
+                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Asistió</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {asistencias.map(a => {
+                                          const edit = editando ? editsLocalCurso[a.matricula_id] : undefined
+                                          const estadoActual = edit?.estado || a.estado || (a.asistio ? "presente" : "ausente")
+                                          return (
+                                            <tr key={a.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: "#f1f3f5" }}>
+                                              <td className="px-4 py-2.5 font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
+                                                {getNombreAsistenciaClase(a)}
+                                              </td>
+                                              <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
+                                                {a.estudiante?.apellidos || a.participante_externo?.apellidos || "—"}
+                                              </td>
+                                              <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: COLORS.TEXT_MUTED }}>
+                                                {getCedulaAsistenciaClase(a)}
+                                              </td>
+                                              <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: COLORS.TEXT_MUTED }}>
+                                                {getCiudadAsistenciaClase(a)}
+                                              </td>
+                                              <td className="px-3 py-2.5 whitespace-nowrap">
+                                                {editando ? (
+                                                  <select
+                                                    value={estadoActual}
+                                                    onChange={e => handleCambiarEstadoCurso(a.matricula_id, e.target.value)}
+                                                    className="px-2 py-1 rounded border text-[11px] font-semibold outline-none"
+                                                    style={{ borderColor: "#f1f3f5" }}
+                                                  >
+                                                    {ESTADO_OPCIONES_CURSO.map(op => (
+                                                      <option key={op.value} value={op.value}>{op.label}</option>
+                                                    ))}
+                                                  </select>
+                                                ) : (
+                                                  <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold"
+                                                    style={{
+                                                      backgroundColor: ESTADO_ASISTENCIA_BADGE[estadoActual]?.bg || "#fee2e2",
+                                                      color: ESTADO_ASISTENCIA_BADGE[estadoActual]?.text || "#991b1b",
+                                                    }}>
+                                                    {ESTADO_ASISTENCIA_BADGE[estadoActual]?.label || "No"}
+                                                  </span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  )}
+                                </div>
+                              )}
+
+                              {editando && (
+                                <div className="mt-2 flex items-center justify-end gap-2">
+                                  <button onClick={() => { setEditandoClaseId(null); setEditsLocalCurso({}) }}
+                                    className="px-3 py-1 rounded-lg text-[11px] font-semibold border transition-all"
+                                    style={{ borderColor: "#f1f3f5", color: COLORS.TEXT_MUTED }}>
+                                    Cancelar
+                                  </button>
+                                  <button onClick={() => guardarEdicionClase(clase.id)}
+                                    className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white transition-all active:scale-[0.97]"
+                                    style={{ backgroundColor: COLORS.ACCENT }}>
+                                    Guardar Cambios
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t" style={{ borderColor: "#f1f3f5" }}>
-                      <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                        {modulo.ponderacion || "—"}% del curso
-                      </span>
-                      <span
-                        className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all group-hover:brightness-110 group-hover:shadow-md"
-                        style={{ backgroundColor: COLORS.ACCENT }}
-                      >
-                        Ir a Clases
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                  )
+                })
+              )}
             </div>
           )}
 

@@ -40,6 +40,7 @@ export interface ClaseItem {
   hora_inicio: string
   hora_fin: string
   asistencia_registrada: boolean
+  observaciones?: string
 }
 
 export interface EstudianteCurso {
@@ -68,6 +69,31 @@ export interface EstudianteCurso {
     observaciones?: string
   }>
   estado: string
+}
+
+export interface AsistenciaClaseEstudiante {
+  id: string
+  clase_id: string
+  matricula_id: string
+  asistio: boolean
+  estado: string
+  observaciones: string | null
+  estudiante: {
+    id: string
+    nombres: string
+    apellidos: string
+    cedula: string
+    correo: string
+    ciudad?: string
+  } | null
+  participante_externo: {
+    id: string
+    nombres: string
+    apellidos: string
+    cedula: string
+    correo: string
+    telefono?: string
+  } | null
 }
 
 export interface EstudianteUnificado {
@@ -115,8 +141,12 @@ export const instructorService = {
     asistio: boolean
     estado: string
     observaciones: string
-  }>) {
-    const response = await api.post(`/instructor/clases/${claseId}/asistencia`, { asistencias })
+  }>, claseObservaciones?: string) {
+    const body: Record<string, unknown> = { asistencias }
+    if (claseObservaciones !== undefined) {
+      body.clase_observaciones = claseObservaciones
+    }
+    const response = await api.post(`/instructor/clases/${claseId}/asistencia`, body)
     return response.data
   },
 
@@ -146,6 +176,11 @@ export const instructorService = {
     } | null
   }> {
     const response = await api.get(`/instructor/estudiantes/${id}`)
+    return response.data.datos
+  },
+
+  async getAsistenciaClase(claseId: string): Promise<AsistenciaClaseEstudiante[]> {
+    const response = await api.get(`/instructor/clases/${claseId}/asistencia`)
     return response.data.datos
   },
 

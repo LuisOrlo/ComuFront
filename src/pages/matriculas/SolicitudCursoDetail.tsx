@@ -427,16 +427,6 @@ export function SolicitudCursoDetail(props: SolicitudCursoDetailProps) {
         <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
       </Section>
 
-      {solicitudRaw.estado === "pendiente_validacion" && selected?.curso?.id && (
-        <PagoPreAprobacionSection
-          ref={pagoRef}
-          cursoAbiertoId={selected.curso.id}
-          cursoNombre={getCursoNombre()}
-          metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
-          onMontoModulo1Change={setMontoModulo1Valido}
-          onSubmit={(pagos, metodoPago) => handleApproveWithPayment(pagos, metodoPago)}
-        />
-      )}
       {solicitudRaw.estado === "pendiente_validacion" ? (
         <div className="flex gap-3 pt-3">
           <button onClick={() => setConfirmAction({ type: "rechazar", id: selected.id })}

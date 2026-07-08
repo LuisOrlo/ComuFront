@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -16,7 +16,7 @@ import {
 } from "@/services/instructor.service"
 import { toast } from "sonner"
 
-type ViewState = "modules" | "classes" | "attendance"
+type ViewState = "overview" | "modules" | "classes" | "attendance"
 
 type AsistenciaLocal = {
   asistio: boolean
@@ -37,7 +37,7 @@ interface Props {
 }
 
 export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props) {
-  const [view, setView] = useState<ViewState>(modulos.length > 0 ? "modules" : "modules")
+  const [view, setView] = useState<ViewState>("overview")
   const [clases, setClases] = useState<ClaseItem[]>([])
   const [selectedModulo, setSelectedModulo] = useState<ModuloItem | null>(null)
   const [selectedClase, setSelectedClase] = useState<ClaseItem | null>(null)
@@ -47,6 +47,18 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   const [asistenciasLocal, setAsistenciasLocal] = useState<
     Record<string, AsistenciaLocal>
   >({})
+  const [claseObservaciones, setClaseObservaciones] = useState("")
+  const [overviewEstudiantes, setOverviewEstudiantes] = useState<EstudianteCurso[]>([])
+  const [overviewLoading, setOverviewLoading] = useState(false)
+
+  useEffect(() => {
+    if (view !== "overview" || !cursoId) return
+    setOverviewLoading(true)
+    instructorService.getEstudiantesCurso(cursoId)
+      .then(setOverviewEstudiantes)
+      .catch(() => toast.error("Error al cargar estadísticas de asistencia"))
+      .finally(() => setOverviewLoading(false))
+  }, [view, cursoId])
 
   const handleModuleClick = async (modulo: ModuloItem) => {
     setSelectedModulo(modulo)
@@ -66,6 +78,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
     setSelectedClase(clase)
     setView("attendance")
     setLoading(true)
+    setClaseObservaciones(clase?.observaciones ?? "")
     try {
       const [estudiantesData] = await Promise.all([
         instructorService.getEstudiantesCurso(cursoId),
@@ -119,7 +132,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           observaciones: data.observaciones,
         }),
       )
-      await instructorService.registrarAsistencia(selectedClase.id, payload)
+      await instructorService.registrarAsistencia(selectedClase.id, payload, claseObservaciones)
       toast.success("Asistencia guardada correctamente")
       setView("classes")
       setSelectedClase(null)
@@ -152,10 +165,117 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
     (a) => a.estado === "presente" || a.estado === "tardanza",
   ).length
 
+  // ─── View: Overview ───
+  if (view === "overview") {
+    const totalClases = overviewEstudiantes.reduce((max, e) => Math.max(max, e.total_clases || 0), 0)
+    const promedio = overviewEstudiantes.length > 0
+      ? Math.round(overviewEstudiantes.reduce((s, e) => s + (e.porcentaje_asistencia || 0), 0) / overviewEstudiantes.length)
+      : 0
+    return (
+      <div className="space-y-5">
+        {/* Stats cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.TEXT_MUTED }}>Total Estudiantes</p>
+            <p className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
+              <HugeiconsIcon icon={UserGroupIcon} size={20} className="inline mr-1.5" style={{ color: COLORS.ACCENT }} />
+              {overviewEstudiantes.length}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.TEXT_MUTED }}>Total Clases</p>
+            <p className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
+              {totalClases}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.TEXT_MUTED }}>Promedio Asistencia</p>
+            <p className="text-2xl font-bold" style={{
+              color: promedio >= 70 ? "oklch(0.45 0.12 140)" : promedio >= 50 ? "oklch(0.55 0.12 90)" : "oklch(0.5 0.15 25)",
+            }}>
+              {promedio}%
+            </p>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <p className="text-xs font-semibold" style={{ color: COLORS.CHARCOAL }}>Resumen de Asistencia</p>
+            {modulos.length > 0 && (
+              <button onClick={() => setView("modules")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all"
+                style={{ backgroundColor: COLORS.ACCENT }}>
+                <HugeiconsIcon icon={CheckListIcon} size={12} />Registrar Asistencia
+              </button>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            {overviewLoading ? (
+              <div className="p-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
+            ) : overviewEstudiantes.length === 0 ? (
+              <div className="p-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Sin estudiantes matriculados</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <th className="text-left font-semibold px-5 py-3" style={{ color: COLORS.TEXT_MUTED }}>Estudiante</th>
+                    <th className="text-left font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
+                    <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
+                    <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Porcentaje</th>
+                    <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overviewEstudiantes.map(e => {
+                    const asistidas = e.clases_asistidas || 0
+                    const totales = e.total_clases || 0
+                    const pct = e.porcentaje_asistencia || 0
+                    const badgeColor = pct >= 70 ? { bg: "#d1fae5", text: "#065f46" }
+                      : pct >= 50 ? { bg: "#fef3c7", text: "#92400e" }
+                      : { bg: "#fee2e2", text: "#991b1b" }
+                    return (
+                      <tr key={e.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <td className="px-5 py-3 font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
+                          {e.estudiante ? `${e.estudiante.nombres} ${e.estudiante.apellidos}` : e.participante_externo ? `${e.participante_externo.nombres} ${e.participante_externo.apellidos ?? ""}` : "—"}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap" style={{ color: COLORS.TEXT_MUTED }}>
+                          {e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"}
+                        </td>
+                        <td className="px-4 py-3 text-center font-semibold" style={{ color: COLORS.CHARCOAL }}>
+                          {asistidas}/{totales}
+                        </td>
+                        <td className="px-4 py-3 text-center font-semibold" style={{ color: badgeColor.text }}>
+                          {pct}%
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold"
+                            style={{ backgroundColor: badgeColor.bg, color: badgeColor.text }}>
+                            {pct >= 70 ? "Bueno" : pct >= 50 ? "Regular" : "Bajo"}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ─── View: Module selection ───
   if (view === "modules") {
     return (
       <div className="max-w-4xl mx-auto">
+        <button onClick={() => setView("overview")}
+          className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
+          style={{ color: COLORS.TEXT_MUTED }}>
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+          Volver a resumen
+        </button>
         <div className="text-center mb-10">
           <h3 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>
             Gestión de Asistencia
@@ -287,8 +407,14 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               <button
                 key={clase.id}
                 onClick={() => handleClassClick(clase)}
-                className="w-full bg-white rounded-xl p-5 flex items-center justify-between hover:shadow-md transition-all group text-left"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
+                className="w-full rounded-xl p-5 flex items-center justify-between hover:shadow-md transition-all group text-left"
+                style={{
+                  borderColor: COLORS.BORDER_SUBTLE,
+                  borderWidth: 1,
+                  backgroundColor: clase.asistencia_registrada
+                    ? "oklch(0.97 0.03 145 / 0.35)"
+                    : "white",
+                }}
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -316,6 +442,11 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                     <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
                       {clase.hora_inicio} - {clase.hora_fin}
                     </p>
+                    {clase.observaciones && (
+                      <p className="text-[11px] mt-1 italic truncate max-w-[280px]" style={{ color: "oklch(0.5 0.08 220)" }}>
+                        📝 {clase.observaciones}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
@@ -465,6 +596,20 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               Selecciona el estado de asistencia para cada estudiante. Por defecto
               todos están marcados como <b>Presente</b>.
             </p>
+          </div>
+
+          <div className="mb-6">
+            <label className="text-xs font-semibold block mb-1.5" style={{ color: COLORS.TEXT_MUTED }}>
+              Observaciones de la clase
+            </label>
+            <textarea
+              value={claseObservaciones}
+              onChange={e => setClaseObservaciones(e.target.value)}
+              placeholder="Agregar observaciones para esta clase..."
+              rows={2}
+              className="w-full px-3 py-2 text-sm rounded-xl border outline-none resize-none transition-all"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+            />
           </div>
 
           {loading ? (

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon, CheckmarkCircle01Icon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService, type Taller } from "@/services/taller.service"
 import { authService } from "@/services/auth.service"
@@ -13,6 +13,14 @@ const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
 const TEXT_MUTED = COLORS.TEXT_MUTED
 const BORDER = COLORS.BORDER_SUBTLE
+
+function todayLocal(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
 
 export function InstructorTalleresPage() {
   const navigate = useNavigate()
@@ -42,8 +50,7 @@ export function InstructorTalleresPage() {
         } else if (tab === "completados") {
           params.estado = "completado"
         } else {
-          params.fecha_desde = new Date().toISOString().split("T")[0]
-          params.fecha_hasta = new Date().toISOString().split("T")[0]
+          params.tab = "hoy"
         }
         const res = await tallerService.listar(params)
         setTalleres((res as any).data || [])
@@ -56,12 +63,12 @@ export function InstructorTalleresPage() {
     cargar()
   }, [tab])
 
-  const hoyStr = new Date().toISOString().split("T")[0]
+  const hoyLocal = todayLocal()
 
   const formatFecha = (f?: string) => {
     if (!f) return "—"
     try {
-      const d = new Date(f)
+      const d = new Date(f.substring(0, 10) + "T12:00:00")
       const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
       return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`
     } catch { return f }
@@ -118,8 +125,7 @@ export function InstructorTalleresPage() {
                 </thead>
                 <tbody>
                   {talleres.map(t => {
-                    const esHoy = t.fecha === hoyStr
-                    const yaPaso = t.fecha && new Date(t.fecha) < new Date(new Date().toDateString())
+                    const esHoy = t.fecha === hoyLocal
                     return (
                       <tr key={t.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: BORDER }}>
                         <td className="px-5 py-3.5">
@@ -147,20 +153,11 @@ export function InstructorTalleresPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {(esHoy || yaPaso) && (
-                              <button onClick={() => navigate(`/instructor/talleres/${t.id}/asistencia`)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white"
-                                style={{ backgroundColor: ACCENT }}>
-                                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />Asistencia
-                              </button>
-                            )}
-                            <button onClick={() => navigate(`/instructor/talleres/${t.id}/participantes`)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold border"
-                              style={{ borderColor: BORDER, color: CHARCOAL }}>
-                              <HugeiconsIcon icon={UserGroupIcon} size={13} />Participantes
-                            </button>
-                          </div>
+                          <button onClick={() => navigate(`/instructor/talleres/${t.id}`)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white transition-all active:scale-[0.97]"
+                            style={{ backgroundColor: ACCENT }}>
+                            Ver detalle <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
+                          </button>
                         </td>
                       </tr>
                     )

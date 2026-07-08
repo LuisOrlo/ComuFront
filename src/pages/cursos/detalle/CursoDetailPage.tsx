@@ -11,16 +11,20 @@ import {
   NoteIcon,
   CapIcon,
   Download01Icon,
+  UserGroupIcon,
+  CheckmarkCircle01Icon,
+  Money01Icon,
 } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
-import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { generarListadoAsistenciaPDF, generarListadoParticipantesCursoPDF } from "@/lib/generarAsistenciaPDF"
 import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
+import { CursoPagosSection } from "./CursoPagosSection"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
 import { toast } from "sonner"
 
-type Tab = "info" | "modulos" | "estudiantes" | "asistencia"
+type Tab = "info" | "modulos" | "estudiantes" | "asistencia" | "pagos"
 
 interface ModuloData {
   id: string
@@ -110,6 +114,14 @@ export function CursoDetailPage() {
   // Calcular progreso
   const progreso = curso.capacidad > 0 ? Math.round((curso.estudiantes / curso.capacidad) * 100) : 0
 
+  const tabs = [
+    { key: "info" as Tab, label: "Información", icon: CalendarIcon },
+    { key: "modulos" as Tab, label: "Módulos", icon: NoteIcon },
+    { key: "estudiantes" as Tab, label: `Estudiantes (${matriculas.length})`, icon: UserGroupIcon },
+    { key: "asistencia" as Tab, label: "Asistencia", icon: CheckmarkCircle01Icon },
+    { key: "pagos" as Tab, label: "Pagos", icon: Money01Icon },
+  ]
+
   return (
     <div className="min-h-[100dvh] flex flex-col">
       <main className="flex-1">
@@ -158,12 +170,16 @@ export function CursoDetailPage() {
 
         <div className="max-w-[1100px] mx-auto px-6 py-6 space-y-6">
           {/* Tabs */}
-          <div className="flex gap-1 rounded-lg border p-0.5 w-fit" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            {(["info", "modulos", "estudiantes", "asistencia"] as Tab[]).map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                className="px-5 py-2 rounded-md text-xs font-semibold transition-all duration-180 capitalize"
-                style={{ backgroundColor: tab === t ? COLORS.CHARCOAL : "transparent", color: tab === t ? "white" : COLORS.TEXT_MUTED }}>
-                {t === "modulos" ? "Módulos" : t === "info" ? "Información" : t === "estudiantes" ? `Estudiantes (${matriculas.length})` : "Asistencia"}
+          <div className="flex gap-1 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            {tabs.map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+                style={{
+                  borderColor: tab === t.key ? COLORS.ACCENT : "transparent",
+                  color: tab === t.key ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+                }}>
+                <HugeiconsIcon icon={t.icon} size={14} />
+                {t.label}
               </button>
             ))}
           </div>
@@ -315,24 +331,21 @@ export function CursoDetailPage() {
                   <div className="flex gap-2">
                     <button onClick={async () => {
                       try {
-                        const blob = await cursosService.exportarParticipantesCurso(id!, "csv")
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement("a"); a.href = url; a.download = `participantes_${id}.csv`; a.click()
-                        URL.revokeObjectURL(url)
-                        toast.success("CSV descargado")
-                      } catch { toast.error("Error al exportar") }
-                    }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
-                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
-                      <HugeiconsIcon icon={Download01Icon} size={14} />CSV
-                    </button>
-                    <button onClick={async () => {
-                      try {
-                        const blob = await cursosService.exportarParticipantesCurso(id!, "pdf")
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement("a"); a.href = url; a.download = `participantes_${id}.pdf`; a.click()
-                        URL.revokeObjectURL(url)
+                        const participantes = matriculas.map((m) => {
+                          const e = m.estudiante
+                          const ext = m.solicitud_inscripcion?.participante_externo
+                          const sol = m.solicitud_inscripcion?.estudiante
+                          return {
+                            nombres: e?.nombres || ext?.nombres || sol?.nombres || "",
+                            apellidos: e?.apellidos || ext?.apellidos || sol?.apellidos || "",
+                            cedula: e?.cedula || sol?.cedula || ext?.cedula || "—",
+                            correo: e?.correo || sol?.correo || ext?.correo || "—",
+                            fechaInscripcion: m.fecha_inscripcion ? new Date(m.fecha_inscripcion).toLocaleDateString("es-ES") : "—",
+                          }
+                        })
+                        await generarListadoParticipantesCursoPDF(curso.nombre, participantes, id!)
                         toast.success("PDF descargado")
-                      } catch { toast.error("Error al exportar") }
+                      } catch { toast.error("Error al generar PDF") }
                     }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                       <HugeiconsIcon icon={Download01Icon} size={14} />PDF
@@ -415,6 +428,13 @@ export function CursoDetailPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Tab: Pagos */}
+          {tab === "pagos" && (
+            <CursoPagosSection
+              cursoId={id!}
+            />
           )}
         </div>
       </main>
