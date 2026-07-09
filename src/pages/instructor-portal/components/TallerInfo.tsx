@@ -121,7 +121,7 @@ export function TallerInfo({ taller, inscritosActivos }: Props) {
               {(taller.horarios && taller.horarios.length > 0
                 ? taller.horarios
                 : generarDiasDelRango(taller.fecha!, taller.fecha_fin!, taller.hora_inicio, taller.hora_fin)
-              ).map((h: any) => (
+              ).map((h: { id: string; dia_semana: number; hora_inicio?: string; hora_fin?: string; aula?: string }) => (
                 <div key={h.id} className="px-3 py-2 rounded-lg border text-xs" style={{ borderColor: BORDER }}>
                   <span className="font-semibold" style={{ color: ACCENT }}>{DIAS_NOMBRE[h.dia_semana] || h.dia_semana}</span>
                   <span className="ml-2" style={{ color: CHARCOAL }}>{formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}</span>

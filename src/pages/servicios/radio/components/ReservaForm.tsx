@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon } from "@hugeicons/core-free-icons"
+import { UserGroupIcon, Search01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { ArrowLeft } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { radioService, type TarifaRadio, type ReservaRadio } from "@/services/radio.service"
 import { staffService } from "@/services/staff.service"
+import { personasService, type Persona } from "@/services/personas.service"
 import { toast } from "sonner"
 import { OperadorSelector } from "./OperadorSelector"
  
@@ -38,6 +39,52 @@ export function ReservaForm({
   const [observaciones, setObservaciones] = useState("")
   const [saving, setSaving] = useState(false)
   const [tipoResponsable, setTipoResponsable] = useState<"persona" | "externo">("persona")
+  const [personaSearch, setPersonaSearch] = useState("")
+  const [personasDisponibles, setPersonasDisponibles] = useState<Persona[]>([])
+  const [showPersonaDropdown, setShowPersonaDropdown] = useState(false)
+  const [searchingPersona, setSearchingPersona] = useState(false)
+  const personaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (personaRef.current && !personaRef.current.contains(e.target as Node))
+        setShowPersonaDropdown(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  useEffect(() => {
+    if (!personaSearch.trim() || tipoResponsable !== "persona") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPersonasDisponibles([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSearchingPersona(true)
+      try {
+        const res = await personasService.getPersonas({ buscar: personaSearch, tipo: 'estudiante,instructor,staff,secretaria' })
+        setPersonasDisponibles(res.data)
+      } catch {
+        setPersonasDisponibles([])
+      } finally {
+        setSearchingPersona(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [personaSearch, tipoResponsable])
+
+  const selectPersona = (p: Persona) => {
+    setPersonaId(p.id)
+    setPersonaSearch(`${p.nombres} ${p.apellidos}`)
+    setShowPersonaDropdown(false)
+  }
+
+  const clearPersona = () => {
+    setPersonaId("")
+    setPersonaSearch("")
+    setPersonasDisponibles([])
+  }
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -50,17 +97,25 @@ export function ReservaForm({
       const fin = editingReserva.hora_fin.split(":").map(Number)
       setDuracionMinutos((fin[0] * 60 + fin[1]) - (inicio[0] * 60 + inicio[1]))
       setPersonaId(editingReserva.persona_id || "")
+      if (editingReserva.persona_id) {
+        personasService.getPersonaById(editingReserva.persona_id)
+          .then(p => { setPersonaSearch(`${p.nombres} ${p.apellidos}`) })
+          .catch(() => {})
+      }
       setClienteExternoNombre(editingReserva.cliente_externo?.nombres || "")
       setIncluyeOperador(editingReserva.incluye_operador)
       setOperadorId(editingReserva.operador_id || null)
       setObservaciones(editingReserva.observaciones || "")
       setTipoResponsable(editingReserva.persona_id ? "persona" : "externo")
+      if (!editingReserva.persona_id) { setPersonaSearch(""); setPersonasDisponibles([]) }
     } else {
       setTarifaId(tarifas[0]?.id || "")
       setFecha(fechaPreseleccionada || new Date().toISOString().split("T")[0])
       setHoraInicio(horaPreseleccionada || "08:00")
       setDuracionMinutos(60)
       setPersonaId("")
+      setPersonaSearch("")
+      setPersonasDisponibles([])
       setClienteExternoNombre("")
       setIncluyeOperador(false)
       setOperadorId(null)
@@ -133,7 +188,7 @@ export function ReservaForm({
 
       if (tipoResponsable === "persona") {
         if (!personaId) {
-          toast.error("Seleccione un responsable")
+          toast.error("Seleccione un cliente")
           setSaving(false)
           return
         }
@@ -247,13 +302,13 @@ export function ReservaForm({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Responsable</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Cliente</label>
             <div className="flex gap-2">
               {(["persona", "externo"] as const).map(t => (
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setTipoResponsable(t)}
+                  onClick={() => { setTipoResponsable(t); setShowPersonaDropdown(false) }}
                   className={cn(
                     "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border",
                     tipoResponsable === t
@@ -267,14 +322,57 @@ export function ReservaForm({
               ))}
             </div>
             {tipoResponsable === "persona" ? (
-              <input
-                type="text"
-                placeholder="ID de la persona (usuaria del sistema)"
-                value={personaId}
-                onChange={e => setPersonaId(e.target.value)}
-                className="w-full mt-2 px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
-                style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              />
+              <div className="relative mt-2" ref={personaRef}>
+                <div className="relative">
+                  <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente por nombre..."
+                    value={personaSearch}
+                    onChange={e => { setPersonaSearch(e.target.value); setShowPersonaDropdown(true) }}
+                    onFocus={() => { if (personaSearch.trim()) setShowPersonaDropdown(true) }}
+                    className="w-full pl-10 pr-9 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 transition-all bg-gray-50/50"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  />
+                  {personaId && (
+                    <button type="button" onClick={clearPersona}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30 hover:opacity-100 transition-opacity">
+                      <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                    </button>
+                  )}
+                </div>
+                {showPersonaDropdown && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border rounded-xl shadow-xl max-h-52 overflow-y-auto"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    {searchingPersona ? (
+                      <div className="p-4 text-center text-xs opacity-40">Buscando...</div>
+                    ) : personasDisponibles.length === 0 ? (
+                      <div className="p-4 text-center text-xs opacity-40">
+                        {personaSearch.trim() ? "Sin resultados" : "Escribe para buscar"}
+                      </div>
+                    ) : (
+                      personasDisponibles.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => selectPersona(p)}
+                          className={cn(
+                            "w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-gray-50 border-b last:border-b-0",
+                            personaId === p.id && "bg-gray-50/80"
+                          )}
+                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                        >
+                          <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>
+                            {p.nombres} {p.apellidos}
+                          </span>
+                          {p.cedula && <span className="ml-2 opacity-40">· {p.cedula}</span>}
+                          {p.correo && <span className="ml-2 opacity-30 text-[10px]">{p.correo}</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
               <input
                 type="text"

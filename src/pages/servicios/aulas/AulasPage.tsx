@@ -491,9 +491,9 @@ export function AulasPage() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl"
+              className="relative bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]"
             >
-              <div className="p-8 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="p-8 border-b flex justify-between items-center shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div className="space-y-1">
                   <h2 className="text-3xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Nueva Asignación</h2>
                   <p className="text-xs font-medium opacity-50">Reserva de espacio académico</p>
@@ -503,7 +503,7 @@ export function AulasPage() {
                 </button>
               </div>
               
-              <div className="p-8 space-y-8">
+              <div className="p-8 space-y-8 overflow-y-auto">
                 <div className="p-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-[2rem] flex items-center gap-6 text-white shadow-xl shadow-blue-600/20">
                   <div className="size-16 rounded-[1.25rem] bg-white/20 flex items-center justify-center shrink-0">
                     <HugeiconsIcon icon={Calendar03Icon} className="size-8" />
@@ -800,7 +800,7 @@ export function AulasPage() {
                 </div>
               </div>
 
-              <div className="px-8 py-6 bg-gray-50/50 border-t flex justify-end gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="px-8 py-6 bg-gray-50/50 border-t flex justify-end gap-3 shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <button
                   onClick={() => setReservaModalOpen(false)}
                   className="px-8 py-4 rounded-2xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10 transition-all active:scale-[0.98]"

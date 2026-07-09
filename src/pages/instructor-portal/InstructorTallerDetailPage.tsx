@@ -34,7 +34,6 @@ export function InstructorTallerDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
     tallerService.obtener(id)
       .then(t => setTaller(t))
       .catch(() => toast.error("Error al cargar taller"))
@@ -43,9 +42,8 @@ export function InstructorTallerDetailPage() {
 
   useEffect(() => {
     if (!id || tab !== "participantes") return
-    setLoadingInscripciones(true)
     tallerService.listarInscripciones(id, { per_page: 200 })
-      .then(res => setInscripciones((res as any).data || []))
+      .then(res => setInscripciones((res as { data: InscripcionTaller[] }).data || []))
       .catch(() => toast.error("Error al cargar participantes"))
       .finally(() => setLoadingInscripciones(false))
   }, [id, tab])

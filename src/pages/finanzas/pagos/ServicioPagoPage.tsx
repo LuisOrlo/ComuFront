@@ -18,6 +18,9 @@ export function ServicioPagoPage() {
   const navigate = useNavigate()
   const state = location.state as any
 
+  const esPagoDirecto = state?.tipo && state?.servicioId
+  const esPagoPorCuenta = state?.cuentaId
+
   const [monto, setMonto] = useState(state?.montoSaldo?.toString() || "0")
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0])
@@ -30,44 +33,30 @@ export function ServicioPagoPage() {
   const [saldoActual, setSaldoActual] = useState(state?.montoSaldo ?? 0)
   const [montoTotalCuenta, setMontoTotalCuenta] = useState(state?.montoTotal ?? 0)
 
-  const cargarCuenta = async (id: string) => {
-    try {
-      const res = await financeService.getCuentaDetalle(id)
-      const d = (res as any)?.datos
-      setSaldoActual(Number(d?.saldo_pendiente ?? 0))
-      setMontoTotalCuenta(Number(d?.monto_total ?? 0))
-      setCuentaValida(true)
-    } catch {
-      setCuentaValida(false)
-    }
-  }
-
-  const cargarTransacciones = (id: string) => {
-    financeService.getTransacciones({ cuenta_cobrar_id: id, per_page: 50 })
-      .then((res: any) => setTransacciones(res.data || []))
-      .catch(() => {})
-  }
-
   useEffect(() => {
-    if (!state?.cuentaId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await financeService.getCuentaDetalle(state.cuentaId!)
-        if (cancelled) return
-        const d = (res as any)?.datos
-        setSaldoActual(Number(d?.saldo_pendiente ?? 0))
-        setMontoTotalCuenta(Number(d?.monto_total ?? 0))
-        setCuentaValida(true)
-      } catch {
-        if (!cancelled) setCuentaValida(false)
-      }
-    })()
-    financeService.getTransacciones({ cuenta_cobrar_id: state.cuentaId, per_page: 50 })
-      .then((res: any) => { if (!cancelled) setTransacciones(res.data || []) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [state?.cuentaId])
+    if (esPagoPorCuenta && state?.cuentaId) {
+      let cancelled = false
+      ;(async () => {
+        try {
+          const res = await financeService.getCuentaDetalle(state.cuentaId!)
+          if (cancelled) return
+          const d = (res as any)?.datos
+          setSaldoActual(Number(d?.saldo_pendiente ?? 0))
+          setMontoTotalCuenta(Number(d?.monto_total ?? 0))
+          setCuentaValida(true)
+        } catch {
+          if (!cancelled) setCuentaValida(false)
+        }
+      })()
+      financeService.getTransacciones({ cuenta_cobrar_id: state.cuentaId, per_page: 50 })
+        .then((res: any) => { if (!cancelled) setTransacciones(res.data || []) })
+        .catch(() => {})
+      return () => { cancelled = true }
+    } else if (esPagoDirecto) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCuentaValida(true)
+    }
+  }, [state?.cuentaId, esPagoPorCuenta, esPagoDirecto])
 
   useEffect(() => {
     return () => {
@@ -75,7 +64,7 @@ export function ServicioPagoPage() {
     }
   }, [previewUrl])
 
-  if (!state?.cuentaId) {
+  if (!state || (!esPagoPorCuenta && !esPagoDirecto)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
         <p className="text-sm font-bold" style={{ color: CHARCOAL }}>No hay cuenta para este servicio</p>
@@ -115,7 +104,7 @@ export function ServicioPagoPage() {
     )
   }
 
-  const { cuentaId, nombre, nombreServicio } = state
+  const { nombre, nombreServicio } = state
 
   const montoNum = parseFloat(monto || "0")
   const montoValido = !isNaN(montoNum) && montoNum > 0 && montoNum <= saldoActual
@@ -145,21 +134,24 @@ export function ServicioPagoPage() {
         })
         comprobanteUrl = res.data.data?.url || res.data.url || ""
       }
-      await financeService.registrarPago({
-        cuenta_cobrar_id: cuentaId,
-        monto: montoNum,
-        metodo_pago: metodoPago,
-        comprobante_url: comprobanteUrl || null,
-        fecha_pago: fechaPago,
-      })
+      if (esPagoDirecto) {
+        await financeService.pagarServicio(state.tipo, state.servicioId, {
+          monto: montoNum,
+          metodo_pago: metodoPago,
+          comprobante_url: comprobanteUrl || undefined,
+          fecha_pago: fechaPago,
+        })
+      } else {
+        await financeService.registrarPago({
+          cuenta_cobrar_id: state.cuentaId,
+          monto: montoNum,
+          metodo_pago: metodoPago,
+          comprobante_url: comprobanteUrl || null,
+          fecha_pago: fechaPago,
+        })
+      }
       toast.success("Pago registrado exitosamente")
-      setMonto("0")
-      setComprobanteFile(null)
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-      setPreviewUrl(null)
-      if (fileRef.current) fileRef.current.value = ""
-      cargarCuenta(cuentaId)
-      cargarTransacciones(cuentaId)
+      navigate("/finanzas/pagos/cuentas/servicios")
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.response?.data?.mensaje || "Error al registrar pago")
     } finally {
@@ -333,7 +325,7 @@ export function ServicioPagoPage() {
         </div>
       </div>
 
-      {transacciones.length > 0 && (
+      {esPagoPorCuenta && transacciones.length > 0 && (
         <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
           <div className="px-5 py-3.5 border-b bg-gray-50/80" style={{ borderColor: BORDER }}>
             <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Historial de pagos</span>

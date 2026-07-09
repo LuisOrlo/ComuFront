@@ -10,10 +10,11 @@ import {
   AssignmentsIcon,
   ArrowRight01Icon,
   Download04Icon,
-  Edit01Icon,
 } from "@hugeicons/core-free-icons"
-import { COLORS, ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
-import { generarListadoAsistenciaPDF, generarReporteAsistenciaPDF, type EstudianteReporte } from "@/lib/generarAsistenciaPDF"
+import { COLORS } from "@/lib/constants"
+import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { ClaseAsistenciaCard } from "./ClaseAsistenciaCard"
+import { ClaseAsistenciaDetalle } from "./ClaseAsistenciaDetalle"
 import {
   instructorService,
   type InstructorCurso,
@@ -23,14 +24,12 @@ import {
   type AsistenciaClaseEstudiante,
 } from "@/services/instructor.service"
 import { useAuth } from "@/context/AuthContext"
-import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 
 export function InstructorCursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const { isAdmin } = usePermission()
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,8 +37,7 @@ export function InstructorCursoDetailPage() {
   const [clasesPorModulo, setClasesPorModulo] = useState<Record<string, ClaseItem[]>>({})
   const [asistenciasPorClase, setAsistenciasPorClase] = useState<Record<string, AsistenciaClaseEstudiante[]>>({})
   const [cargandoClases, setCargandoClases] = useState(false)
-  const [editandoClaseId, setEditandoClaseId] = useState<string | null>(null)
-  const [editsLocalCurso, setEditsLocalCurso] = useState<Record<string, { estado: string; observaciones: string }>>({})
+  const [selectedClaseId, setSelectedClaseId] = useState<string | null>(null)
 
   const loadData = async () => {
     try {
@@ -101,7 +99,6 @@ export function InstructorCursoDetailPage() {
     }
 
     cargarClasesYAsistencias()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, curso, activeTab])
 
   if (loading)
@@ -130,75 +127,7 @@ export function InstructorCursoDetailPage() {
   const getEstudianteCedula = (e: EstudianteCurso) =>
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
-  const getNombreAsistenciaClase = (e: AsistenciaClaseEstudiante) => {
-    if (e.estudiante) return `${e.estudiante.nombres} ${e.estudiante.apellidos}`
-    if (e.participante_externo) return `${e.participante_externo.nombres} ${e.participante_externo.apellidos}`
-    return "—"
-  }
-
-  const getCedulaAsistenciaClase = (e: AsistenciaClaseEstudiante) =>
-    e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
-
-  const getCiudadAsistenciaClase = (e: AsistenciaClaseEstudiante) =>
-    e.estudiante?.ciudad ?? "—"
-
-  const ESTADO_OPCIONES_CURSO = [
-    { value: "presente", label: "Presente", color: "#10b981" },
-    { value: "tardanza", label: "Tardanza", color: "#f59e0b" },
-    { value: "ausente", label: "Ausente", color: "#ef4444" },
-    { value: "justificado", label: "Justificado", color: "#3b82f6" },
-  ]
-
-  const iniciarEdicionClase = (claseId: string) => {
-    const asistencias = asistenciasPorClase[claseId]
-    if (!asistencias) return
-    setEditandoClaseId(claseId)
-    const initial: Record<string, { estado: string; observaciones: string }> = {}
-    asistencias.forEach(a => {
-      initial[a.matricula_id] = {
-        estado: a.estado || (a.asistio ? "presente" : "ausente"),
-        observaciones: a.observaciones || "",
-      }
-    })
-    setEditsLocalCurso(initial)
-  }
-
-  const handleCambiarEstadoCurso = (matriculaId: string, estado: string) => {
-    setEditsLocalCurso(prev => ({
-      ...prev,
-      [matriculaId]: { ...prev[matriculaId], estado },
-    }))
-  }
-
-  const guardarEdicionClase = async (claseId: string) => {
-    const asistencias = asistenciasPorClase[claseId]
-    if (!asistencias) return
-    try {
-      const asistenciasPayload = asistencias.map(a => ({
-        matricula_id: a.matricula_id,
-        asistio: editsLocalCurso[a.matricula_id]?.estado === "presente" || editsLocalCurso[a.matricula_id]?.estado === "tardanza",
-        estado: editsLocalCurso[a.matricula_id]?.estado || "presente",
-        observaciones: editsLocalCurso[a.matricula_id]?.observaciones || "",
-      }))
-      await instructorService.registrarAsistencia(claseId, asistenciasPayload)
-      toast.success("Asistencia actualizada")
-      const data = await instructorService.getAsistenciaClase(claseId)
-      setAsistenciasPorClase(prev => ({ ...prev, [claseId]: data }))
-      setEditandoClaseId(null)
-      setEditsLocalCurso({})
-    } catch {
-      toast.error("Error al guardar cambios")
-    }
-  }
-
-  const formatFechaCorta = (f?: string) => {
-    if (!f) return "—"
-    try {
-      const d = new Date(f)
-      const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-      return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`
-    } catch { return f }
-  }
+  
 
   const handleDescargarAsistencia = async () => {
     if (!curso) return
@@ -230,15 +159,15 @@ export function InstructorCursoDetailPage() {
         className="bg-white rounded-3xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.03)] border border-gray-200 mb-4"
       >
         <div
-          className="p-8 md:p-10 text-white"
-          style={{ background: COLORS.ACCENT }}
+          className="p-8 md:p-10 border-b"
+          style={{ borderColor: "#f1f3f5" }}
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
             <div className="space-y-3">
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-none">
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-none" style={{ color: COLORS.CHARCOAL }}>
                 {curso.nombre_instancia}
               </h1>
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: "oklch(0.88 0.02 50)" }}>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: COLORS.TEXT_MUTED }}>
                 <span className="flex items-center gap-1.5">
                   <HugeiconsIcon icon={BookOpen01Icon} size={15} />
                   {curso.catalogo?.color && (
@@ -265,16 +194,16 @@ export function InstructorCursoDetailPage() {
   Descargar Listado
 </button>
               <div
-                className="shrink-0 px-5 py-2.5 rounded-2xl text-center border backdrop-blur-sm"
+                className="shrink-0 px-5 py-2.5 rounded-2xl text-center border"
                 style={{
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                  borderColor: "rgba(255,255,255,0.15)",
+                  backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`,
+                  borderColor: `color-mix(in srgb, ${COLORS.ACCENT} 20%, transparent)`,
                 }}
               >
-                <span className="block text-[10px] uppercase tracking-widest font-semibold" style={{ color: "oklch(0.85 0.02 50)" }}>
+                <span className="block text-[10px] uppercase tracking-widest font-semibold" style={{ color: COLORS.TEXT_MUTED }}>
                   Estado
                 </span>
-                <span className="text-sm font-black uppercase tracking-wide">{curso.estado}</span>
+                <span className="text-sm font-black uppercase tracking-wide" style={{ color: COLORS.ACCENT }}>{curso.estado}</span>
               </div>
             </div>
           </div>
@@ -454,6 +383,25 @@ export function InstructorCursoDetailPage() {
 
           {activeTab === "attendance" && (
             <div className="max-w-5xl mx-auto space-y-5">
+              {selectedClaseId ? (
+                (() => {
+                  const claseData = Object.values(clasesPorModulo).flat().find(c => c.id === selectedClaseId)
+                  const asistencias = claseData ? asistenciasPorClase[claseData.id] || [] : []
+
+                  return claseData ? (
+                    <ClaseAsistenciaDetalle
+                      clase={claseData}
+                      asistencias={asistencias}
+                      asistentes={asistencias.filter(a => a.asistio).length}
+                      total={asistencias.length}
+                      pct={asistencias.length > 0 ? Math.round((asistencias.filter(a => a.asistio).length / asistencias.length) * 100) : 0}
+                      cursoNombre={curso.nombre_instancia}
+                      onVolver={() => setSelectedClaseId(null)}
+                    />
+                  ) : null
+                })()
+              ) : (
+                <>
               <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registro de Asistencia por Clase</h3>
 
               {cargandoClases ? (
@@ -486,183 +434,30 @@ export function InstructorCursoDetailPage() {
                       <div className="divide-y" style={{ borderColor: "#f1f3f5" }}>
                         {clases.map(clase => {
                           const asistencias = asistenciasPorClase[clase.id] || []
-                          const editando = editandoClaseId === clase.id
                           const asistentes = asistencias.filter(a => a.asistio).length
                           const total = asistencias.length
                           const pct = total > 0 ? Math.round((asistentes / total) * 100) : 0
 
                           return (
-                            <div key={clase.id} className="px-5 py-4">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="min-w-0 space-y-3">
-                                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                                    {formatFechaCorta(clase.fecha_clase)}
-                                  </p>
-                                  {clase.asistencia_registrada ? (
-                                    <div className="flex flex-wrap items-center gap-3">
-                                      <div className="flex items-center gap-1.5 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                                        <HugeiconsIcon icon={UserGroupIcon} size={14} />
-                                        <span>
-                                          <strong style={{ color: COLORS.CHARCOAL }}>{asistentes}</strong>
-                                          <span className="mx-0.5">/</span>
-                                          <strong style={{ color: COLORS.CHARCOAL }}>{total}</strong>
-                                          {" asistentes"}
-                                        </span>
-                                      </div>
-                                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md"
-                                        style={{
-                                          backgroundColor: pct >= 70 ? "#d1fae5" : pct >= 50 ? "#fef3c7" : "#fee2e2",
-                                          color: pct >= 70 ? "#065f46" : pct >= 50 ? "#92400e" : "#991b1b"
-                                        }}>
-                                        {pct}%
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
-                                      style={{ backgroundColor: "oklch(0.93 0.06 20)", color: "oklch(0.55 0.15 20)" }}>
-                                      Sin registro
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                {clase.asistencia_registrada ? (
-                                  <button onClick={() => {
-                                    const reporte: EstudianteReporte[] = asistencias.map(a => ({
-                                      nombres: a.estudiante?.nombres || a.participante_externo?.nombres || "—",
-                                      apellidos: a.estudiante?.apellidos || a.participante_externo?.apellidos || "—",
-                                      cedula: a.estudiante?.cedula || a.participante_externo?.cedula || "—",
-                                      ciudad: a.estudiante?.ciudad || "—",
-                                      asistio: a.asistio,
-                                    }))
-                                    generarReporteAsistenciaPDF(
-                                      curso.nombre_instancia,
-                                      formatFechaCorta(clase.fecha_clase),
-                                      reporte,
-                                    ).then(() => toast.success("Reporte descargado"))
-                                      .catch(() => toast.error("Error al generar PDF"))
-                                  }}
-                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-semibold border transition-all"
-                                    style={{ borderColor: "#f1f3f5", color: COLORS.ACCENT }}>
-                                    <HugeiconsIcon icon={Download04Icon} size={12} />Reporte
-                                  </button>
-                                ) : (
-                                  <button onClick={() => {
-                                    const nombres = asistencias.length > 0
-                                      ? asistencias.map(a => `${a.estudiante?.nombres || a.participante_externo?.nombres || "—"} ${a.estudiante?.apellidos || a.participante_externo?.apellidos || "—"}`)
-                                      : estudiantes.map(e => getEstudianteName(e))
-                                    const horario = curso.horario?.nombre_referencial ?? "Sin horario"
-                                    generarListadoAsistenciaPDF(curso.nombre_instancia, horario, nombres)
-                                      .then(() => toast.success("Listado descargado"))
-                                      .catch(() => toast.error("Error al generar PDF"))
-                                  }}
-                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-bold border border-emerald-500 bg-emerald-500 text-white transition-all"
-                                    style={{ borderColor: "#10b981" }}>
-                                    <HugeiconsIcon icon={Download04Icon} size={12} />Listado
-                                  </button>
-                                )}
-                                {!editando && isAdmin && (
-                                  <button onClick={() => iniciarEdicionClase(clase.id)}
-                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[10px] font-semibold border transition-all"
-                                    style={{ borderColor: "#f1f3f5", color: COLORS.ACCENT }}>
-                                    <HugeiconsIcon icon={Edit01Icon} size={12} />Editar
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                              {clase.observaciones && (
-                                <div className="mt-3 pt-3 border-t" style={{ borderColor: "#f1f3f5" }}>
-                                  <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: COLORS.TEXT_MUTED }}>Observaciones</p>
-                                  <p className="text-sm" style={{ color: COLORS.CHARCOAL }}>{clase.observaciones}</p>
-                                </div>
-                              )}
-
-                              {clase.asistencia_registrada && (
-                                <div className="overflow-x-auto rounded-lg border" style={{ borderColor: "#f1f3f5" }}>
-                                  {asistencias.length === 0 ? (
-                                    <div className="p-6 text-center text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                                      Sin datos de asistencia
-                                    </div>
-                                  ) : (
-                                    <table className="w-full text-xs">
-                                      <thead>
-                                        <tr className="border-b" style={{ borderColor: "#f1f3f5" }}>
-                                          <th className="text-left font-semibold px-4 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Nombres</th>
-                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Apellidos</th>
-                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
-                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Ciudad</th>
-                                          <th className="text-left font-semibold px-3 py-2.5" style={{ color: COLORS.TEXT_MUTED }}>Asistió</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {asistencias.map(a => {
-                                          const edit = editando ? editsLocalCurso[a.matricula_id] : undefined
-                                          const estadoActual = edit?.estado || a.estado || (a.asistio ? "presente" : "ausente")
-                                          return (
-                                            <tr key={a.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: "#f1f3f5" }}>
-                                              <td className="px-4 py-2.5 font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
-                                                {getNombreAsistenciaClase(a)}
-                                              </td>
-                                              <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
-                                                {a.estudiante?.apellidos || a.participante_externo?.apellidos || "—"}
-                                              </td>
-                                              <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: COLORS.TEXT_MUTED }}>
-                                                {getCedulaAsistenciaClase(a)}
-                                              </td>
-                                              <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: COLORS.TEXT_MUTED }}>
-                                                {getCiudadAsistenciaClase(a)}
-                                              </td>
-                                              <td className="px-3 py-2.5 whitespace-nowrap">
-                                                {editando ? (
-                                                  <select
-                                                    value={estadoActual}
-                                                    onChange={e => handleCambiarEstadoCurso(a.matricula_id, e.target.value)}
-                                                    className="px-2 py-1 rounded border text-[11px] font-semibold outline-none"
-                                                    style={{ borderColor: "#f1f3f5" }}
-                                                  >
-                                                    {ESTADO_OPCIONES_CURSO.map(op => (
-                                                      <option key={op.value} value={op.value}>{op.label}</option>
-                                                    ))}
-                                                  </select>
-                                                ) : (
-                                                  <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold"
-                                                    style={{
-                                                      backgroundColor: ESTADO_ASISTENCIA_BADGE[estadoActual]?.bg || "#fee2e2",
-                                                      color: ESTADO_ASISTENCIA_BADGE[estadoActual]?.text || "#991b1b",
-                                                    }}>
-                                                    {ESTADO_ASISTENCIA_BADGE[estadoActual]?.label || "No"}
-                                                  </span>
-                                                )}
-                                              </td>
-                                            </tr>
-                                          )
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  )}
-                                </div>
-                              )}
-
-                              {editando && (
-                                <div className="mt-2 flex items-center justify-end gap-2">
-                                  <button onClick={() => { setEditandoClaseId(null); setEditsLocalCurso({}) }}
-                                    className="px-3 py-1 rounded-lg text-[11px] font-semibold border transition-all"
-                                    style={{ borderColor: "#f1f3f5", color: COLORS.TEXT_MUTED }}>
-                                    Cancelar
-                                  </button>
-                                  <button onClick={() => guardarEdicionClase(clase.id)}
-                                    className="px-3 py-1 rounded-lg text-[11px] font-semibold text-white transition-all active:scale-[0.97]"
-                                    style={{ backgroundColor: COLORS.ACCENT }}>
-                                    Guardar Cambios
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            <ClaseAsistenciaCard
+                              key={clase.id}
+                              clase={clase}
+                              asistencias={asistencias}
+                              asistentes={asistentes}
+                              total={total}
+                              pct={pct}
+                              cursoId={curso.id}
+                              cursoNombre={curso.nombre_instancia}
+                              onClickVerDetalle={setSelectedClaseId}
+                            />
                           )
                         })}
                       </div>
                     </div>
                   )
                 })
+              )}
+              </>
               )}
             </div>
           )}

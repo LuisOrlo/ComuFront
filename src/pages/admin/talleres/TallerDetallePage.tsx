@@ -424,7 +424,7 @@ export function TallerDetallePage() {
                 <button onClick={async () => {
                   try {
                     const activos = inscripciones.filter(i => i.estado === "activo")
-                    let mapaFinanciero: Record<string, { monto_abonado: number; monto_total: number; saldo_pendiente: number }> = {}
+                    const mapaFinanciero: Record<string, { monto_abonado: number; monto_total: number; saldo_pendiente: number }> = {}
                     try {
                       const resFin = await financeService.getTallerFinanciero(id!)
                       const data = resFin.datos || resFin.data || resFin

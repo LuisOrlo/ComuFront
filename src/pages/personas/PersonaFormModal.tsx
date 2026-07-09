@@ -13,6 +13,7 @@ import { ValidatedInput, ValidatedTextarea } from "@/components/form"
 import { personasService } from "@/services/personas.service"
 import { instructoresService } from "@/services/instructores.service"
 import { staffService } from "@/services/staff.service"
+
 import { toast } from "sonner"
 
 interface Props {
@@ -53,7 +54,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     try {
       const p = await personasService.getPersonaById(editingId)
       setForm({
-        tipo: p.tipo,
+        tipo: p.tipo as "instructor" | "staff" | "secretaria" | "admin",
         cedula: p.cedula || "",
         nombres: p.nombres,
         apellidos: p.apellidos,

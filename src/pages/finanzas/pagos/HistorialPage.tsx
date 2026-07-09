@@ -322,13 +322,16 @@ export function HistorialPage() {
                                   {t.comprobante_url && !t.comprobante_purgado && (
                                     <>
                                       <HugeiconsIcon icon={ImageIcon} size={14} className="opacity-30" />
-                                      <button
+                                      <span
                                         onClick={(e) => handleDeleteSingleComprobante(t, e)}
-                                        className="text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 transition-colors bg-white"
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleDeleteSingleComprobante(t, e as any) }}
+                                        className="text-[10px] font-bold px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 transition-colors bg-white cursor-pointer"
                                         title="Eliminar comprobante"
                                       >
                                         ✕
-                                      </button>
+                                      </span>
                                     </>
                                   )}
                                   {t.comprobante_purgado && (

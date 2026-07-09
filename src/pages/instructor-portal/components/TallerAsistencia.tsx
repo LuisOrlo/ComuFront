@@ -30,17 +30,17 @@ export function TallerAsistencia({ taller }: Props) {
 
   useEffect(() => {
     if (!taller.asistencias || taller.asistencias.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCargando(false)
       return
     }
-    setCargando(true)
     const cargar = async () => {
       const resultados: Record<string, AsistenciaEstudiante[]> = {}
       await Promise.all(
         taller.asistencias!.map(async a => {
           try {
             const res = await tallerService.listarAsistenciaEstudiantes(taller.id, a.id)
-            resultados[a.id] = (res as any).estudiantes || []
+            resultados[a.id] = (res as { estudiantes: AsistenciaEstudiante[] }).estudiantes || []
           } catch {
             resultados[a.id] = []
           }

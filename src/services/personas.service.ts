@@ -2,7 +2,7 @@ import api from "@/services/auth.service"
 
 export interface Persona {
   id: string
-  tipo: "instructor" | "staff" | "secretaria" | "admin"
+  tipo: "instructor" | "staff" | "secretaria" | "admin" | "estudiante" | "pasante"
   cedula?: string
   nombres: string
   apellidos: string

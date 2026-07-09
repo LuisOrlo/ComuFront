@@ -117,7 +117,7 @@ export const financeService = {
     return response.data
   },
 
-  async pagarServicio(tipo: string, id: string, dto: { monto: number; metodo_pago: string; referencia_pago?: string }) {
+  async pagarServicio(tipo: string, id: string, dto: { monto: number; metodo_pago: string; referencia_pago?: string; comprobante_url?: string; fecha_pago?: string }) {
     const response = await api.post(`/finanzas/pagar-servicio/${tipo}/${id}`, dto)
     return response.data
   },

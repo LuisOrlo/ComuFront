@@ -49,15 +49,14 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   >({})
   const [claseObservaciones, setClaseObservaciones] = useState("")
   const [overviewEstudiantes, setOverviewEstudiantes] = useState<EstudianteCurso[]>([])
-  const [overviewLoading, setOverviewLoading] = useState(false)
+
+  const overviewLoading = view === "overview" && overviewEstudiantes.length === 0
 
   useEffect(() => {
     if (view !== "overview" || !cursoId) return
-    setOverviewLoading(true)
     instructorService.getEstudiantesCurso(cursoId)
       .then(setOverviewEstudiantes)
       .catch(() => toast.error("Error al cargar estadísticas de asistencia"))
-      .finally(() => setOverviewLoading(false))
   }, [view, cursoId])
 
   const handleModuleClick = async (modulo: ModuloItem) => {
