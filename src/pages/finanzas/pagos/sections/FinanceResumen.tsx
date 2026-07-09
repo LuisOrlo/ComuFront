@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Coins01Icon,
-  AlertCircleIcon,
   CheckmarkCircle02Icon,
   LibraryIcon,
   SchoolIcon,
@@ -162,7 +161,6 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     })
   }
 
-  const totalPendiente = Number(stats?.total_pendiente || 0)
   const totalConDeuda = Number(stats?.cuentas_con_deuda || 0)
 
   const totalCobradoLocal = useMemo(() => {
@@ -170,13 +168,6 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   }, [cuentas])
 
   const kpiCards = [
-    {
-      title: "Pendiente",
-      value: `$${totalPendiente.toLocaleString()}`,
-      icon: AlertCircleIcon,
-      color: "oklch(0.5 0.15 20)",
-      bg: "oklch(0.5 0.15 20 / 0.12)",
-    },
     {
       title: "Cobrado",
       value: `$${totalCobradoLocal.toLocaleString()}`,
@@ -304,7 +295,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
         {kpiCards.map((card, idx) => (
           <motion.div
             key={idx}

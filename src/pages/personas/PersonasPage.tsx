@@ -8,6 +8,13 @@ import { toast } from "sonner"
 import { PersonaFormModal } from "./PersonaFormModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 
+const TIPO_BADGE: Record<string, { bg: string; text: string }> = {
+  instructor: { bg: `color-mix(in srgb, ${COLORS.ACCENT} 12%, transparent)`, text: COLORS.ACCENT },
+  staff: { bg: "oklch(0.55 0.05 250 / 0.12)", text: "oklch(0.50 0.12 250)" },
+  admin: { bg: "oklch(0.55 0.15 340 / 0.12)", text: "oklch(0.55 0.18 340)" },
+  secretaria: { bg: "oklch(0.55 0.1 160 / 0.12)", text: "oklch(0.5 0.12 160)" },
+}
+
 export function PersonasPage() {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,7 +159,7 @@ export function PersonasPage() {
                   style={{ borderColor: COLORS.BORDER_SUBTLE }}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: p.tipo === "instructor" ? `color-mix(in srgb, ${COLORS.ACCENT} 12%, transparent)` : "oklch(0.55 0.05 250 / 0.12)", color: p.tipo === "instructor" ? COLORS.ACCENT : "oklch(0.50 0.12 250)" }}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: TIPO_BADGE[p.tipo]?.bg || "oklch(0.85 0 0)", color: TIPO_BADGE[p.tipo]?.text || COLORS.TEXT_MUTED }}>
                       {p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1)}
                     </span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
@@ -241,8 +248,8 @@ export function PersonasPage() {
             <div className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full capitalize" style={{
-                  backgroundColor: detailPersona.tipo === "instructor" ? `color-mix(in srgb, ${COLORS.ACCENT} 12%, transparent)` : "oklch(0.55 0.05 250 / 0.12)",
-                  color: detailPersona.tipo === "instructor" ? COLORS.ACCENT : "oklch(0.50 0.12 250)"
+                  backgroundColor: TIPO_BADGE[detailPersona.tipo]?.bg || "oklch(0.85 0 0)",
+                  color: TIPO_BADGE[detailPersona.tipo]?.text || COLORS.TEXT_MUTED,
                 }}>{detailPersona.tipo}</span>
                 <span className="flex items-center gap-1">
                   <span className="size-1.5 rounded-full" style={{ backgroundColor: detailPersona.es_activo ? "oklch(0.50 0.12 140)" : "oklch(0.85 0 0)" }} />

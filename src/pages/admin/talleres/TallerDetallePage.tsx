@@ -15,7 +15,6 @@ import { ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 
 const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
@@ -477,7 +476,7 @@ export function TallerDetallePage() {
                       <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Cédula</th>
                       <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Correo</th>
                       <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Teléfono</th>
-                    <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Tipo Pago</th>
+                    <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Pagado / Total</th>
                       <th className="text-right font-semibold px-5 py-3" style={{ color: TEXT_MUTED }}>Acciones</th>
                     </tr>
                   </thead>
@@ -490,14 +489,8 @@ export function TallerDetallePage() {
                         <td className="px-4 py-3" style={{ color: CHARCOAL }}>{ins.cedula}</td>
                         <td className="px-4 py-3" style={{ color: CHARCOAL }}>{ins.correo}</td>
                         <td className="px-4 py-3" style={{ color: CHARCOAL }}>{ins.telefono || "—"}</td>
-                        <td className="px-4 py-3 capitalize">
-                          <span className={cn(
-                            "inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold",
-                            ins.tipo_pago === "completo" && "text-green-700 bg-green-50",
-                            ins.tipo_pago === "abono" && "text-amber-700 bg-amber-50",
-                          )}>
-                            {ins.tipo_pago === "completo" ? "Completo" : ins.tipo_pago === "abono" ? "Abono" : "—"}
-                          </span>
+                        <td className="px-4 py-3 font-semibold whitespace-nowrap" style={{ color: CHARCOAL }}>
+                          ${Number(ins.monto_pagado ?? 0).toFixed(2)} / ${Number(taller.precio ?? 0).toFixed(2)}
                         </td>
                         <td className="px-5 py-3 text-right">
                           {isAdmin && (<button onClick={() => setDeleteTarget(ins)}

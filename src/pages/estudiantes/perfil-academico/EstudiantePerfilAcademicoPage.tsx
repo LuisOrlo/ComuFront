@@ -10,6 +10,7 @@ import { AcademicTabContent } from "../sections/AcademicTabContent"
 import { FinancialTabContent } from "../sections/FinancialTabContent"
 import { PagoInicialMatriculaModal } from "../components/PagoInicialMatriculaModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
@@ -32,6 +33,7 @@ export function EstudiantePerfilAcademicoPage() {
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [cedulaPurgado, setCedulaPurgado] = useState(false)
+  const [showCedulaModal, setShowCedulaModal] = useState(false)
   const {
     studentData,
     academicData,
@@ -166,15 +168,12 @@ export function EstudiantePerfilAcademicoPage() {
                 className="w-full h-full object-cover" />
             </div>
             <div className="flex items-center gap-2">
-              <a
-                href={cedulaUrl.replace(/^https?:\/\/localhost(?::\d+)?/, "")}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button onClick={() => setShowCedulaModal(true)}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-bold border hover:bg-gray-50 transition-colors"
                 style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
               >
                 Ver completa
-              </a>
+              </button>
               <button onClick={() => setDeleteCedulaOpen(true)} disabled={deletingCedula}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-red-500 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50">
                 <HugeiconsIcon icon={Delete02Icon} size={12} className="inline mr-1" />
@@ -250,6 +249,13 @@ export function EstudiantePerfilAcademicoPage() {
           matriculaId={pagoInicialData.matriculaId}
           cursoNombre={pagoInicialData.cursoNombre}
           onCompleted={() => { setPagoInicialOpen(false); setPagoInicialData(null) }}
+        />
+      )}
+
+      {showCedulaModal && cedulaUrl && (
+        <ImageZoom
+          url={cedulaUrl.replace(/^https?:\/\/localhost(?::\d+)?/, "")}
+          onClose={() => setShowCedulaModal(false)}
         />
       )}
     </div>

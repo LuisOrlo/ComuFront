@@ -34,6 +34,7 @@ interface EstudianteFinanciero {
   ciudad: string
   modulos: Record<string, ModulePayData>
   total_pagado: number
+  total_esperado: number
 }
 
 interface ModuloInfo {
@@ -225,7 +226,7 @@ export function CursoPagosSection({ cursoId }: Props) {
                                 <span className="text-sm font-bold" style={{ color: CHARCOAL }}>
                                   Total Pagado: <span style={{ color: "oklch(0.45 0.12 140)" }}>${Number(est.total_pagado ?? 0).toFixed(2)}</span>
                                   <span className="mx-1" style={{ color: TEXT_MUTED }}>/</span>
-                                  <span style={{ color: CHARCOAL }}>${Number(esperado).toFixed(2)}</span>
+                                  <span style={{ color: CHARCOAL }}>${Number(est.total_esperado ?? 0).toFixed(2)}</span>
                                 </span>
                               </div>
                             </div>

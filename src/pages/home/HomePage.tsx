@@ -18,6 +18,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { useMemo } from "react"
+import { useNavigate } from "react-router"
 import { useDashboardData } from "@/hooks/useDashboardData"
 
 const STAT_ACCENT = COLORS.ACCENT
@@ -73,6 +74,7 @@ export function HomePage() {
     loading,
   } = useDashboardData()
 
+  const navigate = useNavigate()
   const sparklineData = [38, 48, 42, 58, 64, 72]
 
   const statCards = [
@@ -111,10 +113,10 @@ export function HomePage() {
   ]
 
   const quickActions = [
-    { icon: UserAdd01Icon, label: "Nueva matricula" },
-    { icon: Wallet01Icon, label: "Registrar pago" },
-    { icon: AddCircleIcon, label: "Agregar curso" },
-    { icon: CalendarIcon, label: "Ver agenda" },
+    { icon: UserAdd01Icon, label: "Nueva matricula", path: "/matriculas" },
+    { icon: Wallet01Icon, label: "Registrar pago", path: "/finanzas/pagos" },
+    { icon: AddCircleIcon, label: "Agregar curso", path: "/cursos/nuevo" },
+    { icon: CalendarIcon, label: "Ver agenda", path: "/agenda" },
   ]
 
   if (loading) {
@@ -261,58 +263,16 @@ export function HomePage() {
               className="rounded-xl border bg-white overflow-hidden"
               style={{ borderColor: BORDER }}
             >
-              <div
-                className="flex items-center gap-2 px-5 py-4 border-b"
-                style={{ borderColor: BORDER }}
-              >
-                <div className="flex items-center justify-center size-8 rounded-lg" style={{ backgroundColor: "oklch(0.55 0.18 15 / 0.1)" }}>
-                  <HugeiconsIcon icon={Alert01Icon} size={16} style={{ color: "oklch(0.55 0.18 15)" }} />
-                </div>
-                <h2 className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                  Alertas de pagos
-                </h2>
-              </div>
-              <ul className="divide-y divide-[oklch(0.85_0_0)]">
-                {alertasPagos.length === 0 ? (
-                  <li className="px-5 py-6 text-center text-sm text-gray-400">Sin pagos pendientes</li>
-                ) : (
-                  alertasPagos.map(({ estudiante, curso, monto, dias }: { estudiante: string; curso: string; monto: number; dias: number }) => (
-                    <li key={`${estudiante}-${curso}`} className="px-5 py-3 hover:bg-gray-50/50 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-none flex items-center justify-center size-7 rounded-full text-xs font-semibold"
-                          style={{ backgroundColor: `${STAT_ACCENT}18`, color: STAT_ACCENT }}>
-                          {estudiante.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate" style={{ color: CHARCOAL }}>{estudiante}</p>
-                          <p className="text-xs mt-0.5" style={{ color: MUTED }}>{curso} — ${monto.toLocaleString()}</p>
-                        </div>
-                        <span
-                          className="flex-none text-[11px] font-medium px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: dias > 3 ? "oklch(0.55 0.18 15 / 0.1)" : "oklch(0.62 0.14 85 / 0.12)", color: dias > 3 ? "oklch(0.55 0.18 15)" : "oklch(0.62 0.14 85)" }}
-                        >
-                          {dias}d
-                        </span>
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </article>
-
-            <article
-              className="rounded-xl border bg-white overflow-hidden"
-              style={{ borderColor: BORDER }}
-            >
               <div className="px-5 py-4">
                 <h2 className="text-sm font-semibold mb-3" style={{ color: CHARCOAL }}>
                   Accesos rapidos
                 </h2>
                 <div className="grid grid-cols-2 gap-2">
-                  {quickActions.map(({ icon, label }) => (
+                  {quickActions.map(({ icon, label, path }) => (
                     <button
                       key={label}
-                      className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border text-center transition-all duration-200 hover:border-[--hover] active:scale-[0.97]"
+                      onClick={() => navigate(path)}
+                      className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border text-center transition-all duration-200 hover:border-[--hover] active:scale-[0.97] cursor-pointer"
                       style={{
                         borderColor: BORDER,
                         "--hover": STAT_ACCENT,
