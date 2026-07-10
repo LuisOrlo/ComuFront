@@ -117,7 +117,7 @@ function NavItem({
 export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
   const { logout, user } = useAuth()
   const navRef = useRef<HTMLDivElement>(null)
-  const [initialize] = useOverlayScrollbars({
+  const [initialize, getInstance] = useOverlayScrollbars({
     options: {
       scrollbars: { autoHide: "scroll", autoHideDelay: 600 },
       overflow: { x: "hidden", y: "scroll" },
@@ -128,7 +128,10 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
     if (navRef.current) {
       initialize({ target: navRef.current })
     }
-  }, [initialize])
+    return () => {
+      getInstance()?.destroy()
+    }
+  }, [initialize, getInstance])
 
   const roles = user?.roles || []
   const isAdmin = roles.includes("Administrador")

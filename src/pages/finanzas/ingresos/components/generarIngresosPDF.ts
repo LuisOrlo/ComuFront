@@ -97,11 +97,12 @@ async function captureChart(type: string, data: any[]): Promise<string | null> {
   const div = document.createElement("div")
   div.style.cssText = "position:fixed;left:-9999px;top:0;width:700px;height:300px;background:white;padding:10px"
   document.body.appendChild(div)
+  let root: ReturnType<typeof createRoot> | null = null
 
   try {
     const PIE_COLORS = ["#059669", "#4f46e5", "#0891b2", "#d97706", "#dc2626"]
 
-    const root = createRoot(div)
+    root = createRoot(div)
     await new Promise<void>(resolve => {
       const chartEl = React.createElement(
         React.Fragment, null,
@@ -116,7 +117,7 @@ async function captureChart(type: string, data: any[]): Promise<string | null> {
                 React.createElement(YAxis as any, { type: type === "bar_h" ? "category" : "number", tick: { fontSize: 10 }, width: type === "bar_h" ? 80 : undefined }),
                 React.createElement(Tooltip as any),
                 React.createElement(Bar as any, { dataKey: type === "bar_h" ? "value" : "total", fill: ACCENT, radius: [4, 4, 0, 0] }))))
-      root.render(chartEl as any)
+      root!.render(chartEl as any)
       resolve()
     })
 
@@ -124,7 +125,10 @@ async function captureChart(type: string, data: any[]): Promise<string | null> {
     const canvas = await html2canvas(div.firstChild as HTMLElement, { scale: 2, backgroundColor: "#ffffff", logging: false })
     return canvas.toDataURL("image/png")
   } catch { return null }
-  finally { document.body.removeChild(div) }
+  finally {
+    root?.unmount()
+    document.body.removeChild(div)
+  }
 }
 
 export async function generarIngresosPDF(
