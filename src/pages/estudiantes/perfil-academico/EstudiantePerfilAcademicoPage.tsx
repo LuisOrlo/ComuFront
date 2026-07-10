@@ -248,6 +248,8 @@ export function EstudiantePerfilAcademicoPage() {
           lineasPagoIds={pagoInicialData.lineasPagoIds}
           matriculaId={pagoInicialData.matriculaId}
           cursoNombre={pagoInicialData.cursoNombre}
+          estudianteNombre={name}
+          estudianteCedula={studentData?.cedula || academicData?.estudiante.cedula}
           onCompleted={() => { setPagoInicialOpen(false); setPagoInicialData(null) }}
         />
       )}
