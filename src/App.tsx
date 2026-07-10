@@ -119,8 +119,6 @@ function AppLayout() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPendientes()
-    const interval = setInterval(fetchPendientes, 15000)
-    return () => clearInterval(interval)
   }, [fetchPendientes])
 
   return (

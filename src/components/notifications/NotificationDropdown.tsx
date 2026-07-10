@@ -29,7 +29,6 @@ function formatFecha(fechaStr: string): string {
 export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCount, onCountChange }: NotificationDropdownProps) {
   const [data, setData] = useState<NotificacionesResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -43,22 +42,11 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
   }, [onCountChange])
 
   useEffect(() => {
-    if (!isOpen) {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      return
-    }
+    if (!isOpen) return
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     fetchData().finally(() => setLoading(false))
-
-    intervalRef.current = setInterval(() => {
-      fetchData()
-    }, 15000)
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
   }, [isOpen, fetchData])
 
   useEffect(() => {
