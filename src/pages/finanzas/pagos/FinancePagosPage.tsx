@@ -3,7 +3,7 @@ import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ChartBarLineIcon, Invoice02Icon, InvoiceIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { NavLink, Outlet, useLocation, Navigate } from "react-router"
+import { NavLink, Outlet, useLocation } from "react-router"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { FinanceResumen } from "./sections/FinanceResumen"
@@ -28,10 +28,6 @@ const TABS = [
 
 export function FinancePagosPage() {
   const location = useLocation()
-
-  if (location.pathname === "/finanzas/pagos") {
-    return <Navigate to="/finanzas/pagos/resumen" replace />
-  }
 
   const hideTabs = !TABS.some(tab => location.pathname === tab.path)
 

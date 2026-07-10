@@ -123,13 +123,16 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
       overflow: { x: "hidden", y: "scroll" },
     },
   })
+  const osInstanceRef = useRef<ReturnType<typeof getInstance>>(null)
 
   useEffect(() => {
     if (navRef.current) {
       initialize({ target: navRef.current })
     }
+    osInstanceRef.current = getInstance()
     return () => {
-      getInstance()?.destroy()
+      osInstanceRef.current?.destroy()
+      osInstanceRef.current = null
     }
   }, [initialize, getInstance])
 

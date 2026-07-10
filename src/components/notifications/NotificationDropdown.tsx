@@ -75,8 +75,12 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
     }
   }, [isOpen, onClose, anchorRef])
 
+  useEffect(() => {
+    return () => { onClose() }
+  }, [onClose])
+
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
           ref={dropdownRef}

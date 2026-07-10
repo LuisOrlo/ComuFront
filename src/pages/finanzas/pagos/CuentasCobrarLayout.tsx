@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { NavLink, Outlet, useLocation, useNavigate, Navigate } from "react-router"
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router"
 
 const SUB_TABS = [
   { label: "Cursos", path: "/finanzas/pagos/cuentas/cursos" },
@@ -12,10 +12,6 @@ const SUB_TABS = [
 export function CuentasCobrarLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-
-  if (location.pathname === "/finanzas/pagos/cuentas") {
-    return <Navigate to="/finanzas/pagos/cuentas/cursos" replace />
-  }
 
   const isSubPage = !SUB_TABS.some(tab => location.pathname === tab.path)
 

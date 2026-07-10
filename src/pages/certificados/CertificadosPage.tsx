@@ -98,6 +98,10 @@ export function CertificadosPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
+  useEffect(() => {
+    return () => { setMenuOpen(null) }
+  }, [])
+
   const getIniciales = (name: string) => name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
   const getAvatarColor = (name: string) => {
     const colors = ["#0F9F6E", "#2563EB", "#7C3AED", "#D97706", "#DC2626"]

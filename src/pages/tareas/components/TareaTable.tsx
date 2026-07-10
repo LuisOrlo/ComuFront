@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon, Delete01Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
@@ -66,6 +66,10 @@ function StatusBadge({ estado, tareaId, onTareaUpdate }: { estado: string; tarea
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    return () => { setOpen(false) }
+  }, [])
 
   async function handleChange(nuevoEstado: string) {
     try {
