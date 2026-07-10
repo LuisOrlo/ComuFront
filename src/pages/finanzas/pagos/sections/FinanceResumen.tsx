@@ -436,7 +436,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                       </div>
                     </button>
 
-                    <AnimatePresence>
+                    <AnimatePresence mode="wait">
                       {isExpanded && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}

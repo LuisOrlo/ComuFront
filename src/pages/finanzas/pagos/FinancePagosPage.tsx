@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ChartBarLineIcon, Invoice02Icon, InvoiceIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -116,14 +116,17 @@ export function FinanceResumenWrapper() {
   }
 
   return (
-    <motion.div
-      key="resumen"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="px-8 py-6"
-    >
-      <FinanceResumen stats={stats} cuentas={cuentas} />
-    </motion.div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key="resumen"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="px-8 py-6"
+      >
+        <FinanceResumen stats={stats} cuentas={cuentas} />
+      </motion.div>
+    </AnimatePresence>
   )
 }
