@@ -75,10 +75,6 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
     }
   }, [isOpen, onClose, anchorRef])
 
-  useEffect(() => {
-    return () => { onClose() }
-  }, [onClose])
-
   return (
     <AnimatePresence mode="wait">
       {isOpen && (
