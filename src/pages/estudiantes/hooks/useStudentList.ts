@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { estudiantesService, type Estudiante } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 
@@ -39,10 +39,12 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todos")
   const [stats, setStats] = useState({ todos: 0, deudor: 0, abonado: 0, al_dia: 0 })
   const [meta, setMeta] = useState<Meta | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const extraFiltersKey = useMemo(() => JSON.stringify(extraFilters), [extraFilters])
 
@@ -50,7 +52,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
     setLoading(true)
     try {
       const params: Record<string, string | number | undefined> = {
-        buscar: search || undefined,
+        buscar: debouncedSearch || undefined,
         estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
         page,
         ...extraFilters,
@@ -65,7 +67,13 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, paymentFilter, extraFiltersKey])
+  }, [debouncedSearch, paymentFilter, extraFiltersKey])
+
+  const handleSetSearch = useCallback((value: string) => {
+    setSearch(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300)
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -106,7 +114,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
     estudiantes,
     loading,
     search,
-    setSearch,
+    setSearch: handleSetSearch,
     paymentFilter,
     setPaymentFilter,
     stats,

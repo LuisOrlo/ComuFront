@@ -42,8 +42,8 @@ export function NuevaMatriculaPublicaPage() {
               <HugeiconsIcon icon={BookOpenIcon} size={20} style={{ color: COLORS.ACCENT }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Nueva Matrícula</h1>
-              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Completa tus datos para formar parte de nosotros</p>
+              <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Completa tu Matrícula</h1>
+              <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Ayudamos con tus datos para formar parte de nosotros</p>
             </div>
           </div>
         </div>

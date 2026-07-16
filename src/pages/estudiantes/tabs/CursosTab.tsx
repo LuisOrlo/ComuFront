@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Search01Icon, ArrowRight02Icon, Clock04Icon,
+  Search01Icon, ArrowRight02Icon, ArrowDown01Icon, Clock04Icon,
   LibraryIcon, ChevronDownIcon, ChevronRightIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -15,7 +15,6 @@ interface GrupoCatalogo {
 }
 
 export function CursosTab() {
-  const navigate = useNavigate()
   const [grupos, setGrupos] = useState<GrupoCatalogo[]>([])
   const [sinCatalogo, setSinCatalogo] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +22,7 @@ export function CursosTab() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [modalidadFilter, setModalidadFilter] = useState<string>("")
   const [estadoFilter, setEstadoFilter] = useState<string>("")
+  const navigate = useNavigate()
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -84,14 +84,13 @@ export function CursosTab() {
       const idsToExpand = new Set<string>()
       for (const g of grupos) {
         const s = search.toLowerCase()
-        const catMatch = !s || g.catalogo.nombre.toLowerCase().includes(s)
         const cursosMatch = g.cursos.some(c => {
           const nameMatch = !s || c.nombre.toLowerCase().includes(s)
           const modMatch = !modalidadFilter || c.modalidad === modalidadFilter
           const estMatch = !estadoFilter || c.estado === estadoFilter
           return nameMatch && modMatch && estMatch
         })
-        if (catMatch || cursosMatch) {
+        if (cursosMatch) {
           idsToExpand.add(g.catalogo.id)
         }
       }
@@ -114,14 +113,12 @@ export function CursosTab() {
   const filteredGrupos = grupos.filter(g => {
     if (!search && !modalidadFilter && !estadoFilter) return true
     const s = search.toLowerCase()
-    const catMatch = g.catalogo.nombre.toLowerCase().includes(s)
-    const cursosMatch = g.cursos.some(c => {
+    return g.cursos.some(c => {
       const nameMatch = !s || c.nombre.toLowerCase().includes(s)
       const modMatch = !modalidadFilter || c.modalidad === modalidadFilter
       const estMatch = !estadoFilter || c.estado === estadoFilter
       return nameMatch && modMatch && estMatch
     })
-    return catMatch || cursosMatch
   })
 
   const filteredSinCatalogo = sinCatalogo.filter(c => {
@@ -138,42 +135,89 @@ export function CursosTab() {
         <div className="relative flex-1 min-w-0">
           <HugeiconsIcon
             icon={Search01Icon}
-            size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: COLORS.TEXT_MUTED }}
           />
           <input
             type="text"
-            placeholder="Buscar catalogo o curso..."
+            placeholder="Buscar curso..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-2.5 text-sm bg-gray-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-500/30 focus:ring-4 focus:ring-blue-500/5 transition-all"
+            className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all duration-180 ease-out"
+            style={{
+              borderColor: COLORS.BORDER_SUBTLE,
+              color: COLORS.CHARCOAL,
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = COLORS.ACCENT
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
+              e.currentTarget.style.boxShadow = "none"
+            }}
           />
         </div>
-        <select
-          value={modalidadFilter}
-          onChange={(e) => setModalidadFilter(e.target.value)}
-          className="px-3 py-2.5 text-xs font-bold bg-gray-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-500/30 transition-all"
-        >
-          <option value="">Modalidad</option>
-          <option value="presencial">Presencial</option>
-          <option value="virtual">Virtual</option>
-        </select>
-        <select
-          value={estadoFilter}
-          onChange={(e) => setEstadoFilter(e.target.value)}
-          className="px-3 py-2.5 text-xs font-bold bg-gray-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-500/30 transition-all"
-        >
-          <option value="">Estado</option>
-          <option value="en_progreso">En progreso</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="completado">Completado</option>
-        </select>
+        <div className="relative">
+          <select
+            value={modalidadFilter}
+            onChange={(e) => setModalidadFilter(e.target.value)}
+            className="appearance-none bg-white border rounded-lg pl-3 pr-8 py-2 text-sm outline-none cursor-pointer min-w-[130px] select-none transition-all duration-180 ease-out"
+            style={{
+              borderColor: COLORS.BORDER_SUBTLE,
+              color: modalidadFilter ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = COLORS.ACCENT
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
+              e.currentTarget.style.boxShadow = "none"
+            }}
+          >
+            <option value="">Todos</option>
+            <option value="presencial">Presencial</option>
+            <option value="virtual">Virtual</option>
+          </select>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <HugeiconsIcon icon={ArrowDown01Icon} size={12} />
+          </span>
+        </div>
+        <div className="relative">
+          <select
+            value={estadoFilter}
+            onChange={(e) => setEstadoFilter(e.target.value)}
+            className="appearance-none bg-white border rounded-lg pl-3 pr-8 py-2 text-sm outline-none cursor-pointer min-w-[130px] select-none transition-all duration-180 ease-out"
+            style={{
+              borderColor: COLORS.BORDER_SUBTLE,
+              color: estadoFilter ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = COLORS.ACCENT
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
+              e.currentTarget.style.boxShadow = "none"
+            }}
+          >
+            <option value="">Todos</option>
+            <option value="en_progreso">En progreso</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="completado">Completado</option>
+          </select>
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+            <HugeiconsIcon icon={ArrowDown01Icon} size={12} />
+          </span>
+        </div>
       </div>
 
       {loading ? (
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white border border-gray-100 rounded-2xl p-5">
+            <div key={i} className="bg-white border rounded-xl p-5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="h-6 w-48 bg-gray-100 animate-pulse rounded" />
             </div>
           ))}
@@ -185,17 +229,17 @@ export function CursosTab() {
             let filteredCursos = g.cursos
             if (modalidadFilter) filteredCursos = filteredCursos.filter(c => c.modalidad === modalidadFilter)
             if (estadoFilter) filteredCursos = filteredCursos.filter(c => c.estado === estadoFilter)
-            if (search && !g.catalogo.nombre.toLowerCase().includes(search.toLowerCase())) {
+            if (search) {
               filteredCursos = filteredCursos.filter(c => c.nombre.toLowerCase().includes(search.toLowerCase()))
             }
 
             if (filteredCursos.length === 0) return null
 
             return (
-              <div key={g.catalogo.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+              <div key={g.catalogo.id} className="bg-white border rounded-xl shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <button
                   onClick={() => toggleExpand(g.catalogo.id)}
-                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50/50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[oklch(0.98 0 0)] transition-colors duration-150 text-left"
                 >
                   <HugeiconsIcon
                     icon={isExpanded ? ChevronDownIcon : ChevronRightIcon}
@@ -204,41 +248,44 @@ export function CursosTab() {
                   />
                   <HugeiconsIcon icon={LibraryIcon} size={18} className="text-gray-400 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold text-gray-900">{g.catalogo.nombre}</span>
-                    <span className="text-xs text-gray-400 ml-2">
+                    <span className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>{g.catalogo.nombre}</span>
+                    <span className="text-xs ml-2" style={{ color: COLORS.TEXT_MUTED }}>
                       {g.cursos.length} curso{g.cursos.length !== 1 ? 's' : ''} · {g.totalEstudiantes} estudiante{g.totalEstudiantes !== 1 ? 's' : ''}
                     </span>
                   </div>
                 </button>
                 {isExpanded && (
-                  <div className="border-t border-gray-50">
+                  <div className="border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="bg-gray-50/50 border-b border-gray-100">
-                            <th className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Curso</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Instructor</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Modalidad</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ciudad</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                            <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estudiantes</th>
+                          <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Instructor</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Modalidad</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Ciudad</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Estudiantes</th>
                             <th className="px-4 py-3 w-16" />
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                           {filteredCursos.map(c => (
-                            <tr key={c.id} className="hover:bg-blue-50/20 transition-colors">
-                              <td className="px-6 py-4">
-                                <div className="text-sm font-bold text-gray-900">{c.nombre}</div>
-                                <div className="text-xs text-gray-400 mt-0.5">
+                            <tr key={c.id} className="transition-colors duration-150" style={{ ["--hover-bg" as string]: "oklch(0.98 0 0)" } as React.CSSProperties}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                            >
+                              <td className="px-4 py-3">
+                                <div className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.nombre}</div>
+                                <div className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                                   {c.fechaInicio && c.fechaFin ? `${c.fechaInicio} — ${c.fechaFin}` : 'Sin fechas'}
                                 </div>
                               </td>
-                              <td className="px-4 py-4">
-                                <span className="text-xs text-gray-600">{c.instructor}</span>
+                              <td className="px-4 py-3">
+                                <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>{c.instructor}</span>
                               </td>
-                              <td className="px-4 py-4">
-                                <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${
+                              <td className="px-4 py-3">
+                                <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${
                                   c.modalidad === "virtual"
                                     ? "bg-purple-50 text-purple-600"
                                     : "bg-blue-50 text-blue-600"
@@ -246,11 +293,11 @@ export function CursosTab() {
                                   {c.modalidad === "virtual" ? "Virtual" : "Presencial"}
                                 </span>
                               </td>
-                              <td className="px-4 py-4">
-                                <span className="text-xs text-gray-600">{c.ciudad}</span>
+                              <td className="px-4 py-3">
+                                <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>{c.ciudad}</span>
                               </td>
-                              <td className="px-4 py-4 text-center">
-                                <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${
+                              <td className="px-4 py-3 text-center">
+                                <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${
                                   c.estado === "en_progreso"
                                     ? "bg-emerald-50 text-emerald-600"
                                     : c.estado === "pendiente"
@@ -260,17 +307,24 @@ export function CursosTab() {
                                   {c.estado === "en_progreso" ? "En progreso" : c.estado === "pendiente" ? "Pendiente" : "Completado"}
                                 </span>
                               </td>
-                              <td className="px-4 py-4 text-center">
-                                <span className="text-sm font-bold text-gray-700">{c.estudiantes}</span>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-base font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.estudiantes}</span>
                               </td>
-                              <td className="px-4 py-4 text-right">
+                              <td className="px-4 py-3 text-right">
                                 <button
                                   onClick={() => navigate(`/estudiantes/cursos/${c.id}`)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all active:scale-[0.97] shadow-sm"
-                                  style={{ backgroundColor: COLORS.ACCENT }}
+                                  className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
+                                  style={{ color: COLORS.TEXT_MUTED }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = COLORS.ACCENT
+                                    e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
+                                    e.currentTarget.style.backgroundColor = "transparent"
+                                  }}
                                 >
-                                  Ver
-                                  <HugeiconsIcon icon={ArrowRight02Icon} size={11} />
+                                  <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
                                 </button>
                               </td>
                             </tr>
@@ -285,38 +339,41 @@ export function CursosTab() {
           })}
 
           {filteredSinCatalogo.length > 0 && (
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white border rounded-xl shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="px-5 py-4 bg-gray-50/30">
-                <span className="text-sm font-bold text-gray-500">Sin catalogo</span>
-                <span className="text-xs text-gray-400 ml-2">{filteredSinCatalogo.length} curso{filteredSinCatalogo.length !== 1 ? 's' : ''}</span>
+                <span className="text-sm font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Sin catalogo</span>
+                <span className="text-xs ml-2" style={{ color: COLORS.TEXT_MUTED }}>{filteredSinCatalogo.length} curso{filteredSinCatalogo.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50/50 border-b border-gray-100">
-                      <th className="px-6 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Curso</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Instructor</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Modalidad</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ciudad</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estudiantes</th>
+                    <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Instructor</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Modalidad</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Ciudad</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Estudiantes</th>
                       <th className="px-4 py-3 w-16" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     {filteredSinCatalogo.map(c => (
-                      <tr key={c.id} className="hover:bg-blue-50/20 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-bold text-gray-900">{c.nombre}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">
+                      <tr key={c.id} className="transition-colors duration-150" style={{ ["--hover-bg" as string]: "oklch(0.98 0 0)" } as React.CSSProperties}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.nombre}</div>
+                          <div className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                             {c.fechaInicio && c.fechaFin ? `${c.fechaInicio} — ${c.fechaFin}` : 'Sin fechas'}
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <span className="text-xs text-gray-600">{c.instructor}</span>
+                        <td className="px-4 py-3">
+                          <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>{c.instructor}</span>
                         </td>
-                        <td className="px-4 py-4">
-                          <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${
+                        <td className="px-4 py-3">
+                          <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${
                             c.modalidad === "virtual"
                               ? "bg-purple-50 text-purple-600"
                               : "bg-blue-50 text-blue-600"
@@ -324,11 +381,11 @@ export function CursosTab() {
                             {c.modalidad === "virtual" ? "Virtual" : "Presencial"}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
-                          <span className="text-xs text-gray-600">{c.ciudad}</span>
+                        <td className="px-4 py-3">
+                          <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>{c.ciudad}</span>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${
+                        <td className="px-4 py-3 text-center">
+                          <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${
                             c.estado === "en_progreso"
                               ? "bg-emerald-50 text-emerald-600"
                               : c.estado === "pendiente"
@@ -338,17 +395,24 @@ export function CursosTab() {
                             {c.estado === "en_progreso" ? "En progreso" : c.estado === "pendiente" ? "Pendiente" : "Completado"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="text-sm font-bold text-gray-700">{c.estudiantes}</span>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-base font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.estudiantes}</span>
                         </td>
-                        <td className="px-4 py-4 text-right">
+                        <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => navigate(`/estudiantes/cursos/${c.id}`)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all active:scale-[0.97] shadow-sm"
-                            style={{ backgroundColor: COLORS.ACCENT }}
+                            className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
+                            style={{ color: COLORS.TEXT_MUTED }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = COLORS.ACCENT
+                              e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = COLORS.TEXT_MUTED
+                              e.currentTarget.style.backgroundColor = "transparent"
+                            }}
                           >
-                            Ver
-                            <HugeiconsIcon icon={ArrowRight02Icon} size={11} />
+                            <HugeiconsIcon icon={ArrowRight02Icon} size={16} />
                           </button>
                         </td>
                       </tr>
@@ -360,8 +424,8 @@ export function CursosTab() {
           )}
 
           {filteredGrupos.length === 0 && filteredSinCatalogo.length === 0 && !loading && (
-            <div className="bg-white border border-gray-100 rounded-2xl py-20 text-center">
-              <div className="size-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="bg-white border rounded-xl py-20 text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="size-16 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <HugeiconsIcon icon={Clock04Icon} size={24} className="text-gray-300" />
               </div>
               <h3 className="text-gray-900 font-bold">No se encontraron cursos</h3>

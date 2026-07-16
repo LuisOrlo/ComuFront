@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef, Fragment } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -8,15 +8,18 @@ import {
   UserIcon,
   Calendar02Icon,
   Money02Icon,
-  ArrowRight01Icon,
-  CheckmarkCircle02Icon,
-  MapsLocation01Icon,
   Download01Icon,
+  CheckmarkCircle04Icon,
+  MapsLocation01Icon,
+  GroupIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
+import html2canvas from "html2canvas-pro"
+import { jsPDF } from "jspdf"
 
 export function TallerCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -24,6 +27,9 @@ export function TallerCuentasDetallePage() {
   const { isAdmin } = usePermission()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+  const [exportando, setExportando] = useState(false)
+  const [expandedParticipant, setExpandedParticipant] = useState<string | null>(null)
+  const tablaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -40,13 +46,50 @@ export function TallerCuentasDetallePage() {
     load()
   }, [id])
 
-  const taller = data?.taller || data || {}
+  const taller: any = useMemo(() => data?.taller || data || {}, [data])
+  const participantes: any[] = useMemo(() => data?.participantes || [], [data])
+  const totales: any = useMemo(() => data?.totales || {}, [data])
 
-  const getPagoTypeLabel = (participante: any) => {
-    if (participante.lineas_pago_modulo) return "Por Módulo"
-    if (participante.pago_unico) return "Pago Único"
-    if (participante.tipo_pago) return participante.tipo_pago.charAt(0).toUpperCase() + participante.tipo_pago.slice(1)
-    return "—"
+  const getNombre = (p: any) => {
+    return p.estudiante_nombre || `${p.nombres || ""} ${p.apellidos || ""}`.trim() || "—"
+  }
+
+  const getCedula = (p: any) => p.cedula || "—"
+  const getTelefono = (p: any) => p.telefono || "—"
+
+  const handleExportPDF = async () => {
+    if (!tablaRef.current) return
+    setExportando(true)
+    try {
+      const el = tablaRef.current
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+      })
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const margin = 8
+      pdf.setFontSize(14)
+      pdf.setFont("helvetica", "bold")
+      pdf.text(taller.nombre || "Taller", pageWidth / 2, margin + 8, { align: "center" })
+      pdf.setFontSize(9)
+      pdf.setFont("helvetica", "normal")
+      pdf.text(`Fecha: ${new Date().toLocaleDateString("es-ES")}`, pageWidth / 2, margin + 15, { align: "center" })
+      const imgY = margin + 20
+      const availableWidth = pageWidth - margin * 2
+      const availableHeight = pdf.internal.pageSize.getHeight() - imgY - margin
+      const ratio = canvas.height / canvas.width
+      let imgWidth = availableWidth
+      let imgHeight = imgWidth * ratio
+      if (imgHeight > availableHeight) { imgHeight = availableHeight; imgWidth = imgHeight / ratio }
+      pdf.addImage(imgData, "PNG", margin, imgY, imgWidth, imgHeight)
+      pdf.save(`cuentas-${taller.nombre || "taller"}.pdf`)
+      toast.success("PDF exportado")
+    } catch { toast.error("Error al exportar PDF") }
+    finally { setExportando(false) }
   }
 
   if (loading) {
@@ -73,11 +116,8 @@ export function TallerCuentasDetallePage() {
     )
   }
 
-  const participantes = data.participantes || []
-
   return (
     <div className="px-8 py-6">
-      
 
       <button
         onClick={() => navigate("/finanzas/pagos/cuentas/talleres")}
@@ -102,22 +142,22 @@ export function TallerCuentasDetallePage() {
               {taller.nombre || "Taller"}
             </h2>
             <button
-              onClick={() => {
-                toast.info("Exportación PDF no implementada aún")
-              }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+              onClick={handleExportPDF}
+              disabled={exportando}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
               style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}15` }}
             >
               <HugeiconsIcon icon={Download01Icon} size={14} />
-              Exportar PDF
+              {exportando ? "Exportando..." : "Exportar PDF"}
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <InfoBadge icon={UserIcon} label="Instructor" value={taller.instructor_nombre || taller.instructor?.persona?.nombres || "—"} />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <InfoBadge icon={UserIcon} label="Instructor" value={taller.instructor_nombre || taller.instructor || "—"} />
             <InfoBadge icon={Calendar02Icon} label="Fecha" value={taller.fecha ? new Date(taller.fecha).toLocaleDateString("es-ES") : "—"} />
             <InfoBadge icon={Money02Icon} label="Precio" value={`$${Number(taller.precio || 0).toLocaleString()}`} />
             <InfoBadge icon={MapsLocation01Icon} label="Modalidad" value={taller.modalidad || "—"} />
+            <InfoBadge icon={GroupIcon} label="Inscritos" value={`${totales.inscritos || 0} / ${taller.capacidad || "∞"}`} />
           </div>
         </div>
 
@@ -131,74 +171,125 @@ export function TallerCuentasDetallePage() {
             </h3>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+          <div className="overflow-x-auto" ref={tablaRef}>
+            <table className="w-full text-left min-w-[700px]">
               <thead>
                 <tr style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Nombre</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Tipo Pago</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Monto</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky left-0 z-10" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)" }}>Nombre</th>
+                  <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cédula</th>
+                  <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Teléfono</th>
+                  <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Abonado</th>
+                  <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Saldo</th>
+                  <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 {participantes.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>
+                    <td colSpan={6} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>
                       No hay participantes registrados
                     </td>
                   </tr>
                 ) : (
-                  participantes.map((p: any) => {
-                    const nombre = p.estudiante_nombre || p.participante_nombre || (p.nombres ? `${p.nombres || ""} ${p.apellidos || ""}`.trim() : (p.participante ? `${p.participante.nombres || ""} ${p.participante.apellidos || ""}`.trim() : "—"))
-                    const pagadoCompleto = Number(p.saldo_pendiente || p.saldo || 0) <= 0
+                  participantes.map((p: any, idx: number) => {
+                    const nombre = getNombre(p)
+                    const pagadoCompleto = Number(p.saldo_pendiente || 0) <= 0
+                    const abonoM = Number(p.monto_abonado || 0)
+                    const saldoM = Number(p.saldo_pendiente || 0)
                     const tallerId = id
                     const participanteId = p.id || p.participante_id
 
+                    const isExpanded = expandedParticipant === (p.id || p.participante_id)
+
                     return (
-                      <tr key={p.id} className="transition-colors hover:bg-black/[0.02]">
-                        <td className="px-6 py-4">
-                          <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
+                      <Fragment key={p.id || idx}>
+                      <tr
+                        className="transition-colors"
+                        style={{ backgroundColor: idx % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}
+                      >
+                        <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)" }}>
+                          <p className="text-xs font-bold truncate max-w-[200px]" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="text-xs font-bold opacity-60" style={{ color: COLORS.CHARCOAL }}>
-                            {getPagoTypeLabel(p)}
+                        <td className="px-3 py-3 text-xs opacity-60" style={{ color: COLORS.CHARCOAL }}>{getCedula(p)}</td>
+                        <td className="px-3 py-3 text-xs opacity-60" style={{ color: COLORS.CHARCOAL }}>{getTelefono(p)}</td>
+                        <td className="px-3 py-3 text-right">
+                          <span className="text-xs font-bold text-green-600">${abonoM.toLocaleString()}</span>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <span className={cn("text-xs font-bold", saldoM > 0 ? "text-red-600" : "text-green-600")}>
+                            ${saldoM.toLocaleString()}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                              ${Number(p.total_abonado || p.monto_abonado || 0).toLocaleString()}
-                            </p>
-                            <p className="text-[10px] opacity-40">
-                              de ${Number(p.monto_total || 0).toLocaleString()}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1">
                             {pagadoCompleto ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-100 text-green-700">
-                                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
-                                Pagado completo
+                              <span className="inline-flex gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-100 text-green-700 whitespace-nowrap">
+                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                Pagado
                               </span>
                             ) : isAdmin ? (
                               <button
                                 onClick={() => navigate(`/finanzas/pagos/cuentas/talleres/${tallerId}/participante/${participanteId}`)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
-                                style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}15` }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+                                style={{ backgroundColor: COLORS.ACCENT }}
                               >
+                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
                                 Registrar cobro
-                                <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
                               </button>
                             ) : null}
+                            {p.motivo_ajuste && (
+                              <button
+                                onClick={() => setExpandedParticipant(isExpanded ? null : (p.id || p.participante_id))}
+                                className="size-6 rounded flex items-center justify-center text-[10px] font-bold hover:bg-gray-100 transition-colors"
+                                style={{ color: COLORS.TEXT_MUTED }}
+                                title="Ver ajustes"
+                              >
+                                {isExpanded ? "▲" : "▼"}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
+                      {isExpanded && p.motivo_ajuste && (
+                        <tr style={{ backgroundColor: "oklch(0.64 0.2 150 / 0.06)" }}>
+                          <td colSpan={6} className="px-5 py-3">
+                            <div className="flex items-center gap-2 text-[11px]" style={{ color: COLORS.CHARCOAL }}>
+                              <span className="font-bold">Ajuste:</span>
+                              {Number(p.precio_taller || 0) > 0 && Number(p.precio_taller) !== Number(p.monto_total || 0) && (
+                                <span className="line-through opacity-40">${Number(p.precio_taller).toLocaleString()}</span>
+                              )}
+                              <span className="text-green-700 font-bold">→ ${Number(p.monto_total || taller.precio || 0).toLocaleString()}</span>
+                              <span className="opacity-50 italic">— {p.motivo_ajuste}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     )
                   })
                 )}
               </tbody>
+              {participantes.length > 0 && (
+                <tfoot>
+                  <tr style={{ backgroundColor: COLORS.CHARCOAL }}>
+                    <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: COLORS.CHARCOAL }}>
+                      <span className="text-xs font-black text-white">Totales</span>
+                    </td>
+                    <td className="px-3 py-3" colSpan={2}></td>
+                    <td className="px-3 py-3 text-right">
+                      <span className="text-xs font-bold text-green-300">
+                        ${(totales.recaudado || 0).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <span className="text-xs font-bold text-red-300">
+                        ${((totales.esperado || 0) - (totales.recaudado || 0)).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3"></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>

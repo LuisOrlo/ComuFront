@@ -18,13 +18,17 @@ interface ProfileHeaderProps {
     fecha_nacimiento?: string
   }
   totalCursos: number
+  totalTalleres?: number
   estadoPago: string
   saldoPendiente: number
   onUpdate: (fields: Record<string, string>) => void
   saving: boolean
 }
 
-export function ProfileHeader({ estudiante, totalCursos, estadoPago, saldoPendiente, onUpdate, saving }: ProfileHeaderProps) {
+export function ProfileHeader({ estudiante, totalCursos, totalTalleres = 0, estadoPago, saldoPendiente, onUpdate, saving }: ProfileHeaderProps) {
+
+  const tieneCursos = totalCursos > 0
+  const tieneTalleres = totalTalleres > 0
   const { isAdmin } = usePermission()
   const [editing, setEditing] = useState(false)
   const [nombres, setNombres] = useState("")
@@ -128,10 +132,18 @@ export function ProfileHeader({ estudiante, totalCursos, estadoPago, saldoPendie
         </div>
 
         <div className="flex items-center gap-5 shrink-0">
-          <div className="text-center">
-            <span className="block text-[10px] font-bold text-gray-400 uppercase">Cursos</span>
-            <span className="text-2xl font-bold text-white">{totalCursos}</span>
-          </div>
+          {tieneCursos && (
+            <div className="text-center">
+              <span className="block text-[10px] font-bold text-gray-400 uppercase">Cursos</span>
+              <span className="text-2xl font-bold text-white">{totalCursos}</span>
+            </div>
+          )}
+          {tieneTalleres && (
+            <div className="text-center">
+              <span className="block text-[10px] font-bold text-gray-400 uppercase">Talleres</span>
+              <span className="text-2xl font-bold text-white">{totalTalleres}</span>
+            </div>
+          )}
           <div className="text-right">
             <FinancialStatusBadge status={estadoPago} />
             {saldoPendiente > 0 && (

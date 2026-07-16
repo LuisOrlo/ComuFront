@@ -36,12 +36,9 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     correo: "",
     celular: "",
     ciudad: "",
-    es_activo: true,
     especialidad: "",
     bio: "",
     cargo: "",
-    salario_base: "",
-    fecha_ingreso: "",
     es_pasante: false,
     crearCuenta: false,
     username: "",
@@ -61,12 +58,10 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
         correo: p.correo || "",
         celular: p.celular || "",
         ciudad: p.ciudad || "",
-        es_activo: p.es_activo,
         especialidad: p.perfilInstructor?.especialidad || "",
         bio: p.perfilInstructor?.bio || "",
         cargo: p.perfilStaff?.cargo || "",
-        salario_base: p.perfilStaff?.salario_base ? String(p.perfilStaff.salario_base) : "",
-        fecha_ingreso: p.perfilStaff?.fecha_ingreso || "",
+
         es_pasante: p.perfilStaff?.es_pasante || false,
         crearCuenta: false,
         username: "",
@@ -213,7 +208,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
           correo: form.correo || undefined,
           celular: form.celular || undefined,
           ciudad: form.ciudad || undefined,
-          es_activo: form.es_activo,
         })
 
         if (form.tipo === "instructor") {
@@ -224,7 +218,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
         } else {
           await staffService.updatePerfil(editingId, {
             cargo: form.cargo,
-            salario_base: form.salario_base ? parseFloat(form.salario_base) : undefined,
             es_pasante: form.tipo === "staff" ? form.es_pasante : false,
           })
         }
@@ -241,9 +234,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
           especialidad: form.tipo === "instructor" ? (form.especialidad || undefined) : undefined,
           bio: form.tipo === "instructor" ? (form.bio || undefined) : undefined,
           cargo: form.tipo !== "instructor" ? form.cargo : undefined,
-          salario_base: form.tipo !== "instructor" && form.tipo !== "admin" && form.salario_base
-            ? parseFloat(form.salario_base) : undefined,
-          fecha_ingreso: form.tipo !== "instructor" ? (form.fecha_ingreso || undefined) : undefined,
           es_pasante: form.tipo === "staff" ? form.es_pasante : undefined,
           crear_cuenta: form.crearCuenta && !!form.username && !!form.password,
           username: form.crearCuenta ? form.username : undefined,
@@ -492,17 +482,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
               />
               {form.tipo === "staff" && (
                 <>
-                  <ValidatedInput
-                    label="Salario base"
-                    type="number"
-                    value={form.salario_base}
-                    onChange={(value) => handleChange("salario_base", value)}
-                    onBlur={() => setTouched({ ...touched, salario_base: true })}
-                    error={fieldErrors.salario_base}
-                    touched={touched.salario_base}
-                    placeholder="0.00"
-                    helperText="(opcional)"
-                  />
                   <label className="flex items-center gap-2.5 cursor-pointer group">
                     <div
                       className="size-5 rounded flex items-center justify-center transition-all duration-150 group-hover:scale-110"
@@ -571,24 +550,6 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {editingId && (
-            <div className="mb-6">
-              <label className="flex items-center gap-2.5 cursor-pointer group">
-                <div
-                  className="size-5 rounded flex items-center justify-center transition-all duration-150 group-hover:scale-110"
-                  style={{
-                    backgroundColor: form.es_activo ? COLORS.ACCENT : "transparent",
-                    border: `2px solid ${form.es_activo ? COLORS.ACCENT : COLORS.BORDER_SUBTLE}`,
-                  }}
-                  onClick={() => setForm({ ...form, es_activo: !form.es_activo })}
-                >
-                  {form.es_activo && <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} className="text-white" />}
-                </div>
-                <span className="text-sm group-hover:text-[--accent] transition-colors duration-150" style={{ color: COLORS.CHARCOAL }}>Activo</span>
-              </label>
             </div>
           )}
 

@@ -5,6 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getStorageUrl(url?: string | null): string {
+  if (!url) return ""
+  if (url.startsWith("blob:")) return url
+  return url.replace(/^https?:\/\/localhost(?::\d+)?/, "")
+}
+
 export function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return "—"
   try {

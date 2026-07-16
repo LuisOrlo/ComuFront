@@ -10,7 +10,6 @@ const selectClasses =
 
 export interface FilterBarProps {
   onFilterChange?: (filters: {
-    tipo?: string
     ciudad?: string
     modalidad?: string
     estado?: string
@@ -22,7 +21,6 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   const [ciudades, setCiudades] = useState<Ciudad[]>([])
   const [search, setSearch] = useState("")
   const [filtros, setFiltros] = useState({
-    tipo: "",
     ciudad: "",
     modalidad: "",
     estado: "",
@@ -53,7 +51,6 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     // Notificar al padre solo los filtros con valores
     if (onFilterChange) {
       onFilterChange({
-        tipo: nuevosFiltros.tipo || undefined,
         ciudad: nuevosFiltros.ciudad || undefined,
         modalidad: nuevosFiltros.modalidad || undefined,
         estado: nuevosFiltros.estado || undefined,
@@ -67,7 +64,6 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     setSearch(value)
     if (onFilterChange) {
       onFilterChange({
-        tipo: filtros.tipo || undefined,
         ciudad: filtros.ciudad || undefined,
         modalidad: filtros.modalidad || undefined,
         estado: filtros.estado || undefined,
@@ -79,7 +75,6 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   // Limpiar todos los filtros
   const limpiarFiltros = () => {
     const filtroVacio = {
-      tipo: "",
       ciudad: "",
       modalidad: "",
       estado: "",
@@ -102,34 +97,6 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
         <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
           Filtros
         </span>
-      </div>
-
-      {/* Tipo de Curso */}
-      <div className="relative">
-        <select
-          value={filtros.tipo}
-          onChange={(e) => handleFilterChange("tipo", e.target.value)}
-          className={selectClasses}
-          style={{
-            borderColor: COLORS.BORDER_SUBTLE,
-            color: COLORS.CHARCOAL,
-            transition: "border-color 180ms ease-out, box-shadow 180ms ease-out",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = COLORS.ACCENT
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-            e.currentTarget.style.boxShadow = "none"
-          }}
-        >
-          <option value="">Tipo</option>
-          <option value="regular">Regular</option>
-          <option value="taller">Taller</option>
-          <option value="personalizado">Personalizado</option>
-        </select>
-        <FilterArrow />
       </div>
 
       {/* Ciudad */}

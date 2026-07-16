@@ -195,6 +195,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
           items: [
             { icon: CalendarIcon, label: "Agenda", path: "/agenda" },
             { icon: CalendarIcon, label: "Tareas", path: "/tareas" },
+            { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
             { icon: UserCheckIcon, label: "Solicitudes", path: "/secretaria/solicitudes" },
           ],
         },
@@ -217,7 +218,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
           label: "Académico",
           items: [
             { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
-            { icon: AiFolderIcon, label: "Catálogos", path: "/catalogos" },
+            { icon: AiFolderIcon, label: "Categorías", path: "/catalogos" },
             { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
             { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
             { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
@@ -228,6 +229,7 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
           label: "Gestión",
           items: [
             { icon: UserCheckIcon, label: "Personal", path: "/personas" },
+            { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
             { icon: CalendarIcon, label: "Tareas", path: "/tareas" },
             { icon: SettingsIcon, label: "Cuentas", path: "/cuentas" },
             { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },

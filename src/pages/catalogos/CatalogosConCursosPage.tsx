@@ -1,44 +1,18 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router"
 import { usePermission } from "@/hooks/usePermission"
-import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SearchIcon, GraduationCapIcon, BookOpen01Icon,
 } from "@hugeicons/core-free-icons"
-import { Plus, Trash2, X, Upload, Pencil, Users, Clock, MapPin } from "lucide-react"
+import { Plus, Trash2, Pencil, Users, Clock, MapPin } from "lucide-react"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getStorageUrl } from "@/lib/utils"
 import { cursosService, type CatalogoCurso, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 
 type Categoria = "regular" | "taller" | "personalizado"
-
-interface CatalogoFormData {
-  nombre: string
-  descripcion: string
-  categoria: Categoria
-  imagen: string
-  imagenFile: File | null
-  color: string
-}
-
-const emptyForm: CatalogoFormData = {
-  nombre: "",
-  descripcion: "",
-  categoria: "regular",
-  imagen: "",
-  imagenFile: null,
-  color: "#3B82F6",
-}
-
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") || ""
-
-function getImageUrl(path?: string): string {
-  if (!path) return ""
-  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("blob:")) return path
-  return `${API_BASE}/storage/${path.replace(/^\/?/, "")}`
-}
 
 function getEstudianteData(m: MatriculaDetallada): { nombres: string; apellidos: string; cedula: string; correo: string } | null {
   if (m.estudiante) return m.estudiante
@@ -71,16 +45,9 @@ function CategoriaBadge({ categoria }: { categoria: string }) {
 }
 
 export function CatalogosConCursosPage() {
+  const navigate = useNavigate()
   const { isAdmin } = usePermission()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const colorInputRef = useRef<HTMLInputElement>(null)
 
-  const [catalogoModal, setCatalogoModal] = useState<{ open: boolean; editingId: string | null }>({ open: false, editingId: null })
-  const [catalogoForm, setCatalogoForm] = useState<CatalogoFormData>(emptyForm)
-  const [catalogoTouched, setCatalogoTouched] = useState<Record<string, boolean>>({})
-  const [catalogoFieldErrors, setCatalogoFieldErrors] = useState<Record<string, string>>({})
-  const [catalogoSaving, setCatalogoSaving] = useState(false)
-  const [catalogoUploading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [catalogoToDelete, setCatalogoToDelete] = useState<{ id: string; nombre: string } | null>(null)
   const [deletingCatalogo, setDeletingCatalogo] = useState(false)
@@ -144,98 +111,6 @@ export function CatalogosConCursosPage() {
     setSelectedCursoId(id === selectedCursoId ? null : id)
   }
 
-  const openCreateCatalogo = () => {
-    setCatalogoForm(emptyForm)
-    setCatalogoModal({ open: true, editingId: null })
-  }
-
-  const openEditCatalogo = (cat: CatalogoCurso) => {
-    setCatalogoForm({
-      nombre: cat.nombre,
-      descripcion: cat.descripcion || "",
-      categoria: "regular",
-      imagen: cat.imagen || "",
-      imagenFile: null,
-      color: cat.color || "#3B82F6",
-    })
-    setCatalogoModal({ open: true, editingId: cat.id })
-  }
-
-  const closeCatalogoModal = () => {
-    if (catalogoForm.imagen?.startsWith("blob:")) {
-      URL.revokeObjectURL(catalogoForm.imagen)
-    }
-    setCatalogoModal({ open: false, editingId: null })
-    setCatalogoForm(emptyForm)
-    setCatalogoTouched({})
-    setCatalogoFieldErrors({})
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (catalogoForm.imagen?.startsWith("blob:")) {
-      URL.revokeObjectURL(catalogoForm.imagen)
-    }
-
-    const previewUrl = URL.createObjectURL(file)
-    setCatalogoForm((prev) => ({ ...prev, imagen: previewUrl, imagenFile: file }))
-  }
-
-  const handleSubmitCatalogo = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setCatalogoFieldErrors({})
-
-    if (!catalogoForm.nombre.trim()) {
-      setCatalogoFieldErrors({ nombre: "El nombre del catálogo es obligatorio" })
-      setCatalogoTouched({ ...catalogoTouched, nombre: true })
-      return
-    }
-
-    setCatalogoSaving(true)
-    try {
-      let imagenUrl = catalogoForm.imagen
-
-      if (catalogoForm.imagenFile) {
-        imagenUrl = await cursosService.uploadImagenCatalogo(catalogoForm.imagenFile)
-      }
-
-      const payload = {
-        nombre: catalogoForm.nombre,
-        descripcion: catalogoForm.descripcion || undefined,
-        categoria: "regular" as const,
-        imagen: imagenUrl?.startsWith("blob:") ? undefined : imagenUrl || undefined,
-        color: catalogoForm.color || undefined,
-      }
-
-      if (catalogoModal.editingId) {
-        await cursosService.actualizarCatalogo(catalogoModal.editingId, payload as Record<string, unknown>)
-        toast.success("Catálogo actualizado")
-      } else {
-        await cursosService.crearCatalogo(payload)
-        toast.success("Catálogo creado exitosamente")
-      }
-
-      closeCatalogoModal()
-      cargarCatalogos()
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { errors?: Record<string, string[]>; mensaje?: string } } }
-      const errors = axiosError.response?.data?.errors
-      if (errors) {
-        const parsed: Record<string, string> = {}
-        for (const [key, msgs] of Object.entries(errors)) {
-          parsed[key] = (msgs as string[])[0]
-        }
-        setCatalogoFieldErrors(parsed)
-      } else {
-        toast.error(axiosError.response?.data?.mensaje || "Error al guardar el catálogo")
-      }
-    } finally {
-      setCatalogoSaving(false)
-    }
-  }
-
   const handleDeleteCatalogo = (id: string, nombre: string) => {
     setCatalogoToDelete({ id, nombre })
     setShowDeleteConfirm(true)
@@ -277,7 +152,7 @@ export function CatalogosConCursosPage() {
           </p>
         </div>
         {isAdmin && (<button
-          onClick={openCreateCatalogo}
+          onClick={() => navigate("/catalogos/nuevo")}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.97] shadow-lg"
           style={{ backgroundColor: COLORS.ACCENT }}
         >
@@ -327,7 +202,7 @@ export function CatalogosConCursosPage() {
 </div>
           ) : catalogos.map((cat) => {
             const isSelected = selectedCatalogoId === cat.id
-            const imgUrl = getImageUrl(cat.imagen)
+            const imgUrl = getStorageUrl(cat.imagen)
             return (
               <div
                 key={cat.id}
@@ -370,7 +245,7 @@ export function CatalogosConCursosPage() {
                     </div>
                     <div className="flex gap-1 shrink-0">
                       {isAdmin && (<button
-                        onClick={(e) => { e.stopPropagation(); openEditCatalogo(cat) }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/catalogos/${cat.id}/editar`) }}
                         className="size-7 flex items-center justify-center rounded-lg bg-white/20 backdrop-blur text-white hover:bg-white/40 transition-colors"
                       >
                         <Pencil size={12} />
@@ -435,7 +310,9 @@ export function CatalogosConCursosPage() {
                   style={{
                     borderColor: isSelected ? (curso.colorCatalogo || COLORS.ACCENT) : COLORS.BORDER_SUBTLE,
                     borderWidth: isSelected ? 2 : 1,
-                    borderLeft: curso.colorCatalogo ? `3px solid ${curso.colorCatalogo}` : undefined,
+                    borderLeftWidth: curso.colorCatalogo ? 3 : undefined,
+                    borderLeftStyle: curso.colorCatalogo ? 'solid' : undefined,
+                    borderLeftColor: curso.colorCatalogo ? curso.colorCatalogo : undefined,
                   }}
                 >
                   <div className="px-4 py-3.5 bg-white">
@@ -597,170 +474,6 @@ export function CatalogosConCursosPage() {
       </div>
 
       {/* Modales */}
-      <AnimatePresence>
-        {catalogoModal.open && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={closeCatalogoModal}
-              className="absolute inset-0 bg-charcoal/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] max-w-[95vw] lg:max-w-[1020px] xl:max-w-[1080px] w-full max-h-[92vh] overflow-hidden shadow-2xl"
-            >
-              <div className="p-5 sm:p-6 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div>
-                  <h3 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>
-                    {catalogoModal.editingId ? "Actualizar Catálogo" : "Nuevo Catálogo"}
-                  </h3>
-                  
-                </div>
-                <button onClick={closeCatalogoModal} className="size-9 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors">
-                  <X size={18} />
-                </button>
-              </div>
-              <form onSubmit={handleSubmitCatalogo} className="flex flex-col min-h-0">
-                <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] overflow-y-auto lg:overflow-hidden max-h-[calc(92vh-100px)]">
-                  {/* LEFT: Image */}
-                  <div className="p-5 sm:p-6 border-b lg:border-b-0 lg:border-r flex flex-col justify-start lg:overflow-y-auto lg:max-h-[calc(92vh-100px)]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <label className="text-xs font-bold uppercase tracking-widest opacity-50 mb-3 block">
-                      Imagen representativa
-                    </label>
-                    <div className="w-full flex-1 min-h-0 flex items-center justify-center">
-                      {catalogoForm.imagen ? (
-                        <div className="relative rounded-2xl overflow-hidden border aspect-[4/3] max-h-[260px] w-full shadow-inner" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                          <img src={catalogoForm.imagen} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
-                          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent" />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (catalogoForm.imagen?.startsWith("blob:")) URL.revokeObjectURL(catalogoForm.imagen)
-                              setCatalogoForm({ ...catalogoForm, imagen: "", imagenFile: null })
-                            }}
-                            className="absolute top-3 right-3 size-9 flex items-center justify-center rounded-full bg-white/90 backdrop-blur transition-colors hover:bg-white"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => fileRef.current?.click()}
-                          disabled={catalogoUploading}
-                          className="w-full min-h-[200px] lg:min-h-[240px] flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed transition-all hover:bg-gray-50 active:scale-[0.98]"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
-                        >
-                          <div className="size-14 rounded-2xl flex items-center justify-center bg-black/5">
-                            <Upload size={24} />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Subir imagen de portada</p>
-                            <p className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>PNG, JPG o WebP</p>
-                          </div>
-                        </button>
-                      )}
-                    </div>
-                    <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                  </div>
-                  {/* RIGHT: Form */}
-                  <div className="p-5 sm:p-6 space-y-5 overflow-y-auto lg:max-h-[calc(92vh-100px)]">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Color Identificador
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => colorInputRef.current?.click()}
-                          className="size-11 rounded-xl border-2 transition-all hover:scale-105 active:scale-95 shadow-sm shrink-0"
-                          style={{ backgroundColor: catalogoForm.color, borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                        <input
-                          ref={colorInputRef}
-                          type="color"
-                          value={catalogoForm.color}
-                          onChange={(e) => setCatalogoForm({ ...catalogoForm, color: e.target.value })}
-                          className="hidden"
-                        />
-                        <input
-                          type="text"
-                          value={catalogoForm.color}
-                          onChange={(e) => setCatalogoForm({ ...catalogoForm, color: e.target.value })}
-                          placeholder="#3B82F6"
-                          className="flex-1 px-3 py-2.5 rounded-xl border bg-gray-50/50 text-sm font-mono font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {["#3B82F6", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6", "#6366F1"].map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => setCatalogoForm({ ...catalogoForm, color: c })}
-                            className={cn(
-                              "size-6 rounded-full border transition-all hover:scale-110 active:scale-90",
-                              catalogoForm.color.toLowerCase() === c.toLowerCase() ? "ring-2 ring-offset-2 ring-black/40 scale-105" : "border-black/10"
-                            )}
-                            style={{ backgroundColor: c }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Nombre
-                      </label>
-                      <input
-                        type="text"
-                        value={catalogoForm.nombre}
-                        onChange={(e) => setCatalogoForm({ ...catalogoForm, nombre: e.target.value })}
-                        placeholder="Ej: Master en Cinematografía"
-                        className="w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                        style={{ borderColor: catalogoFieldErrors.nombre ? "#ef4444" : COLORS.BORDER_SUBTLE }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
-                        Descripción
-                      </label>
-                      <textarea
-                        value={catalogoForm.descripcion}
-                        onChange={(e) => setCatalogoForm({ ...catalogoForm, descripcion: e.target.value })}
-                        placeholder="Describe el impacto y alcance de este catálogo..."
-                        rows={3}
-                        className="w-full px-4 py-3 rounded-xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5 resize-none"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                      />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        type="submit"
-                        disabled={catalogoSaving}
-                        className="flex-[2] py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
-                        style={{ backgroundColor: COLORS.ACCENT, opacity: catalogoSaving ? 0.6 : 1 }}
-                      >
-                        {catalogoSaving ? "Sincronizando..." : "Confirmar Cambios"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={closeCatalogoModal}
-                        className="flex-1 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10 transition-all active:scale-95"
-                      >
-                        Descartar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
       {showDeleteConfirm && catalogoToDelete && (
         <ConfirmationModal
           isOpen={showDeleteConfirm}

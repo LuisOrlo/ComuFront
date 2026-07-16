@@ -8,8 +8,10 @@ import { CursosPage } from "@/pages/cursos/CursosPage"
 import { CursoFormPage } from "@/pages/cursos/CursoFormPage"
 import { CursoDetailPage } from "@/pages/cursos/detalle/CursoDetailPage"
 import { CatalogosConCursosPage } from "@/pages/catalogos/CatalogosConCursosPage"
+import { CatalogoFormPage } from "@/pages/catalogos/CatalogoFormPage"
 import { CiudadesPage } from "@/pages/admin/ciudades/CiudadesPage"
 import { PersonasPage } from "@/pages/personas/PersonasPage"
+import { PagosPersonaPage } from "@/pages/personas/PagosPersonaPage"
 
 import { TareasPage } from "@/pages/tareas/TareasPage"
 import { CuentasPage } from "@/pages/cuentas/CuentasPage"
@@ -29,6 +31,9 @@ import { PaquetesPage } from "@/pages/servicios/podcast/PaquetesPage"
 import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPage"
 import { RadioPage } from "@/pages/servicios/radio/RadioPage"
 import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
+import { ClientesPage } from "@/pages/clientes/ClientesPage"
+import { NuevoClientePage } from "@/pages/clientes/NuevoClientePage"
+import { ClienteDetallePage } from "@/pages/clientes/detalle/ClienteDetallePage"
 import { TarifasPage as RadioTarifasPage } from "@/pages/servicios/radio/TarifasPage"
 import { InstructorDashboardPage } from "@/pages/instructor-portal/InstructorDashboardPage"
 import { InstructorCursosPage } from "@/pages/instructor-portal/InstructorCursosPage"
@@ -163,8 +168,15 @@ function AppLayout() {
             <Route path="/cursos/:id/editar" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
             <Route path="/cursos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoDetailPage /></RoleGuard>} />
             <Route path="/catalogos" element={<RoleGuard roles={["Administrador"]}><CatalogosConCursosPage /></RoleGuard>} />
+            <Route path="/catalogos/nuevo" element={<RoleGuard roles={["Administrador"]}><CatalogoFormPage /></RoleGuard>} />
+            <Route path="/catalogos/:id/editar" element={<RoleGuard roles={["Administrador"]}><CatalogoFormPage /></RoleGuard>} />
             <Route path="/ciudades" element={<RoleGuard roles={["Administrador"]}><CiudadesPage /></RoleGuard>} />
             <Route path="/personas" element={<RoleGuard roles={["Administrador"]}><PersonasPage /></RoleGuard>} />
+            <Route path="/personas/:id/pagos" element={<RoleGuard roles={["Administrador"]}><PagosPersonaPage /></RoleGuard>} />
+            <Route path="/clientes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClientesPage /></RoleGuard>} />
+            <Route path="/clientes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoClientePage /></RoleGuard>} />
+            <Route path="/clientes/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClienteDetallePage /></RoleGuard>} />
+            <Route path="/clientes/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoClientePage /></RoleGuard>} />
             <Route path="/estudiantes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesPage /></RoleGuard>} />
             <Route path="/estudiantes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEstudiantePage /></RoleGuard>} />
             <Route path="/estudiantes/cursos/:cursoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCursoDetallePage /></RoleGuard>} />

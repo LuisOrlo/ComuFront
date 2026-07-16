@@ -10,7 +10,6 @@ import {
   Alert02Icon,
 } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 
@@ -24,7 +23,6 @@ export function LoginPage() {
   const { login } = useAuth()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -251,22 +249,7 @@ export function LoginPage() {
               </div>
             </div>
 
-            {/* Remember + Forgot */}
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="remember"
-                className="flex items-center gap-2.5 cursor-pointer group"
-              >
-                <Checkbox
-                  id="remember"
-                  checked={remember}
-                  onCheckedChange={(checked: boolean | "indeterminate") => setRemember(checked === true)}
-                  className="data-[state=checked]:bg-[--accent] data-[state=checked]:border-[--accent]"
-                />
-                
-              </label>
-              
-            </div>
+           
 
             {error && (
               <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm leading-snug">

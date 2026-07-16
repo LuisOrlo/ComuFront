@@ -16,7 +16,7 @@ import {
   Delete02Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
@@ -89,6 +89,12 @@ export function PagoDetallePage() {
     const ra = cp.reserva_aula
     if (ra?.persona) return `${ra.persona.nombres || ""} ${ra.persona.apellidos || ""}`.trim()
     if (ra?.cliente_externo) return `${ra.cliente_externo.nombres || ""} ${ra.cliente_externo.apellidos || ""}`.trim()
+    const ae = cp.alquiler_equipo
+    if (ae?.persona) return `${ae.persona.nombres || ""} ${ae.persona.apellidos || ""}`.trim()
+    if (ae?.cliente_externo) return `${ae.cliente_externo.nombres || ""} ${ae.cliente_externo.apellidos || ""}`.trim()
+    const rr = cp.reserva_radio
+    if (rr?.persona) return `${rr.persona.nombres || ""} ${rr.persona.apellidos || ""}`.trim()
+    if (rr?.cliente_externo) return `${rr.cliente_externo.nombres || ""} ${rr.cliente_externo.apellidos || ""}`.trim()
     return "—"
   }
 
@@ -97,31 +103,40 @@ export function PagoDetallePage() {
     if (data?.taller_nombre) return data.taller_nombre
 
     const lp = data?.linea_pago_modulo
-    if (lp) {
-      const m = lp.matricula
-      const ca = m?.curso_abierto
-      if (ca?.nombre_instancia) return ca.nombre_instancia
-      if (ca?.catalogo?.nombre) return ca.catalogo.nombre
-    }
+    if (lp) return nombreDesdeLineaPago(lp)
 
     const cp = data?.cuenta_por_cobrar
     if (!cp) return "—"
-    const m = cp.matricula
-    const s = cp.solicitud_inscripcion
-    const it = cp.inscripcion_taller
-    if (it?.taller?.nombre) return it.taller.nombre
-    if (m?.curso_abierto?.nombre_instancia) return m.curso_abierto.nombre_instancia
-    if (m?.curso_abierto?.catalogo?.nombre) return m.curso_abierto.catalogo.nombre
-    if (s?.curso_abierto?.nombre_instancia) return s.curso_abierto.nombre_instancia
-    if (s?.curso_abierto?.catalogo?.nombre) return s.curso_abierto.catalogo.nombre
-    if (cp.reserva_podcast_id) {
-      return cp.reserva_podcast?.titulo || cp.reserva_podcast?.paquete?.nombre || "Podcast"
+    return nombreDesdeCuentaCobrar(cp)
+  }
+
+  function nombreDesdeLineaPago(lp: any): string {
+    const ca = lp.matricula?.curso_abierto
+    return ca?.nombre_instancia ?? ca?.catalogo?.nombre ?? "—"
+  }
+
+  function nombreServicio(cp: any): string {
+    const servicio = [
+      ["reserva_podcast_id", cp.reserva_podcast?.titulo ?? cp.reserva_podcast?.paquete?.nombre ?? "Podcast"],
+      ["reserva_aula_id", cp.reserva_aula?.aula?.nombre ?? "Aula"],
+      ["alquiler_equipo_id", cp.alquiler_equipo?.equipo?.nombre ?? "Equipo"],
+      ["edicion_video_id", "Edición de Video"],
+      ["reserva_radio_id", "Radio"],
+    ] as const
+    for (const [idField, label] of servicio) {
+      if (cp[idField]) return label
     }
-    if (cp.reserva_aula_id) return cp.reserva_aula?.aula?.nombre || "Aula"
-    if (cp.alquiler_equipo_id) return cp.alquiler_equipo?.equipo?.nombre || "Equipo"
-    if (cp.edicion_video_id) return "Edición de Video"
-    if (cp.reserva_radio_id) return "Radio"
     return "—"
+  }
+
+  function nombreDesdeCuentaCobrar(cp: any): string {
+    const academia = cp.matricula?.curso_abierto?.nombre_instancia
+      ?? cp.matricula?.curso_abierto?.catalogo?.nombre
+      ?? cp.solicitud_inscripcion?.curso_abierto?.nombre_instancia
+      ?? cp.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre
+      ?? cp.inscripcion_taller?.taller?.nombre
+    if (academia) return academia
+    return nombreServicio(cp)
   }
 
   const getModuloNombre = () => {
@@ -313,10 +328,10 @@ export function PagoDetallePage() {
             <div
               className="rounded-xl border overflow-hidden cursor-pointer"
               style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              onClick={() => setModalImage(data.comprobante_url)}
+              onClick={() => setModalImage(getStorageUrl(data.comprobante_url))}
             >
               <img
-                src={data.comprobante_url}
+                src={getStorageUrl(data.comprobante_url)}
                 alt="Comprobante de pago"
                 className="w-full max-h-[400px] object-contain bg-gray-50 hover:opacity-90 transition-opacity"
               />

@@ -97,8 +97,8 @@ export function TallerFormPage() {
           ciudad_id: Number(taller.ciudad_id) || 0,
           fecha: String(taller.fecha || "").split("T")[0],
           fecha_fin: String(taller.fecha_fin || "").split("T")[0],
-          hora_inicio: taller.hora_inicio || "",
-          hora_fin: taller.hora_fin || "",
+          hora_inicio: taller.hora_inicio?.substring(0, 5) || "",
+          hora_fin: taller.hora_fin?.substring(0, 5) || "",
           capacidad_maxima: String(taller.capacidad_maxima || ""),
           precio: String(taller.precio || ""),
         })

@@ -172,6 +172,11 @@ export const financeService = {
     return response.data.data
   },
 
+  async getPagosPersonal(personaId: string) {
+    const response = await api.get(`/finanzas/egresos/personal/${personaId}`)
+    return response.data
+  },
+
   async deleteComprobante(id: string, tipoMovimiento: "ingreso" | "egreso") {
     const endpoint = tipoMovimiento === "ingreso"
       ? `/finanzas/transacciones-ingreso/${id}/archivo`

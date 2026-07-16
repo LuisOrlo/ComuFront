@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon, Coins02Icon, UploadIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
+import { validarComprobante } from "@/lib/file-validators"
 import api from "@/services/auth.service"
 
 interface LineaPagoData {
@@ -45,28 +46,37 @@ export function PagoInicialMatriculaModal({
   const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const loadLineas = async () => {
-    try {
-      const res = await api.get(`/finanzas/matriculas/${matriculaId}/lineas-pago`)
-      setLineas(res.data.datos || [])
-    } catch {
-      setLineas(lineasPagoIds.map((id, i) => ({
-        id,
-        modulo_id: id,
-        nombre_modulo: `M\u00f3dulo ${i + 1}`,
-        numero_orden: i + 1,
-        monto_original: 0,
-        monto_ajustado: 0,
-        monto_abonado: 0,
-      })))
-    }
-  }
-
   useEffect(() => {
-    if (open && lineas.length === 0) {
-      loadLineas()
+    if (!open || lineas.length > 0) return
+
+    let active = true
+    const loadLineas = async () => {
+      try {
+        const res = await api.get(`/finanzas/matriculas/${matriculaId}/lineas-pago`)
+        if (active) {
+          setLineas(res.data.datos || [])
+        }
+      } catch {
+        if (active) {
+          setLineas(lineasPagoIds.map((id, i) => ({
+            id,
+            modulo_id: id,
+            nombre_modulo: `Módulo ${i + 1}`,
+            numero_orden: i + 1,
+            monto_original: 0,
+            monto_ajustado: 0,
+            monto_abonado: 0,
+          })))
+        }
+      }
     }
-  }, [open])
+
+    loadLineas()
+
+    return () => {
+      active = false
+    }
+  }, [open, lineas.length, matriculaId, lineasPagoIds])
 
   const toBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -131,6 +141,8 @@ export function PagoInicialMatriculaModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const err = validarComprobante(file)
+    if (err) { toast.error(err); e.target.value = ""; return }
     setComprobanteFile(file)
     setComprobantePreview(URL.createObjectURL(file))
   }

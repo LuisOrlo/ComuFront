@@ -88,12 +88,14 @@ export interface CursoAbierto {
     id: number
     nombre: string
   }
-  horarios?: Array<{
+  horario?: {
     id: string
-    dia: string
+    dia_semana: number[] | null
+    dias_semana?: Array<{ id: number; dia_semana: number }>
     hora_inicio: string
     hora_fin: string
-  }>
+    nombre_referencial?: string
+  }
   matriculas?: Array<{
     id: string
     estudiante_id: string
@@ -106,7 +108,6 @@ export interface CursoAbierto {
     fecha_inicio?: string | null
     fecha_fin?: string | null
   }>
-  horario?: Record<string, unknown>
   observaciones?: string
 }
 
@@ -151,7 +152,6 @@ export interface CursosResponse {
 }
 
 export interface CursoFilters {
-  tipo?: string
   modalidad?: string
   ciudad?: string
   catalogo_curso_id?: string
@@ -357,9 +357,6 @@ export const cursosService = {
 
     if (filters?.search) {
       params.buscar = filters.search
-    }
-    if (filters?.tipo) {
-      params.categoria = filters.tipo
     }
     if (filters?.modalidad) {
       params.modalidad = filters.modalidad
@@ -760,6 +757,11 @@ export const cursosService = {
 
   async actualizarCurso(id: string, datos: { curso_abierto_id: string }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-curso`, datos)
+    return response.data
+  },
+
+  async eliminarSolicitud(id: string) {
+    const response = await api.delete(`/academic/solicitudes-inscripcion/${id}`)
     return response.data
   },
 

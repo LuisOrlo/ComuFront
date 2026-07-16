@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -29,17 +29,24 @@ export function HistorialPage() {
   const [searchInput, setSearchInput] = useState("")
   const [fechaDesde, setFechaDesde] = useState("")
   const [fechaHasta, setFechaHasta] = useState("")
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const PER_PAGE = 50
 
   useEffect(() => {
     const controller = new AbortController()
     const run = async () => {
+      setLoading(true)
       try {
-        const params: Record<string, any> = { per_page: 200 }
+        const params: Record<string, any> = { per_page: PER_PAGE, page }
         if (fechaDesde) params.fecha_desde = fechaDesde
         if (fechaHasta) params.fecha_hasta = fechaHasta
         const res = await financeService.getHistorial(params)
         if (controller.signal.aborted) return
         setAllTransacciones(res.data || [])
+        setTotalPages(res.last_page || 1)
+        setTotalItems(res.total || 0)
       } catch (err: any) {
         if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
           toast.error("Error al cargar historial")
@@ -50,14 +57,17 @@ export function HistorialPage() {
     }
     run()
     return () => controller.abort()
-  }, [fechaDesde, fechaHasta])
+  }, [page, fechaDesde, fechaHasta])
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput), DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  function getNombreEstudiante(t: any): string {
+  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1) }, [fechaDesde, fechaHasta])
+
+  const getNombreEstudiante = useCallback((t: any): string => {
     if (t.tipo_movimiento === "egreso") return t.estudiante_nombre || "—"
     if (t.modulo_nombre || t.linea_pago_modulo) return t.estudiante_nombre || "—"
     const cp = t.cuenta_por_cobrar
@@ -67,31 +77,22 @@ export function HistorialPage() {
       cp.solicitud_inscripcion?.participante_externo, cp.inscripcion_taller,
       cp.reserva_podcast?.persona, cp.reserva_podcast?.cliente_externo,
       cp.reserva_aula?.persona, cp.reserva_aula?.cliente_externo,
+      cp.alquiler_equipo?.persona, cp.alquiler_equipo?.cliente_externo,
+      cp.reserva_radio?.persona, cp.reserva_radio?.cliente_externo,
     ]
     for (const c of candidates) {
       if (c?.nombres || c?.apellidos) return `${c.nombres || ""} ${c.apellidos || ""}`.trim()
     }
     return t.estudiante_nombre || "—"
-  }
+  }, [])
 
-  function getCursoNombre(t: any): string {
+  const getCursoNombre = useCallback((t: any): string => {
     if (t.tipo_movimiento === "egreso") return t.categoria_nombre || t.curso_nombre || ""
     if (t.modulo_nombre || t.linea_pago_modulo) return t.curso_nombre || ""
     const cp = t.cuenta_por_cobrar
     if (!cp) return t.curso_nombre || ""
-    const name = cp.matricula?.curso_abierto?.nombre_instancia
-      || cp.matricula?.curso_abierto?.catalogo?.nombre
-      || cp.solicitud_inscripcion?.curso_abierto?.nombre_instancia
-      || cp.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre
-      || cp.inscripcion_taller?.taller?.nombre
-    if (name) return name
-    if (cp.reserva_podcast_id) return cp.reserva_podcast?.titulo || cp.reserva_podcast?.paquete?.nombre || "Podcast"
-    if (cp.reserva_aula_id) return cp.reserva_aula?.aula?.nombre || "Aula"
-    if (cp.alquiler_equipo_id) return cp.alquiler_equipo?.equipo?.nombre || "Equipo"
-    if (cp.edicion_video_id) return "Edición de Video"
-    if (cp.reserva_radio_id) return "Radio"
-    return t.curso_nombre || ""
-  }
+    return nombreDesdeCuentaCobrar(cp) || t.curso_nombre || ""
+  }, [])
 
   function esPagoPorModulo(t: any): boolean {
     return !!(t.modulo_nombre || t.linea_pago_modulo)
@@ -109,7 +110,7 @@ export function HistorialPage() {
       return [nombre, curso, cedula, t.metodo_pago, t.estado_verificacion]
         .some(f => f?.toLowerCase().includes(q))
     })
-  }, [allTransacciones, search])
+  }, [allTransacciones, search, getNombreEstudiante, getCursoNombre])
 
   const groupedByDate = useMemo(() => {
     const groups: Record<string, any[]> = {}
@@ -191,7 +192,7 @@ export function HistorialPage() {
             <h2 className="text-lg font-black flex items-center gap-3" style={{ color: COLORS.CHARCOAL }}>
               <HugeiconsIcon icon={InvoiceIcon} size={22} style={{ color: COLORS.ACCENT }} />
               Historial de Movimientos
-              {hasResults && <span className="text-sm font-bold opacity-40">({clientFiltered.length})</span>}
+              {hasResults && <span className="text-sm font-bold opacity-40">({totalItems})</span>}
             </h2>
             <div className="flex items-center gap-2">
               <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
@@ -235,6 +236,7 @@ export function HistorialPage() {
             </p>
           </div>
         ) : (
+          <>
           <div className="px-8 py-6 relative">
             <div className="relative">
               <div
@@ -362,6 +364,32 @@ export function HistorialPage() {
                 </div>
             </div>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-8 py-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <span className="text-xs opacity-40">
+                Página {page} de {totalPages} ({totalItems} movimientos)
+              </span>
+              <div className="flex gap-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => p - 1)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
+                  Anterior
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </motion.div>
 
@@ -378,4 +406,28 @@ export function HistorialPage() {
       />
     </div>
   )
+}
+
+function nombreServicio(cp: any): string {
+  const servicio: Array<[string, string]> = [
+    ["reserva_podcast_id", cp.reserva_podcast?.titulo || cp.reserva_podcast?.paquete?.nombre || "Podcast"],
+    ["reserva_aula_id", cp.reserva_aula?.aula?.nombre || "Aula"],
+    ["alquiler_equipo_id", cp.alquiler_equipo?.equipo?.nombre || "Equipo"],
+    ["edicion_video_id", "Edición de Video"],
+    ["reserva_radio_id", "Radio"],
+  ]
+  for (const [idField, label] of servicio) {
+    if (cp[idField]) return label
+  }
+  return ""
+}
+
+function nombreDesdeCuentaCobrar(cp: any): string {
+  const academia = cp.matricula?.curso_abierto?.nombre_instancia
+    || cp.matricula?.curso_abierto?.catalogo?.nombre
+    || cp.solicitud_inscripcion?.curso_abierto?.nombre_instancia
+    || cp.solicitud_inscripcion?.curso_abierto?.catalogo?.nombre
+    || cp.inscripcion_taller?.taller?.nombre
+  if (academia) return academia
+  return nombreServicio(cp)
 }

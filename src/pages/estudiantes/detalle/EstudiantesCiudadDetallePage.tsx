@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft02Icon, Download04Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft02Icon, Download04Icon, MapPinIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { StudentTable, type StudentRow } from "../components/StudentTable"
 import { BulkActionsBar } from "../components/BulkActionsBar"
@@ -80,25 +80,38 @@ export function EstudiantesCiudadDetallePage() {
     <div className="p-6 max-w-7xl mx-auto">
       <button
         onClick={() => navigate("/estudiantes?tab=ciudades")}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm mb-6"
+        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-5"
       >
-        <HugeiconsIcon icon={ArrowLeft02Icon} size={18} />
+        <HugeiconsIcon icon={ArrowLeft02Icon} size={16} />
         Volver a Ciudades
       </button>
 
-      <header className="mb-4">
-        <h1 className="text-2xl font-black text-black">{ciudadNombre}</h1>
-        <p className="text-sm text-gray-400 mt-1">{estudiantes.length} estudiante{estudiantes.length !== 1 ? 's' : ''} en esta ciudad</p>
-      </header>
-
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div
+            className="size-14 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${COLORS.ACCENT}18` }}
+          >
+            <HugeiconsIcon icon={MapPinIcon} size={28} style={{ color: COLORS.ACCENT }} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-black">{ciudadNombre}</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-sm text-gray-400">
+                <span className="font-semibold text-gray-600">{estudiantes.length}</span> estudiante{estudiantes.length !== 1 ? 's' : ''}
+              </span>
+              <span className="size-1 rounded-full bg-gray-300" />
+              <span className="text-xs text-gray-400">Vista detallada</span>
+            </div>
+          </div>
+        </div>
         <button
           onClick={() => setExportOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98] shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md shrink-0"
           style={{ backgroundColor: COLORS.ACCENT }}
         >
-          <HugeiconsIcon icon={Download04Icon} size={14} />
-          Exportar
+          <HugeiconsIcon icon={Download04Icon} size={16} />
+          Exportar PDF
         </button>
       </div>
 
@@ -130,6 +143,7 @@ export function EstudiantesCiudadDetallePage() {
         }}
         title="Exportar Estudiantes de la Ciudad"
         description={`${selectedArray.length > 0 ? selectedArray.length : estudiantes.length} estudiante(s). Elige formato y campos.`}
+        defaultFormat="pdf"
       />
     </div>
   )

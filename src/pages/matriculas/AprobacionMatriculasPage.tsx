@@ -8,6 +8,7 @@ import {
   SearchIcon,
   FilterIcon,
   Calendar03Icon,
+  Delete01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
@@ -18,7 +19,7 @@ import type { PagoPreAprobacionRef } from "./PagoPreAprobacionSection"
 import { SolicitudCursoDetail } from "./SolicitudCursoDetail"
 import { TallerInscripcionCard } from "./TallerInscripcionCard"
 import { ImageZoom } from "./ImageZoom"
-import { calcularEdad } from "./AprobacionUtils"
+import { calcularEdad, validarImagen } from "./AprobacionUtils"
 import { toast } from "sonner"
 
 export function AprobacionMatriculasPage() {
@@ -50,7 +51,11 @@ export function AprobacionMatriculasPage() {
     if (!tallerEditId || !editTallerField || editTallerVal === "") return
     setSavingTallerEdit(true)
     try {
-      await tallerService.actualizarInscripcion(tallerEditId, { [editTallerField]: editTallerVal })
+      const data: any = { [editTallerField]: editTallerVal }
+      if (editTallerField === "fecha_nacimiento") {
+        data.edad = calcularEdad(editTallerVal)
+      }
+      await tallerService.actualizarInscripcion(tallerEditId, data)
       setEditTallerField(null); setEditTallerVal(""); setTallerEditId(null)
       const res = await tallerService.listarInscripcionesPendientes({ per_page: 200 })
       setTallerInscripciones((res as any).data || [])
@@ -67,7 +72,7 @@ export function AprobacionMatriculasPage() {
     setEditTallerField(null); setEditTallerVal(""); setTallerEditId(null)
   }
 
-  const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string; paymentMonto?: number; paymentTipo?: string; paymentMetodo?: string; precioAjustado?: number } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: "aprobar" | "rechazar"; id: string; origen?: string; paymentMonto?: number; paymentTipo?: string; paymentMetodo?: string; precioAjustado?: number; paymentMotivo?: string } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [expandedComprobante, setExpandedComprobante] = useState(false)
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
@@ -76,6 +81,7 @@ export function AprobacionMatriculasPage() {
   const [refreshing, setRefreshing] = useState(false)
   const pagoRef = useRef<PagoPreAprobacionRef>(null)
   const [montoModulo1Valido, setMontoModulo1Valido] = useState(false)
+  const [totalPrecioModulos, setTotalPrecioModulos] = useState(-1)
 
   const [editPagoField, setEditPagoField] = useState<string | null>(null)
   const [editPagoVal, setEditPagoVal] = useState("")
@@ -106,6 +112,8 @@ export function AprobacionMatriculasPage() {
   const [deletingComprobante, setDeletingComprobante] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [deleteArchivoModal, setDeleteArchivoModal] = useState<{ type: "comprobante" | "cedula"; label: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nombre: string; origen: "curso" | "taller" } | null>(null)
+  const [deletingRejected, setDeletingRejected] = useState(false)
   const comprobanteRef = useRef<HTMLInputElement>(null)
 
   const [filtroFechaDesde, setFiltroFechaDesde] = useState("")
@@ -113,23 +121,33 @@ export function AprobacionMatriculasPage() {
   const [filtroCursoId, setFiltroCursoId] = useState("")
   const [catalogosFiltro, setCatalogosFiltro] = useState<CatalogoCurso[]>([])
 
+  const VENTANA_DIAS = 5
+  const [ventanaActual, setVentanaActual] = useState(1)
+  const [tallerVentanaActual, setTallerVentanaActual] = useState(1)
+
   const [editField, setEditField] = useState<string | null>(null)
   const [editVal, setEditVal] = useState("")
   const [savingEdit, setSavingEdit] = useState(false)
 
-  const cargarSolicitudes = async () => {
+  const cargarSolicitudes = async (fechaDesde?: string, fechaHasta?: string) => {
     setLoading(true)
     try {
-      const res = await cursosService.getSolicitudesInscripcion({ per_page: 200 })
+      const params: Record<string, unknown> = { per_page: 200 }
+      if (fechaDesde) params.fecha_desde = fechaDesde
+      if (fechaHasta) params.fecha_hasta = fechaHasta
+      const res = await cursosService.getSolicitudesInscripcion(params)
       setSolicitudes(((res as Record<string, unknown>).data as Record<string, unknown>[]) || [])
     } catch { toast.error("Error al cargar solicitudes") }
     finally { setLoading(false) }
   }
 
-  const cargarTallerInscripciones = async () => {
+  const cargarTallerInscripciones = async (fechaDesde?: string, fechaHasta?: string) => {
     setLoadingTalleres(true)
     try {
-      const res = await tallerService.listarInscripcionesPendientes({ per_page: 200 })
+      const params: Record<string, unknown> = { per_page: 200 }
+      if (fechaDesde) params.fecha_desde = fechaDesde
+      if (fechaHasta) params.fecha_hasta = fechaHasta
+      const res = await tallerService.listarInscripcionesPendientes(params)
       setTallerInscripciones((res as any).data || [])
     } catch { setTallerInscripciones([]) }
     finally { setLoadingTalleres(false) }
@@ -137,9 +155,18 @@ export function AprobacionMatriculasPage() {
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    cargarSolicitudes()
+    cargarTallerInscripciones()
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [])
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
     if (mainTab === "talleres") {
+      setTallerVentanaActual(1)
       cargarTallerInscripciones()
     } else {
+      setVentanaActual(1)
       cargarSolicitudes()
     }
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -186,6 +213,8 @@ export function AprobacionMatriculasPage() {
     setSelectedId(id)
     setLoadingDetail(true)
     setExpandedComprobante(false)
+    setTotalPrecioModulos(-1)
+    setMontoModulo1Valido(false)
     try {
       const detalle = await cursosService.getSolicitudInscripcionById(id)
       setSelected(detalle)
@@ -245,6 +274,8 @@ export function AprobacionMatriculasPage() {
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !selectedId) return
+    const error = validarImagen(file, 2)
+    if (error) { toast.error(error); return }
     setUploadingCedula(true)
     try {
       const form = new FormData()
@@ -343,6 +374,8 @@ export function AprobacionMatriculasPage() {
   const handleUploadComprobante = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !selectedId) return
+    const error = validarImagen(file, 5)
+    if (error) { toast.error(error); return }
     setUploadingComprobante(true)
     try {
       const form = new FormData()
@@ -408,6 +441,7 @@ export function AprobacionMatriculasPage() {
         tipo_pago: confirmAction.paymentTipo,
         metodo_pago: confirmAction.paymentMetodo,
         fecha_pago: new Date().toISOString().split("T")[0],
+        motivo_ajuste: confirmAction.paymentMotivo,
       })
       toast.success("Inscripción a taller aprobada correctamente")
       setConfirmAction(null)
@@ -436,6 +470,28 @@ export function AprobacionMatriculasPage() {
     } catch (err) {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al rechazar")
     } finally { setActionLoading(false) }
+  }
+
+  const handleDeleteRejected = async () => {
+    if (!deleteTarget) return
+    setDeletingRejected(true)
+    try {
+      if (deleteTarget.origen === "taller") {
+        await tallerService.eliminarInscripcion(deleteTarget.id)
+        toast.success("Inscripción eliminada correctamente")
+        cargarTallerInscripciones()
+      } else {
+        await cursosService.eliminarSolicitud(deleteTarget.id)
+        toast.success("Solicitud eliminada correctamente")
+        if (selectedId === deleteTarget.id) { setSelectedId(null); setSelected(null) }
+        cargarSolicitudes()
+      }
+      setDeleteTarget(null)
+    } catch {
+      toast.error("Error al eliminar el registro")
+    } finally {
+      setDeletingRejected(false)
+    }
   }
 
   const solicitudesFiltradas = useMemo(() => {
@@ -509,7 +565,41 @@ export function AprobacionMatriculasPage() {
     return grupos
   }, [solicitudesFiltradas, statusFilter, mainTab])
 
-  const totalPendientes = solicitudes.filter(s => s.estado === "pendiente_validacion").length
+  const ventanasAgrupadas = useMemo(() => {
+    if (!solicitudesAgrupadas) return null
+    const ventanas: { days: any[]; index: number }[] = []
+    for (let i = 0; i < solicitudesAgrupadas.length; i += VENTANA_DIAS) {
+      ventanas.push({
+        days: solicitudesAgrupadas.slice(i, i + VENTANA_DIAS),
+        index: Math.floor(i / VENTANA_DIAS) + 1,
+      })
+    }
+    return ventanas
+  }, [solicitudesAgrupadas])
+
+  const totalVentanas = ventanasAgrupadas?.length || 0
+  const ventanaActualDays = ventanasAgrupadas?.[ventanaActual - 1]?.days || []
+
+  const tallerVentanasAgrupadas = useMemo(() => {
+    if (!tallerAgrupadas) return null
+    const ventanas: { days: any[]; index: number }[] = []
+    for (let i = 0; i < tallerAgrupadas.length; i += VENTANA_DIAS) {
+      ventanas.push({
+        days: tallerAgrupadas.slice(i, i + VENTANA_DIAS),
+        index: Math.floor(i / VENTANA_DIAS) + 1,
+      })
+    }
+    return ventanas
+  }, [tallerAgrupadas])
+
+  const tallerTotalVentanas = tallerVentanasAgrupadas?.length || 0
+  const tallerVentanaActualDays = tallerVentanasAgrupadas?.[tallerVentanaActual - 1]?.days || []
+
+  const totalPendientes = useMemo(() => {
+    const cursos = solicitudes.filter(s => s.estado === "pendiente_validacion").length
+    const talleres = tallerInscripciones.filter(ins => ins.estado === "activo" && !ins.pago_verificado).length
+    return cursos + talleres
+  }, [solicitudes, tallerInscripciones])
 
   const detailProps = {
     loadingDetail, refreshing,
@@ -528,6 +618,7 @@ export function AprobacionMatriculasPage() {
     handleUploadCedula, handleUploadComprobante, setDeleteArchivoModal, setSelected,
     pagoRef, montoModulo1Valido, setMontoModulo1Valido, handleApproveWithPayment,
     actionLoading, setConfirmAction,
+    totalPrecioModulos, setTotalPrecioModulos,
   }
 
   return (
@@ -604,11 +695,11 @@ export function AprobacionMatriculasPage() {
               <div className="space-y-4">
                 {loadingTalleres ? (
                   <div className="p-16 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
-                ) : !tallerAgrupadas || tallerAgrupadas.length === 0 ? (
+                ) : tallerVentanaActualDays.length === 0 ? (
                   <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay inscripciones a talleres {statusFilter === "aprobados" ? "verificadas" : statusFilter === "rechazados" ? "rechazadas" : "pendientes"}</p>
                   </div>
-                ) : tallerAgrupadas.map(grupo => (
+                ) : tallerVentanaActualDays.map(grupo => (
                   <div key={grupo.dateKey}>
                     <div className="flex items-center gap-2 mb-3">
                       <HugeiconsIcon icon={Calendar03Icon} size={14} style={{ color: COLORS.TEXT_MUTED }} />
@@ -616,25 +707,57 @@ export function AprobacionMatriculasPage() {
                       <span className="text-[10px] font-medium opacity-40">{grupo.items.length} inscripción{grupo.items.length !== 1 ? "es" : ""}</span>
                     </div>
                     <div className="space-y-3">
-                      {grupo.items.map(ins => (
-                         <TallerInscripcionCard key={ins.id} ins={ins}
-                           isExpanded={tallerSelectedId === ins.id}
-                           puedeVerificar={statusFilter === "pendientes"}
-                           editTallerField={editTallerField} editTallerVal={editTallerVal}
-                           savingTallerEdit={savingTallerEdit}
-                           onToggle={() => setTallerSelectedId(tallerSelectedId === ins.id ? null : ins.id)}
-                           onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
-                           onChange={setEditTallerVal} onSave={saveTallerEdit}
-                           onCancel={cancelTallerEdit}
-                            onApprove={(monto, tipoPago, metodo, precioAjustado) => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller", paymentMonto: monto, paymentTipo: tipoPago, paymentMetodo: metodo, precioAjustado })}
-                            onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
-                            onExpandImage={setExpandedImageUrl}
-                            onAfterMutate={silentRefreshTalleres}
-                          />
+                       {grupo.items.map((ins: any) => (
+                          <div key={ins.id} className="flex items-start gap-2">
+                            <div className="flex-1">
+                              <TallerInscripcionCard ins={ins}
+                               isExpanded={tallerSelectedId === ins.id}
+                               puedeVerificar={statusFilter === "pendientes"}
+                               editTallerField={editTallerField} editTallerVal={editTallerVal}
+                               savingTallerEdit={savingTallerEdit}
+                               onToggle={() => setTallerSelectedId(tallerSelectedId === ins.id ? null : ins.id)}
+                               onEdit={(f, v) => startTallerEdit(f, v, ins.id)}
+                               onChange={setEditTallerVal} onSave={saveTallerEdit}
+                               onCancel={cancelTallerEdit}
+                                 onApprove={(monto, tipoPago, metodo, precioAjustado, motivoAjuste) => setConfirmAction({ type: "aprobar", id: ins.id, origen: "taller", paymentMonto: monto, paymentTipo: tipoPago, paymentMetodo: metodo, precioAjustado, paymentMotivo: motivoAjuste })}
+                                onReject={() => setConfirmAction({ type: "rechazar", id: ins.id, origen: "taller" })}
+                                onExpandImage={setExpandedImageUrl}
+                                onAfterMutate={silentRefreshTalleres}
+                              />
+                            </div>
+                            {statusFilter === "rechazados" && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: ins.id, nombre: `${ins.nombres || "—"} ${ins.apellidos || ""}`, origen: "taller" }) }}
+                                className="p-2 rounded-lg hover:bg-red-50 transition-colors shrink-0 mt-1"
+                                title="Eliminar inscripción rechazada"
+                              >
+                                <HugeiconsIcon icon={Delete01Icon} size={15} style={{ color: "#ef4444" }} />
+                              </button>
+                            )}
+                          </div>
                       ))}
                     </div>
                   </div>
                  ))}
+              {tallerTotalVentanas > 1 && (
+                <div className="flex items-center justify-center gap-3 py-4">
+                  <button onClick={() => setTallerVentanaActual(p => Math.max(1, p - 1))}
+                    disabled={tallerVentanaActual <= 1}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-30"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                    ◀ Anterior
+                  </button>
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
+                    Ventana {tallerVentanaActual} de {tallerTotalVentanas}
+                  </span>
+                  <button onClick={() => setTallerVentanaActual(p => Math.min(tallerTotalVentanas, p + 1))}
+                    disabled={tallerVentanaActual >= tallerTotalVentanas}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-30"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                    Siguiente ▶
+                  </button>
+                </div>
+              )}
              </div>
            ) : loading ? (
               <div className="p-20 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
@@ -642,9 +765,9 @@ export function AprobacionMatriculasPage() {
             <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay solicitudes</p>
             </div>
-           ) : statusFilter !== "rechazados" && solicitudesAgrupadas ? (
+             ) : statusFilter !== "rechazados" && solicitudesAgrupadas ? (
             <div className="space-y-6">
-              {solicitudesAgrupadas.map(grupo => (
+              {ventanaActualDays.map(grupo => (
                 <div key={grupo.dateKey}>
                   <div className="flex items-center gap-2 mb-3">
                     <HugeiconsIcon icon={Calendar03Icon} size={14} style={{ color: COLORS.TEXT_MUTED }} />
@@ -652,8 +775,8 @@ export function AprobacionMatriculasPage() {
                     <span className="text-[10px] font-medium opacity-40">{grupo.items.length} solicitud{grupo.items.length !== 1 ? "es" : ""}</span>
                   </div>
                   <div className="space-y-3">
-                    {grupo.items.map(s => {
-                      const isSelected = selectedId === s.id
+                     {grupo.items.map((s: any) => {
+                       const isSelected = selectedId === s.id
                       return (
                         <div key={s.id} className="bg-white rounded-xl overflow-hidden transition-all border"
                           style={{
@@ -695,6 +818,25 @@ export function AprobacionMatriculasPage() {
                   </div>
                 </div>
               ))}
+              {totalVentanas > 1 && (
+                <div className="flex items-center justify-center gap-3 py-4">
+                  <button onClick={() => setVentanaActual(p => Math.max(1, p - 1))}
+                    disabled={ventanaActual <= 1}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-30"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                    ◀ Anterior
+                  </button>
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
+                    Ventana {ventanaActual} de {totalVentanas}
+                  </span>
+                  <button onClick={() => setVentanaActual(p => Math.min(totalVentanas, p + 1))}
+                    disabled={ventanaActual >= totalVentanas}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-30"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                    Siguiente ▶
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -725,6 +867,15 @@ export function AprobacionMatriculasPage() {
                       <HugeiconsIcon icon={isSelected ? Cancel01Icon : CheckmarkCircle04Icon} size={18}
                         style={{ color: isSelected ? COLORS.TEXT_MUTED : COLORS.ACCENT }} />
                     </button>
+                    {statusFilter === "rechazados" && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: s.id, nombre: `${s.estudiante?.nombres || s.participante_externo?.nombres || "—"} ${s.estudiante?.apellidos || s.participante_externo?.apellidos || ""}`, origen: "curso" }) }}
+                        className="p-2 rounded-lg hover:bg-red-50 transition-colors shrink-0"
+                        title="Eliminar solicitud rechazada"
+                      >
+                        <HugeiconsIcon icon={Delete01Icon} size={15} style={{ color: "#ef4444" }} />
+                      </button>
+                    )}
 
                      {isSelected && (
                        <SolicitudCursoDetail
@@ -777,6 +928,19 @@ export function AprobacionMatriculasPage() {
         icon="danger"
         onConfirm={() => deleteArchivoModal?.type === "comprobante" ? handleDeleteComprobante() : handleDeleteCedula()}
         onCancel={() => setDeleteArchivoModal(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={!!deleteTarget}
+        title="Eliminar solicitud rechazada"
+        message={`¿Eliminar definitivamente "${deleteTarget?.nombre}"? Se borrará el registro y sus archivos asociados (comprobante, cédula). Esta acción es irreversible.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isLoading={deletingRejected}
+        icon="danger"
+        isDangerous
+        onConfirm={handleDeleteRejected}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>
   )

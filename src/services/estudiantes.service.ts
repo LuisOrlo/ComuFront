@@ -11,6 +11,7 @@ export interface Estudiante {
   cedula_purgado?: boolean
   es_activo: boolean
   total_cursos: number
+  total_talleres?: number
   estado_pago: "deudor" | "abonado" | "al_dia" | "ninguno"
   saldo_pendiente: number
   ciudad?: { nombre: string; id?: string; pais?: string }
@@ -180,6 +181,19 @@ export interface StudentStats {
   matriculas_por_estado: Record<string, number>
   promedio_general: number
   tasa_completacion: number
+  cursos_count: number
+  talleres_count: number
+  ciudades_count: number
+}
+
+export interface CiudadesResponse {
+  datos: Array<{ ciudad: string; total: number }>
+  meta: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+  }
 }
 
 export interface Segment {
@@ -332,6 +346,11 @@ export const estudiantesService = {
   async getStudentStats(): Promise<StudentStats> {
     const response = await api.get("/personas/estudiantes/stats")
     return response.data.datos
+  },
+
+  async getCiudades(params?: Record<string, string | number | undefined>): Promise<CiudadesResponse> {
+    const response = await api.get("/personas/estudiantes/ciudades", { params })
+    return response.data
   },
 
   async getSegments(): Promise<Segment[]> {

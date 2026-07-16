@@ -31,15 +31,15 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-6 px-6">
             <div className="text-center space-y-2">
               <p className="text-7xl font-bold" style={{ color: COLORS.ACCENT }}>
-                {this.state.error instanceof Error && "status" in this.state.error
-                  ? String((this.state.error as Error & { status?: number }).status)
-                  : "!"}
+                500
               </p>
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
                 Algo sali&oacute; mal
               </h1>
               <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>
-                {this.state.error?.message || "Ocurri&oacute; un error inesperado"}
+                {import.meta.env.DEV
+                  ? this.state.error?.message || "Ocurrió un error inesperado"
+                  : "Ocurrió un error inesperado. Por favor, intenta recargar la página."}
               </p>
             </div>
             <div className="flex gap-3">

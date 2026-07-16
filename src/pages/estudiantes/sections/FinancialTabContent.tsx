@@ -3,6 +3,7 @@ import { useState } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { FileAttachmentIcon, PaymentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { getStorageUrl } from "@/lib/utils"
 import type { FinancialProfile, LineaPagoModulo } from "@/services/estudiantes.service"
 
 interface FinancialTabContentProps {
@@ -210,8 +211,8 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
                     <td className="px-5 py-3 text-right font-mono font-bold text-emerald-600">${t.monto.toLocaleString()}</td>
                     <td className="px-5 py-3 text-gray-500 text-xs">{metodoLabels[t.metodo_pago] || t.metodo_pago}</td>
                     <td className="px-5 py-3">
-                     {t.comprobante_url ? (
-                        <button onClick={() => setImagenExpandida(t.comprobante_url)}
+                      {t.comprobante_url ? (
+                         <button onClick={() => setImagenExpandida(getStorageUrl(t.comprobante_url))}
                           className="inline-flex items-center gap-1 text-[10px] font-bold hover:underline"
                           style={{ color: COLORS.ACCENT }}>
                           <HugeiconsIcon icon={FileAttachmentIcon} size={11} /> Ver

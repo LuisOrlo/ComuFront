@@ -10,7 +10,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { Trash2, X, Plus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getStorageUrl } from "@/lib/utils"
 import { equiposService, type Equipo, type AlquilerEquipo } from "@/services/equipos.service"
 import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
@@ -248,7 +248,7 @@ export function EquiposPage() {
                 className="bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all group" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                   {eq.foto_url ? (
-                    <img src={eq.foto_url} alt={eq.nombre} className="w-full h-full object-cover" />
+                    <img src={getStorageUrl(eq.foto_url)} alt={eq.nombre} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><HugeiconsIcon icon={Home02Icon} size={40} className="opacity-15" style={{ color: COLORS.CHARCOAL }} /></div>
                   )}
@@ -305,7 +305,7 @@ export function EquiposPage() {
                       </label>
                       {(fotoPreview || equipoForm.foto_url) && (
                         <div className="size-12 rounded-xl overflow-hidden shrink-0 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                          <img src={fotoPreview || equipoForm.foto_url} className="w-full h-full object-cover" />
+                          <img src={fotoPreview || getStorageUrl(equipoForm.foto_url)} className="w-full h-full object-cover" />
                         </div>
                       )}
                     </div>
@@ -411,7 +411,7 @@ export function EquiposPage() {
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {selectedEquipo.foto_url && (
-                  <div className="aspect-video rounded-2xl overflow-hidden bg-gray-100"><img src={selectedEquipo.foto_url} alt={selectedEquipo.nombre} className="w-full h-full object-cover" /></div>
+                  <div className="aspect-video rounded-2xl overflow-hidden bg-gray-100"><img src={getStorageUrl(selectedEquipo.foto_url)} alt={selectedEquipo.nombre} className="w-full h-full object-cover" /></div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio diario</p><p className="text-lg font-black" style={{ color: COLORS.ACCENT }}>${selectedEquipo.precio_diario}</p></div>

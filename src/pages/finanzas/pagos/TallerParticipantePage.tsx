@@ -10,9 +10,10 @@ import {
   Upload05Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
+import { validarComprobante } from "@/lib/file-validators"
 import { useParams, useNavigate } from "react-router"
 
 export function TallerParticipantePage() {
@@ -81,7 +82,10 @@ export function TallerParticipantePage() {
 
   const handleComprobanteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setComprobanteFile(file)
+    if (!file) return
+    const err = validarComprobante(file)
+    if (err) { toast.error(err); e.target.value = ""; return }
+    setComprobanteFile(file)
   }
 
   const badgeEstado = (estado: string) => {
@@ -168,8 +172,16 @@ export function TallerParticipantePage() {
             <div>
               <p className="text-[10px] font-bold uppercase opacity-40">Precio</p>
               <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>
+                {Number(data.monto_total || 0) !== Number(data.precio_taller || 0) && (
+                  <span className="text-sm line-through opacity-40 mr-1">${Number(data.precio_taller || 0).toLocaleString()} →</span>
+                )}
                 ${Number(data.monto_total || data.precio_taller || 0).toLocaleString()}
               </p>
+              {data.motivo_ajuste && (
+                <p className="text-[11px] italic opacity-50 mt-0.5">
+                  ({data.motivo_ajuste})
+                </p>
+              )}
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase opacity-40">Pagado</p>
@@ -249,10 +261,10 @@ export function TallerParticipantePage() {
                           <div
                             className="rounded-lg border overflow-hidden cursor-pointer inline-block"
                             style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                            onClick={() => setModalImage(t.comprobante_url)}
+                            onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
                           >
                             <img
-                              src={t.comprobante_url}
+                              src={getStorageUrl(t.comprobante_url)}
                               alt="Comprobante"
                               className="max-h-32 object-contain hover:opacity-80 transition-opacity"
                             />

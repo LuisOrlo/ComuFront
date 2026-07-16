@@ -13,6 +13,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
+import { getStorageUrl } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 
 const tabs = [
@@ -85,7 +86,8 @@ export function EstudiantePerfilAcademicoPage() {
     ? `${studentData.nombres} ${studentData.apellidos}`
     : (academicData?.estudiante.nombre_completo || financialData?.estudiante.nombre_completo || '')
 
-  const totalCursos = studentData?.total_cursos || academicData?.matriculas.length || 0
+  const totalCursos = studentData?.total_cursos ?? academicData?.matriculas.length ?? 0
+  const totalTalleres = studentData?.total_talleres ?? 0
   const resumen = financialData?.resumen
 
   let estadoPago = 'ninguno'
@@ -142,6 +144,7 @@ export function EstudiantePerfilAcademicoPage() {
           fecha_nacimiento: studentData?.perfil_estudiante?.fecha_nacimiento,
         }}
         totalCursos={totalCursos}
+        totalTalleres={totalTalleres}
         estadoPago={estadoPago}
         saldoPendiente={saldoPendiente}
         onUpdate={(fields) => updateStudentInfo(fields)}
@@ -164,7 +167,7 @@ export function EstudiantePerfilAcademicoPage() {
         ) : cedulaUrl ? (
           <div className="flex items-center gap-4 flex-1">
             <div className="size-16 rounded-xl border overflow-hidden bg-gray-50 shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <img src={cedulaUrl.replace(/^https?:\/\/localhost(?::\d+)?/, "")} alt="Cédula"
+              <img src={getStorageUrl(cedulaUrl)} alt="Cédula"
                 className="w-full h-full object-cover" />
             </div>
             <div className="flex items-center gap-2">
@@ -256,7 +259,7 @@ export function EstudiantePerfilAcademicoPage() {
 
       {showCedulaModal && cedulaUrl && (
         <ImageZoom
-          url={cedulaUrl.replace(/^https?:\/\/localhost(?::\d+)?/, "")}
+          url={getStorageUrl(cedulaUrl)}
           onClose={() => setShowCedulaModal(false)}
         />
       )}

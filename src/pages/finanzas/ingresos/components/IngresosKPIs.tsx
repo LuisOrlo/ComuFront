@@ -41,26 +41,33 @@ export function IngresosKPIs({ totales }: { totales: KPIData }) {
     { label: "Talleres", value: totales.talleres ?? 0, color: "#0891b2", bg: "oklch(0.6 0.15 200 / 0.08)", icon: SchoolIcon },
   ]
 
+  function KpiCard({ item, idx }: { item: typeof items[number]; idx: number }) {
+    const displayValue = idx === 2 ? -Math.abs(item.value) : item.value
+    return (
+      <div className="rounded-2xl border bg-white p-4 relative overflow-hidden" style={{ borderColor: BORDER }}>
+        <div className="absolute top-0 right-0 size-16 rounded-bl-full opacity-10" style={{ backgroundColor: item.color }} />
+        <div className="flex items-center gap-2 mb-1 relative z-10">
+          <HugeiconsIcon icon={item.icon} size={14} style={{ color: item.color, opacity: 0.6 }} />
+          <p className="text-[10px] font-bold uppercase tracking-wider opacity-40">{item.label}</p>
+        </div>
+        <div className="flex items-baseline gap-1 relative z-10">
+          <p className="text-xl font-black" style={{ color: item.color }}>
+            {idx === 2 ? "-$" : "$"}{Math.abs(displayValue || 0).toLocaleString()}
+          </p>
+          {item.previo !== undefined && <Variacion actual={item.value} previo={item.previo} />}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-      {items.map((item, i) => {
-        const displayValue = i === 2 ? -Math.abs(item.value) : item.value
-        return (
-          <div key={i} className="rounded-2xl border bg-white p-4 relative overflow-hidden" style={{ borderColor: BORDER }}>
-            <div className="absolute top-0 right-0 size-16 rounded-bl-full opacity-10" style={{ backgroundColor: item.color }} />
-            <div className="flex items-center gap-2 mb-1 relative z-10">
-              <HugeiconsIcon icon={item.icon} size={14} style={{ color: item.color, opacity: 0.6 }} />
-              <p className="text-[10px] font-bold uppercase tracking-wider opacity-40">{item.label}</p>
-            </div>
-            <div className="flex items-baseline gap-1 relative z-10">
-              <p className="text-xl font-black" style={{ color: item.color }}>
-                {i === 2 ? "-$" : "$"}{Math.abs(displayValue || 0).toLocaleString()}
-              </p>
-              {item.previo !== undefined && <Variacion actual={item.value} previo={item.previo} />}
-            </div>
-          </div>
-        )
-      })}
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {items.slice(0, 3).map((item, i) => <KpiCard key={i} item={item} idx={i} />)}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {items.slice(3).map((item, i) => <KpiCard key={i + 3} item={item} idx={i + 3} />)}
+      </div>
     </div>
   )
 }

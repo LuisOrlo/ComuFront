@@ -9,6 +9,7 @@ import {
   Image01Icon, Search01Icon, Download04Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { getStorageUrl } from "@/lib/utils"
 import { tallerService, type Taller, type InscripcionTaller, type AsistenciaEstudiante } from "@/services/taller.service"
 import { generarListadoAsistenciaPDF, generarReporteAsistenciaPDF, generarListadoParticipantesPDF, type EstudianteReporte, type ParticipanteReporte } from "@/lib/generarAsistenciaPDF"
 import { ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
@@ -585,7 +586,7 @@ export function TallerDetallePage() {
                           <td className="px-4 py-3 capitalize" style={{ color: CHARCOAL }}>{t.metodo_pago}</td>
                           <td className="px-4 py-3">
                             {t.comprobante_url ? (
-                              <button onClick={() => setComprobanteModalUrl(t.comprobante_url)}
+                              <button onClick={() => setComprobanteModalUrl(getStorageUrl(t.comprobante_url))}
                                 className="inline-flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: ACCENT }}>
                                 <HugeiconsIcon icon={Image01Icon} size={13} />Ver
                               </button>

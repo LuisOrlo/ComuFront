@@ -9,7 +9,7 @@ const labels: Record<string, string> = {
   deudor: "Pendiente",
   abonado: "Abono parcial",
   al_dia: "Al dia",
-  ninguno: "Sin cursos",
+  ninguno: "Sin actividad",
 }
 
 export function FinancialStatusBadge({ status }: { status: string }) {

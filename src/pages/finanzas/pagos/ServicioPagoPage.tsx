@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import api from "@/services/auth.service"
+import { validarComprobante } from "@/lib/file-validators"
 
 const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
@@ -113,6 +114,8 @@ export function ServicioPagoPage() {
   const handleFileSelect = () => {
     const file = fileRef.current?.files?.[0]
     if (!file) return
+    const err = validarComprobante(file)
+    if (err) { toast.error(err); if (fileRef.current) fileRef.current.value = ""; return }
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setComprobanteFile(file)
     setPreviewUrl(URL.createObjectURL(file))
@@ -227,7 +230,7 @@ export function ServicioPagoPage() {
               <input
                 type="file"
                 ref={fileRef}
-                accept="image/*,.pdf"
+                accept="image/*"
                 className="hidden"
                 onChange={handleFileSelect}
               />

@@ -8,6 +8,7 @@ import {
   UserIcon,
   Money02Icon,
   LayersIcon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
@@ -21,11 +22,24 @@ export function CursosCuentasPage() {
   const [cuentas, setCuentas] = useState<any[]>([])
   const [filter, setFilter] = useState<string>("todos")
   const [modalidad, setModalidad] = useState<string>("todos")
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+  const [clientPage, setClientPage] = useState(1)
+  const CLIENT_PER_PAGE = 20
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 350)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  useEffect(() => {
+    setClientPage(1) // eslint-disable-line react-hooks/set-state-in-effect
+  }, [filter, modalidad, search])
 
   useEffect(() => {
     const load = async () => {
       try {
-        const params: any = { per_page: 200 }
+        const params: any = { origen: "curso", per_page: 50 }
         if (modalidad !== "todos") params.modalidad = modalidad
         const [resumenData, cuentasData] = await Promise.all([
           financeService.getResumen(),
@@ -120,6 +134,27 @@ export function CursosCuentasPage() {
     })
   }, [grouped, filter])
 
+  const searchFiltered = useMemo(() => {
+    if (!search) return filtered
+    const q = search.toLowerCase().trim()
+    return filtered.filter(([name, g]) => {
+      if (name.toLowerCase().includes(q)) return true
+      return g.entries.some((e: any) => {
+        const nombre = e.persona_nombre
+          || (e.matricula?.estudiante ? `${e.matricula.estudiante.nombres || ""} ${e.matricula.estudiante.apellidos || ""}`.trim() : "")
+          || ""
+        return nombre.toLowerCase().includes(q)
+      })
+    })
+  }, [filtered, search])
+
+  const paginatedGroups = useMemo(() => {
+    const start = (clientPage - 1) * CLIENT_PER_PAGE
+    return searchFiltered.slice(start, start + CLIENT_PER_PAGE)
+  }, [searchFiltered, clientPage])
+
+  const totalClientPages = Math.max(1, Math.ceil(searchFiltered.length / CLIENT_PER_PAGE))
+
   const HealthBar = ({ recaudado, total }: { recaudado: number; total: number }) => {
     const pct = total > 0 ? (recaudado / total) * 100 : 0
     const barColor =
@@ -152,7 +187,7 @@ export function CursosCuentasPage() {
               Cursos
             </h2>
             <p className="text-xs opacity-40 mt-1">
-              {filtered.length} curso{filtered.length !== 1 ? "s" : ""} con cuentas por cobrar
+              {searchFiltered.length} curso{searchFiltered.length !== 1 ? "s" : ""} con cuentas por cobrar
             </p>
           </div>
           <div className="flex gap-1.5">
@@ -196,6 +231,22 @@ export function CursosCuentasPage() {
                 {f.label}
               </button>
             ))}
+            <div className="relative w-48">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                placeholder="Buscar curso o estudiante..."
+                className="w-full pl-4 pr-9 py-2 rounded-xl border bg-gray-50/60 text-xs font-medium outline-none focus:ring-2 focus:ring-violet-500/10"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              />
+              {searchInput && (
+                <button onClick={() => { setSearchInput(""); setSearch("") }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30 hover:opacity-100">
+                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -203,13 +254,14 @@ export function CursosCuentasPage() {
           <div className="py-20 text-center opacity-40 text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
             Cargando cursos...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : searchFiltered.length === 0 ? (
           <div className="py-20 text-center opacity-40 text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
             No se encontraron cursos
           </div>
         ) : (
+          <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map(([name, g], idx) => {
+            {paginatedGroups.map(([name, g], idx) => {
               const recaudadoPct = g.total > 0 ? (g.cobrado / g.total) * 100 : 0
               return (
                 <motion.div
@@ -286,6 +338,32 @@ export function CursosCuentasPage() {
               )
             })}
           </div>
+          {totalClientPages > 1 && (
+            <div className="flex items-center justify-between pt-6 border-t mt-6 px-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <span className="text-xs opacity-40">
+                Página {clientPage} de {totalClientPages} ({searchFiltered.length} cursos)
+              </span>
+              <div className="flex gap-2">
+                <button
+                  disabled={clientPage <= 1}
+                  onClick={() => setClientPage(p => p - 1)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
+                  Anterior
+                </button>
+                <button
+                  disabled={clientPage >= totalClientPages}
+                  onClick={() => setClientPage(p => p + 1)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </motion.div>
     </div>

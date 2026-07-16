@@ -3,29 +3,30 @@ import { useState, useEffect, useMemo, useCallback, useImperativeHandle, forward
 import axios from "axios"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  CheckmarkCircle04Icon,
-  PaymentIcon,
   Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { toast } from "sonner"
 
 interface PagoPreAprobacionSectionProps {
   cursoAbiertoId: string
   cursoNombre: string
   metodoPagoInicial?: string
+  montoSolicitado?: number
   onMontoModulo1Change?: (valido: boolean) => void
+  onTotalPrecioChange?: (total: number) => void
   onSubmit: (pagos: any[], metodoPago: string) => void
 }
 
 export type PagoPreAprobacionRef = {
   submit: () => void
   tieneMontoModulo1: boolean
+  totalPrecio: number
 }
 
 export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSection({
-  cursoAbiertoId, cursoNombre, metodoPagoInicial, onMontoModulo1Change, onSubmit,
+  cursoAbiertoId, metodoPagoInicial, montoSolicitado, onMontoModulo1Change, onTotalPrecioChange, onSubmit,
 }: PagoPreAprobacionSectionProps, ref) {
-  const [multiModulo, setMultiModulo] = useState(false)
   const [montos, setMontos] = useState<Record<string, string>>({})
   const [modulos, setModulos] = useState<any[]>([])
   const [modulosCargados, setModulosCargados] = useState(false)
@@ -57,19 +58,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     return modulo.precio_base ?? modulo.precio ?? 0
   }, [ajustes])
 
-  const modulosSinPrecioConfig = useMemo(() => {
-    if (!modulosCargados || modulos.length === 0) return false
-    return modulos.every((m: any) => !m.precio_base || m.precio_base <= 0)
-  }, [modulos, modulosCargados])
-
   const sorted = useMemo(() => {
     return [...modulos].sort((a, b) => (a.numero_orden ?? 0) - (b.numero_orden ?? 0))
   }, [modulos])
-
-  const visibles = useMemo(() => {
-    if (sorted.length === 0) return []
-    return multiModulo ? sorted : [sorted[0]]
-  }, [multiModulo, sorted])
 
   const montoModulo1 = sorted.length > 0 ? parseFloat(montos[sorted[0]?.id] || "0") : 0
 
@@ -77,20 +68,37 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     onMontoModulo1Change?.(montoModulo1 > 0)
   }, [montoModulo1, onMontoModulo1Change])
 
+  useEffect(() => {
+    if (modulosCargados && sorted.length > 0 && montoSolicitado && montoSolicitado > 0) {
+      handleMontoChange(sorted[0].id, String(montoSolicitado))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [montoSolicitado, modulosCargados])
+
   const totalARegistrar = useMemo(() => {
-    return visibles.reduce((sum: number, m: any) => m ? sum + parseFloat(montos[m.id] || "0") : sum, 0)
-  }, [visibles, montos])
+    return sorted.reduce((sum: number, m: any) => m ? sum + parseFloat(montos[m.id] || "0") : sum, 0)
+  }, [sorted, montos])
 
   const modulosCubiertos = useMemo(() => {
-    return visibles.filter((m: any) => {
+    return sorted.filter((m: any) => {
       if (!m) return false
       const monto = parseFloat(montos[m.id] || "0")
       const precio = getPrecioEfectivo(m)
       return monto >= precio
     }).length
-  }, [visibles, montos, getPrecioEfectivo])
+  }, [sorted, montos, getPrecioEfectivo])
 
-  const handleMontoChange = (moduloId: string, valor: string) => {
+  const totalPrecio = useMemo(() => {
+    return sorted.reduce((sum: number, m: any) => m ? sum + getPrecioEfectivo(m) : sum, 0)
+  }, [sorted, getPrecioEfectivo])
+
+  useEffect(() => {
+    if (modulosCargados) {
+      onTotalPrecioChange?.(totalPrecio)
+    }
+  }, [totalPrecio, onTotalPrecioChange, modulosCargados])
+
+  const handleMontoChange = useCallback((moduloId: string, valor: string) => {
     const nuevoMonto = parseFloat(valor) || 0
     const moduloActual = modulos.find((m: any) => m.id === moduloId)
     if (!moduloActual) return
@@ -98,35 +106,31 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     const excedente = Math.round(Math.max(0, nuevoMonto - precio) * 100) / 100
     const idx = sorted.findIndex((m: any) => m.id === moduloId)
 
-    if (excedente > 0 && !multiModulo) {
-      setMultiModulo(true)
-    } else if (excedente <= 0) {
-      setMultiModulo(false)
+    const simulated = { ...montos }
+
+    if (excedente > 0) {
+      simulated[moduloId] = String(precio)
+      let resto = excedente
+      for (let i = idx + 1; i < sorted.length && resto > 0; i++) {
+        const sig = sorted[i]
+        const sigPrecio = getPrecioEfectivo(sig)
+        const aplicado = Math.round(Math.min(resto, sigPrecio) * 100) / 100
+        simulated[sig.id] = String(aplicado)
+        resto = Math.round((resto - aplicado) * 100) / 100
+      }
+      if (resto > 0) {
+        toast.error("El monto excede el precio total de los módulos")
+        return
+      }
+    } else {
+      simulated[moduloId] = valor
+      for (let i = idx + 1; i < sorted.length; i++) {
+        delete simulated[sorted[i].id]
+      }
     }
 
-    setMontos(prev => {
-      const nuevosMontos = { ...prev }
-
-      if (excedente > 0) {
-        nuevosMontos[moduloId] = String(precio)
-        let resto = excedente
-        for (let i = idx + 1; i < sorted.length && resto > 0; i++) {
-          const sig = sorted[i]
-          const sigPrecio = getPrecioEfectivo(sig)
-          const aplicado = Math.round(Math.min(resto, sigPrecio) * 100) / 100
-          nuevosMontos[sig.id] = String(aplicado)
-          resto = Math.round((resto - aplicado) * 100) / 100
-        }
-      } else {
-        nuevosMontos[moduloId] = valor
-        for (let i = idx + 1; i < sorted.length; i++) {
-          nuevosMontos[sorted[i].id] = ""
-        }
-      }
-
-      return nuevosMontos
-    })
-  }
+    setMontos(simulated)
+  }, [modulos, sorted, montos, getPrecioEfectivo])
 
   const toggleAjuste = (moduloId: string) => {
     setAjustes(prev => {
@@ -153,6 +157,10 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }
 
   const handleSubmit = useCallback(() => {
+    if (totalARegistrar > totalPrecio) {
+      toast.error(`El total a registrar ($${totalARegistrar.toLocaleString()}) supera el precio total de los módulos ($${totalPrecio.toLocaleString()})`)
+      return
+    }
     const pagos = modulos
       .filter((m: any) => {
         const monto = parseFloat(montos[m.id] || "0")
@@ -172,12 +180,13 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         return base
       })
     onSubmit(pagos, metodoPagoInicial || "efectivo")
-  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial])
+  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, totalARegistrar, totalPrecio])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
     tieneMontoModulo1: montoModulo1 > 0,
-  }), [handleSubmit, montoModulo1])
+    totalPrecio,
+  }), [handleSubmit, montoModulo1, totalPrecio])
 
   if (!modulosCargados) {
     return (
@@ -197,32 +206,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   return (
     <div className="pt-4 space-y-3">
-      <div className="flex items-center gap-2 mb-1">
-        <HugeiconsIcon icon={PaymentIcon} size={14} style={{ color: COLORS.ACCENT }} />
-        <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Registro de pago por módulo</h4>
-      </div>
-
-      {modulosSinPrecioConfig && (
-        <div className="p-4 rounded-xl border space-y-2" style={{ borderColor: "oklch(0.5 0.15 75 / 0.4)", backgroundColor: "oklch(0.5 0.15 75 / 0.05)" }}>
-          <div className="flex items-start gap-2">
-            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} style={{ color: "oklch(0.5 0.15 75)" }} />
-            <div>
-              <p className="text-xs font-bold" style={{ color: "oklch(0.45 0.15 75)" }}>
-                Este curso no tiene precios configurados para sus módulos.
-              </p>
-              <p className="text-[10px] mt-1 opacity-60">Debes configurar los precios antes de aprobar esta solicitud.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="p-4 rounded-2xl" style={{ backgroundColor: "oklch(0.97 0 0)", borderColor: COLORS.BORDER_SUBTLE, border: "1px solid" }}>
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</span>
-        <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>{cursoNombre}</p>
-        <p className="text-xs opacity-40 mt-0.5">{modulos.length} módulo{modulos.length !== 1 ? "s" : ""}</p>
-      </div>
-
-      {visibles.map((modulo: any, idx: number) => {
+      <div className="grid grid-cols-2 gap-3">
+      {sorted.map((modulo: any, idx: number) => {
         if (!modulo) return null
         const monto = parseFloat(montos[modulo.id] || "0")
         const precioEfectivo = getPrecioEfectivo(modulo)
@@ -230,13 +215,12 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         const tieneAjuste = a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== (modulo.precio_base ?? 0)
         const pagado = monto > 0 && monto >= precioEfectivo
         const abonado = monto > 0 && monto < precioEfectivo
-        const tieneExcedente = monto > precioEfectivo
-        const siguienteIdx = idx + 1
-        const tieneSiguiente = multiModulo && siguienteIdx < sorted.length
+
+        const tieneExcedente = pagado && sorted.length > idx + 1 && sorted.slice(idx + 1).some((m: any) => parseFloat(montos[m.id] || "0") > 0)
 
         let lineaEstado = ""
         if (pagado) {
-          if (tieneExcedente && tieneSiguiente) {
+          if (tieneExcedente) {
             lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo · excedente aplicado a módulos siguientes"
           } else {
             lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo"
@@ -308,10 +292,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
               <div className="relative flex-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
                 <input type="number" min="0" step="0.01" placeholder="0.00"
-                  value={montos[modulo.id] || ""}
-                  onChange={e => handleMontoChange(modulo.id, e.target.value)}
-                  onWheel={e => (e.target as HTMLElement).blur()}
-                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
+                  value={montos[modulo.id] || ""} readOnly
+                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none bg-gray-50 cursor-not-allowed"
                   style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
               </div>
             </div>
@@ -324,20 +306,13 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           </div>
         )
       })}
-
-      {sorted.length > 1 && (
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={multiModulo} onChange={() => setMultiModulo(!multiModulo)}
-            className="size-4 rounded border-gray-300" />
-          <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Pagar varios módulos en esta operación</span>
-        </label>
-      )}
+      </div>
 
       <div className="px-4 py-3 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
         <p className="text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>
           Total a registrar: <span className="text-sm">${totalARegistrar.toLocaleString()}</span>
           <span className="mx-2 opacity-20">·</span>
-          Módulos cubiertos: {modulosCubiertos} de {visibles.length}
+          Módulos cubiertos: {modulosCubiertos} de {sorted.length}
         </p>
       </div>
     </div>

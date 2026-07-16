@@ -17,6 +17,7 @@ import {
   BanknoteArrowDownIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
@@ -139,12 +140,12 @@ export function EgresoDetallePage() {
             ) : data.comprobante_url ? (
               <div>
                 <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer mb-3" style={{ borderColor: BORDER }}
-                  onClick={() => setExpandedImage(fixUrl(data.comprobante_url))}>
-                  <img src={fixUrl(data.comprobante_url)} alt="Comprobante"
+                  onClick={() => setExpandedImage(getStorageUrl(data.comprobante_url))}>
+                  <img src={getStorageUrl(data.comprobante_url)} alt="Comprobante"
                     className="w-full object-contain max-h-[500px]" />
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setExpandedImage(fixUrl(data.comprobante_url))}
+                  <button onClick={() => setExpandedImage(getStorageUrl(data.comprobante_url))}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border hover:bg-gray-50 transition-colors"
                     style={{ borderColor: BORDER, color: CHARCOAL }}>
                     <HugeiconsIcon icon={Image01Icon} size={12} />
@@ -212,9 +213,4 @@ function Ficha({ icon: Icon, label, value, color, bold }: {
       </p>
     </div>
   )
-}
-
-function fixUrl(url: string): string {
-  if (!url) return url
-  return url.replace(/^https?:\/\/localhost(?::\d+)?/, "")
 }

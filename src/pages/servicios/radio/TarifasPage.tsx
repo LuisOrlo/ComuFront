@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { DiscountIcon } from "@hugeicons/core-free-icons"
+import { DiscountIcon, TagIcon, File02Icon, MoneyIcon, CheckmarkCircleIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { Plus, Pencil, Trash2, X, ArrowLeft } from "lucide-react"
 import { Link } from "react-router"
 import { cn } from "@/lib/utils"
@@ -20,8 +20,6 @@ export function TarifasPage() {
   const [nombre, setNombre] = useState("")
   const [descripcion, setDescripcion] = useState("")
   const [precioPorHora, setPrecioPorHora] = useState("")
-  const [incluyeOperador, setIncluyeOperador] = useState(true)
-  const [esActivo, setEsActivo] = useState(true)
   const [saving, setSaving] = useState(false)
 
   const loadTarifas = async () => {
@@ -42,8 +40,6 @@ export function TarifasPage() {
     setNombre("")
     setDescripcion("")
     setPrecioPorHora("")
-    setIncluyeOperador(true)
-    setEsActivo(true)
     setShowForm(true)
   }
 
@@ -52,8 +48,6 @@ export function TarifasPage() {
     setNombre(t.nombre)
     setDescripcion(t.descripcion || "")
     setPrecioPorHora(t.precio_por_hora.toString())
-    setIncluyeOperador(t.incluye_operador)
-    setEsActivo(t.es_activo)
     setShowForm(true)
   }
 
@@ -66,8 +60,8 @@ export function TarifasPage() {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
         precio_por_hora: parseFloat(precioPorHora),
-        incluye_operador: incluyeOperador,
-        es_activo: esActivo,
+        incluye_operador: false,
+        es_activo: true,
       }
       if (editing) {
         await radioService.updateTarifa(editing.id, payload)
@@ -112,9 +106,15 @@ export function TarifasPage() {
                 <ArrowLeft size={16} />
                 <span>Volver al Alquiler</span>
               </Link>
-              <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-                Gestionar Tarifas
-              </h1>
+              <div>
+                <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
+                  Gestionar Tarifas
+                </h1>
+                <p className="text-sm opacity-50 mt-1">
+                  {tarifas.filter(t => t.es_activo).length} activas
+                  {tarifas.filter(t => !t.es_activo).length > 0 && ` · ${tarifas.filter(t => !t.es_activo).length} inactivas`}
+                </p>
+              </div>
             </div>
           </div>
           <button
@@ -140,37 +140,59 @@ export function TarifasPage() {
               <p className="text-sm font-bold opacity-40">No hay tarifas configuradas</p>
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              {tarifas.map(t => (
-                <div key={t.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("text-sm font-bold truncate", !t.es_activo && "opacity-40")}>
-                        {t.nombre}
-                      </span>
-                      <span className={cn(
-                        "text-[9px] font-bold px-1.5 py-0.5 rounded",
-                        t.es_activo ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"
-                      )}>
-                        {t.es_activo ? "Activo" : "Inactivo"}
-                      </span>
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tarifas.map(t => {
+                const priceColors = getPriceColors(t.precio_por_hora)
+                return (
+                  <div key={t.id}
+                    className="rounded-xl border bg-white overflow-hidden transition-all hover:shadow-md active:scale-[0.98] group"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <div className="h-1.5" style={{ backgroundColor: priceColors.border }} />
+                    <div className="p-4 flex flex-col items-center text-center gap-3">
+                      <div className="size-12 rounded-xl flex items-center justify-center shadow-sm"
+                        style={{ backgroundColor: priceColors.bg }}>
+                        <HugeiconsIcon icon={TagIcon} size={22} style={{ color: priceColors.icon }} />
+                      </div>
+                      <div className="min-w-0 w-full">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
+                            {t.nombre}
+                          </span>
+                        </div>
+                        {t.descripcion && (
+                          <p className="text-[10px] opacity-40 truncate mt-1">{t.descripcion}</p>
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-0.5">
+                        <span className="text-2xl font-bold" style={{ color: priceColors.icon }}>
+                          ${t.precio_por_hora.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] font-normal opacity-30">/h</span>
+                      </div>
+                      <div className="flex items-center gap-2 w-full pt-1">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-full",
+                          t.es_activo ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"
+                        )}>
+                          <HugeiconsIcon icon={t.es_activo ? CheckmarkCircleIcon : Cancel01Icon} size={10} />
+                          {t.es_activo ? "Activo" : "Inactivo"}
+                        </span>
+                        <div className="flex-1" />
+                        <button onClick={() => openEdit(t)}
+                          className="size-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100"
+                          title="Editar">
+                          <Pencil size={12} className="opacity-40" />
+                        </button>
+                        <button onClick={() => setDeleteConfirm({ id: t.id, name: t.nombre })}
+                          className="size-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                          title="Eliminar">
+                          <Trash2 size={12} className="opacity-40 text-red-500" />
+                        </button>
+                      </div>
                     </div>
-                    {t.descripcion && <p className="text-[11px] opacity-40 truncate mt-0.5">{t.descripcion}</p>}
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold">${t.precio_por_hora.toFixed(2)}<span className="text-[10px] font-normal opacity-40">/h</span></p>
-                    <p className="text-[9px] opacity-40">{t.incluye_operador ? "Incluye operador" : "Sin operador"}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => openEdit(t)} className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-                      <Pencil size={14} className="opacity-40" />
-                    </button>
-                    <button onClick={() => setDeleteConfirm({ id: t.id, name: t.nombre })} className="size-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors">
-                      <Trash2 size={14} className="opacity-40 text-red-500" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -179,43 +201,62 @@ export function TarifasPage() {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>
-                {editing ? "Editar Tarifa" : "Nueva Tarifa"}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="size-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 px-6 py-5 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE, background: "linear-gradient(135deg, oklch(0.98 0.01 260), oklch(0.98 0.01 160))" }}>
+              <div className="size-10 rounded-xl flex items-center justify-center shadow-sm" style={{ backgroundColor: "oklch(0.65 0.2 45)" }}>
+                <HugeiconsIcon icon={DiscountIcon} size={20} color="white" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>
+                  {editing ? "Editar Tarifa" : "Nueva Tarifa"}
+                </h2>
+                <p className="text-[11px] opacity-50 mt-0.5">Configuraci&oacute;n de tarifa por hora</p>
+              </div>
+              <button onClick={() => setShowForm(false)} className="size-8 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors">
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form onSubmit={handleSave} className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Nombre</label>
-                <input value={nombre} onChange={e => setNombre(e.target.value)} className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2" style={{ borderColor: COLORS.BORDER_SUBTLE }} required />
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-40">
+                  <HugeiconsIcon icon={TagIcon} size={12} />
+                  Nombre
+                </div>
+                <input value={nombre} onChange={e => setNombre(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg border text-sm font-medium outline-none focus:ring-2 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }} required />
               </div>
+              <div className="h-px" style={{ backgroundColor: COLORS.BORDER_SUBTLE }} />
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Descripción</label>
-                <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 resize-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-40">
+                  <HugeiconsIcon icon={File02Icon} size={12} />
+                  Descripci&oacute;n
+                </div>
+                <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} rows={2}
+                  className="w-full px-4 py-3 rounded-lg border text-sm font-medium outline-none focus:ring-2 resize-none transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }} />
               </div>
+              <div className="h-px" style={{ backgroundColor: COLORS.BORDER_SUBTLE }} />
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Precio por hora ($)</label>
-                <input type="number" min={0} step={0.5} value={precioPorHora} onChange={e => setPrecioPorHora(e.target.value)} className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none focus:ring-2" style={{ borderColor: COLORS.BORDER_SUBTLE }} required />
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-40">
+                  <HugeiconsIcon icon={MoneyIcon} size={12} />
+                  Precio por hora ($)
+                </div>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold opacity-30">$</span>
+                  <input type="number" min={0} step={0.5} value={precioPorHora} onChange={e => setPrecioPorHora(e.target.value)}
+                    className="w-full pl-8 pr-14 py-3 rounded-lg border text-sm font-medium outline-none focus:ring-2 transition-all"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }} required />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold opacity-30">/hora</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-xs font-bold">Incluye operador por defecto</span>
-                <button type="button" onClick={() => setIncluyeOperador(!incluyeOperador)} className={cn("relative w-11 h-6 rounded-full transition-all", incluyeOperador ? "bg-emerald-500" : "bg-gray-300")}>
-                  <div className={cn("absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-all", incluyeOperador ? "left-[22px]" : "left-0.5")} />
-                </button>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-xs font-bold">Activo</span>
-                <button type="button" onClick={() => setEsActivo(!esActivo)} className={cn("relative w-11 h-6 rounded-full transition-all", esActivo ? "bg-emerald-500" : "bg-gray-300")}>
-                  <div className={cn("absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-all", esActivo ? "left-[22px]" : "left-0.5")} />
-                </button>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3.5 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>Cancelar</button>
-                <button type="submit" disabled={saving} className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: COLORS.ACCENT }}>{saving ? "Guardando..." : (editing ? "Actualizar" : "Crear")}</button>
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setShowForm(false)}
+                  className="flex-1 py-3.5 rounded-lg text-sm font-bold border transition-all hover:bg-gray-50"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>Cancelar</button>
+                <button type="submit" disabled={saving}
+                  className="flex-1 py-3.5 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                  style={{ backgroundColor: COLORS.ACCENT }}>{saving ? "Guardando..." : (editing ? "Actualizar Tarifa" : "Crear Tarifa")}</button>
               </div>
             </form>
           </div>
@@ -235,4 +276,26 @@ export function TarifasPage() {
       />
     </div>
   )
+}
+
+function getPriceColors(price: number) {
+  if (price >= 30) {
+    return {
+      border: "oklch(0.65 0.2 300)",
+      bg: "oklch(0.95 0.02 300)",
+      icon: "oklch(0.55 0.2 300)",
+    }
+  }
+  if (price >= 15) {
+    return {
+      border: "oklch(0.55 0.15 220)",
+      bg: "oklch(0.95 0.02 220)",
+      icon: "oklch(0.45 0.15 220)",
+    }
+  }
+  return {
+    border: "oklch(0.55 0.18 160)",
+    bg: "oklch(0.95 0.02 160)",
+    icon: "oklch(0.45 0.18 160)",
+  }
 }

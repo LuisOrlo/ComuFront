@@ -30,6 +30,7 @@ interface StudentExportDialogProps {
   extraFilters?: Record<string, string | number | undefined>
   title?: string
   description?: string
+  defaultFormat?: ExportFormat
 }
 
 export function StudentExportDialog({
@@ -39,8 +40,9 @@ export function StudentExportDialog({
   extraFilters,
   title = "Exportar Estudiantes",
   description = "Selecciona formato y campos a exportar.",
+  defaultFormat,
 }: StudentExportDialogProps) {
-  const [format, setFormat] = useState<ExportFormat>("excel")
+  const [format, setFormat] = useState<ExportFormat>(defaultFormat ?? "excel")
   const [selectedFields, setSelectedFields] = useState<string[]>([
     "nombres", "apellidos", "cedula", "correo", "estado_pago", "saldo_pendiente",
   ])

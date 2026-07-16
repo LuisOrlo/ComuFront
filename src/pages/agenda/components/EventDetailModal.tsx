@@ -48,7 +48,7 @@ function estadoBadge(estado: string | null) {
       className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold"
       style={{ backgroundColor: c.bg, color: c.text }}
     >
-      {estado}
+      {estado.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
     </span>
   )
 }
@@ -95,7 +95,9 @@ export function EventDetailModal({
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold pr-6" style={{ color: COLORS.CHARCOAL }}>
-                {data.titulo}
+                {data.tipo_evento === "CLASE_CURSO" && data.nombre_instancia
+                  ? `Clase: ${data.nombre_instancia}`
+                  : data.titulo}
               </h2>
               <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                 {getEventLabel(data)}
@@ -121,7 +123,9 @@ export function EventDetailModal({
               <InfoField icon={Clock01Icon} label="Horario" value={`${formatTime(data.hora_inicio)} – ${formatTime(data.hora_fin)}`} />
               <InfoField icon={Calendar03Icon} label="Fecha" value={formatDate(data.fecha)} />
               <InfoField icon={UserIcon} label="Instructor" value={data.instructor_nombre ?? "—"} />
-              <InfoField icon={Home02Icon} label="Aula" value={data.aula_nombre ?? "—"} />
+              {data.tipo_evento !== "CLASE_CURSO" && data.tipo_evento !== "TALLER" && (
+                <InfoField icon={Home02Icon} label="Aula" value={data.aula_nombre ?? "—"} />
+              )}
               <InfoField icon={SignalIcon} label="Modalidad" value={data.modalidad ?? "—"} />
               <InfoField icon={UserGroupIcon} label="Participantes" value={data.participantes_count != null ? String(data.participantes_count) : "—"} />
             </div>

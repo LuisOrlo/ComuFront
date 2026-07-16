@@ -2,15 +2,16 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  UserIcon, GraduationCapIcon,
-  CreditCardIcon, CheckCircle,
+  UserIcon, GraduationCapIcon, BookOpen01Icon,
+  CreditCardIcon, CheckCircle, Calendar01Icon, Clock01Icon,
   ImageAdd02Icon, SearchIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import api from "@/services/auth.service"
 import { cursosService, type CursoAbierto } from "@/services/cursos.service"
-import { tallerService } from "@/services/taller.service"
+import { tallerService, type Taller, type HorarioTaller } from "@/services/taller.service"
 import { toast } from "sonner"
+import { validarComprobante } from "@/lib/file-validators"
 import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
 
 type Paso = 1 | 2 | 3
@@ -62,8 +63,7 @@ export function NuevoEstudiantePage() {
   const [paso, setPaso] = useState<Paso>(1)
   const [loadingCursos, setLoadingCursos] = useState(false)
   const [cursosAbiertos, setCursosAbiertos] = useState<CursoAbierto[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [talleres, setTalleres] = useState<any[]>([])
+  const [talleres, setTalleres] = useState<Taller[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterModalidad, setFilterModalidad] = useState("")
   const [filterCiudadId, setFilterCiudadId] = useState<number | null>(null)
@@ -95,6 +95,44 @@ export function NuevoEstudiantePage() {
     { key: "transferencia", label: "Transferencia/Deposito" },
   ]
 
+  const FULL_DAY_NAMES: Record<number, string> = {
+    1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves",
+    5: "Viernes", 6: "Sábado", 7: "Domingo",
+  }
+
+  function formatDateRange(start: string | null, end: string | null): string {
+    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
+    const s = start ? new Date(start).toLocaleDateString("es-ES", opts) : null
+    const e = end ? new Date(end).toLocaleDateString("es-ES", opts) : null
+    if (!s) return "—"
+    if (!e || s === e) return s
+    return `${s} → ${e}`
+  }
+
+  function descHorarioTaller(horarios: HorarioTaller[] | undefined): string {
+    if (!horarios || horarios.length === 0) return ""
+    const groups = new Map<string, string[]>()
+    for (const h of horarios) {
+      const key = `${h.hora_inicio?.substring(0, 5)}-${h.hora_fin?.substring(0, 5)}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(FULL_DAY_NAMES[h.dia_semana] || `Día ${h.dia_semana}`)
+    }
+    return Array.from(groups.entries())
+      .map(([key, days]) => { const [hs, he] = key.split("-"); return `${days.join(", ")} | ${hs} - ${he}` })
+      .join("  ·  ")
+  }
+
+  function descHorarioCurso(horario: CursoAbierto["horario"]): string {
+    if (!horario) return ""
+    const days: string[] = []
+    if (horario.dia_semana && horario.dia_semana.length > 0)
+      days.push(...horario.dia_semana.map(d => FULL_DAY_NAMES[d] || `Día ${d}`))
+    else if (horario.dias_semana && horario.dias_semana.length > 0)
+      days.push(...horario.dias_semana.map(d => FULL_DAY_NAMES[d.dia_semana] || `Día ${d.dia_semana}`))
+    const t = [horario.hora_inicio?.substring(0, 5), horario.hora_fin?.substring(0, 5)].filter(Boolean).join(" - ")
+    return [days.join(", "), t].filter(Boolean).join(" | ")
+  }
+
   const cargarCursos = useCallback(() => {
     const params: Record<string, string | number> = { per_page: 50, no_iniciados: "true" }
     if (filterModalidad) params.modalidad = filterModalidad
@@ -116,7 +154,7 @@ export function NuevoEstudiantePage() {
     Promise.allSettled([cargarCursos(), cargarTalleres()])
       .then(([cursosResult, tallsResult]) => {
         setCursosAbiertos(cursosResult.status === "fulfilled" ? cursosResult.value : [])
-        setTalleres(tallsResult.status === "fulfilled" ? tallsResult.value : [])
+        setTalleres(tallsResult.status === "fulfilled" ? tallsResult.value as Taller[] : [])
         if (cursosResult.status === "rejected") console.warn("Cursos no disponibles:", cursosResult.reason)
         if (tallsResult.status === "rejected") console.warn("Talleres no disponibles:", tallsResult.reason)
       })
@@ -178,7 +216,6 @@ export function NuevoEstudiantePage() {
   const curso = cursosAbiertos.find(c => c.id === selectedCourseId)
   const tallerSel = talleres.find(t => t.id === selectedCourseId)
   const esTaller = !!tallerSel && !curso
-  const costoTotal = esTaller ? Number(tallerSel?.precio || 0) : Number(curso?.precio_base || 0)
 
   const sanitizeInput = (campo: string, valor: string): string => {
     if (campo === "telefono") return valor.replace(/[^0-9]/g, "").slice(0, 10)
@@ -205,6 +242,11 @@ export function NuevoEstudiantePage() {
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
     if (campo === "correo" && valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "Correo inválido"
+    if (campo === "fecha_nacimiento" && valor) {
+      const edad = Number(calcularEdad(valor))
+      if (edad < 10) return "Debes tener al menos 10 años para inscribirte"
+      if (edad > 120) return "La fecha de nacimiento no es válida"
+    }
     return null
   }
 
@@ -430,11 +472,11 @@ export function NuevoEstudiantePage() {
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.ocupacion && errors.ocupacion && <p className="text-[11px] mt-1 text-red-500">{errors.ocupacion}</p>}</div>
-            <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
+            <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option><option value="otro">Otro</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Fecha de Nacimiento</label><input type="date" value={estudiante.fecha_nacimiento} onChange={e => { const fn = e.target.value; updateEstudiante("fecha_nacimiento", fn); setEstudiante(prev => ({ ...prev, fecha_nacimiento: fn, edad: calcularEdad(fn) })) }} onBlur={() => blurEstudiante("fecha_nacimiento")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.fecha_nacimiento && errors.fecha_nacimiento ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.fecha_nacimiento && errors.fecha_nacimiento && <p className="text-[11px] mt-1 text-red-500">{errors.fecha_nacimiento}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" readOnly value={estudiante.edad} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50" /></div>
             <div className="relative">
-              <label className="block text-xs font-medium mb-1.5">Residencia</label>
+              <label className="block text-xs font-medium mb-1.5">Ciudad</label>
               <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value}); const err = validateField("ciudad", e.target.value); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
               {ciudadOpen && (
                 <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border bg-white shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -449,7 +491,7 @@ export function NuevoEstudiantePage() {
               )}
               {touched.ciudad && errors.ciudad && <p className="text-[11px] mt-1 text-red-500">{errors.ciudad}</p>}
             </div>
-            <div><label className="block text-xs font-medium mb-1.5">Dirección</label><input type="text" value={estudiante.direccion} onChange={e => updateEstudiante("direccion", e.target.value)} onBlur={() => blurEstudiante("direccion")} placeholder="Av. Siempre Viva 123" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.direccion && errors.direccion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.direccion && errors.direccion && <p className="text-[11px] mt-1 text-red-500">{errors.direccion}</p>}</div>
+            <div><label className="block text-xs font-medium mb-1.5">Residencia</label><input type="text" value={estudiante.direccion} onChange={e => updateEstudiante("direccion", e.target.value)} onBlur={() => blurEstudiante("direccion")} placeholder="Av. Siempre Viva 123" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.direccion && errors.direccion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.direccion && errors.direccion && <p className="text-[11px] mt-1 text-red-500">{errors.direccion}</p>}</div>
           </div>
           <div>
             <br />
@@ -539,49 +581,81 @@ export function NuevoEstudiantePage() {
                   if (!t) return null
                   return (
                     <div key={t.id} onClick={() => setSelectedCourseId(t.id)}
-                      className="rounded-lg border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md relative"
-                      style={{ borderTopColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderRightColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, borderBottomColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
-                      <div className="flex justify-between items-start">
-                        <div className="min-w-0 flex-1">
-                          <div className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1"
-                            style={{ backgroundColor: "oklch(0.92 0.05 80)", color: "oklch(0.55 0.12 70)" }}>Taller</div>
-                          <h3 className="text-sm font-bold leading-tight" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{t.nombre}</h3>
+                      className="rounded-lg border p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98]"
+                      style={{ borderColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="size-6 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: "oklch(0.92 0.05 80)" }}>
+                          <HugeiconsIcon icon={BookOpen01Icon} size={12} style={{ color: "oklch(0.55 0.12 70)" }} />
                         </div>
-                        <div className="text-sm font-black text-emerald-600 ml-1 shrink-0">${Number(t.precio || 0).toFixed(2)}</div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: "oklch(0.92 0.05 80)", color: "oklch(0.55 0.12 70)" }}>Taller</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-2 mt-2 text-xs">
-                        <div className="col-span-2"><span className="font-semibold text-orange-600">Instructor: </span>{t.instructor ? `${t.instructor.nombres} ${t.instructor.apellidos}` : "Por asignar"}</div>
-                        <div className="mt-1"><span className="font-semibold text-blue-600">Fecha: </span>{t.fecha ? new Date(t.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
-                        <div className="mt-1"><span className="font-semibold text-blue-600">Horario: </span>{t.hora_inicio?.substring(0, 5)} - {t.hora_fin?.substring(0, 5)}</div>
-                        <div className="col-span-2 mt-1"><span className="font-semibold text-purple-600">Modalidad: </span>{(t.modalidad || "").toUpperCase()}</div>
+                      <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{t.nombre}</h3>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <HugeiconsIcon icon={Calendar01Icon} size={13} style={{ color: COLORS.ACCENT }} />
+                          <span style={{ color: COLORS.CHARCOAL }}>{formatDateRange(t.fecha ?? null, t.fecha_fin ?? null)}</span>
+                        </div>
+                        {(() => {
+                          const horarioStr = descHorarioTaller(t.horarios)
+                          if (horarioStr) {
+                            return (
+                              <div className="flex items-start gap-1.5">
+                                <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} className="mt-0.5 shrink-0" />
+                                <span style={{ color: COLORS.CHARCOAL }}>{horarioStr}</span>
+                              </div>
+                            )
+                          }
+                          if (t.hora_inicio && t.hora_fin) {
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} />
+                                <span style={{ color: COLORS.CHARCOAL }}>{t.hora_inicio.substring(0, 5)} - {t.hora_fin.substring(0, 5)}</span>
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
                       </div>
-                      {selected && <div className="absolute top-1 right-1"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
+                      {selected && <div className="absolute top-1.5 right-1.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
                     </div>
                   )
                 }
                 const ca = cursosAbiertos.find(c => c.id === item.id)
                 if (!ca) return null
-                const horario = ca.horarios?.[0]
                 return (
                   <div key={ca.id} onClick={() => setSelectedCourseId(ca.id)}
-                    className="rounded-lg border p-3 cursor-pointer transition-all shadow-sm hover:shadow-md relative"
+                    className="rounded-lg border p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98]"
                     style={{ borderColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
-                    <div className="flex justify-between items-start">
-                      <div className="min-w-0 flex-1">
-                        <div className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mb-1"
-                          style={{ backgroundColor: "oklch(0.92 0.08 220)", color: "oklch(0.45 0.12 220)" }}>Curso</div>
-                        <h3 className="text-sm font-bold leading-tight" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="size-6 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "oklch(0.92 0.08 220)" }}>
+                        <HugeiconsIcon icon={GraduationCapIcon} size={12} style={{ color: "oklch(0.45 0.12 220)" }} />
                       </div>
-                      <div className="text-sm font-black text-emerald-600 ml-1 shrink-0">${Number(ca.precio_base || 0).toFixed(2)}</div>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: "oklch(0.92 0.08 220)", color: "oklch(0.45 0.12 220)" }}>Curso</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-2 mt-2 text-xs">
-                      <div className="col-span-2"><span className="font-semibold text-orange-600">Instructor: </span>{ca.docente?.nombres} {ca.docente?.apellidos || "Por asignar"}</div>
-                      <div className="mt-1"><span className="font-semibold text-blue-600">Inicio: </span>{ca.fecha_inicio ? new Date(ca.fecha_inicio).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}</div>
-                      <div className="mt-1"><span className="font-semibold text-blue-600">Fin: </span>{ca.fecha_fin ? new Date(ca.fecha_fin).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—'}</div>
-                      <div className="col-span-2 mt-1"><span className="font-semibold text-purple-600">Modalidad: </span>{(ca.modalidad || "").toUpperCase()}</div>
-                      {horario && <div className="col-span-2 mt-1"><span className="font-semibold text-gray-500">Horario: </span>{horario.dia} | {horario.hora_inicio?.substring(0, 5)} - {horario.hora_fin?.substring(0, 5)}</div>}
+                    <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <HugeiconsIcon icon={Calendar01Icon} size={13} style={{ color: COLORS.ACCENT }} />
+                        <span style={{ color: COLORS.CHARCOAL }}>{formatDateRange(ca.fecha_inicio, ca.fecha_fin)}</span>
+                      </div>
+                      {(() => {
+                        const horarioStr = descHorarioCurso(ca.horario)
+                        if (horarioStr) {
+                          return (
+                            <div className="flex items-start gap-1.5">
+                              <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} className="mt-0.5 shrink-0" />
+                              <span style={{ color: COLORS.CHARCOAL }}>{horarioStr}</span>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
-                    {selected && <div className="absolute top-0.5 right-0.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
+                    {selected && <div className="absolute top-1.5 right-1.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
                   </div>
                 )
               })
@@ -620,7 +694,7 @@ export function NuevoEstudiantePage() {
             </div>
             <div>
               <label className="block text-xs font-medium mb-1.5">Comprobante</label>
-              <input ref={comprobanteInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) { setComprobanteFile(file); if (file.type.startsWith("image/")) setComprobantePreview(URL.createObjectURL(file)); else setComprobantePreview(null) } }} />
+              <input ref={comprobanteInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (!file) return; const err = validarComprobante(file); if (err) { toast.error(err); e.target.value = ""; return }; setComprobanteFile(file); if (file.type.startsWith("image/")) setComprobantePreview(URL.createObjectURL(file)); else setComprobantePreview(null) }} />
               <div onClick={() => !comprobantePreview && comprobanteInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: paymentErrors.comprobante ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
                 {comprobantePreview ? <img src={comprobantePreview} className="max-h-64 rounded" alt="Comprobante" /> : <div className="text-xs text-gray-400">{comprobanteFile ? comprobanteFile.name : "Subir comprobante"}</div>}
               </div>
@@ -631,31 +705,45 @@ export function NuevoEstudiantePage() {
               {paymentTouched.comprobante && paymentErrors.comprobante && <p className="text-[11px] mt-1 text-red-500">{paymentErrors.comprobante}</p>}
             </div>
           </div>
-          <div className="p-4 rounded-xl bg-gray-50 space-y-2 text-sm border">
-            <h3 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: COLORS.TEXT_MUTED }}>Detalle del {esTaller ? "Taller" : "Curso"}</h3>
-            <div className="flex justify-between"><span>Nombre</span><span className="font-bold text-right ml-4">{esTaller ? tallerSel?.nombre : (curso?.nombre_instancia || curso?.catalogo?.nombre)}</span></div>
-            {esTaller ? (
-              <>
-                <div className="flex justify-between"><span>Instructor</span><span className="text-right ml-4">{tallerSel?.instructor ? `${tallerSel.instructor.nombres} ${tallerSel.instructor.apellidos}` : "Por asignar"}</span></div>
-                <div className="flex justify-between"><span>Modalidad</span><span className="text-right ml-4">{tallerSel?.modalidad?.toUpperCase() || "—"}</span></div>
-                <div className="flex justify-between"><span>Fecha</span><span className="text-right ml-4">{tallerSel?.fecha ? new Date(tallerSel.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : "—"}</span></div>
-                <div className="flex justify-between"><span>Horario</span><span className="text-right ml-4">{tallerSel?.hora_inicio?.substring(0, 5)} - {tallerSel?.hora_fin?.substring(0, 5)}</span></div>
-              </>
-            ) : (
-              <>
-                <div className="flex justify-between"><span>Instructor</span><span className="text-right ml-4">{curso?.docente?.nombres} {curso?.docente?.apellidos || "Por asignar"}</span></div>
-                <div className="flex justify-between"><span>Modalidad</span><span className="text-right ml-4">{curso?.modalidad?.toUpperCase() || "—"}</span></div>
-                {curso?.modalidad === "presencial" && curso?.ciudad && (
-                  <div className="flex justify-between"><span>Ciudad</span><span className="text-right ml-4">{curso.ciudad.nombre}</span></div>
-                )}
-                <div className="flex justify-between"><span>Inicio</span><span className="text-right ml-4">{curso?.fecha_inicio ? new Date(curso.fecha_inicio).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : "—"}</span></div>
-                <div className="flex justify-between"><span>Fin</span><span className="text-right ml-4">{curso?.fecha_fin ? new Date(curso.fecha_fin).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : "—"}</span></div>
-                {curso?.horarios?.[0] && (
-                  <div className="flex justify-between"><span>Horario</span><span className="text-right ml-4">{curso.horarios[0].dia} | {curso.horarios[0].hora_inicio?.substring(0, 5)} - {curso.horarios[0].hora_fin?.substring(0, 5)}</span></div>
-                )}
-              </>
-            )}
-            <div className="flex justify-between border-t pt-2 mt-2 font-bold"><span>Precio del {esTaller ? "taller" : "curso"}</span><span className="text-emerald-600 text-lg">${costoTotal.toFixed(2)}</span></div>
+          <div
+            className="rounded-xl border p-4 space-y-3"
+            style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 3%, transparent)` }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="size-7 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 12%, transparent)` }}
+              >
+                <HugeiconsIcon icon={esTaller ? BookOpen01Icon : GraduationCapIcon} size={14} style={{ color: COLORS.ACCENT }} />
+              </div>
+              <h3 className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
+                {esTaller ? tallerSel?.nombre : (curso?.nombre_instancia || curso?.catalogo?.nombre)}
+              </h3>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-1.5">
+                <HugeiconsIcon icon={Calendar01Icon} size={13} style={{ color: COLORS.ACCENT }} />
+                <span style={{ color: COLORS.TEXT_MUTED }}>Fecha</span>
+                <span className="font-medium ml-auto" style={{ color: COLORS.CHARCOAL }}>
+                  {esTaller
+                    ? formatDateRange(tallerSel?.fecha ?? null, tallerSel?.fecha_fin ?? null)
+                    : formatDateRange(curso?.fecha_inicio ?? null, curso?.fecha_fin ?? null)}
+                </span>
+              </div>
+              {(() => {
+                const horarioStr = esTaller
+                  ? descHorarioTaller(tallerSel?.horarios)
+                  : descHorarioCurso(curso?.horario)
+                if (!horarioStr) return null
+                return (
+                  <div className="flex items-start gap-1.5">
+                    <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} className="mt-0.5 shrink-0" />
+                    <span style={{ color: COLORS.TEXT_MUTED }}>Horario</span>
+                    <span className="font-medium ml-auto text-right" style={{ color: COLORS.CHARCOAL }}>{horarioStr}</span>
+                  </div>
+                )
+              })()}
+            </div>
           </div>
           <div className="flex justify-between pt-4"><button onClick={() => setPaso(2)} className="px-5 py-2.5 rounded-lg text-xs font-semibold border">Anterior</button><button onClick={handleSubmit} disabled={loadingSubmit} className="px-8 py-2.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: COLORS.ACCENT }}>{loadingSubmit ? "Enviando..." : "Confirmar Matrícula"}</button></div>
         </div>

@@ -40,6 +40,9 @@ function getNombrePersona(cuenta: any): string {
     || extractNombre(cuenta.reserva_aula?.persona)
     || extractNombre(cuenta.reserva_aula?.cliente_externo)
     || extractNombre(cuenta.alquiler_equipo?.persona)
+    || extractNombre(cuenta.alquiler_equipo?.cliente_externo)
+    || extractNombre(cuenta.reserva_radio?.persona)
+    || extractNombre(cuenta.reserva_radio?.cliente_externo)
     || "—"
 }
 

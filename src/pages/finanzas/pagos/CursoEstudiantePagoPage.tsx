@@ -11,9 +11,10 @@ import {
   ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
+import { validarComprobante } from "@/lib/file-validators"
 import { useParams, useNavigate } from "react-router"
 import axios from "axios"
 
@@ -73,6 +74,8 @@ export function CursoEstudiantePagoPage() {
   const handleComprobante = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const err = validarComprobante(file)
+    if (err) { toast.error(err); e.target.value = ""; return }
     setComprobanteFile(file)
     setComprobantePreview(URL.createObjectURL(file))
   }
@@ -193,7 +196,15 @@ export function CursoEstudiantePagoPage() {
                         <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
                           {m.nombre_modulo}
                         </span>
+                        {m.motivo_ajuste && (
+                          <span className="text-[11px] italic opacity-50 ml-1.5">
+                            ({m.motivo_ajuste})
+                          </span>
+                        )}
                         <span className="text-xs ml-2 opacity-40">
+                          {m.monto_original && m.monto_original !== m.monto_ajustado && (
+                            <span className="line-through mr-1">${m.monto_original.toLocaleString()} →</span>
+                          )}
                           Precio: ${m.monto_ajustado.toLocaleString()} · Saldo: ${maximo.toLocaleString()}
                         </span>
                       </div>
@@ -293,11 +304,11 @@ export function CursoEstudiantePagoPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     {t.comprobante_url ? (
                       <button
-                        onClick={() => setImagenExpandida(t.comprobante_url)}
+                        onClick={() => setImagenExpandida(getStorageUrl(t.comprobante_url))}
                         className="size-10 rounded-lg overflow-hidden border shrink-0 hover:opacity-80 transition-opacity"
                         style={{ borderColor: COLORS.BORDER_SUBTLE }}
                       >
-                        <img src={t.comprobante_url} alt="Comprobante"
+                        <img src={getStorageUrl(t.comprobante_url)} alt="Comprobante"
                           className="w-full h-full object-cover" />
                       </button>
                     ) : (

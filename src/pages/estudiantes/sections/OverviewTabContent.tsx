@@ -9,6 +9,7 @@ interface OverviewTabContentProps {
 
 export function OverviewTabContent({ academicData, financialData, academicLoading, financialLoading }: OverviewTabContentProps) {
   const matriculas = academicData?.matriculas ?? []
+  const esSoloTaller = matriculas.length > 0 && matriculas.every(m => m.curso.startsWith("Taller:"))
   const promedioGeneral = matriculas.length
     ? (matriculas.reduce((acc, m) => acc + (m.promedio || 0), 0) / matriculas.length).toFixed(1)
     : null
@@ -89,9 +90,9 @@ export function OverviewTabContent({ academicData, financialData, academicLoadin
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Cursos Recientes</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">{esSoloTaller ? 'Talleres' : 'Cursos'} Recientes</h3>
             {matriculas.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4">Sin cursos registrados.</p>
+              <p className="text-sm text-gray-400 py-4">Sin {esSoloTaller ? 'talleres' : 'cursos'} registrados.</p>
             ) : (
               <div className="space-y-2">
                 {matriculas.slice(0, 5).map((m) => (
@@ -116,7 +117,7 @@ export function OverviewTabContent({ academicData, financialData, academicLoadin
                   </div>
                 ))}
                 {matriculas.length > 5 && (
-                  <p className="text-xs text-gray-400 pt-1">Y {matriculas.length - 5} cursos mas. Ver pestaña Academico.</p>
+                  <p className="text-xs text-gray-400 pt-1">Y {matriculas.length - 5} {esSoloTaller ? 'talleres' : 'cursos'} mas. Ver pestaña Academico.</p>
                 )}
               </div>
             )}

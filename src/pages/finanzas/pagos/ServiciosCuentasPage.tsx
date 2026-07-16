@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { AiFolderIcon, Money01Icon } from "@hugeicons/core-free-icons"
+import { AiFolderIcon, Money01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
@@ -51,10 +51,23 @@ export function ServiciosCuentasPage() {
   const [cuentas, setCuentas] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [filter, setFilter] = useState("todos")
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+  const [clientPage, setClientPage] = useState(1)
+  const CLIENT_PER_PAGE = 20
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
+  useEffect(() => {
+    setClientPage(1) // eslint-disable-line react-hooks/set-state-in-effect
+  }, [filter, search])
 
   useEffect(() => {
     Promise.all([
-      financeService.getCuentas({ origen: "servicio", per_page: 200 }),
+      financeService.getCuentas({ origen: "servicio", per_page: 50, ...(search ? { search } : {}) }),
       financeService.getResumen(),
     ])
       .then(([cuentasData, resumenData]) => {
@@ -63,6 +76,7 @@ export function ServiciosCuentasPage() {
       })
       .catch(() => toast.error("Error al cargar cuentas de servicios"))
       .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const grouped = useMemo(() => {
@@ -108,6 +122,19 @@ export function ServiciosCuentasPage() {
     })
   }, [grouped, filter])
 
+  const searchFiltered = useMemo(() => {
+    if (!search) return filtered
+    return filtered.filter(([name]) =>
+      name.toLowerCase().includes(search.toLowerCase())
+    )
+  }, [filtered, search])
+
+  const paginatedGroups = useMemo(() => {
+    return searchFiltered.slice(0, clientPage * CLIENT_PER_PAGE)
+  }, [searchFiltered, clientPage])
+
+  const totalClientPages = Math.max(1, Math.ceil(searchFiltered.length / CLIENT_PER_PAGE))
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -128,8 +155,27 @@ export function ServiciosCuentasPage() {
             Servicios
           </h2>
           <p className="text-xs opacity-40 mt-1">
-            {Object.keys(grouped).length} tipo{Object.keys(grouped).length !== 1 ? "s" : ""} de servicio con cuentas por cobrar
+            {searchFiltered.length} tipo{searchFiltered.length !== 1 ? "s" : ""} de servicio con cuentas por cobrar
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Buscar servicio..."
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            className="w-48 pl-3 pr-8 py-2 rounded-xl border text-xs font-medium outline-none transition-all focus:w-64"
+            style={{ borderColor: BORDER, color: CHARCOAL }}
+          />
+          {searchInput && (
+            <button
+              onClick={() => { setSearchInput(""); setSearch("") }}
+              className="absolute right-2 top-1/2 -translate-y-1/2"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={14} style={{ color: MUTED }} />
+            </button>
+          )}
         </div>
         <div className="flex gap-1.5">
           {[
@@ -151,9 +197,10 @@ export function ServiciosCuentasPage() {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {searchFiltered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="size-16 rounded-[1.5rem] flex items-center justify-center mb-4" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
             <HugeiconsIcon icon={AiFolderIcon} size={28} style={{ color: COLORS.ACCENT }} />
@@ -162,8 +209,9 @@ export function ServiciosCuentasPage() {
           <p className="text-xs opacity-40 mt-1">Los servicios con pagos aparecerán aquí</p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(([name, g]) => {
+          {paginatedGroups.map(([name, g]) => {
             const pct = g.total > 0 ? (g.cobrado / g.total) * 100 : 0
             return (
               <motion.div
@@ -210,6 +258,32 @@ export function ServiciosCuentasPage() {
             )
           })}
         </div>
+        {totalClientPages > 1 && (
+          <div className="flex items-center justify-between pt-6 border-t mt-6 px-2" style={{ borderColor: BORDER }}>
+            <span className="text-xs opacity-40">
+              Página {clientPage} de {totalClientPages} ({searchFiltered.length} servicios)
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={clientPage <= 1}
+                onClick={() => setClientPage(p => p - 1)}
+                className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all"
+                style={{ borderColor: BORDER }}
+              >
+                Anterior
+              </button>
+              <button
+                disabled={clientPage >= totalClientPages}
+                onClick={() => setClientPage(p => p + 1)}
+                className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all"
+                style={{ borderColor: BORDER }}
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   )

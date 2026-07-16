@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon, ViewIcon } from "@hugeicons/core-free-icons"
 import { Plus, Trash2, Search, X } from "lucide-react"
@@ -16,6 +17,7 @@ const TIPO_BADGE: Record<string, { bg: string; text: string }> = {
 }
 
 export function PersonasPage() {
+  const navigate = useNavigate()
   const [personas, setPersonas] = useState<Persona[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -296,6 +298,9 @@ export function PersonasPage() {
               )}
 
               <div className="flex gap-3 pt-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <button onClick={() => { setDetailPersona(null); navigate(`/personas/${detailPersona.id}/pagos`) }} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: "oklch(0.55 0.15 30)" }}>
+                  Ver pagos
+                </button>
                 <button onClick={() => { setDetailPersona(null); setModal({ open: true, editingId: detailPersona.id }) }} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: COLORS.ACCENT }}>
                   Editar
                 </button>

@@ -65,8 +65,11 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
     { label: "Ciudad", value: data.ciudad?.nombre || perfil?.ciudad || "—" },
   ]
 
+  const esTaller = (data.total_talleres ?? 0) > 0 && (data.total_cursos ?? 0) === 0
+  const totalLabel = esTaller ? "Total de talleres" : "Total de cursos"
+
   const academicFields: Array<{ label: string; value: string; full?: boolean }> = [
-    { label: "Total de cursos", value: String(perfil?.total_cursos || data.total_cursos || 0) },
+    { label: totalLabel, value: String(esTaller ? data.total_talleres : perfil?.total_cursos || data.total_cursos || 0) },
     { label: "Primera matricula", value: formatDate(perfil?.primera_matricula) },
     { label: "Ultima matricula", value: formatDate(perfil?.ultima_matricula) },
     { label: "Registrado", value: data.creado_en ? new Date(data.creado_en).toLocaleString("es-ES") : "—" },

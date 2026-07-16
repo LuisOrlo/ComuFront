@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, Fragment } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -27,6 +27,7 @@ export function CursoCuentasDetallePage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
   const [selectedModulo, setSelectedModulo] = useState<string>("todos")
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null)
   const [exportando, setExportando] = useState(false)
   const tablaRef = useRef<HTMLDivElement>(null)
 
@@ -109,6 +110,24 @@ export function CursoCuentasDetallePage() {
   const getTotalPagado = (e: any) => {
     const mods = toArray(e.modulos || e.lineas_pago_modulo)
     return mods.reduce((sum: number, m: any) => sum + Number(m.abonado || m.monto_abonado || 0), 0)
+  }
+
+  const getStudentAdjustments = (e: any) => {
+    const mods = toArray(e.modulos || e.lineas_pago_modulo)
+    return modulos
+      .map((m: any) => {
+        const lm = mods.find((x: any) => (x.modulo_id || x.id) == m.id)
+        if (!lm || !lm.motivo_ajuste) return null
+        const totalM = Number(lm.precio || lm.monto_ajustado || lm.monto_original || 0)
+        const original = Number(lm.monto_original || 0)
+        return {
+          nombre_modulo: m.nombre || `Módulo ${m.orden || m.id}`,
+          precio_original: original,
+          precio_ajustado: totalM,
+          motivo: lm.motivo_ajuste,
+        }
+      })
+      .filter(Boolean)
   }
 
   const handleExportPDF = async () => {
@@ -289,9 +308,12 @@ export function CursoCuentasDetallePage() {
                 ) : (
                   filteredEstudiantes.map((e: any, idx: number) => {
                     const modsEst = toArray(e.modulos || e.lineas_pago_modulo)
+                    const isExpanded = expandedStudent === e.matricula_id
+                    const ajustes = isExpanded ? getStudentAdjustments(e) : []
+                    const colSpan = 4 + (selectedModulo === "todos" ? (modulos.length > 0 ? modulos.length + 1 : 0) : 3) + 1
                     return (
+                      <Fragment key={e.id || idx}>
                       <tr
-                        key={e.id || idx}
                         className="transition-colors"
                         style={{ backgroundColor: idx % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}
                       >
@@ -344,16 +366,45 @@ export function CursoCuentasDetallePage() {
                           })()
                         ) : null}
                         <td className="px-3 py-3">
-                          {isAdmin && (<button
-                            onClick={() => navigate(`/finanzas/pagos/cursos/${id}/estudiante/${e.matricula_id}/pago`)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
-                            style={{ backgroundColor: COLORS.ACCENT }}
-                          >
-                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                            Registrar cobro
-                          </button>)}
+                          <div className="flex items-center gap-1">
+                            {isAdmin && (<button
+                              onClick={() => navigate(`/finanzas/pagos/cursos/${id}/estudiante/${e.matricula_id}/pago`)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+                              style={{ backgroundColor: COLORS.ACCENT }}
+                            >
+                              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                              Registrar cobro
+                            </button>)}
+                            {modsEst.some((lm: any) => lm.motivo_ajuste) && (
+                              <button
+                                onClick={() => setExpandedStudent(isExpanded ? null : e.matricula_id)}
+                                className="size-6 rounded flex items-center justify-center text-[10px] font-bold hover:bg-gray-100 transition-colors"
+                                style={{ color: COLORS.TEXT_MUTED }}
+                                title="Ver ajustes"
+                              >
+                                {isExpanded ? "▲" : "▼"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
+                      {isExpanded && ajustes.length > 0 && (
+                        <tr style={{ backgroundColor: "oklch(0.64 0.2 150 / 0.06)" }}>
+                          <td colSpan={colSpan} className="px-5 py-3">
+                            {ajustes.map((a: any, i: number) => (
+                              <div key={i} className="flex items-center gap-2 text-[11px] py-0.5" style={{ color: COLORS.CHARCOAL }}>
+                                <span className="font-bold">{a.nombre_modulo}:</span>
+                                {a.precio_original > 0 && a.precio_original !== a.precio_ajustado && (
+                                  <span className="line-through opacity-40">${a.precio_original.toLocaleString()}</span>
+                                )}
+                                <span className="text-green-700 font-bold">→ ${a.precio_ajustado.toLocaleString()}</span>
+                                <span className="opacity-50 italic">— {a.motivo}</span>
+                              </div>
+                            ))}
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     )
                   })
                 )}

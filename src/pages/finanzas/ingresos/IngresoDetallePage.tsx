@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Money02Icon, Calendar02Icon, UserIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
@@ -52,7 +53,7 @@ export function IngresoDetallePage() {
         {data.comprobante_url && (
           <div className="rounded-2xl border bg-white p-6" style={{ borderColor: BORDER }}>
             <p className="text-[10px] font-bold uppercase tracking-wider opacity-40 mb-3">Comprobante</p>
-            <img src={data.comprobante_url} alt="Comprobante" className="max-h-[300px] rounded-xl cursor-pointer" onClick={() => setModalImg(data.comprobante_url)} />
+            <img src={getStorageUrl(data.comprobante_url)} alt="Comprobante" className="max-h-[300px] rounded-xl cursor-pointer" onClick={() => setModalImg(getStorageUrl(data.comprobante_url))} />
           </div>
         )}
       </div>

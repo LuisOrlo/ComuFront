@@ -8,6 +8,7 @@ interface AcademicTabContentProps {
 }
 
 export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
+  const esSoloTalleres = data?.matriculas.length ? data.matriculas.every(m => m.curso.startsWith("Taller:")) : false
   const [asistencias, setAsistencias] = useState<AsistenciasResponse | null>(null)
   const [asistenciasLoading, setAsistenciasLoading] = useState(false)
   const [expandedModulos, setExpandedModulos] = useState<Set<string>>(new Set())
@@ -61,9 +62,9 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
-          {data.matriculas.length} Curso{data.matriculas.length !== 1 ? 's' : ''}
-        </h3>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+            {data.matriculas.length} {esSoloTalleres ? 'Taller' : 'Curso'}{data.matriculas.length !== 1 ? (esSoloTalleres ? 'es' : 's') : ''}
+          </h3>
       </div>
 
       <div className="overflow-x-auto">
@@ -74,7 +75,7 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
               <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">Inscripcion</th>
               <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">Asistencia</th>
               <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">Promedio</th>
-              <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">Modulos</th>
+              {!esSoloTalleres && <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">Modulos</th>}
               <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-wider text-center">Estado</th>
             </tr>
           </thead>
@@ -103,9 +104,9 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
                 <td className="px-4 py-4 text-center">
                   <span className="font-bold text-gray-800">{matricula.promedio ?? '—'}</span>
                 </td>
-                <td className="px-4 py-4 text-center text-gray-500 text-xs">
+                {!esSoloTalleres && <td className="px-4 py-4 text-center text-gray-500 text-xs">
                   {matricula.notas.length}
-                </td>
+                </td>}
                 <td className="px-4 py-4 text-center">
                   <span className={`inline-block px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
                     matricula.estado === 'activo' ? 'bg-emerald-100 text-emerald-700' :
@@ -123,7 +124,7 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
         </table>
       </div>
 
-      <div className="border-t pt-8">
+      {!esSoloTalleres && <div className="border-t pt-8">
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-5">Calificaciones por Modulo</h3>
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
           {data.matriculas.flatMap((matricula) =>
@@ -146,9 +147,9 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
             <p className="text-sm text-gray-400 col-span-full py-6 text-center">Sin calificaciones registradas.</p>
           )}
         </div>
-      </div>
+      </div>}
 
-      <div className="border-t pt-8">
+      {!esSoloTalleres && <div className="border-t pt-8">
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-5">Asistencias por Modulo</h3>
         {asistenciasLoading && (
           <div className="text-center py-8">
@@ -240,7 +241,7 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
             </div>
           )
         })}
-      </div>
+      </div>}
     </div>
   )
 }

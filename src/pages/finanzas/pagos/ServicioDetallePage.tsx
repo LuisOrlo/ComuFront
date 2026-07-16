@@ -56,6 +56,9 @@ function getNombrePersona(entry: any): string {
     || extractNombre(entry.reserva_aula?.persona)
     || extractNombre(entry.reserva_aula?.cliente_externo)
     || extractNombre(entry.alquiler_equipo?.persona)
+    || extractNombre(entry.alquiler_equipo?.cliente_externo)
+    || extractNombre(entry.reserva_radio?.persona)
+    || extractNombre(entry.reserva_radio?.cliente_externo)
     || "—"
 }
 

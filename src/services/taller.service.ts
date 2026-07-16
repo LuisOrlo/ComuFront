@@ -137,8 +137,9 @@ export const tallerService = {
   },
 
   // Público (sin prefix académico)
-  async inscribir(data: Record<string, unknown>) {
-    const res = await api.post("/talleres/inscribir", data)
+  async inscribir(data: Record<string, unknown> | FormData) {
+    const client = data instanceof FormData ? apiMultipart : api
+    const res = await client.post("/talleres/inscribir", data)
     return res.data
   },
 
