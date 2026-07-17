@@ -41,6 +41,11 @@ export const aulasService = {
     return data.data
   },
 
+  getAula: async (id: string) => {
+    const { data } = await api.get<{ data: Aula }>(`/academic/servicios/aulas/${id}`)
+    return data.data
+  },
+
   createAula: async (aula: Partial<Aula>) => {
     const { data } = await api.post<{ data: Aula }>("/academic/servicios/aulas", aula)
     return data.data

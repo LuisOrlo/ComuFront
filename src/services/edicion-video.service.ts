@@ -1,7 +1,5 @@
 import api from "@/services/auth.service"
 
-export type NivelEdicion = "basica" | "estandar" | "premium"
-
 export type EstadoTrabajo = "recibido" | "en_proceso" | "revision" | "entregado"
 
 export interface TrabajoEdicion {
@@ -11,21 +9,18 @@ export interface TrabajoEdicion {
   fecha_recibo: string
   fecha_limite: string
   fecha_entrega?: string
-  nivel: NivelEdicion
   estado: EstadoTrabajo
   editor_ids: string[]
   editores?: { id: string; nombres: string; apellidos: string }[]
+  persona_id?: string
+  cliente_externo_id?: string
+  cliente?: { id: string; nombres: string; apellidos: string }
+  cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
   reserva_podcast_id?: string
-  precio_cobrado?: number
+  precio_cobrado?: number | null
   cobro_registrado: boolean
   notas?: string
   created_at?: string
-}
-
-export const NIVEL_EDICION_LABELS: Record<NivelEdicion, string> = {
-  basica: "Básica",
-  estandar: "Estándar",
-  premium: "Premium",
 }
 
 export const ESTADO_TRABAJO_LABELS: Record<EstadoTrabajo, string> = {
@@ -36,8 +31,13 @@ export const ESTADO_TRABAJO_LABELS: Record<EstadoTrabajo, string> = {
 }
 
 export const edicionVideoService = {
-  getTrabajos: async (filters?: { estado?: string; search?: string }) => {
+  getTrabajos: async (filters?: { estado?: string; search?: string; per_page?: number }) => {
     const { data } = await api.get<{ data: TrabajoEdicion[] }>("/academic/servicios/trabajos-edicion", { params: filters })
+    return data
+  },
+
+  getTrabajo: async (id: string) => {
+    const { data } = await api.get<{ data: TrabajoEdicion }>(`/academic/servicios/trabajos-edicion/${id}`)
     return data.data
   },
 

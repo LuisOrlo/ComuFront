@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Link } from "react-router"
+import { Link, useLocation, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import { DiscountIcon, HistoryIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon } from "@hugeicons/core-free-icons"
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 import { radioService, type TarifaRadio, type ReservaRadio } from "@/services/radio.service"
 import { toast } from "sonner"
+import type { ClienteExterno } from "@/services/clientes.service"
 import { RadioKPIs } from "./components/RadioKPIs"
 import { RadioCalendar } from "./components/RadioCalendar"
 import { RadioTable } from "./components/RadioTable"
@@ -49,8 +50,11 @@ export function RadioPage() {
     return sunday.toISOString().split("T")[0]
   })
 
+  const location = useLocation()
+  const navigate = useNavigate()
   const [reservaModalOpen, setReservaModalOpen] = useState(false)
   const [editingReserva, setEditingReserva] = useState<ReservaRadio | null>(null)
+  const [nuevoCliente, setNuevoCliente] = useState<ClienteExterno | undefined>(undefined)
   const [detalleReserva, setDetalleReserva] = useState<ReservaRadio | null>(null)
   const [detalleOpen, setDetalleOpen] = useState(false)
 
@@ -92,6 +96,18 @@ export function RadioPage() {
     Promise.all([loadTarifas(), loadReservas()])
       .finally(() => setLoading(false))
   }, [loadReservas])
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const state = location.state as { nuevoCliente?: ClienteExterno } | undefined
+    if (state?.nuevoCliente) {
+      setNuevoCliente(state.nuevoCliente)
+      setReservaModalOpen(true)
+      setEditingReserva(null)
+      navigate(".", { replace: true, state: {} })
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [location.state, navigate])
 
   const handleEdit = (r: ReservaRadio) => {
     setEditingReserva(r)
@@ -164,10 +180,11 @@ export function RadioPage() {
             <ReservaForm
               key={(editingReserva?.id || "new")}
               isOpen={reservaModalOpen}
-              onClose={() => { setReservaModalOpen(false); setEditingReserva(null) }}
+              onClose={() => { setReservaModalOpen(false); setEditingReserva(null); setNuevoCliente(undefined) }}
               tarifas={tarifas}
               editingReserva={editingReserva}
               onSaved={handleReservaSaved}
+              nuevoCliente={nuevoCliente}
             />
           </div>
         ) : (

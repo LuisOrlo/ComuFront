@@ -59,6 +59,8 @@ function getNombrePersona(entry: any): string {
     || extractNombre(entry.alquiler_equipo?.cliente_externo)
     || extractNombre(entry.reserva_radio?.persona)
     || extractNombre(entry.reserva_radio?.cliente_externo)
+    || extractNombre(entry.edicion_video?.cliente)
+    || extractNombre(entry.edicion_video?.cliente_externo)
     || "—"
 }
 

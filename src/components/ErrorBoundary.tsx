@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 500
               </p>
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
-                Algo sali&oacute; mal
+                Algo salió mal
               </h1>
               <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>
                 {import.meta.env.DEV
@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150"
                 style={{ backgroundColor: "white", color: COLORS.TEXT_MUTED, border: `1px solid ${COLORS.BORDER_SUBTLE}` }}
               >
-                Recargar p&aacute;gina
+                Recargar página
               </button>
             </div>
           </div>

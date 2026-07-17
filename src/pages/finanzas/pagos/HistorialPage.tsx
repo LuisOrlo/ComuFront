@@ -79,6 +79,7 @@ export function HistorialPage() {
       cp.reserva_aula?.persona, cp.reserva_aula?.cliente_externo,
       cp.alquiler_equipo?.persona, cp.alquiler_equipo?.cliente_externo,
       cp.reserva_radio?.persona, cp.reserva_radio?.cliente_externo,
+      cp.edicion_video?.cliente, cp.edicion_video?.cliente_externo,
     ]
     for (const c of candidates) {
       if (c?.nombres || c?.apellidos) return `${c.nombres || ""} ${c.apellidos || ""}`.trim()
@@ -413,8 +414,8 @@ function nombreServicio(cp: any): string {
     ["reserva_podcast_id", cp.reserva_podcast?.titulo || cp.reserva_podcast?.paquete?.nombre || "Podcast"],
     ["reserva_aula_id", cp.reserva_aula?.aula?.nombre || "Aula"],
     ["alquiler_equipo_id", cp.alquiler_equipo?.equipo?.nombre || "Equipo"],
-    ["edicion_video_id", "Edición de Video"],
-    ["reserva_radio_id", "Radio"],
+    ["edicion_video_id", cp.edicion_video?.titulo || "Edición de Video"],
+    ["reserva_radio_id", cp.reserva_radio?.tarifa?.nombre || cp.reserva_radio?.fecha_reserva || cp.reserva_radio?.hora_inicio || "Radio"],
   ]
   for (const [idField, label] of servicio) {
     if (cp[idField]) return label

@@ -24,11 +24,18 @@ import { SolicitudInscripcionDetallePage } from "@/pages/solicitudes-inscripcion
 import { AulasPage } from "@/pages/servicios/aulas/AulasPage"
 import { AulasGestionPage } from "@/pages/servicios/aulas/AulasGestionPage"
 import { EquiposPage } from "@/pages/servicios/equipos/EquiposPage"
+import { NuevoEquipoPage } from "@/pages/servicios/equipos/NuevoEquipoPage"
 import { AlquileresListPage } from "@/pages/servicios/equipos/AlquileresListPage"
+import { NuevoAlquilerPage } from "@/pages/servicios/equipos/NuevoAlquilerPage"
+import { HistorialEquipoPage } from "@/pages/servicios/equipos/HistorialEquipoPage"
 import { PodcastPage } from "@/pages/servicios/podcast/PodcastPage"
 import { PaquetesPage } from "@/pages/servicios/podcast/PaquetesPage"
+import { NuevaReservaPage } from "@/pages/servicios/podcast/NuevaReservaPage"
+import { NuevaReservaPage as NuevaReservaAulaPage } from "@/pages/servicios/aulas/NuevaReservaPage"
 
 import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPage"
+import { EdicionVideoFormPage } from "@/pages/servicios/edicion-video/EdicionVideoFormPage"
+import { EdicionVideoDetallePage } from "@/pages/servicios/edicion-video/EdicionVideoDetallePage"
 import { RadioPage } from "@/pages/servicios/radio/RadioPage"
 import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
 import { ClientesPage } from "@/pages/clientes/ClientesPage"
@@ -193,11 +200,20 @@ function AppLayout() {
             <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
             <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasPage /></RoleGuard>} />
             <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasGestionPage /></RoleGuard>} />
+            <Route path="/servicios/aulas/nueva-reserva/:aulaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
             <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EquiposPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/nuevo-alquiler/:equipoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoAlquilerPage /></RoleGuard>} />
             <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquileresListPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/:id/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEquipoPage /></RoleGuard>} />
             <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PodcastPage /></RoleGuard>} />
+            <Route path="/servicios/podcast/nueva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaPage /></RoleGuard>} />
             <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PaquetesPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoPage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoFormPage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoDetallePage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoFormPage /></RoleGuard>} />
             <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioPage /></RoleGuard>} />
             <Route path="/servicios/radio/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioHistorialPage /></RoleGuard>} />
             <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioTarifasPage /></RoleGuard>} />

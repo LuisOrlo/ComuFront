@@ -39,6 +39,9 @@ function getServicioNombre(c: any): string {
   const titulo = c.reserva_podcast?.titulo
     || c.reserva_aula?.aula?.nombre
     || c.alquiler_equipo?.equipo?.nombre
+    || c.edicion_video?.titulo
+    || c.reserva_radio?.tarifa?.nombre
+    || c.reserva_radio?.fecha_reserva
   if (titulo) return `${tipo} - ${titulo}`
   const paquete = c.reserva_podcast?.paquete?.nombre
   if (paquete) return `${tipo} - ${paquete}`
@@ -67,7 +70,7 @@ export function ServiciosCuentasPage() {
 
   useEffect(() => {
     Promise.all([
-      financeService.getCuentas({ origen: "servicio", per_page: 50, ...(search ? { search } : {}) }),
+      financeService.getCuentas({ per_page: 200 }),
       financeService.getResumen(),
     ])
       .then(([cuentasData, resumenData]) => {
@@ -76,7 +79,6 @@ export function ServiciosCuentasPage() {
       })
       .catch(() => toast.error("Error al cargar cuentas de servicios"))
       .finally(() => setLoading(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const grouped = useMemo(() => {
@@ -84,6 +86,8 @@ export function ServiciosCuentasPage() {
 
     cuentas.forEach((c: any) => {
       if (!c) return
+      const tipo = getServicioTipo(c)
+      if (tipo === "Servicio") return
       const name = getServicioNombre(c)
       if (!map[name]) map[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, entries: [] }
       const g = map[name]

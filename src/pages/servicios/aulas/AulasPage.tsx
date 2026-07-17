@@ -1,16 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  AddCircleIcon,
   Calendar03Icon,
   Calendar02Icon,
-  SearchIcon,
   Money01Icon,
   InformationCircleIcon,
   UserIcon,
-  Tick02Icon,
   ArrowLeft02Icon,
   ArrowRight02Icon,
   MatrixIcon,
@@ -21,12 +18,10 @@ import {
   IdentificationIcon,
   PackageIcon,
 } from "@hugeicons/core-free-icons"
-import { X, Plus, UserPlus, Users } from "lucide-react"
+import { X, Plus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
-import { personasService, type Persona } from "@/services/personas.service"
-import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { toast } from "sonner"
 import { AulasKPIs } from "./components/AulasKPIs"
 
@@ -82,27 +77,7 @@ export function AulasPage() {
   
   // Reservas
   const [reservas, setReservas] = useState<ReservaAula[]>([])
-  const [reservaModalOpen, setReservaModalOpen] = useState(false)
-  const [reservaForm, setReservaForm] = useState<Partial<ReservaAula>>({
-    fecha_reserva: new Date().toISOString().split('T')[0],
-    hora_inicio: "08:00",
-    hora_fin: "10:00",
-    precio_total: 0,
-    estado: "reservado"
-  })
-
-  // Personas (para uso interno)
-  const [personas, setPersonas] = useState<Persona[]>([])
-
-  // Clientes externos
-  const [clientes, setClientes] = useState<ClienteExterno[]>([])
-  const [loadingClientes, setLoadingClientes] = useState(false)
-  const [clienteSearch, setClienteSearch] = useState("")
-  const [creandoCliente, setCreandoCliente] = useState(false)
-  const [nuevoClienteForm, setNuevoClienteForm] = useState({
-    nombres: "", apellidos: "", cedula: "", correo: "", celular: ""
-  })
-  const [selectedClienteId, setSelectedClienteId] = useState<string>("")
+  const navigate = useNavigate()
 
   // Vista general
   const [modoVista, setModoVista] = useState<"aula" | "general">("aula")
@@ -127,44 +102,6 @@ export function AulasPage() {
       toast.error("Error al cargar aulas")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadPersonas = async () => {
-    try {
-      const res = await personasService.getPersonas({ page: 1 })
-      setPersonas(res.data)
-    } catch {
-      // silent
-    }
-  }
-
-  const loadClientes = async (search?: string) => {
-    try {
-      setLoadingClientes(true)
-      const res = await clientesService.getClientes({ search, per_page: 50 })
-      setClientes(res.data)
-    } catch {
-      // silent
-    } finally {
-      setLoadingClientes(false)
-    }
-  }
-
-  const handleCreateCliente = async () => {
-    try {
-      if (!nuevoClienteForm.nombres.trim()) {
-        toast.error("El nombre es obligatorio")
-        return
-      }
-      const nuevo = await clientesService.createCliente(nuevoClienteForm)
-      toast.success("Cliente externo registrado")
-      setClientes(prev => [nuevo, ...prev])
-      setSelectedClienteId(nuevo.id)
-      setCreandoCliente(false)
-      setNuevoClienteForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
-    } catch (_error: unknown) {
-      toast.error((_error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al crear cliente")
     }
   }
 
@@ -219,62 +156,9 @@ export function AulasPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAulas()
-    loadPersonas()
-    loadClientes()
     loadReservasGenerales()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (clienteSearch) {
-      const timer = setTimeout(() => loadClientes(clienteSearch), 300)
-      return () => clearTimeout(timer)
-    } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      loadClientes()
-    }
-  }, [clienteSearch])
-
-  const calcularPrecio = () => {
-    if (!selectedAula || !reservaForm.hora_inicio || !reservaForm.hora_fin) return 0
-    const [h1, m1] = reservaForm.hora_inicio.split(':').map(Number)
-    const [h2, m2] = reservaForm.hora_fin.split(':').map(Number)
-    const hours = (h2 + m2/60) - (h1 + m1/60)
-    return hours > 0 ? (hours * selectedAula.precio_hora) : 0
-  }
-
-  const precioActual = calcularPrecio()
-
-  const handleSaveReserva = async () => {
-    try {
-      if (!selectedAula) return
-      
-      const payload: Record<string, unknown> = {
-        ...reservaForm,
-        aula_id: selectedAula.id,
-        precio_total: precioActual,
-      }
-
-      if (reservaForm.persona_id !== undefined) {
-        payload.cliente_externo_id = undefined
-      } else if (selectedClienteId) {
-        payload.cliente_externo_id = selectedClienteId
-        payload.persona_id = undefined
-      } else {
-        toast.error("Debe seleccionar o registrar un cliente externo")
-        return
-      }
-
-      await aulasService.createReserva(payload)
-      toast.success("Reserva creada")
-      setReservaModalOpen(false)
-      setCreandoCliente(false)
-      setSelectedClienteId("")
-      loadReservas(selectedAula.id)
-    } catch (_error: unknown) {
-      toast.error((_error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al crear reserva")
-    }
-  }
 
   const hours = Array.from({ length: 14 }, (_, i) => i + 7)
 
@@ -442,22 +326,14 @@ export function AulasPage() {
                     aula={selectedAula}
                     reservas={reservas}
                     onSlotClick={(dateStr, hour) => {
-                      setReservaForm({
-                        fecha_reserva: dateStr,
-                        hora_inicio: `${hour.toString().padStart(2, "0")}:00`,
-                        hora_fin: `${(hour + 1).toString().padStart(2, "0")}:00`,
-                        precio_total: 0,
-                        estado: "reservado",
+                      navigate(`/servicios/aulas/nueva-reserva/${selectedAula.id}`, {
+                        state: { fecha_reserva: dateStr, hora_inicio: `${hour.toString().padStart(2, "0")}:00`, hora_fin: `${(hour + 1).toString().padStart(2, "0")}:00` }
                       })
-                      setCreandoCliente(false)
-                      setSelectedClienteId("")
-                      setReservaModalOpen(true)
                     }}
                     onCrearReserva={() => {
-                      setReservaForm({ fecha_reserva: new Date().toISOString().split("T")[0], hora_inicio: "08:00", hora_fin: "10:00", precio_total: 0, estado: "reservado" })
-                      setCreandoCliente(false)
-                      setSelectedClienteId("")
-                      setReservaModalOpen(true)
+                      navigate(`/servicios/aulas/nueva-reserva/${selectedAula.id}`, {
+                        state: { fecha_reserva: new Date().toISOString().split("T")[0], hora_inicio: "08:00", hora_fin: "10:00" }
+                      })
                     }}
                   />
                 ) : (
@@ -475,357 +351,15 @@ export function AulasPage() {
         </main>
       </div>
 
-      {/* Modal Reserva */}
-      <AnimatePresence>
-        {reservaModalOpen && selectedAula && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setReservaModalOpen(false)}
-              className="absolute inset-0 bg-charcoal/60 backdrop-blur-md" 
-            />
 
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]"
-            >
-              <div className="p-8 border-b flex justify-between items-center shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div className="space-y-1">
-                  <h2 className="text-3xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Nueva Asignación</h2>
-                  <p className="text-xs font-medium opacity-50">Reserva de espacio académico</p>
-                </div>
-                <button onClick={() => setReservaModalOpen(false)} className="size-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="p-8 space-y-8 overflow-y-auto">
-                <div className="p-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-[2rem] flex items-center gap-6 text-white shadow-xl shadow-blue-600/20">
-                  <div className="size-16 rounded-[1.25rem] bg-white/20 flex items-center justify-center shrink-0">
-                    <HugeiconsIcon icon={Calendar03Icon} className="size-8" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-lg font-bold tracking-tight">{selectedAula.nombre}</p>
-                    <p className="text-xs font-bold uppercase tracking-widest opacity-80">${selectedAula.precio_hora}/hora</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-black uppercase tracking-widest opacity-60">Inversión Final</p>
-                    <p className="text-3xl font-black tracking-tighter">${precioActual.toFixed(2)}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Fecha Programada</label>
-                      <input
-                        type="date"
-                        value={reservaForm.fecha_reserva}
-                        onChange={e => setReservaForm({ ...reservaForm, fecha_reserva: e.target.value })}
-                        className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-blue-600/5"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Entrada</label>
-                        <input
-                          type="time"
-                          value={reservaForm.hora_inicio}
-                          onChange={e => setReservaForm({ ...reservaForm, hora_inicio: e.target.value })}
-                          className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-blue-600/5"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Salida</label>
-                        <input
-                          type="time"
-                          value={reservaForm.hora_fin}
-                          onChange={e => setReservaForm({ ...reservaForm, hora_fin: e.target.value })}
-                          className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-blue-600/5"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Estado / Pago</label>
-                      <select 
-                        className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none appearance-none"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        onChange={e => setReservaForm({...reservaForm, estado: e.target.value as ReservaAula['estado']})}
-                      >
-                        <option value="reservado">Por Pagar (Pendiente)</option>
-                        <option value="confirmado">Pagado (Confirmado)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Naturaleza del Uso</label>
-                      <div className="flex gap-2 p-1 bg-gray-50/50 rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        {[
-                          { key: 'interno', label: 'Staff Interno', icon: Users },
-                          { key: 'externo', label: 'Renta Externa', icon: UserPlus }
-                        ].map(({ key, label, icon: Icon }) => {
-                          const active = key === 'interno' ? reservaForm.persona_id !== undefined : reservaForm.persona_id === undefined
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              onClick={() => {
-                                if (key === 'interno') {
-                                  setReservaForm({ ...reservaForm, persona_id: personas[0]?.id ?? "" })
-                                  setSelectedClienteId("")
-                                } else {
-                                  setReservaForm({ ...reservaForm, persona_id: undefined })
-                                }
-                              }}
-                              className={cn(
-                                "flex-1 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5",
-                                active
-                                  ? "bg-charcoal text-white shadow-lg"
-                                  : "bg-transparent text-charcoal/40 hover:bg-black/5"
-                              )}
-                            >
-                              <Icon size={13} />
-                              {label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Staff Interno */}
-                    <AnimatePresence mode="wait">
-                      {reservaForm.persona_id !== undefined ? (
-                        <motion.div 
-                          key="interno"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-2"
-                        >
-                          <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Responsable Designado</label>
-                          <select
-                            value={reservaForm.persona_id || ""}
-                            onChange={e => setReservaForm({ ...reservaForm, persona_id: e.target.value })}
-                            className="w-full px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-blue-600/5 appearance-none"
-                            style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                          >
-                            <option value="">Seleccione personal...</option>
-                            {personas.map(p => (
-                              <option key={p.id} value={p.id}>{p.nombres} {p.apellidos}</option>
-                            ))}
-                          </select>
-                        </motion.div>
-                      ) : (
-                        /* Renta Externa */
-                        <motion.div 
-                          key="externo"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="space-y-4"
-                        >
-                          <div className="flex gap-2 p-1 bg-gray-50/50 rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                            {[
-                              { key: 'select', label: 'Cliente Existente', icon: Users },
-                              { key: 'new', label: 'Nuevo Cliente', icon: UserPlus }
-                            ].map(({ key, label, icon: Icon }) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => setCreandoCliente(key === 'new')}
-                                className={cn(
-                                  "flex-1 py-2.5 rounded-xl text-[8px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1",
-                                  (key === 'new') === creandoCliente
-                                    ? "bg-emerald-600 text-white shadow-md"
-                                    : "bg-transparent text-charcoal/40 hover:bg-black/5"
-                                )}
-                              >
-                                <Icon size={11} />
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-
-                          {creandoCliente ? (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-100"
-                            >
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Nombres *</label>
-                                  <input
-                                    type="text"
-                                    value={nuevoClienteForm.nombres}
-                                    onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, nombres: e.target.value })}
-                                    placeholder="Juan"
-                                    className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Apellidos</label>
-                                  <input
-                                    type="text"
-                                    value={nuevoClienteForm.apellidos}
-                                    onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, apellidos: e.target.value })}
-                                    placeholder="Pérez"
-                                    className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Cédula</label>
-                                  <input
-                                    type="text"
-                                    value={nuevoClienteForm.cedula}
-                                    onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, cedula: e.target.value })}
-                                    placeholder="V-12345678"
-                                    className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Celular</label>
-                                  <input
-                                    type="text"
-                                    value={nuevoClienteForm.celular}
-                                    onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, celular: e.target.value })}
-                                    placeholder="0412-1234567"
-                                    className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                  />
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Correo</label>
-                                <input
-                                  type="email"
-                                  value={nuevoClienteForm.correo}
-                                  onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, correo: e.target.value })}
-                                  placeholder="cliente@email.com"
-                                  className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleCreateCliente}
-                                className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold tracking-wide hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
-                              >
-                                <HugeiconsIcon icon={AddCircleIcon} size={14} />
-                                Registrar Cliente
-                              </button>
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="space-y-2"
-                            >
-                              <div className="relative">
-                                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                  <HugeiconsIcon icon={SearchIcon} size={14} className="opacity-30" />
-                                </div>
-                                <input
-                                  type="text"
-                                  value={clienteSearch}
-                                  onChange={e => setClienteSearch(e.target.value)}
-                                  placeholder="Buscar por nombre, cédula, correo..."
-                                  className="w-full pl-10 pr-4 py-3 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20"
-                                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                                />
-                              </div>
-                              <div className="max-h-[160px] overflow-y-auto rounded-xl border bg-white divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                {loadingClientes ? (
-                                  <div className="p-4 text-center text-xs opacity-40">Buscando...</div>
-                                ) : clientes.length === 0 ? (
-                                  <div className="p-4 text-center text-xs opacity-40">No se encontraron clientes</div>
-                                ) : (
-                                  clientes.map(c => (
-                                    <button
-                                      key={c.id}
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedClienteId(c.id)
-                                        setClienteSearch("")
-                                      }}
-                                      className={cn(
-                                        "w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3",
-                                        selectedClienteId === c.id && "bg-emerald-50 border-l-2 border-emerald-500"
-                                      )}
-                                    >
-                                      <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                                        <HugeiconsIcon icon={UserIcon} size={14} style={{ color: "#059669" }} />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="text-xs font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{c.nombres} {c.apellidos}</p>
-                                        <p className="text-[10px] opacity-50 truncate">{c.cedula && `${c.cedula} · `}{c.correo || c.celular || 'Sin contacto'}</p>
-                                      </div>
-                                      {selectedClienteId === c.id && (
-                                        <HugeiconsIcon icon={Tick02Icon} size={14} className="text-emerald-600 ml-auto shrink-0" />
-                                      )}
-                                    </button>
-                                  ))
-                                )}
-                              </div>
-                              {selectedClienteId && (
-                                <div className="flex items-center gap-2 px-1">
-                                  <div className="size-1.5 rounded-full bg-emerald-500" />
-                                  <span className="text-[10px] font-semibold text-emerald-700">
-                                    Cliente seleccionado: {clientes.find(c => c.id === selectedClienteId)?.nombres}
-                                  </span>
-                                </div>
-                              )}
-                            </motion.div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-8 py-6 bg-gray-50/50 border-t flex justify-end gap-3 shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <button
-                  onClick={() => setReservaModalOpen(false)}
-                  className="px-8 py-4 rounded-2xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10 transition-all active:scale-[0.98]"
-                >
-                  Cerrar
-                </button>
-                <button
-                  onClick={handleSaveReserva}
-                  className="px-12 py-4 rounded-2xl text-sm font-bold text-white transition-all shadow-xl shadow-blue-600/20 bg-gradient-to-r from-blue-600 to-blue-700 active:scale-[0.98]"
-                >
-                  Confirmar y Registrar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Modal detalle de reserva */}
       <AnimatePresence>
         {detalleOpen && detalleReserva && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetalleOpen(false)} className="absolute inset-0 bg-charcoal/60 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl">
-              <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white rounded-[2rem] w-full max-w-xl flex flex-col max-h-[85vh] shadow-2xl">
+              <div className="shrink-0 p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div>
                   <h2 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Detalle de Reserva</h2>
                   <p className="text-xs font-medium opacity-40 mt-0.5">Información completa de la asignación</p>
@@ -834,7 +368,7 @@ export function AulasPage() {
                   <X size={18} />
                 </button>
               </div>
-              <div className="p-6 space-y-5">
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
                 {detalleReserva.aula && (
                   <div className={cn("p-4 rounded-2xl flex items-center gap-4 border", colorForAula(detalleReserva.aula_id).bgLight, colorForAula(detalleReserva.aula_id).border)}>
                     <div className="size-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
@@ -901,7 +435,7 @@ export function AulasPage() {
                   ) : <p className="text-xs opacity-30 italic">No especificado</p>}
                 </div>
               </div>
-              <div className="px-6 py-5 bg-gray-50 border-t flex justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="shrink-0 px-6 py-5 bg-gray-50 border-t flex justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <button onClick={() => setDetalleOpen(false)} className="px-6 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10">Cerrar</button>
               </div>
             </motion.div>

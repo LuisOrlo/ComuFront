@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -19,7 +19,9 @@ interface FieldErrors {
 export function NuevoClientePage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const isEdit = !!id
+  const returnTo = searchParams.get("returnTo")
 
   const [nombres, setNombres] = useState("")
   const [apellidos, setApellidos] = useState("")
@@ -158,11 +160,19 @@ export function NuevoClientePage() {
       if (isEdit && id) {
         await clientesService.updateCliente(id, payload)
         toast.success("Cliente actualizado")
-        navigate(`/clientes/${id}`)
+        if (returnTo) {
+          navigate(returnTo, { state: { nuevoCliente: { ...payload, id } } })
+        } else {
+          navigate(`/clientes/${id}`)
+        }
       } else {
         const created = await clientesService.createCliente(payload)
         toast.success("Cliente registrado")
-        navigate(`/clientes/${(created as ClienteExterno).id}`)
+        if (returnTo) {
+          navigate(returnTo, { state: { nuevoCliente: created } })
+        } else {
+          navigate(`/clientes/${(created as ClienteExterno).id}`)
+        }
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al guardar cliente"

@@ -10,7 +10,7 @@ import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { toast } from "sonner"
 import { OperadorSelector } from "./OperadorSelector"
-import { CrearClienteModal } from "./CrearClienteModal"
+import { useNavigate } from "react-router"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -29,6 +29,7 @@ export function ReservaForm({
   fechaPreseleccionada,
   horaPreseleccionada,
   onSaved,
+  nuevoCliente,
 }: {
   isOpen: boolean
   onClose: () => void
@@ -37,6 +38,7 @@ export function ReservaForm({
   fechaPreseleccionada?: string
   horaPreseleccionada?: string
   onSaved: () => void
+  nuevoCliente?: ClienteExterno
 }) {
   const [tarifaId, setTarifaId] = useState("")
   const [fecha, setFecha] = useState("")
@@ -54,7 +56,7 @@ export function ReservaForm({
   const [clientesDisponibles, setClientesDisponibles] = useState<ClienteOption[]>([])
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [searchingCliente, setSearchingCliente] = useState(false)
-  const [crearClienteOpen, setCrearClienteOpen] = useState(false)
+  const navigate = useNavigate()
   const clienteRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -144,11 +146,15 @@ export function ReservaForm({
     setClientesDisponibles([])
   }
 
-  const handleClienteCreado = (nuevo: ClienteExterno) => {
-    setClienteId(nuevo.id)
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (!nuevoCliente) return
+    setClienteId(nuevoCliente.id)
     setClienteTipo("cliente_externo")
-    setClienteSearch(`${nuevo.nombres} ${nuevo.apellidos || ""}`.trim())
-  }
+    setClienteSearch(`${nuevoCliente.nombres} ${nuevoCliente.apellidos || ""}`.trim())
+    setShowClienteDropdown(false)
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [nuevoCliente])
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -449,7 +455,7 @@ export function ReservaForm({
               </div>
               <button
                 type="button"
-                onClick={() => setCrearClienteOpen(true)}
+                onClick={() => navigate('/clientes/nuevo?returnTo=/servicios/radio')}
                 className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-[0.97] shrink-0"
                 style={{ backgroundColor: "oklch(0.55 0.18 160)", color: "white" }}
                 title="Registrar nuevo cliente"
@@ -547,11 +553,6 @@ export function ReservaForm({
         </div>
       </form>
 
-      <CrearClienteModal
-        open={crearClienteOpen}
-        onClose={() => setCrearClienteOpen(false)}
-        onCreated={handleClienteCreado}
-      />
     </div>
   )
 }

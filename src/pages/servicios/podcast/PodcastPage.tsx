@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Download02Icon } from "@hugeicons/core-free-icons"
 import { Plus } from "lucide-react"
@@ -20,6 +20,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal"
 const hours = Array.from({ length: 14 }, (_, i) => i + 7)
 
 export function PodcastPage() {
+  const navigate = useNavigate()
   const [paquetes, setPaquetes] = useState<PaquetePodcast[]>([])
   const [loading, setLoading] = useState(true)
   const [reservas, setReservas] = useState<ReservaPodcast[]>([])
@@ -208,7 +209,7 @@ export function PodcastPage() {
               Gestionar Paquetes
             </Link>
             <button
-              onClick={() => { setEditingReserva(null); setReservaModalOpen(true) }}
+              onClick={() => navigate("/servicios/podcast/nueva")}
               className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-violet-500/20"
               style={{ backgroundColor: COLORS.ACCENT }}
             >
@@ -321,7 +322,7 @@ export function PodcastPage() {
       </div>
 
       <ReservaModal
-        key={editingReserva?.id || "new"}
+        key={editingReserva?.id || "edit"}
         isOpen={reservaModalOpen}
         onClose={() => { setReservaModalOpen(false); setEditingReserva(null) }}
         paquetes={paquetes}

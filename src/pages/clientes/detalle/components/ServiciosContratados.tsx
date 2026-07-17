@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MusicNote01Icon, Building04Icon, AiPhone01Icon, Camera01Icon } from "@hugeicons/core-free-icons"
+import { MusicNote01Icon, Building04Icon, AiPhone01Icon, Camera01Icon, VideoIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { clientesService } from "@/services/clientes.service"
 import { toast } from "sonner"
@@ -14,6 +14,7 @@ const serviceIcons: Record<string, { icon: typeof MusicNote01Icon; color: string
   aulas: { icon: Building04Icon, color: "oklch(0.55 0.15 220)", bg: "oklch(0.95 0.02 220)", label: "Aulas" },
   podcast: { icon: AiPhone01Icon, color: "oklch(0.55 0.12 280)", bg: "oklch(0.95 0.02 280)", label: "Podcast" },
   equipos: { icon: Camera01Icon, color: "oklch(0.55 0.12 40)", bg: "oklch(0.95 0.02 40)", label: "Equipos" },
+  edicion: { icon: VideoIcon, color: "oklch(0.55 0.16 260)", bg: "oklch(0.95 0.02 260)", label: "Edición de Video" },
 }
 
 type ReservasData = {
@@ -21,6 +22,7 @@ type ReservasData = {
   aulas: Array<Record<string, unknown>>
   podcast: Array<Record<string, unknown>>
   equipos: Array<Record<string, unknown>>
+  edicion: Array<Record<string, unknown>>
 }
 
 export function ServiciosContratados({ clienteId }: ServiciosContratadosProps) {
@@ -28,7 +30,7 @@ export function ServiciosContratados({ clienteId }: ServiciosContratadosProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    clientesService.getClienteReservas(clienteId).then(setData).catch(() => {
+    clientesService.getClienteReservas(clienteId).then(r => setData(r as ReservasData)).catch(() => {
       toast.error("Error al cargar servicios contratados")
     }).finally(() => setLoading(false))
   }, [clienteId])
@@ -50,6 +52,7 @@ export function ServiciosContratados({ clienteId }: ServiciosContratadosProps) {
     { key: "aulas" as const, items: data.aulas },
     { key: "podcast" as const, items: data.podcast },
     { key: "equipos" as const, items: data.equipos },
+    { key: "edicion" as const, items: data.edicion },
   ].filter(s => s.items.length > 0)
 
   if (sections.length === 0) {
@@ -129,6 +132,9 @@ function formatReservaTitle(key: string, item: Record<string, unknown>): string 
     const equipo = item.equipo as Record<string, unknown> | undefined
     return equipo?.nombre ? String(equipo.nombre) : "Alquiler de Equipo"
   }
+  if (key === "edicion") {
+    return String(item.titulo || "Trabajo de Edición")
+  }
   return "Reserva"
 }
 
@@ -143,6 +149,11 @@ function formatReservaDate(key: string, item: Record<string, unknown>): string {
     const entrega = item.fecha_entrega ? new Date(String(item.fecha_entrega)).toLocaleDateString("es-ES") : ""
     const devolucion = item.fecha_devolucion_esperada ? new Date(String(item.fecha_devolucion_esperada)).toLocaleDateString("es-ES") : ""
     return [entrega, devolucion ? `Dev: ${devolucion}` : ""].filter(Boolean).join(" · ")
+  }
+  if (key === "edicion") {
+    const recibo = item.fecha_recibo ? new Date(String(item.fecha_recibo)).toLocaleDateString("es-ES") : ""
+    const limite = item.fecha_limite ? new Date(String(item.fecha_limite)).toLocaleDateString("es-ES") : ""
+    return [recibo, limite ? `Límite: ${limite}` : ""].filter(Boolean).join(" · ")
   }
   return ""
 }

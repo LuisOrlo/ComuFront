@@ -43,6 +43,8 @@ function getNombrePersona(cuenta: any): string {
     || extractNombre(cuenta.alquiler_equipo?.cliente_externo)
     || extractNombre(cuenta.reserva_radio?.persona)
     || extractNombre(cuenta.reserva_radio?.cliente_externo)
+    || extractNombre(cuenta.edicion_video?.cliente)
+    || extractNombre(cuenta.edicion_video?.cliente_externo)
     || "—"
 }
 
@@ -99,6 +101,9 @@ function getCuentaName(cuenta: any): string {
   const titulo = cuenta.reserva_podcast?.titulo
     || cuenta.reserva_aula?.aula?.nombre
     || cuenta.alquiler_equipo?.equipo?.nombre
+    || cuenta.edicion_video?.titulo
+    || cuenta.reserva_radio?.tarifa?.nombre
+    || cuenta.reserva_radio?.fecha_reserva
 
   if (titulo) return `${tipo} - ${titulo}`
 
