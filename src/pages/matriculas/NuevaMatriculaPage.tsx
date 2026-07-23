@@ -199,8 +199,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const sanitizeInput = (campo: string, valor: string): string => {
     if (campo === "telefono") return valor.replace(/[^0-9]/g, "").slice(0, 10)
     if (campo === "cedula" && estudiante.tipo_id === "cedula") return valor.replace(/[^0-9]/g, "").slice(0, 10)
-    if (campo === "nombres" || campo === "apellidos") return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "")
-    return valor
+    if (campo === "cedula") return valor.slice(0, 20).toUpperCase()
+    if (campo === "correo") return valor
+    if (campo === "nombres" || campo === "apellidos") return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "").toUpperCase()
+    return valor.toUpperCase()
   }
 
   const updateEstudiante = (campo: string, valor: string) => {
@@ -274,7 +276,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (campo === "cedula") {
       if (estudiante.tipo_id === "cedula") {
         if (!/^\d{10}$/.test(valor)) return "La cédula debe tener exactamente 10 dígitos"
-      } else if (valor.length < 5) return "El DNI debe tener al menos 5 caracteres"
+      } else {
+        if (valor.length < 5) return "El DNI debe tener al menos 5 caracteres"
+        if (valor.length > 20) return "El DNI no debe exceder los 20 caracteres"
+      }
     }
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
@@ -444,7 +449,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     : !selectedCourseId
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
       <style>{`
         .hover-orange:hover {
           border-color: #fdba74 !important;
@@ -490,9 +495,9 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
           <h2 className="text-sm font-semibold flex items-center gap-2 mb-4" style={{ color: COLORS.CHARCOAL }}>
             <HugeiconsIcon icon={UserIcon} size={16} style={{ color: COLORS.ACCENT }} />Datos del Estudiante
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <div className="flex items-center justify-between mb-1.5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
+            <div className="lg:col-span-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
                 <label className="block text-xs font-medium">{estudiante.tipo_id === "cedula" ? "Cédula" : "DNI"}</label>
                 <div className="flex p-0.5 rounded-lg bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   {["cedula", "dni"].map((type) => (
@@ -531,7 +536,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               {touched.correo && errors.correo && <p className="text-[11px] mt-1 text-red-500">{errors.correo}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 min-w-0">
             <div>
               <label className="block text-xs font-medium mb-1.5">Ocupación</label>
               <input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
@@ -558,14 +563,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             </div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>
-              <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value}); const err = validateField("ciudad", e.target.value); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
+              <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value.toUpperCase()}); const err = validateField("ciudad", e.target.value.toUpperCase()); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
               {ciudadOpen && (
                 <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border bg-white shadow-lg max-h-56 overflow-y-auto" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  {ECUADOR_CITIES.filter(c => !estudiante.ciudad || c.toLowerCase().includes(estudiante.ciudad.toLowerCase())).length === 0 ? (
+                  {ECUADOR_CITIES.filter(c => !estudiante.ciudad || c.toUpperCase().includes(estudiante.ciudad.toUpperCase())).length === 0 ? (
                     <div className="px-3.5 py-2.5 text-sm" style={{ color: COLORS.TEXT_MUTED }}>Sin resultados</div>
                   ) : (
-                    ECUADOR_CITIES.filter(c => !estudiante.ciudad || c.toLowerCase().includes(estudiante.ciudad.toLowerCase())).map(c => (
-                      <button key={c} type="button" onMouseDown={e => { e.preventDefault(); setEstudiante({...estudiante, ciudad: c}); setCiudadOpen(false); setErrors(prev => { const n = { ...prev }; delete n.ciudad; return n }) }} className="w-full text-left px-3.5 py-2 text-sm hover:bg-gray-50" style={{ color: COLORS.CHARCOAL, backgroundColor: estudiante.ciudad === c ? "oklch(0.95 0.01 260)" : "transparent" }}>{c}</button>
+                    ECUADOR_CITIES.filter(c => !estudiante.ciudad || c.toUpperCase().includes(estudiante.ciudad.toUpperCase())).map(c => (
+                      <button key={c} type="button" onMouseDown={e => { e.preventDefault(); setEstudiante({...estudiante, ciudad: c.toUpperCase()}); setCiudadOpen(false); setErrors(prev => { const n = { ...prev }; delete n.ciudad; return n }) }} className="w-full text-left px-3.5 py-2 text-sm hover:bg-gray-50" style={{ color: COLORS.CHARCOAL, backgroundColor: estudiante.ciudad === c ? "oklch(0.95 0.01 260)" : "transparent" }}>{c}</button>
                     ))
                   )}
                 </div>
@@ -580,7 +585,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
           </div>
           <div>
             <br />
-            <label className="block text-xs font-medium mb-1.5">Foto de la Cédula</label>
+            <label className="block text-xs font-medium mb-1.5">Foto de la Cédula2</label>
             <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
               const file = e.target.files?.[0]
               if (!file) return
@@ -599,7 +604,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               setCedulaPreview(URL.createObjectURL(file))
               setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n })
             }} />
-            <div onClick={() => !cedulaPreview && cedulaInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: errors.cedulaFile ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
+            <div onClick={() => !cedulaPreview && cedulaInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: errors.cedulaFile ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
               {cedulaPreview ? <img src={cedulaPreview} className="max-h-64 rounded" alt="Cédula" /> : <div className="flex flex-col items-center gap-2 text-xs text-gray-400"><HugeiconsIcon icon={ImageAdd02Icon} size={32} /><span>Subir foto de cédula</span></div>}
             </div>
             {cedulaPreview && (
@@ -613,7 +618,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       )}
 
       {paso === 2 && (
-        <div className="rounded-xl border p-5 space-y-6 bg-white shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="rounded-xl border p-4 sm:p-6 space-y-6 bg-white shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <StepIndicator subStep={subStep} selectedModalidad={selectedModalidad} selectedTipo={selectedTipo} />
 
           <AnimatePresence mode="wait">

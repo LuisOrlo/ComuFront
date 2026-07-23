@@ -66,13 +66,13 @@ export function PagoForm({ metodoPago, comprobanteFile, comprobantePreview, paym
   const comprobanteInputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="rounded-xl border p-6 space-y-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="rounded-xl border p-4 sm:p-6 space-y-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
       <h2 className="text-sm font-semibold flex items-center gap-2"><HugeiconsIcon icon={CreditCardIcon} size={16} style={{ color: COLORS.ACCENT }} />Método de Pago</h2>
       <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu método de pago y sube el comprobante con el pago completo o el adelanto para finalizar tu matrícula. </p>
       <div className="space-y-6">
         <div>
           <label className="block text-xs font-medium mb-1.5">Método de pago</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {metodosPago.map(m => (
               <button key={m.key} onClick={() => onMetodoPagoChange(m.key)}
                 className="px-3 py-2.5 rounded-lg text-xs font-medium border transition-all hover-orange"
@@ -86,7 +86,7 @@ export function PagoForm({ metodoPago, comprobanteFile, comprobantePreview, paym
         <div>
           <label className="block text-xs font-medium mb-1.5">Comprobante</label>
           <input ref={comprobanteInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) onComprobanteChange(file) }} />
-          <div onClick={() => !comprobantePreview && comprobanteInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: paymentErrors.comprobante ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
+          <div onClick={() => !comprobantePreview && comprobanteInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: paymentErrors.comprobante ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
             {comprobantePreview ? <img src={comprobantePreview} className="max-h-64 rounded" alt="Comprobante" /> : <div className="text-xs text-gray-400">{comprobanteFile ? comprobanteFile.name : "Subir comprobante"}</div>}
           </div>
           {comprobantePreview && (

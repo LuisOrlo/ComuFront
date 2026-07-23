@@ -134,7 +134,7 @@ function AppLayout() {
   }, [fetchPendientes])
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
+    <div className="flex h-[100dvh] overflow-x-hidden bg-gray-50">
       <div
         className={`fixed inset-0 z-40 bg-black/50 lg:hidden transition-opacity duration-300 ${
           mobileOpen ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -154,7 +154,7 @@ function AppLayout() {
         <Sidebar collapsed={collapsed} pendientesCount={pendientesCount} />
       </div>
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
         <TopBar
           onMenuClick={() => setMobileOpen(true)}
           onToggleClick={() => setCollapsed(!collapsed)}

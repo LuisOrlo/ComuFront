@@ -10,7 +10,7 @@ export function NuevaMatriculaPublicaPage() {
 
   if (showSuccess) {
     return (
-      <div className="min-h-[100dvh] flex flex-col overflow-hidden bg-gray-50/50">
+    <div className="min-h-[100dvh] flex flex-col overflow-x-hidden bg-gray-50/50">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="max-w-md w-full bg-white rounded-2xl border p-8 text-center space-y-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="size-16 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)` }}>
@@ -34,7 +34,7 @@ export function NuevaMatriculaPublicaPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col overflow-hidden bg-gray-50/50">
+    <div className="min-h-[100dvh] flex flex-col overflow-x-hidden bg-gray-50/50">
       <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex items-center gap-2 mb-4">

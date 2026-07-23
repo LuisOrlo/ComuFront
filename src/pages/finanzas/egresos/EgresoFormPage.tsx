@@ -11,6 +11,13 @@ import { cn } from "@/lib/utils"
 const CHARCOAL = COLORS.CHARCOAL
 const BORDER = COLORS.BORDER_SUBTLE
 
+const CATEGORIAS = [
+  { id: 1, nombre: 'Personal', tipo_general: 'Personal' },
+  { id: 2, nombre: 'Servicios', tipo_general: 'Servicios' },
+  { id: 3, nombre: 'Equipos', tipo_general: 'Equipos' },
+  { id: 4, nombre: 'Varios', tipo_general: 'Varios' },
+]
+
 const CAT_ICONS: Record<string, { icon: typeof UserIcon; color: string }> = {
   Personal: { icon: UserIcon, color: "#4f46e5" },
   Servicios: { icon: AiFolderIcon, color: "#d97706" },
@@ -28,7 +35,7 @@ export function EgresoFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isEdit = !!id
-  const [categorias, setCategorias] = useState<Array<{ id: number; nombre: string; tipo_general: string }>>([])
+  const [categorias] = useState(CATEGORIAS)
   const [personal, setPersonal] = useState<PersonalItem[]>([])
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -45,7 +52,6 @@ export function EgresoFormPage() {
   const esPersonal = categoriaSeleccionada?.nombre === "Personal"
 
   useEffect(() => {
-    financeService.getEgresoCategorias().then(r => setCategorias(r.data || []))
     financeService.getPersonalDisponible().then(setPersonal).catch(() => {})
     if (isEdit) {
       financeService.getEgresos({}).then((r: { data?: Array<Record<string, unknown>> }) => {
