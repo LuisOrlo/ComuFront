@@ -15,10 +15,9 @@ import { StepIndicator } from "./components/StepIndicator"
 import { ModalidadStep } from "./components/ModalidadStep"
 import { CiudadStep } from "./components/CiudadStep"
 import { TipoStep } from "./components/TipoStep"
-import { CatalogoStep } from "./components/CatalogoStep"
 import { ListaStep } from "./components/ListaStep"
 import { PagoForm } from "./components/PagoForm"
-import { useCatalogos, useCursosAbiertos, useTalleres } from "@/hooks/useMatriculaData"
+import { useCursosAbiertos, useTalleres } from "@/hooks/useMatriculaData"
 
 type Paso = 1 | 2 | 3
 
@@ -72,13 +71,11 @@ const TIPO_OPTIONS = [
 
 export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean; onSuccess?: () => void }) {
   const [paso, setPaso] = useState<Paso>(1)
-  const [subStep, setSubStep] = useState<"modalidad" | "ciudad" | "tipo" | "catalogo" | "lista">("modalidad")
+  const [subStep, setSubStep] = useState<"modalidad" | "ciudad" | "tipo" | "lista">("modalidad")
   const [selectedModalidad, setSelectedModalidad] = useState("")
   const [selectedCiudadId, setSelectedCiudadId] = useState<number | null>(null)
   const [selectedCiudadNombre, setSelectedCiudadNombre] = useState("")
   const [selectedTipo, setSelectedTipo] = useState("")
-  const [selectedCatalogoNombre, setSelectedCatalogoNombre] = useState("")
-  const [catalogoFilter, setCatalogoFilter] = useState("")
   const [selectedCourseId, setSelectedCourseId] = useState("")
   const [estudiante, setEstudiante] = useState<EstudianteData>({
     tipo_id: "cedula",
@@ -105,8 +102,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     { key: "transferencia", label: "Transferencia/Deposito" },
   ]
 
-  const { data: catalogos = [], isLoading: loadingCatalogos } = useCatalogos(subStep === "catalogo")
-
   const {
     data: cursosAbiertos = [],
     isLoading: loadingCursos,
@@ -114,7 +109,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   } = useCursosAbiertos({
     modalidad: selectedModalidad,
     ciudadId: selectedCiudadId,
-    catalogoFilter,
     enabled: !!selectedModalidad,
   })
 
@@ -136,7 +130,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (talleresError) toast.error("No se pudieron cargar los talleres disponibles")
   }, [talleresError])
 
-  const isLoadingData = loadingCursos || loadingTalleres || loadingCatalogos
+  const isLoadingData = loadingCursos || loadingTalleres
 
   const ciudades = useMemo(() => {
     const seen = new Set<number>()
@@ -155,11 +149,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     }
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre))
   }, [cursosAbiertos, talleres])
-
-  const cursosFiltrados = useMemo(() => {
-    if (!catalogoFilter) return cursosAbiertos
-    return cursosAbiertos.filter(c => c.catalogo?.id === catalogoFilter)
-  }, [cursosAbiertos, catalogoFilter])
 
   const curso = cursosAbiertos.find(c => c.id === selectedCourseId)
   const tallerSel = talleres.find(t => t.id === selectedCourseId)
@@ -201,6 +190,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (campo === "cedula" && estudiante.tipo_id === "cedula") return valor.replace(/[^0-9]/g, "").slice(0, 10)
     if (campo === "cedula") return valor.slice(0, 20).toUpperCase()
     if (campo === "correo") return valor
+    if (campo === "estado_civil") return valor
     if (campo === "nombres" || campo === "apellidos") return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "").toUpperCase()
     return valor.toUpperCase()
   }
@@ -375,8 +365,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     setSelectedCiudadId(null)
     setSelectedCiudadNombre("")
     setSelectedTipo("")
-    setCatalogoFilter("")
-    setSelectedCatalogoNombre("")
     if (mod === "virtual") setSubStep("tipo")
     else setSubStep("ciudad")
   }
@@ -390,15 +378,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
 
   const handleTipoSelect = (tipo: string) => {
     setSelectedTipo(tipo)
-    setCatalogoFilter("")
-    setSelectedCatalogoNombre("")
-    setSelectedCourseId("")
-    setSubStep(tipo === "taller" ? "lista" : "catalogo")
-  }
-
-  const handleCatalogoSelect = (id: string, nombre: string) => {
-    setCatalogoFilter(id)
-    setSelectedCatalogoNombre(nombre)
     setSelectedCourseId("")
     setSubStep("lista")
   }
@@ -409,8 +388,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
 
   const handleSwitchToTaller = () => {
     setSelectedTipo("taller")
-    setCatalogoFilter("")
-    setSelectedCatalogoNombre("")
     setSubStep("lista")
   }
 
@@ -421,11 +398,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       if (selectedModalidad === "virtual") setSubStep("modalidad")
       else setSubStep("ciudad")
     }
-    else if (subStep === "catalogo") setSubStep("tipo")
-    else if (subStep === "lista") {
-      if (selectedTipo === "taller") setSubStep("tipo")
-      else setSubStep("catalogo")
-    }
+    else if (subStep === "lista") setSubStep("tipo")
   }
 
   const handleWizardNext = () => {
@@ -435,17 +408,12 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       else setSubStep("ciudad")
     }
     else if (subStep === "ciudad" && selectedCiudadId) setSubStep("tipo")
-    else if (subStep === "tipo" && selectedTipo) {
-      if (selectedTipo === "taller") setSubStep("lista")
-      else setSubStep("catalogo")
-    }
-    else if (subStep === "catalogo" && catalogoFilter) setSubStep("lista")
+    else if (subStep === "tipo" && selectedTipo) setSubStep("lista")
   }
 
   const wizardNextDisabled = subStep === "modalidad" ? !selectedModalidad
     : subStep === "ciudad" ? !selectedCiudadId
     : subStep === "tipo" ? !selectedTipo
-    : subStep === "catalogo" ? !catalogoFilter
     : !selectedCourseId
 
   return (
@@ -477,13 +445,13 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       <div className="flex items-center gap-0">
         {pasos.map((p, i) => (
           <div key={p.num} className="flex items-center gap-0 flex-1">
-            <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg text-xs font-semibold transition-colors"
+            <div className="flex items-center gap-1 sm:gap-2.5 px-2 sm:px-4 py-3 rounded-lg text-xs font-semibold transition-colors"
               style={{ backgroundColor: paso >= p.num ? `color-mix(in srgb, ${COLORS.ACCENT} 12%, transparent)` : "transparent", color: paso >= p.num ? COLORS.ACCENT : COLORS.TEXT_MUTED }}>
               <div className="size-6 rounded-full flex items-center justify-center text-[11px] font-bold"
                 style={{ backgroundColor: paso >= p.num ? COLORS.ACCENT : "oklch(0.90 0 0)", color: paso >= p.num ? "#fff" : COLORS.TEXT_MUTED }}>
                 {paso > p.num ? <HugeiconsIcon icon={CheckCircle} size={14} /> : p.num}
               </div>
-              <span className="hidden sm:inline">{p.label}</span>
+              <span className="inline truncate max-w-[80px] sm:max-w-none">{p.label}</span>
             </div>
             {i < pasos.length - 1 && <div className="flex-1 h-px mx-2" style={{ backgroundColor: paso > p.num ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }} />}
           </div>
@@ -619,7 +587,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
 
       {paso === 2 && (
         <div className="rounded-xl border p-4 sm:p-6 space-y-6 bg-white shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <StepIndicator subStep={subStep} selectedModalidad={selectedModalidad} selectedTipo={selectedTipo} />
+          <StepIndicator subStep={subStep} selectedModalidad={selectedModalidad} />
 
           <AnimatePresence mode="wait">
             {subStep === "modalidad" && (
@@ -631,11 +599,8 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             {subStep === "tipo" && (
               <TipoStep availableTipos={availableTipos} selectedTipo={selectedTipo} loadingCursos={isLoadingData} selectedModalidad={selectedModalidad} selectedCiudadNombre={selectedCiudadNombre} onSelect={handleTipoSelect} onBack={() => selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} />
             )}
-            {subStep === "catalogo" && (
-              <CatalogoStep catalogos={catalogos} cursosAbiertos={cursosAbiertos} selectedModalidad={selectedModalidad} selectedCiudadNombre={selectedCiudadNombre} selectedTipo={selectedTipo} catalogoFilter={catalogoFilter} loadingCursos={isLoadingData} onSelect={handleCatalogoSelect} onBack={() => setSubStep("tipo")} />
-            )}
             {subStep === "lista" && (
-              <ListaStep talleres={talleres} cursosAbiertos={cursosFiltrados} selectedCourseId={selectedCourseId} selectedTipo={selectedTipo} selectedCatalogoNombre={selectedCatalogoNombre} loadingCursos={isLoadingData} onSelect={handleCursoSelect} onSwitchToTaller={handleSwitchToTaller} onBack={() => selectedTipo === "taller" ? setSubStep("tipo") : setSubStep("catalogo")} />
+              <ListaStep talleres={talleres} cursosAbiertos={cursosAbiertos} selectedCourseId={selectedCourseId} selectedTipo={selectedTipo} loadingCursos={isLoadingData} onSelect={handleCursoSelect} onSwitchToTaller={handleSwitchToTaller} onBack={() => setSubStep("tipo")} />
             )}
           </AnimatePresence>
 

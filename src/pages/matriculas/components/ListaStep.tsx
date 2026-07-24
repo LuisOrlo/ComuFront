@@ -64,14 +64,13 @@ interface ListaStepProps {
   cursosAbiertos: CursoAbierto[]
   selectedCourseId: string
   selectedTipo: string
-  selectedCatalogoNombre: string
   loadingCursos: boolean
   onSelect: (id: string) => void
   onSwitchToTaller: () => void
   onBack: () => void
 }
 
-export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, selectedTipo, selectedCatalogoNombre, loadingCursos, onSelect, onSwitchToTaller, onBack }: ListaStepProps) {
+export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, selectedTipo, loadingCursos, onSelect, onSwitchToTaller, onBack }: ListaStepProps) {
   return (
     <motion.div
       key="lista"
@@ -82,19 +81,11 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, selected
       className="space-y-4"
     >
       <div className="flex items-center gap-2 flex-wrap">
-        {selectedTipo === "taller" ? (
-          <>
-            <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
-            <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>Taller</span>
-            <button onClick={onBack} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
-          </>
-        ) : (
-          <>
-            <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo de curso selecionado:</span>
-            <span className="text-sm font-bold" style={{ color: COLORS.ACCENT }}>{selectedCatalogoNombre}</span>
-            <button onClick={onBack} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
-          </>
-        )}
+        <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Tipo:</span>
+        <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>
+          {selectedTipo === "taller" ? "Taller" : selectedTipo === "personalizado" ? "Curso Personalizado" : "Curso"}
+        </span>
+        <button onClick={onBack} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cambiar</button>
       </div>
       {loadingCursos ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -152,15 +143,23 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, selected
                     <div className="space-y-1.5 text-xs">
                       <div className="flex items-center gap-1.5">
                         <HugeiconsIcon icon={Calendar01Icon} size={13} style={{ color: COLORS.ACCENT }} />
+                        <span style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
                         <span style={{ color: COLORS.CHARCOAL }}>{formatDateRange(t.fecha ?? null, t.fecha_fin ?? null)}</span>
                       </div>
                       {(() => {
                         const horarioStr = agruparHorariosTaller(t.horarios)
                         if (horarioStr) {
+                          const idx = horarioStr.lastIndexOf("  ·  ")
+                          const days = idx >= 0 ? horarioStr.substring(0, idx) : ""
+                          const time = idx >= 0 ? horarioStr.substring(idx + 5) : horarioStr
+                          const hasDays = days.length > 0
                           return (
                             <div className="flex items-start gap-1.5">
                                <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} className="mt-0.5 shrink-0" />
-                              <span style={{ color: COLORS.CHARCOAL }}>{horarioStr}</span>
+                              <div className="min-w-0">
+                                {hasDays && <div><span style={{ color: COLORS.TEXT_MUTED }}>Horario: </span><span style={{ color: COLORS.CHARCOAL }}>{days}</span></div>}
+                                <div><span style={{ color: COLORS.TEXT_MUTED }}>Hora: </span><span style={{ color: COLORS.CHARCOAL }}>{time}</span></div>
+                              </div>
                             </div>
                           )
                         }
@@ -168,6 +167,7 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, selected
                           return (
                             <div className="flex items-center gap-1.5">
                               <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} />
+                              <span style={{ color: COLORS.TEXT_MUTED }}>Hora: </span>
                               <span style={{ color: COLORS.CHARCOAL }}>{t.hora_inicio.substring(0, 5)} - {t.hora_fin.substring(0, 5)}</span>
                             </div>
                           )
@@ -182,35 +182,52 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, selected
               const ca = cursosAbiertos.find(c => c.id === item.id)
               if (!ca) return null
               return (
-                <div key={ca.id} onClick={() => onSelect(ca.id)}
-                  className="rounded-lg border p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98] hover-orange"
-                  style={{ borderColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="size-6 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "oklch(0.92 0.08 220)" }}>
-                      <HugeiconsIcon icon={GraduationCapIcon} size={12} style={{ color: "oklch(0.45 0.12 220)" }} />
+                  <div key={ca.id} onClick={() => onSelect(ca.id)}
+                    className="rounded-lg border p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98] hover-orange"
+                    style={{ borderColor: selected ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selected ? `color-mix(in srgb, ${COLORS.ACCENT} 4%, transparent)` : "white", borderLeft: `3px solid ${selected ? COLORS.ACCENT : "#e5e7eb"}` }}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="size-6 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "oklch(0.92 0.08 220)" }}>
+                        <HugeiconsIcon icon={GraduationCapIcon} size={12} style={{ color: "oklch(0.45 0.12 220)" }} />
+                      </div>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ backgroundColor: "oklch(0.92 0.08 220)", color: "oklch(0.45 0.12 220)" }}>Curso</span>
+                      {ca.catalogo?.nombre && (
+                        <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: "oklch(0.94 0.04 280)", color: "oklch(0.45 0.08 280)" }}>
+                          {ca.catalogo.nombre}
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                      style={{ backgroundColor: "oklch(0.92 0.08 220)", color: "oklch(0.45 0.12 220)" }}>Curso</span>
-                  </div>
-                  <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={Calendar01Icon} size={13} style={{ color: COLORS.ACCENT }} />
-                      <span style={{ color: COLORS.CHARCOAL }}>{formatDateRange(ca.fecha_inicio, ca.fecha_fin)}</span>
-                    </div>
-                    {(() => {
-                      const horarioStr = agruparHorariosCurso(ca.horario)
-                      if (horarioStr) {
-                        return (
-                          <div className="flex items-start gap-1.5">
-                            <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} className="mt-0.5 shrink-0" />
-                            <span style={{ color: COLORS.CHARCOAL }}>{horarioStr}</span>
-                          </div>
-                        )
-                      }
-                      return null
-                    })()}
+                    <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selected ? COLORS.ACCENT : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
+                    {ca.catalogo?.descripcion && (
+                      <p className="text-[11px] mb-2 line-clamp-2" style={{ color: COLORS.TEXT_MUTED }}>{ca.catalogo.descripcion}</p>
+                    )}
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <HugeiconsIcon icon={Calendar01Icon} size={13} style={{ color: COLORS.ACCENT }} />
+                        <span style={{ color: COLORS.TEXT_MUTED }}>Fecha:</span>
+                        <span style={{ color: COLORS.CHARCOAL }}>{formatDateRange(ca.fecha_inicio, ca.fecha_fin)}</span>
+                      </div>
+                      {(() => {
+                        const horarioStr = agruparHorariosCurso(ca.horario)
+                        if (horarioStr) {
+                          const idx = horarioStr.lastIndexOf("  ·  ")
+                          const days = idx >= 0 ? horarioStr.substring(0, idx) : ""
+                          const time = idx >= 0 ? horarioStr.substring(idx + 5) : horarioStr
+                          const hasDays = days.length > 0
+                          return (
+                            <div className="flex items-start gap-1.5">
+                              <HugeiconsIcon icon={Clock01Icon} size={13} style={{ color: "oklch(0.55 0.15 220)" }} className="mt-0.5 shrink-0" />
+                              <div className="min-w-0">
+                                {hasDays && <div><span style={{ color: COLORS.TEXT_MUTED }}>Horario: </span><span style={{ color: COLORS.CHARCOAL }}>{days}</span></div>}
+                                <div><span style={{ color: COLORS.TEXT_MUTED }}>Hora: </span><span style={{ color: COLORS.CHARCOAL }}>{time}</span></div>
+                              </div>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
                   </div>
                   {selected && <div className="absolute top-1.5 right-1.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: COLORS.ACCENT }} /></div>}
                 </div>

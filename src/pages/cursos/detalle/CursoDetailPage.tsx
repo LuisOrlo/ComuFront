@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from "react"
+import { useState, useEffect } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -19,6 +19,7 @@ import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { generarListadoAsistenciaPDF, generarListadoParticipantesCursoPDF } from "@/lib/generarAsistenciaPDF"
 import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
+import { CursoEstudiantesTable } from "./CursoEstudiantesTable"
 import { CursoPagosSection } from "./CursoPagosSection"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
@@ -338,14 +339,14 @@ export function CursoDetailPage() {
                           return {
                             nombres: e?.nombres || ext?.nombres || sol?.nombres || "",
                             apellidos: e?.apellidos || ext?.apellidos || sol?.apellidos || "",
-                            cedula: e?.cedula || sol?.cedula || ext?.cedula || "—",
-                            correo: e?.correo || sol?.correo || ext?.correo || "—",
+                            ciudad: e?.ciudad || sol?.ciudad || ext?.ciudad || "—",
+                            ocupacion: e?.perfil_estudiante?.ocupacion || sol?.perfil_estudiante?.ocupacion || "—",
                             fechaInscripcion: m.fecha_inscripcion ? new Date(m.fecha_inscripcion).toLocaleDateString("es-ES") : "—",
                           }
                         })
                         await generarListadoParticipantesCursoPDF(curso.nombre, participantes, id!)
                         toast.success("PDF descargado")
-                      } catch { toast.error("Error al generar PDF") }
+    } catch (e) { console.error(e); toast.error("Error al generar PDF") }
                     }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                       <HugeiconsIcon icon={Download01Icon} size={14} />PDF
@@ -353,27 +354,11 @@ export function CursoDetailPage() {
                     <button
   onClick={async () => {
     if (!curso) return;
-
-    const nombres = matriculas.map((m) => {
-      const e = m.estudiante;
-      const ext = m.solicitud_inscripcion?.participante_externo;
-      const sol = m.solicitud_inscripcion?.estudiante;
-
-      return (
-        [e?.nombres || ext?.nombres || sol?.nombres || "", e?.apellidos || ext?.apellidos || sol?.apellidos || ""]
-          .filter(Boolean)
-          .join(" ") || "—"
-      );
-    });
-
-    await generarListadoAsistenciaPDF(
-      curso.nombre,
-      `${curso.horaInicio || ""} - ${curso.horaFin || ""}`,
-      nombres,
-      curso.instructor ?? undefined
-    );
-
-    toast.success("Listado de asistencia descargado");
+    try {
+      const data = await cursosService.getAsistenciaPDFData(id!)
+      await generarListadoAsistenciaPDF(data)
+      toast.success("Listado de asistencia descargado");
+    } catch { toast.error("Error al generar PDF") }
   }}
   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold
              bg-emerald-600 text-white
@@ -397,35 +382,7 @@ export function CursoDetailPage() {
                   <p className="text-sm font-medium">Sin estudiantes matriculados</p>
                 </div>
               ) : (
-                <div className="border rounded-xl overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr style={{ backgroundColor: COLORS.CHARCOAL + "06" }}>
-                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estudiante</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Correo</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Inscripción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
-                      {matriculas.map((m) => (
-                        <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-5 py-3.5 font-medium" style={{ color: COLORS.CHARCOAL }}>
-                            {m.estudiante?.nombres || m.solicitud_inscripcion?.estudiante?.nombres || m.solicitud_inscripcion?.participante_externo?.nombres || "—"} {m.estudiante?.apellidos || m.solicitud_inscripcion?.estudiante?.apellidos || m.solicitud_inscripcion?.participante_externo?.apellidos || ""}
-                          </td>
-                          <td className="px-5 py-3.5" style={{ color: COLORS.CHARCOAL }}>{m.estudiante?.cedula || m.solicitud_inscripcion?.estudiante?.cedula || m.solicitud_inscripcion?.participante_externo?.cedula || "—"}</td>
-                          <td className="px-5 py-3.5" style={{ color: COLORS.TEXT_MUTED }}>{m.estudiante?.correo || m.solicitud_inscripcion?.estudiante?.correo || m.solicitud_inscripcion?.participante_externo?.correo || "—"}</td>
-                          <td className="px-5 py-3.5 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                            {m.fecha_inscripcion ? new Date(m.fecha_inscripcion).toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="px-5 py-3 text-xs font-medium border-t" style={{ backgroundColor: COLORS.CHARCOAL + "04", color: COLORS.TEXT_MUTED, borderTopColor: COLORS.BORDER_SUBTLE }}>
-                    {matriculas.length} estudiante{matriculas.length !== 1 ? "s" : ""} matriculado{matriculas.length !== 1 ? "s" : ""}
-                  </div>
-                </div>
+                <CursoEstudiantesTable matriculas={matriculas} />
               )}
             </div>
           )}

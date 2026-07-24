@@ -19,10 +19,10 @@ export function ModalidadStep({ selectedModalidad, onSelect }: ModalidadStepProp
       className="space-y-4"
     >
       <p className="text-sm font-medium" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu modalidad</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {["presencial", "virtual"].map(mod => (
           <button key={mod} onClick={() => onSelect(mod)}
-            className="rounded-xl border-2 p-6 text-center cursor-pointer transition-all hover:shadow-md active:scale-[0.98] hover-orange"
+            className="rounded-xl border-2 p-4 sm:p-6 text-center cursor-pointer transition-all hover:shadow-md active:scale-[0.98] hover-orange"
             style={{ borderColor: selectedModalidad === mod ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white" }}>
             <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3"
               style={{ backgroundColor: selectedModalidad === mod ? `color-mix(in srgb, ${COLORS.ACCENT} 15%, transparent)` : "oklch(0.93 0 0)" }}>

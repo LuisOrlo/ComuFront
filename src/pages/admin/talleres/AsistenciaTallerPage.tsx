@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { usePermission } from "@/hooks/usePermission"
-import { useAuth } from "@/context/AuthContext"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon, SaveIcon, InformationCircleIcon,
@@ -28,7 +27,6 @@ export function AsistenciaTallerPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { isAdmin, isSecretaria } = usePermission()
-  const { user } = useAuth()
   const [taller, setTaller] = useState<Taller | null>(null)
   const [inscripciones, setInscripciones] = useState<InscripcionTaller[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,15 +123,8 @@ export function AsistenciaTallerPage() {
   const handleDescargarPDF = async () => {
     if (!taller) return
     try {
-      const activos = inscripciones.filter(i => i.estado === "activo")
-      const nombres = activos.map(i => `${i.nombres} ${i.apellidos}`)
-      const horario = `${taller.hora_inicio || "—"} - ${taller.hora_fin || "—"}`
-      const instructorName = taller.instructor
-        ? `${taller.instructor.nombres} ${taller.instructor.apellidos}`
-        : user?.persona
-          ? `${user.persona.nombres || ""} ${user.persona.apellidos || ""}`.trim() || undefined
-          : undefined
-      await generarListadoAsistenciaPDF(taller.nombre, horario, nombres, instructorName)
+      const data = await tallerService.getAsistenciaPDFData(taller.id)
+      await generarListadoAsistenciaPDF({ ...data, tipo: "taller" })
       toast.success("Listado de asistencia descargado")
     } catch {
       toast.error("Error al generar el PDF")

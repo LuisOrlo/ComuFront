@@ -257,7 +257,7 @@ export function CursoFormPage() {
     const newErrors: Record<string, string> = {}
     if (step === 1) {
       if (!form.catalogo_curso_id) newErrors.catalogo_curso_id = "Selecciona un catálogo"
-      if (!form.docente_id) newErrors.docente_id = "Selecciona un docente"
+
     } else if (step === 2) {
       if (!form.nombre_instancia.trim()) newErrors.nombre_instancia = "El nombre es obligatorio"
       if (!form.fecha_inicio) newErrors.fecha_inicio = "La fecha de inicio es obligatoria"
@@ -314,7 +314,7 @@ export function CursoFormPage() {
         hora_fin: form.hora_fin || undefined,
         capacidad_maxima: form.capacidad_maxima,
         precio_base: Number(form.precio_base) || 0,
-        docente_id: form.docente_id,
+        docente_id: form.docente_id || undefined,
         modalidad: form.modalidad,
         ciudad_id: form.ciudad_id || undefined,
         observaciones: form.observaciones || undefined,
@@ -450,7 +450,7 @@ export function CursoFormPage() {
 
               <div>
                 <label className={label} style={{ color: CHARCOAL }}>
-                  Docente Responsable <span style={{ color: "#ef4444" }}>*</span>
+                  Docente Responsable
                 </label>
                 <div className="relative mb-2.5">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: TEXT_MUTED }} />

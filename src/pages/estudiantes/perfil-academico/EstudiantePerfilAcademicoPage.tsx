@@ -8,7 +8,6 @@ import { InfoTabContent } from "../sections/InfoTabContent"
 import { OverviewTabContent } from "../sections/OverviewTabContent"
 import { AcademicTabContent } from "../sections/AcademicTabContent"
 import { FinancialTabContent } from "../sections/FinancialTabContent"
-import { PagoInicialMatriculaModal } from "../components/PagoInicialMatriculaModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { estudiantesService } from "@/services/estudiantes.service"
@@ -25,12 +24,6 @@ const tabs = [
 
 export function EstudiantePerfilAcademicoPage() {
   const { id } = useParams<{ id: string }>()
-  const [pagoInicialOpen, setPagoInicialOpen] = useState(false)
-  const [pagoInicialData, setPagoInicialData] = useState<{
-    lineasPagoIds: string[]
-    matriculaId: string
-    cursoNombre: string
-  } | null>(null)
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [cedulaPurgado, setCedulaPurgado] = useState(false)
@@ -238,24 +231,10 @@ export function EstudiantePerfilAcademicoPage() {
             <AcademicTabContent data={academicData} loading={loading && !academicData} />
           )}
           {activeTab === "financiero" && (
-            <FinancialTabContent data={financialData} loading={loading && !financialData}
-              onPagoInicial={(data) => { setPagoInicialData(data); setPagoInicialOpen(true) }} />
+            <FinancialTabContent data={financialData} loading={loading && !financialData} />
           )}
         </div>
       </div>
-
-      {pagoInicialData && (
-        <PagoInicialMatriculaModal
-          open={pagoInicialOpen}
-          onOpenChange={setPagoInicialOpen}
-          lineasPagoIds={pagoInicialData.lineasPagoIds}
-          matriculaId={pagoInicialData.matriculaId}
-          cursoNombre={pagoInicialData.cursoNombre}
-          estudianteNombre={name}
-          estudianteCedula={studentData?.cedula || academicData?.estudiante.cedula}
-          onCompleted={() => { setPagoInicialOpen(false); setPagoInicialData(null) }}
-        />
-      )}
 
       {showCedulaModal && cedulaUrl && (
         <ImageZoom

@@ -1,4 +1,5 @@
 import api from "./auth.service"
+import type { DatosAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 
 export interface InstructorCurso {
   id: string
@@ -182,6 +183,11 @@ export const instructorService = {
   async getAsistenciaClase(claseId: string): Promise<AsistenciaClaseEstudiante[]> {
     const response = await api.get(`/instructor/clases/${claseId}/asistencia`)
     return response.data.datos
+  },
+
+  async getAsistenciaPDFData(cursoId: string): Promise<DatosAsistenciaPDF> {
+    const response = await api.get(`/instructor/cursos/${cursoId}/asistencia-pdf`)
+    return response.data
   },
 
   async getTodosEstudiantes(): Promise<EstudianteUnificado[]> {

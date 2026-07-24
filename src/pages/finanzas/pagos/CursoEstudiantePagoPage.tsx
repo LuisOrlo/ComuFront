@@ -193,9 +193,9 @@ export function CursoEstudiantePagoPage() {
                         className="size-4 rounded border-gray-300"
                       />
                       <div>
-                        <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                          {m.nombre_modulo}
-                        </span>
+                          <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
+                            {(m as any).tipo === 'inscripcion' ? 'Inscripción / Matrícula' : m.nombre_modulo}
+                          </span>
                         {m.motivo_ajuste && (
                           <span className="text-[11px] italic opacity-50 ml-1.5">
                             ({m.motivo_ajuste})

@@ -218,15 +218,15 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <th className="text-left font-semibold px-4 py-3 w-8" style={{ color: COLORS.TEXT_MUTED }}>#</th>
                     <th className="text-left font-semibold px-5 py-3" style={{ color: COLORS.TEXT_MUTED }}>Estudiante</th>
-                    <th className="text-left font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
                     <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
                     <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Porcentaje</th>
                     <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {overviewEstudiantes.map(e => {
+                  {overviewEstudiantes.map((e, idx) => {
                     const asistidas = e.clases_asistidas || 0
                     const totales = e.total_clases || 0
                     const pct = e.porcentaje_asistencia || 0
@@ -235,11 +235,9 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                       : { bg: "#fee2e2", text: "#991b1b" }
                     return (
                       <tr key={e.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: COLORS.TEXT_MUTED }}>{idx + 1}</td>
                         <td className="px-5 py-3 font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
                           {e.estudiante ? `${e.estudiante.nombres} ${e.estudiante.apellidos}` : e.participante_externo ? `${e.participante_externo.nombres} ${e.participante_externo.apellidos ?? ""}` : "—"}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap" style={{ color: COLORS.TEXT_MUTED }}>
-                          {e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-center font-semibold" style={{ color: COLORS.CHARCOAL }}>
                           {asistidas}/{totales}

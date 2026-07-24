@@ -171,12 +171,31 @@ export function TallerFormPage() {
     setInstructorQuery("")
   }
 
+  const validate = (): boolean => {
+    const errors: string[] = []
+    if (!form.nombre.trim()) errors.push("El nombre del taller es obligatorio")
+    if (!form.fecha) errors.push("La fecha de inicio es obligatoria")
+    if (multiDia && !form.fecha_fin) errors.push("La fecha de fin es obligatoria")
+    if (!multiDia && !form.hora_inicio) errors.push("La hora de inicio es obligatoria")
+    if (!multiDia && !form.hora_fin) errors.push("La hora de fin es obligatoria")
+    if (!form.capacidad_maxima || parseInt(form.capacidad_maxima) < 1) errors.push("La capacidad máxima debe ser al menos 1")
+    if (!form.precio || parseFloat(form.precio) < 0) errors.push("El precio es obligatorio")
+    if (multiDia && diasSeleccionados.length === 0) errors.push("Selecciona al menos un día para el taller")
+    if (errors.length > 0) {
+      toast.error(errors[0])
+      return false
+    }
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validate()) return
     setSaving(true)
     try {
       const data: any = {
         ...form,
+        instructor_id: form.instructor_id || undefined,
         capacidad_maxima: parseInt(form.capacidad_maxima),
         precio: parseFloat(form.precio),
         ciudad_id: form.modalidad === "virtual" ? undefined : (form.ciudad_id || undefined),

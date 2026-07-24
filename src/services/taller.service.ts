@@ -1,4 +1,5 @@
 import api, { apiMultipart } from "./auth.service"
+import type { DatosAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 
 const PREFIX = "/academic"
 
@@ -136,6 +137,11 @@ export const tallerService = {
     return res.data
   },
 
+  async getInscripcionById(id: string) {
+    const res = await api.get(`${PREFIX}/inscripciones-talleres/${id}`)
+    return res.data
+  },
+
   // Público (sin prefix académico)
   async inscribir(data: Record<string, unknown> | FormData) {
     const client = data instanceof FormData ? apiMultipart : api
@@ -220,6 +226,11 @@ export const tallerService = {
   // Para instructor
   async listarPorInstructor(instructorId: string, params?: Record<string, unknown>) {
     const res = await api.get(`${PREFIX}/talleres`, { params: { ...params, instructor_id: instructorId } })
+    return res.data
+  },
+
+  async getAsistenciaPDFData(tallerId: string): Promise<DatosAsistenciaPDF> {
+    const res = await api.get<DatosAsistenciaPDF>(`${PREFIX}/talleres/${tallerId}/asistencia-pdf`)
     return res.data
   },
 }

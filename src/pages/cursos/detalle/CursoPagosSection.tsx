@@ -4,6 +4,7 @@ import { Money01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
+import { AjustarPrecioModal } from "@/components/cursos/AjustarPrecioModal"
 import { toast } from "sonner"
 
 const ACCENT = COLORS.ACCENT
@@ -50,23 +51,34 @@ export function CursoPagosSection({ cursoId }: Props) {
   const [modulos, setModulos] = useState<ModuloInfo[]>([])
   const [totales, setTotales] = useState({ estudiantes: 0, modulos: 0, esperado_catalogo: 0, recaudado_real: 0 })
   const [expandido, setExpandido] = useState<string | null>(null)
+  const [ajusteTarget, setAjusteTarget] = useState<{
+    matriculaId: string
+    moduloId: string
+    nombreModulo: string
+    nombreEstudiante: string
+    precioBase: number
+    precioActual: number
+    abonado: number
+    esAjustado: boolean
+  } | null>(null)
+
+  const load = async () => {
+    if (!cursoId) return
+    setLoading(true)
+    try {
+      const res = await financeService.getCursoFinanciero(cursoId)
+      const data = res.datos || res.data || res
+      setEstudiantes(data.estudiantes || [])
+      setModulos(data.modulos || [])
+      setTotales(data.totales || {})
+    } catch {
+      toast.error("Error al cargar datos financieros")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    if (!cursoId) return
-    const load = async () => {
-      setLoading(true)
-      try {
-        const res = await financeService.getCursoFinanciero(cursoId)
-        const data = res.datos || res.data || res
-        setEstudiantes(data.estudiantes || [])
-        setModulos(data.modulos || [])
-        setTotales(data.totales || {})
-      } catch {
-        toast.error("Error al cargar datos financieros")
-      } finally {
-        setLoading(false)
-      }
-    }
     load()
   }, [cursoId])
 
@@ -145,19 +157,21 @@ export function CursoPagosSection({ cursoId }: Props) {
               <thead>
                 <tr className="border-b" style={{ borderColor: BORDER }}>
                   <th className="w-8" />
+                  <th className="text-left font-semibold px-2 py-3 w-8" style={{ color: TEXT_MUTED }}>#</th>
                   <th className="text-left font-semibold px-2 py-3" style={{ color: TEXT_MUTED }}>Estudiante</th>
-                  <th className="text-left font-semibold px-2 py-3" style={{ color: TEXT_MUTED }}>Cédula</th>
                   {modulosOrdenados.map(mod => (
                     <th key={mod.id} className="text-center font-semibold px-2 py-3" style={{ color: TEXT_MUTED }}>
                       M{mod.numero_orden ?? ""}
                     </th>
                   ))}
                   <th className="text-right font-semibold px-3 py-3" style={{ color: TEXT_MUTED }}>Total Pagado</th>
+                  <th className="text-right font-semibold px-3 py-3" style={{ color: TEXT_MUTED }}>Deuda</th>
                 </tr>
               </thead>
               <tbody>
-                {estudiantes.map(est => {
+                {estudiantes.map((est, idx) => {
                   const modData = est.modulos || {}
+                  const deuda = Math.max(0, (est.total_esperado ?? 0) - (est.total_pagado ?? 0))
                   return (
                     <Fragment key={est.matricula_id}>
                       <tr
@@ -167,8 +181,8 @@ export function CursoPagosSection({ cursoId }: Props) {
                         <td className="px-2 py-3">
                           {expandido === est.matricula_id ? <ChevronDown size={14} style={{ color: TEXT_MUTED }} /> : <ChevronRight size={14} style={{ color: TEXT_MUTED }} />}
                         </td>
+                        <td className="px-2 py-3 text-xs" style={{ color: TEXT_MUTED }}>{idx + 1}</td>
                         <td className="px-2 py-3 font-semibold whitespace-nowrap" style={{ color: CHARCOAL }}>{est.nombre}</td>
-                        <td className="px-2 py-3 whitespace-nowrap" style={{ color: TEXT_MUTED }}>{est.cedula}</td>
                         {modulosOrdenados.map(mod => {
                           const md = modData[mod.id]
                           const abonado = md?.abonado ?? 0
@@ -184,10 +198,13 @@ export function CursoPagosSection({ cursoId }: Props) {
                         <td className="px-3 py-3 text-right font-bold" style={{ color: CHARCOAL }}>
                           ${Number(est.total_pagado ?? 0).toFixed(2)}
                         </td>
+                        <td className="px-3 py-3 text-right font-bold" style={{ color: deuda > 0 ? "oklch(0.5 0.15 25)" : "oklch(0.45 0.12 140)" }}>
+                          ${deuda.toFixed(2)}
+                        </td>
                       </tr>
                       {expandido === est.matricula_id && (
                         <tr key={`${est.matricula_id}-detalle`}>
-                          <td colSpan={modulos.length + 4} className="bg-gray-50/50 px-6 py-4">
+                          <td colSpan={modulos.length + 5} className="bg-gray-50/50 px-6 py-4">
                             <div className="space-y-2">
                               <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT_MUTED }}>Desglose por Módulo</p>
                               <div className="grid gap-2">
@@ -197,6 +214,7 @@ export function CursoPagosSection({ cursoId }: Props) {
                                   const abonado = md?.abonado ?? 0
                                   const saldo = md?.saldo ?? Math.max(0, precio - abonado)
                                   const estadoMod = md?.estado ?? "pendiente"
+                                  const esAjustado = md?.es_ajustado ?? false
                                   return (
                                     <div key={mod.id} className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border" style={{ borderColor: BORDER }}>
                                       <div className="flex items-center gap-3">
@@ -210,9 +228,43 @@ export function CursoPagosSection({ cursoId }: Props) {
                                           }}>
                                           {estadoMod}
                                         </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setAjusteTarget({
+                                              matriculaId: est.matricula_id,
+                                              moduloId: mod.id,
+                                              nombreModulo: `M${mod.numero_orden ?? ""}: ${mod.nombre}`,
+                                              nombreEstudiante: est.nombre,
+                                              precioBase: mod.precio_base ?? precio,
+                                              precioActual: precio,
+                                              abonado,
+                                              esAjustado,
+                                            })
+                                          }}
+                                          className="text-[10px] px-2 py-0.5 rounded border transition-colors hover:bg-blue-50 hover:border-blue-300"
+                                          style={{ borderColor: BORDER, color: COLORS.TEXT_MUTED }}
+                                        >
+                                          {esAjustado ? "Reajustar" : "Ajustar"}
+                                        </button>
                                       </div>
                                       <div className="flex items-center gap-4 text-sm">
-                                        <span style={{ color: TEXT_MUTED }}>Precio: <strong style={{ color: CHARCOAL }}>${Number(precio).toFixed(2)}</strong></span>
+                                        <span style={{ color: TEXT_MUTED }}>
+                                          Precio:{" "}
+                                          {esAjustado ? (
+                                            <>
+                                              <strong className="line-through opacity-50" style={{ color: TEXT_MUTED }}>
+                                                ${mod.precio_base.toFixed(2)}
+                                              </strong>
+                                              {" → "}
+                                              <strong style={{ color: "oklch(0.45 0.12 140)" }}>
+                                                ${precio.toFixed(2)}
+                                              </strong>
+                                            </>
+                                          ) : (
+                                            <strong style={{ color: CHARCOAL }}>${precio.toFixed(2)}</strong>
+                                          )}
+                                        </span>
                                         <span style={{ color: "oklch(0.45 0.12 140)" }}>Abonado: <strong>${Number(abonado).toFixed(2)}</strong></span>
                                         <span style={{ color: saldo > 0 ? "oklch(0.5 0.15 25)" : "oklch(0.45 0.12 140)" }}>
                                           Saldo: <strong>${Number(saldo).toFixed(2)}</strong>
@@ -241,6 +293,23 @@ export function CursoPagosSection({ cursoId }: Props) {
           )}
         </div>
       </div>
+
+      {ajusteTarget && (
+        <AjustarPrecioModal
+          open={!!ajusteTarget}
+          onClose={() => setAjusteTarget(null)}
+          cursoId={cursoId}
+          matriculaId={ajusteTarget.matriculaId}
+          moduloId={ajusteTarget.moduloId}
+          nombreModulo={ajusteTarget.nombreModulo}
+          nombreEstudiante={ajusteTarget.nombreEstudiante}
+          precioBase={ajusteTarget.precioBase}
+          precioActual={ajusteTarget.precioActual}
+          abonado={ajusteTarget.abonado}
+          esAjustado={ajusteTarget.esAjustado}
+          onSaved={load}
+        />
+      )}
     </div>
   )
 }

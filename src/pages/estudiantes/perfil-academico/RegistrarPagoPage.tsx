@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import { useParams, useNavigate, Link, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Cancel01Icon, Coins02Icon, UploadIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, Coins02Icon, UploadIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
 import { validarComprobante } from "@/lib/file-validators"
@@ -14,69 +15,48 @@ interface LineaPagoData {
   monto_original: number
   monto_ajustado: number
   monto_abonado: number
+  tipo?: string
 }
 
-interface PagoInicialMatriculaModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  lineasPagoIds: string[]
-  matriculaId: string
-  cursoNombre: string
-  estudianteNombre?: string
-  estudianteCedula?: string
-  onCompleted: () => void
-}
+export function RegistrarPagoPage() {
+  const { id: estudianteId, matriculaId } = useParams<{ id: string; matriculaId: string }>()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
-export function PagoInicialMatriculaModal({
-  open,
-  onOpenChange,
-  lineasPagoIds,
-  matriculaId,
-  cursoNombre,
-  estudianteNombre,
-  estudianteCedula,
-  onCompleted,
-}: PagoInicialMatriculaModalProps) {
+  const cursoNombre = searchParams.get("curso") || ""
+  const estudianteNombre = searchParams.get("nombre") || ""
+  const estudianteCedula = searchParams.get("cedula") || ""
+
   const [montoPago, setMontoPago] = useState("")
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [saving, setSaving] = useState(false)
   const [lineas, setLineas] = useState<LineaPagoData[]>([])
+  const [loadingLineas, setLoadingLineas] = useState(true)
 
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!open || lineas.length > 0) return
-
+    if (!matriculaId) return
     let active = true
-    const loadLineas = async () => {
+    const load = async () => {
       try {
         const res = await api.get(`/finanzas/matriculas/${matriculaId}/lineas-pago`)
         if (active) {
-          setLineas(res.data.datos || [])
+          setLineas((res.data.datos?.lineas ?? res.data.datos) || [])
         }
       } catch {
         if (active) {
-          setLineas(lineasPagoIds.map((id, i) => ({
-            id,
-            modulo_id: id,
-            nombre_modulo: `Módulo ${i + 1}`,
-            numero_orden: i + 1,
-            monto_original: 0,
-            monto_ajustado: 0,
-            monto_abonado: 0,
-          })))
+          toast.error("Error al cargar los módulos")
         }
+      } finally {
+        if (active) setLoadingLineas(false)
       }
     }
-
-    loadLineas()
-
-    return () => {
-      active = false
-    }
-  }, [open, lineas.length, matriculaId, lineasPagoIds])
+    load()
+    return () => { active = false }
+  }, [matriculaId])
 
   const toBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -116,7 +96,7 @@ export function PagoInicialMatriculaModal({
       }
 
       if (pagos.length === 0) {
-        toast.error("Todos los m\u00f3dulos ya est\u00e1n pagados")
+        toast.error("Todos los módulos ya están pagados")
         setSaving(false)
         return
       }
@@ -127,9 +107,7 @@ export function PagoInicialMatriculaModal({
       })
 
       toast.success("Pago registrado exitosamente")
-      onOpenChange(false)
-      resetForm()
-      onCompleted()
+      navigate(`/estudiantes/${estudianteId}/academico?tab=financiero`)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje
       toast.error(msg || "Error al registrar pago")
@@ -147,15 +125,6 @@ export function PagoInicialMatriculaModal({
     setComprobantePreview(URL.createObjectURL(file))
   }
 
-  const resetForm = () => {
-    setMontoPago("")
-    setMetodoPago("efectivo")
-    setLineas([])
-    setComprobanteFile(null)
-    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview)
-    setComprobantePreview(null)
-  }
-
   const sorted = [...lineas].sort((a, b) => a.numero_orden - b.numero_orden)
   const totalAdeudado = sorted.reduce((s, l) => s + l.monto_ajustado, 0)
   const totalAbonado = sorted.reduce((s, l) => s + l.monto_abonado, 0)
@@ -163,22 +132,21 @@ export function PagoInicialMatriculaModal({
   const montoPagoNum = parseFloat(montoPago || "0")
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${open ? "" : "hidden"}`}
-    >
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
-      <div className="relative bg-white rounded-[2rem] w-full max-w-xl max-h-[95vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between px-8 py-6 border-b bg-gray-50/50 sticky top-0 z-10 rounded-t-[2rem]">
-          <div>
-            <h2 className="text-xl font-black text-gray-900">Registrar pago inicial</h2>
-            <p className="text-sm text-gray-500 mt-1">{cursoNombre}</p>
-          </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="size-10 flex items-center justify-center rounded-2xl bg-white border shadow-sm hover:bg-red-50 hover:text-red-500 transition-all"
-          >
-            <HugeiconsIcon icon={Cancel01Icon} size={18} />
-          </button>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <Link
+          to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+          Volver al perfil académico
+        </Link>
+      </div>
+
+      <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-8 py-6 border-b bg-gray-50/50">
+          <h2 className="text-xl font-black text-gray-900">Registrar pago</h2>
+          <p className="text-sm text-gray-500 mt-1">{cursoNombre || "Curso"}</p>
         </div>
 
         <div className="p-8 space-y-6">
@@ -190,8 +158,8 @@ export function PagoInicialMatriculaModal({
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Curso</span>
-              <p className="text-sm font-bold text-gray-900 mt-0.5">{cursoNombre}</p>
-              <p className="text-xs text-gray-500">{sorted.length} m&oacute;dulo{sorted.length !== 1 ? "s" : ""}</p>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">{cursoNombre || "—"}</p>
+              <p className="text-xs text-gray-500">{sorted.length} módulo{sorted.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
 
@@ -212,16 +180,17 @@ export function PagoInicialMatriculaModal({
             </div>
           </div>
 
-          {sorted.length === 0 ? (
+          {loadingLineas ? (
             <div className="flex items-center justify-center py-12">
               <div className="size-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-              <span className="ml-3 text-sm text-gray-500">Cargando m&oacute;dulos...</span>
+              <span className="ml-3 text-sm text-gray-500">Cargando módulos...</span>
             </div>
           ) : (
             <div className="space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-1">M&oacute;dulos</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-1">Módulos</span>
               {sorted.map((linea) => {
                 const pagado = linea.monto_abonado >= linea.monto_ajustado
+                const esInscripcion = linea.tipo === "inscripcion"
                 return (
                   <div
                     key={linea.id}
@@ -232,10 +201,12 @@ export function PagoInicialMatriculaModal({
                         className="size-8 shrink-0 rounded-lg flex items-center justify-center text-xs font-black text-white"
                         style={{ backgroundColor: pagado ? "#10b981" : COLORS.ACCENT }}
                       >
-                        {(linea as any).tipo === 'inscripcion' ? 'Insc' : (linea.numero_orden ?? '—')}
+                        {esInscripcion ? "Insc" : (linea.numero_orden ?? "—")}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">{(linea as any).tipo === 'inscripcion' ? 'Inscripción / Matrícula' : (linea.nombre_modulo || '')}</p>
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {esInscripcion ? "Inscripción / Matrícula" : (linea.nombre_modulo || "")}
+                        </p>
                         <p className="text-[11px] text-gray-400">
                           ${linea.monto_ajustado.toLocaleString()}
                         </p>
@@ -271,7 +242,7 @@ export function PagoInicialMatriculaModal({
                 min="0"
                 step="0.01"
                 max={totalPendiente}
-                placeholder={`0.00 (m\u00e1x $${totalPendiente.toLocaleString()})`}
+                placeholder={`0.00 (máx $${totalPendiente.toLocaleString()})`}
                 value={montoPago}
                 onChange={e => setMontoPago(e.target.value)}
                 className="w-full pl-10 pr-4 py-4 border-2 border-blue-200 rounded-2xl text-xl font-black font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white"
@@ -284,7 +255,7 @@ export function PagoInicialMatriculaModal({
             )}
             {montoPagoNum > 0 && montoPagoNum <= totalPendiente && (
               <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
-                <span>Se aplicar&aacute; a{" "}
+                <span>Se aplicará a{" "}
                   {(() => {
                     let count = 0
                     let resto = montoPagoNum
@@ -297,14 +268,16 @@ export function PagoInicialMatriculaModal({
                     }
                     return count
                   })()}{" "}
-                  m&oacute;dulo(s)
+                  módulo(s)
                 </span>
               </div>
             )}
           </div>
 
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">M&eacute;todo de pago</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
+              Método de pago
+            </label>
             <select
               value={metodoPago}
               onChange={e => setMetodoPago(e.target.value)}
@@ -312,14 +285,16 @@ export function PagoInicialMatriculaModal({
             >
               <option value="efectivo">Efectivo</option>
               <option value="transferencia">Transferencia</option>
-              <option value="deposito">Dep&oacute;sito</option>
+              <option value="deposito">Depósito</option>
               <option value="tarjeta">Tarjeta</option>
               <option value="otro">Otro</option>
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Comprobante de pago</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
+              Comprobante de pago
+            </label>
             <div
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-4 p-4 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
@@ -353,7 +328,7 @@ export function PagoInicialMatriculaModal({
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
-                    <p className="text-xs text-gray-400">Se adjuntar&aacute; al confirmar el pago</p>
+                    <p className="text-xs text-gray-400">Máximo 5MB, formato JPG o PNG</p>
                   </div>
                 </>
               )}
@@ -361,13 +336,12 @@ export function PagoInicialMatriculaModal({
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
+            <Link
+              to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
               className="px-6 py-3 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
             >
-              Omitir
-            </button>
+              Cancelar
+            </Link>
             <button
               type="button"
               onClick={handleRegistrar}

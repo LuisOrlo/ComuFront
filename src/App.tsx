@@ -18,6 +18,8 @@ import { CuentasPage } from "@/pages/cuentas/CuentasPage"
 
 import { NuevaMatriculaPublicaPage } from "@/pages/matriculas/NuevaMatriculaPublicaPage"
 import { AprobacionMatriculasPage } from "@/pages/matriculas/AprobacionMatriculasPage"
+import { AprobacionSolicitudPage } from "@/pages/matriculas/AprobacionSolicitudPage"
+import { AprobacionTallerPage } from "@/pages/matriculas/AprobacionTallerPage"
 import { InscribirEstudiantePage } from "@/pages/matriculas/InscribirEstudiantePage"
 import { SolicitudesInscripcionPage } from "@/pages/solicitudes-inscripcion/SolicitudesInscripcionPage"
 import { SolicitudInscripcionDetallePage } from "@/pages/solicitudes-inscripcion/SolicitudInscripcionDetallePage"
@@ -80,6 +82,7 @@ import {
   SecretariaSolicitudesPage,
 } from "@/pages/secretaria"
 import { EstudiantePerfilAcademicoPage } from "@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"
+import { RegistrarPagoPage } from "@/pages/estudiantes/perfil-academico/RegistrarPagoPage"
 import { EstudiantesCursoDetallePage } from "@/pages/estudiantes/detalle/EstudiantesCursoDetallePage"
 import { EstudiantesTallerDetallePage } from "@/pages/estudiantes/detalle/EstudiantesTallerDetallePage"
 import { EstudiantesCiudadDetallePage } from "@/pages/estudiantes/detalle/EstudiantesCiudadDetallePage"
@@ -193,9 +196,12 @@ function AppLayout() {
             <Route path="/estudiantes/segmentos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudianteSegmentsPage /></RoleGuard>} />
             <Route path="/estudiantes/:id/inscribir" element={<RoleGuard roles={["Administrador", "Secretaria"]}><InscribirEstudiantePage /></RoleGuard>} />
             <Route path="/estudiantes/:id/academico" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantePerfilAcademicoPage /></RoleGuard>} />
+            <Route path="/estudiantes/:id/academico/registrar-pago/:matriculaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RegistrarPagoPage /></RoleGuard>} />
             <Route path="/tareas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TareasPage /></RoleGuard>} />
             <Route path="/cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasPage /></RoleGuard>} />
-            <Route path="/matriculas/*" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionMatriculasPage /></RoleGuard>} />
+            <Route path="/matriculas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionMatriculasPage /></RoleGuard>} />
+            <Route path="/matriculas/aprobacion/solicitud/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionSolicitudPage /></RoleGuard>} />
+            <Route path="/matriculas/aprobacion/taller/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionTallerPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudesInscripcionPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
             <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasPage /></RoleGuard>} />

@@ -1,4 +1,5 @@
 import api, { apiMultipart } from "@/services/auth.service"
+import type { DatosAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 
 // ============================================================================
 // TIPOS Y INTERFACES - CATÁLOGOS
@@ -205,6 +206,14 @@ export interface MatriculaDetallada {
     apellidos: string
     cedula: string
     correo: string
+    celular?: string
+    ciudad?: string
+    perfil_estudiante?: {
+      ocupacion?: string
+      direccion?: string
+      fecha_nacimiento?: string
+      edad?: number
+    } | null
   } | null
   solicitud_inscripcion?: {
     estudiante?: {
@@ -212,12 +221,21 @@ export interface MatriculaDetallada {
       apellidos: string
       cedula: string
       correo: string
+      celular?: string
+      ciudad?: string
+      perfil_estudiante?: {
+        ocupacion?: string
+        direccion?: string
+        fecha_nacimiento?: string
+        edad?: number
+      } | null
     } | null
     participante_externo?: {
       nombres: string
       apellidos: string
       cedula: string
       correo: string
+      ciudad?: string
     } | null
   } | null
 }
@@ -551,7 +569,7 @@ export const cursosService = {
     hora_inicio?: string
     hora_fin?: string
     capacidad_maxima: number
-    docente_id: string
+    docente_id?: string
     es_activo?: boolean
     observaciones?: string
     modalidad?: "presencial" | "virtual"
@@ -779,6 +797,11 @@ export const cursosService = {
 
   async getNotificaciones(): Promise<NotificacionesResponse> {
     const response = await api.get<NotificacionesResponse>("/academic/notificaciones")
+    return response.data
+  },
+
+  async getAsistenciaPDFData(cursoAbiertoId: string): Promise<DatosAsistenciaPDF> {
+    const response = await api.get<DatosAsistenciaPDF>(`/academic/cursos-abiertos/${cursoAbiertoId}/asistencia-pdf`)
     return response.data
   },
 

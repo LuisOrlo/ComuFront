@@ -620,16 +620,12 @@ export function TallerDetallePage() {
           <div className="space-y-5">
             {inscripciones.length > 0 && (
               <div className="flex justify-end">
-                <button onClick={() => {
-                  const activos = inscripciones.filter(i => i.estado === "activo")
-                  const nombres = activos.map(i => `${i.nombres} ${i.apellidos}`)
-                  const horario = `${taller?.hora_inicio || "—"} - ${taller?.hora_fin || "—"}`
-                  const instructorName = taller?.instructor
-                    ? `${taller.instructor.nombres} ${taller.instructor.apellidos}`
-                    : undefined
-                  generarListadoAsistenciaPDF(taller?.nombre || "", horario, nombres, instructorName)
-                    .then(() => toast.success("Listado descargado"))
-                    .catch(() => toast.error("Error al generar PDF"))
+                <button onClick={async () => {
+                  try {
+                    const data = await tallerService.getAsistenciaPDFData(taller?.id || "")
+                    await generarListadoAsistenciaPDF({ ...data, tipo: "taller" })
+                    toast.success("Listado descargado")
+                  } catch { toast.error("Error al generar PDF") }
                 }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 transition-all">
                   <HugeiconsIcon icon={Download04Icon} size={12} />Descargar Listado

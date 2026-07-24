@@ -536,7 +536,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                               return (
                                                 <tr key={lp.id || lp.modulo_id} className="border-b border-gray-50">
                                                   <td className="py-1 pr-2 text-left font-medium" style={{ color: COLORS.CHARCOAL }}>
-                                                    {lp.nombre_modulo || `Módulo ${lp.numero_orden || '—'}`}
+                                                    {(lp as any).tipo === 'inscripcion' ? 'Inscripción / Matrícula' : (lp.nombre_modulo || `Módulo ${lp.numero_orden || '—'}`)}
                                                   </td>
                                                   <td className="py-1 px-2 text-right">${lpPrecio.toLocaleString()}</td>
                                                   <td className="py-1 px-2 text-right text-green-600 font-medium">${lpAbonado.toLocaleString()}</td>

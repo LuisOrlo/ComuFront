@@ -23,13 +23,11 @@ import {
   type ClaseItem,
   type AsistenciaClaseEstudiante,
 } from "@/services/instructor.service"
-import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 
 export function InstructorCursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
-  const { user } = useAuth()
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
   const [loading, setLoading] = useState(true)
@@ -131,17 +129,13 @@ export function InstructorCursoDetailPage() {
 
   const handleDescargarAsistencia = async () => {
     if (!curso) return
-    const horario = curso.horario?.nombre_referencial ?? "Sin horario"
-    const nombres = estudiantes.map(e => getEstudianteName(e))
-    const instructorName = user?.persona
-      ? `${user.persona.nombres || ""} ${user.persona.apellidos || ""}`.trim() || user.username
-      : curso.instructor
-        ? typeof curso.instructor === "string"
-          ? curso.instructor
-          : `${curso.instructor.nombres} ${curso.instructor.apellidos}`
-        : undefined
-    await generarListadoAsistenciaPDF(curso.nombre_instancia, horario, nombres, instructorName)
-    toast.success("Listado de asistencia descargado")
+    try {
+      const data = await instructorService.getAsistenciaPDFData(curso.id)
+      await generarListadoAsistenciaPDF(data)
+      toast.success("Listado de asistencia descargado")
+    } catch {
+      toast.error("Error al generar el PDF")
+    }
   }
 
   return (

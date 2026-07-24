@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { useState } from "react"
+import { useNavigate, useParams } from "react-router"
 import { usePermission } from "@/hooks/usePermission"
 import { FileAttachmentIcon, PaymentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -9,10 +10,11 @@ import type { FinancialProfile, LineaPagoModulo } from "@/services/estudiantes.s
 interface FinancialTabContentProps {
   data: FinancialProfile | null
   loading: boolean
-  onPagoInicial?: (data: { lineasPagoIds: string[]; matriculaId: string; cursoNombre: string }) => void
 }
 
-export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialTabContentProps) {
+export function FinancialTabContent({ data, loading }: FinancialTabContentProps) {
+  const { id: estudianteId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { isAdmin } = usePermission()
   const [imagenExpandida, setImagenExpandida] = useState<string | null>(null)
   if (loading) {
@@ -163,12 +165,15 @@ export function FinancialTabContent({ data, loading, onPagoInicial }: FinancialT
                   {matricula.curso.nombre}
                   {matricula.curso.instancia ? ` — ${matricula.curso.instancia}` : ''}
                 </span>
-                {isAdmin && onPagoInicial && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
-                  <button onClick={() => onPagoInicial({
-                    lineasPagoIds: matricula.lineas_pago.map(lp => lp.id),
-                    matriculaId: matricula.id,
-                    cursoNombre: matricula.curso.nombre,
-                  })}
+                {isAdmin && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
+                  <button onClick={() => {
+                    const params = new URLSearchParams({
+                      curso: matricula.curso.nombre,
+                      nombre: data?.estudiante?.nombre_completo || '',
+                      cedula: data?.estudiante?.cedula || '',
+                    })
+                    navigate(`/estudiantes/${estudianteId}/academico/registrar-pago/${matricula.id}?${params.toString()}`)
+                  }}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
                     style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
                     <HugeiconsIcon icon={PaymentIcon} size={12} />
@@ -260,14 +265,18 @@ function ModuleRow({ linea, isLast }: { linea: LineaPagoModulo; isLast: boolean 
   }
   const s = estadoStyle[linea.estado] || estadoStyle.pendiente
   const pct = linea.monto_ajustado > 0 ? Math.round((linea.monto_abonado / linea.monto_ajustado) * 100) : 0
+  const esInscripcion = (linea as any).tipo === 'inscripcion'
+  const nombre = esInscripcion
+    ? 'Inscripción / Matrícula'
+    : (linea.modulo?.nombre || `Módulo ${linea.modulo?.numero_orden}`)
 
   return (
     <div className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/30 transition-colors"
       style={{ borderBottom: isLast ? 'none' : `1px solid ${COLORS.BORDER_SUBTLE}` }}>
       <div className="min-w-0 flex-1">
-        <span className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
-          {linea.modulo.nombre || `Módulo ${linea.modulo.numero_orden}`}
-        </span>
+          <span className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
+            {nombre}
+          </span>
         <div className="flex items-center gap-3 mt-1">
           <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
             Total: <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${linea.monto_ajustado.toFixed(2)}</span>

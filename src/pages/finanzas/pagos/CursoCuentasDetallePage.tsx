@@ -308,6 +308,7 @@ export function CursoCuentasDetallePage() {
                 ) : (
                   filteredEstudiantes.map((e: any, idx: number) => {
                     const modsEst = toArray(e.modulos || e.lineas_pago_modulo)
+                    const inscripcion = e.inscripcion || null
                     const isExpanded = expandedStudent === e.matricula_id
                     const ajustes = isExpanded ? getStudentAdjustments(e) : []
                     const colSpan = 4 + (selectedModulo === "todos" ? (modulos.length > 0 ? modulos.length + 1 : 0) : 3) + 1
@@ -375,7 +376,7 @@ export function CursoCuentasDetallePage() {
                               <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
                               Registrar cobro
                             </button>)}
-                            {modsEst.some((lm: any) => lm.motivo_ajuste) && (
+                            {((modsEst.some((lm: any) => lm.motivo_ajuste)) || inscripcion) && (
                               <button
                                 onClick={() => setExpandedStudent(isExpanded ? null : e.matricula_id)}
                                 className="size-6 rounded flex items-center justify-center text-[10px] font-bold hover:bg-gray-100 transition-colors"
@@ -388,10 +389,10 @@ export function CursoCuentasDetallePage() {
                           </div>
                         </td>
                       </tr>
-                      {isExpanded && ajustes.length > 0 && (
+                      {isExpanded && (ajustes.length > 0 || inscripcion) && (
                         <tr style={{ backgroundColor: "oklch(0.64 0.2 150 / 0.06)" }}>
                           <td colSpan={colSpan} className="px-5 py-3">
-                            {ajustes.map((a: any, i: number) => (
+                            {ajustes.length > 0 && ajustes.map((a: any, i: number) => (
                               <div key={i} className="flex items-center gap-2 text-[11px] py-0.5" style={{ color: COLORS.CHARCOAL }}>
                                 <span className="font-bold">{a.nombre_modulo}:</span>
                                 {a.precio_original > 0 && a.precio_original !== a.precio_ajustado && (
@@ -401,6 +402,14 @@ export function CursoCuentasDetallePage() {
                                 <span className="opacity-50 italic">— {a.motivo}</span>
                               </div>
                             ))}
+                            {inscripcion && (
+                              <div className="flex items-center gap-2 text-[11px] py-1 mt-1 border-t pt-1" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>Inscripción / Matrícula:</span>
+                                <span style={{ color: COLORS.CHARCOAL }}>${inscripcion.monto_ajustado.toLocaleString()}</span>
+                                <span className="text-green-600 font-bold">Abonado: ${inscripcion.monto_abonado.toLocaleString()}</span>
+                                <span className="font-bold" style={{ color: (inscripcion.saldo_pendiente ?? 0) > 0 ? '#dc2626' : '#059669' }}>Saldo: ${(inscripcion.saldo_pendiente ?? 0).toLocaleString()}</span>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )}

@@ -1,19 +1,16 @@
 import { COLORS } from "@/lib/constants"
 
 interface StepIndicatorProps {
-  subStep: "modalidad" | "ciudad" | "tipo" | "catalogo" | "lista"
+  subStep: "modalidad" | "ciudad" | "tipo" | "lista"
   selectedModalidad: string
-  selectedTipo: string
 }
 
-export function StepIndicator({ subStep, selectedModalidad, selectedTipo }: StepIndicatorProps) {
-  const catalogoLabel = selectedTipo === "taller" ? "Taller" : selectedTipo === "personalizado" ? "Personalizado" : "Curso"
+export function StepIndicator({ subStep, selectedModalidad }: StepIndicatorProps) {
 
   const rawSteps = [
     { key: "modalidad", label: "Modalidad" },
     { key: "ciudad", label: "Ciudad" },
     { key: "tipo", label: "Categoria" },
-    { key: "catalogo", label: catalogoLabel },
     { key: "lista", label: "Disponibles" },
   ]
 
@@ -39,7 +36,7 @@ export function StepIndicator({ subStep, selectedModalidad, selectedTipo }: Step
               </div>
               <span className="hidden sm:inline">{s.label}</span>
             </div>
-            {i < currentIdx && <div className="flex-1 h-px mx-2" style={{ backgroundColor: isPast ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }} />}
+            {i < currentIdx && <div className="flex-1 h-px mx-1 sm:mx-2" style={{ backgroundColor: isPast ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }} />}
           </div>
         )
       })}

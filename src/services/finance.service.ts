@@ -184,4 +184,9 @@ export const financeService = {
     const response = await api.delete(endpoint, { data: { campo: "comprobante_url" } })
     return response.data
   },
+
+  async ajustarPrecioModulo(cursoId: string, matriculaId: string, data: { modulo_id: string; nuevo_precio: number; motivo: string }) {
+    const response = await api.post(`/finanzas/cursos/${cursoId}/matriculas/${matriculaId}/ajustar-precio`, data)
+    return response.data
+  },
 }

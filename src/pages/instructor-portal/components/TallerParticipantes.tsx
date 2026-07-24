@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon, Download04Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { Taller, InscripcionTaller } from "@/services/taller.service"
+import { tallerService } from "@/services/taller.service"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 import { toast } from "sonner"
 
@@ -29,14 +30,13 @@ export function TallerParticipantes({ taller, inscripciones, loading }: Props) {
     : inscripciones.filter(i => i.estado !== "retirado")
 
   const handleDescargarListado = async () => {
-    const activos = inscripciones.filter(i => i.estado === "activo")
-    const nombres = activos.map(i => `${i.nombres} ${i.apellidos}`)
-    const horario = `${taller.hora_inicio || "—"} - ${taller.hora_fin || "—"}`
-    const instructorName = taller.instructor
-      ? `${taller.instructor.nombres} ${taller.instructor.apellidos}`
-      : undefined
-    await generarListadoAsistenciaPDF(taller.nombre, horario, nombres, instructorName)
-    toast.success("Listado de asistencia descargado")
+    try {
+      const data = await tallerService.getAsistenciaPDFData(taller.id)
+      await generarListadoAsistenciaPDF({ ...data, tipo: "taller" })
+      toast.success("Listado de asistencia descargado")
+    } catch {
+      toast.error("Error al generar el PDF")
+    }
   }
 
   return (

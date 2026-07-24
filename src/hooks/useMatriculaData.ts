@@ -6,7 +6,7 @@ import type { Taller } from "@/services/taller.service"
 interface UseCursosParams {
   modalidad: string
   ciudadId: number | null
-  catalogoFilter: string
+  catalogoFilter?: string
   enabled?: boolean
 }
 

@@ -15,7 +15,7 @@ interface PagoPreAprobacionSectionProps {
   montoSolicitado?: number
   onMontoModulo1Change?: (valido: boolean) => void
   onTotalPrecioChange?: (total: number) => void
-  onSubmit: (pagos: any[], metodoPago: string) => void
+  onSubmit: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
 }
 
 export type PagoPreAprobacionRef = {
@@ -28,9 +28,12 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   cursoAbiertoId, metodoPagoInicial, montoSolicitado, onMontoModulo1Change, onTotalPrecioChange, onSubmit,
 }: PagoPreAprobacionSectionProps, ref) {
   const [montos, setMontos] = useState<Record<string, string>>({})
+  const [montoTotalInput, setMontoTotalInput] = useState("")
   const [modulos, setModulos] = useState<any[]>([])
   const [modulosCargados, setModulosCargados] = useState(false)
   const [ajustes, setAjustes] = useState<Record<string, { expandido: boolean; nuevoPrecio: string; motivo: string }>>({})
+  const [incluirInscripcion, setIncluirInscripcion] = useState(false)
+  const [precioInscripcionManual, setPrecioInscripcionManual] = useState("")
 
   useEffect(() => {
     const load = async () => {
@@ -55,7 +58,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     if (a && !a.expandido && parseFloat(a.nuevoPrecio || "0") > 0) {
       return parseFloat(a.nuevoPrecio) || 0
     }
-    return modulo.precio_base ?? modulo.precio ?? 0
+    return Number(modulo.precio_base ?? modulo.precio ?? 0)
   }, [ajustes])
 
   const sorted = useMemo(() => {
@@ -99,6 +102,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }, [totalPrecio, onTotalPrecioChange, modulosCargados])
 
   const handleMontoChange = useCallback((moduloId: string, valor: string) => {
+    setMontoTotalInput("")
     const nuevoMonto = parseFloat(valor) || 0
     const moduloActual = modulos.find((m: any) => m.id === moduloId)
     if (!moduloActual) return
@@ -118,8 +122,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         simulated[sig.id] = String(aplicado)
         resto = Math.round((resto - aplicado) * 100) / 100
       }
+      const limiteTotal = totalPrecio
       if (resto > 0) {
-        toast.error("El monto excede el precio total de los módulos")
+        toast.error(`El monto excede el precio total de los módulos ($${limiteTotal.toLocaleString()}). El excedente se aplicará a la inscripción si está activa.`)
         return
       }
     } else {
@@ -130,7 +135,29 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     }
 
     setMontos(simulated)
-  }, [modulos, sorted, montos, getPrecioEfectivo])
+  }, [modulos, sorted, montos, getPrecioEfectivo, totalPrecio])
+
+  const handleTotalChange = useCallback((valor: string) => {
+    setMontoTotalInput(valor)
+    const total = parseFloat(valor) || 0
+    if (total <= 0 || sorted.length === 0) return
+    const totalPrecios = sorted.reduce((sum, m) => sum + getPrecioEfectivo(m), 0)
+    if (total > totalPrecios) {
+      toast.error(`El monto total ($${total.toLocaleString()}) supera el precio total de los módulos ($${totalPrecios.toLocaleString()})`)
+      return
+    }
+    setMontos({})
+    let resto = total
+    const nuevosMontos: Record<string, string> = {}
+    for (const m of sorted) {
+      const precio = getPrecioEfectivo(m)
+      const aplicar = Math.round(Math.min(resto, precio) * 100) / 100
+      if (aplicar > 0) nuevosMontos[m.id] = String(aplicar)
+      resto = Math.round((resto - aplicar) * 100) / 100
+      if (resto <= 0) break
+    }
+    setMontos(nuevosMontos)
+  }, [sorted, getPrecioEfectivo])
 
   const toggleAjuste = (moduloId: string) => {
     setAjustes(prev => {
@@ -157,8 +184,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }
 
   const handleSubmit = useCallback(() => {
+    const inscripcionVal = incluirInscripcion ? (parseFloat(precioInscripcionManual) || 0) : 0
     if (totalARegistrar > totalPrecio) {
-      toast.error(`El total a registrar ($${totalARegistrar.toLocaleString()}) supera el precio total de los módulos ($${totalPrecio.toLocaleString()})`)
+      toast.error(`El total a registrar ($${totalARegistrar.toLocaleString()}) supera el precio de los módulos ($${totalPrecio.toLocaleString()}). Ajusta los montos.`)
       return
     }
     const pagos = modulos
@@ -179,8 +207,23 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         }
         return base
       })
-    onSubmit(pagos, metodoPagoInicial || "efectivo")
-  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, totalARegistrar, totalPrecio])
+
+    if (inscripcionVal > 0) {
+      const excedente = Math.max(0, totalARegistrar - totalPrecio)
+      const cubierta = Math.min(inscripcionVal, excedente)
+
+      if (cubierta < inscripcionVal) {
+        toast.warning(
+          `El monto registrado no cubre por completo el precio de inscripción.\n\n` +
+          `Inscripción: $${inscripcionVal.toLocaleString()} | Cubierto: $${cubierta.toLocaleString()} | Pendiente: $${(inscripcionVal - cubierta).toLocaleString()}`
+        )
+      }
+
+      onSubmit(pagos, metodoPagoInicial || "efectivo", { total: inscripcionVal, cubierto: cubierta })
+    } else {
+      onSubmit(pagos, metodoPagoInicial || "efectivo")
+    }
+  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, totalARegistrar, totalPrecio, incluirInscripcion, precioInscripcionManual])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -206,6 +249,26 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   return (
     <div className="pt-4 space-y-3">
+      <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
+        <div className="flex-1">
+          <p className="text-xs mb-1" style={{ color: COLORS.TEXT_MUTED }}>O ingresa el monto total del comprobante para distribuirlo automáticamente:</p>
+          <div className="relative max-w-[260px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+            <input type="number" min="0" step="0.01" placeholder="0.00"
+              value={montoTotalInput}
+              onChange={e => handleTotalChange(e.target.value)}
+              onWheel={e => (e.target as HTMLElement).blur()}
+              className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Total distribuido</p>
+          <p className="text-sm font-black mt-0.5" style={{ color: totalARegistrar > 0 ? "oklch(0.55 0.15 150)" : COLORS.CHARCOAL }}>
+            ${totalARegistrar.toLocaleString()}
+          </p>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-3">
       {sorted.map((modulo: any, idx: number) => {
         if (!modulo) return null
@@ -273,9 +336,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Motivo del ajuste</label>
                   <input type="text" value={a.motivo}
-                    onChange={e => setAjustes(prev => ({ ...prev, [modulo.id]: { ...a, motivo: e.target.value } }))}
-                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-blue-500 mt-1 bg-white"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder="Ej: descuento por pronto pago" />
+                    onChange={e => setAjustes(prev => ({ ...prev, [modulo.id]: { ...a, motivo: e.target.value.toUpperCase() } }))}
+                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-blue-500 mt-1 bg-white uppercase"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder="EJ: DESCUENTO POR PRONTO PAGO" />
                 </div>
                 <div className="flex gap-2 pt-1">
                   <button type="button" onClick={() => confirmarAjuste(modulo.id)}
@@ -292,8 +355,10 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
               <div className="relative flex-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
                 <input type="number" min="0" step="0.01" placeholder="0.00"
-                  value={montos[modulo.id] || ""} readOnly
-                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none bg-gray-50 cursor-not-allowed"
+                  value={montos[modulo.id] || ""}
+                  onChange={e => handleMontoChange(modulo.id, e.target.value)}
+                  onWheel={e => (e.target as HTMLElement).blur()}
+                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
                   style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
               </div>
             </div>
@@ -308,12 +373,79 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       })}
       </div>
 
-      <div className="px-4 py-3 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-        <p className="text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>
-          Total a registrar: <span className="text-sm">${totalARegistrar.toLocaleString()}</span>
-          <span className="mx-2 opacity-20">·</span>
-          Módulos cubiertos: {modulosCubiertos} de {sorted.length}
-        </p>
+      <button
+        type="button"
+        onClick={() => {
+          if (incluirInscripcion) {
+            setIncluirInscripcion(false)
+            setPrecioInscripcionManual("")
+          } else {
+            setIncluirInscripcion(true)
+          }
+        }}
+        className="w-full py-2.5 rounded-xl border border-dashed text-xs font-semibold transition-all hover:bg-blue-50/50 hover:border-blue-300"
+        style={{
+          borderColor: incluirInscripcion ? COLORS.ACCENT : COLORS.BORDER_SUBTLE,
+          color: incluirInscripcion ? COLORS.ACCENT : COLORS.TEXT_MUTED,
+        }}
+      >
+        {incluirInscripcion ? "– Quitar precio de inscripción" : "+ Agregar precio de inscripción"}
+      </button>
+
+      {incluirInscripcion && (
+        <div className="p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.ACCENT }}>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
+                Precio de inscripción (opcional)
+              </span>
+              
+            </div>
+            <div className="relative w-36">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={precioInscripcionManual}
+                onChange={e => setPrecioInscripcionManual(e.target.value)}
+                onWheel={e => (e.target as HTMLElement).blur()}
+                placeholder="0.00"
+                className="w-full pl-8 pr-4 py-2 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 py-3 rounded-xl border space-y-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
+        <div className="flex items-center justify-between text-xs">
+          <span style={{ color: COLORS.TEXT_MUTED }}>Total del curso</span>
+          <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${totalPrecio.toLocaleString()}</span>
+        </div>
+        {incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 && (
+          <div className="flex items-center justify-between text-xs">
+            <span style={{ color: COLORS.TEXT_MUTED }}>Inscripción</span>
+            <span className="font-semibold" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString()}</span>
+          </div>
+        )}
+        {incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 && (
+          <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <span style={{ color: COLORS.TEXT_MUTED }}>Total a pagar</span>
+            <span className="font-semibold" style={{ color: COLORS.ACCENT }}>${(totalPrecio + parseFloat(precioInscripcionManual)).toLocaleString()}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between text-xs pt-1" style={{ borderTopColor: COLORS.BORDER_SUBTLE, borderTopWidth: incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 ? 0 : 1 }}>
+          <span style={{ color: COLORS.TEXT_MUTED }}>Valor pagado</span>
+          <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${totalARegistrar.toLocaleString()} <span className="font-normal opacity-50">({modulosCubiertos}/{sorted.length} módulos)</span></span>
+        </div>
+        {(montoSolicitado ?? 0) > 0 && (
+          <div className="flex items-center justify-between text-xs pt-0.5">
+            <span style={{ color: COLORS.TEXT_MUTED }}>Declarado</span>
+            <span className="font-semibold" style={{ color: COLORS.TEXT_MUTED }}>${(montoSolicitado ?? 0).toLocaleString()}</span>
+          </div>
+        )}
       </div>
     </div>
   )

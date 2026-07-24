@@ -1,6 +1,9 @@
 import { jsPDF } from "jspdf"
+import { applyPlugin } from "jspdf-autotable"
+applyPlugin(jsPDF)
 
 const ACCENT_RGB: [number, number, number] = [232, 148, 0]
+const PRIMARY_RGB: [number, number, number] = [31, 41, 55]
 const TEXT_RGB: [number, number, number] = [55, 65, 81]
 const BORDER_RGB: [number, number, number] = [229, 231, 235]
 const GRAY_ROW_RGB: [number, number, number] = [249, 250, 251]
@@ -10,6 +13,44 @@ const FOOTER_TEXT_RGB: [number, number, number] = [180, 180, 180]
 const WHITE_RGB: [number, number, number] = [255, 255, 255]
 const GREEN_RGB: [number, number, number] = [5, 150, 105]
 const RED_RGB: [number, number, number] = [185, 28, 28]
+const GREEN_BG_RGB: [number, number, number] = [220, 252, 231]
+const RED_BG_RGB: [number, number, number] = [254, 226, 226]
+
+// ============================================================================
+// TIPOS COMPARTIDOS
+// ============================================================================
+
+export interface DatosAsistenciaInfo {
+  nombre: string
+  instructor: string
+  ciudad: string
+  horario: string
+  fecha_inicio: string
+  fecha_fin: string
+}
+
+export interface DatosAsistenciaModulo {
+  nombre: string
+  fechas: string[]
+}
+
+export interface DatosAsistenciaParticipante {
+  nombres: string
+  apellidos: string
+  cedula: string
+  telefono: string
+  ciudad: string
+  conteo_c: number
+  conteo_f: number
+  asistencias: (string | null)[]
+}
+
+export interface DatosAsistenciaPDF {
+  info: DatosAsistenciaInfo
+  modulos: DatosAsistenciaModulo[]
+  participantes: DatosAsistenciaParticipante[]
+  tipo?: "curso" | "taller"
+}
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -29,269 +70,294 @@ function formatDate(date: Date): string {
   })
 }
 
+function formatDateLong(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("es-EC", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  })
+}
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("es-EC", {
+    day: "2-digit",
+    month: "short",
+  })
+}
+
 export async function generarListadoAsistenciaPDF(
-  nombreCurso: string,
-  horario: string,
-  estudiantes: string[],
-  instructor?: string,
+  data: DatosAsistenciaPDF,
 ) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+  try {
+  const _doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  const doc = _doc as any
   const margin = 14
-  const pageW = 210
+  const pageW = 297
   const contentW = pageW - 2 * margin
   const fechaImpresion = formatDate(new Date())
 
-  // Column layout: N° | Nombre | P | A | T | Firma
-  const colW = [14, 94, 12, 12, 12, 38]
-  const colX: number[] = []
-  let cx = margin
-  for (const w of colW) {
-    colX.push(cx)
-    cx += w
-  }
-  const tableW = colW.reduce((a, b) => a + b, 0)
-
-  const rowH = 7
-  const headerH = 8
-
-  function drawTableHeader(y: number) {
-    doc.setFillColor(...ACCENT_RGB)
-    doc.rect(margin, y, tableW, headerH, "F")
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(7)
-    doc.setTextColor(...WHITE_RGB)
-
-    const hdrs = ["N°", "Nombre del participante", "P", "A", "T", "Firma"]
-    for (let i = 0; i < hdrs.length; i++) {
-      if (i === 1) {
-        doc.text(hdrs[i], colX[i] + 2, y + 5)
-      } else {
-        doc.text(hdrs[i], colX[i] + colW[i] / 2, y + 5, { align: "center" })
-      }
-    }
-
-    // Separators in header
-    doc.setDrawColor(...WHITE_RGB)
-    doc.setLineWidth(0.15)
-    for (let c = 1; c < colX.length; c++) {
-      doc.line(colX[c], y, colX[c], y + headerH)
-    }
+  let modulosEfectivos = data.modulos
+  if (data.tipo === "taller" && modulosEfectivos.length === 0 && data.info.fecha_inicio) {
+    modulosEfectivos = [{
+      nombre: "Taller",
+      fechas: [data.info.fecha_inicio],
+    }]
   }
 
-  // ── Top orange band ──
-  doc.setFillColor(...ACCENT_RGB)
-  doc.rect(0, 0, pageW, 36, "F")
-
+  // -- Encabezado --
   try {
     const logoImg = await loadImage("/Logo_PDF.png")
-    doc.addImage(logoImg, "PNG", margin, 7, 25, 20)
+    doc.addImage(logoImg, "PNG", margin, 8, 22, 18)
   } catch {
     // logo non-critical
   }
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(20)
+  doc.setFontSize(17)
+  doc.setTextColor(...PRIMARY_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 17, { align: "center" })
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9.5)
+  doc.setTextColor(...MUTED_RGB)
+  doc.text("LISTA DE ASISTENCIA", pageW / 2, 24, { align: "center" })
+
+  doc.setDrawColor(...ACCENT_RGB)
+  doc.setLineWidth(0.6)
+  doc.line(margin, 29, pageW - margin, 29)
+
+  // -- Info box (bordered table-like) --
+  let y = 37
+  const infoHeaderH = 6
+  doc.setFillColor(...PRIMARY_RGB)
+  doc.rect(margin, y, contentW, infoHeaderH, "F")
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(7)
   doc.setTextColor(...WHITE_RGB)
-  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
+  doc.text("DATOS GENERALES", margin + 4, y + 4)
+  y += infoHeaderH
 
-  doc.setFontSize(11)
-  doc.text("LISTADO DE ASISTENCIA", pageW / 2, 27, { align: "center" })
+  const infoRowH = 6.5
+  const leftLabels = ["Instructor:", "Fecha de inicio:"]
+  const rightLabels = ["Curso:", "Fecha de finalización:", "Ciudad:", "Horario:"]
+  if (data.tipo === "taller") rightLabels[0] = "Taller:"
+  const leftValues = [data.info.instructor || "—", data.info.fecha_inicio ? formatDateLong(data.info.fecha_inicio) : "—"]
+  const rightValues = [data.info.nombre || "—", data.info.fecha_fin ? formatDateLong(data.info.fecha_fin) : "—", data.info.ciudad || "—", data.info.horario || "—"]
+  const maxRows = Math.max(leftLabels.length, rightLabels.length)
 
-  // ── Info box (2 columns) ──
-  let y = 42
-  const infoBoxH = 24
   doc.setDrawColor(...BORDER_RGB)
   doc.setLineWidth(0.3)
-  doc.rect(margin, y, contentW, infoBoxH)
 
-  const colMid = contentW / 2
-  const leftCol = [
-    { label: "Curso:", value: nombreCurso },
-    { label: "Horario:", value: horario },
-  ]
-  const rightCol = [
-    { label: "Instructor:", value: instructor || "—" },
-    { label: "Participantes:", value: `${estudiantes.length}` },
-    { label: "Fecha:", value: fechaImpresion },
-  ]
-
-  doc.setFontSize(8.5)
-  doc.setTextColor(...TEXT_RGB)
-
-  const maxRows = Math.max(leftCol.length, rightCol.length)
-  let iy = y + 5.5
   for (let r = 0; r < maxRows; r++) {
-    const leftItem = leftCol[r]
-    if (leftItem) {
-      doc.setFont("helvetica", "bold")
-      doc.text(leftItem.label, margin + 4, iy)
-      const labelW = doc.getTextWidth(leftItem.label)
-      doc.setFont("helvetica", "normal")
-      doc.text(leftItem.value, margin + 4 + labelW + 2, iy)
-    }
+    const rowY = y + r * infoRowH
+    doc.setFillColor(r % 2 === 0 ? 255 : 250, r % 2 === 0 ? 255 : 250, r % 2 === 0 ? 255 : 250)
+    doc.rect(margin, rowY, contentW, infoRowH, "F")
 
-    const rightItem = rightCol[r]
-    if (rightItem) {
-      const rx = margin + colMid
+    if (r < leftLabels.length) {
       doc.setFont("helvetica", "bold")
-      doc.text(rightItem.label, rx + 4, iy)
-      const labelW = doc.getTextWidth(rightItem.label)
+      doc.setFontSize(7.5)
+      doc.setTextColor(...TEXT_RGB)
+      doc.text(leftLabels[r], margin + 4, rowY + 4.5)
       doc.setFont("helvetica", "normal")
-      doc.text(rightItem.value, rx + 4 + labelW + 2, iy)
+      doc.text(leftValues[r], margin + 4 + doc.getTextWidth(leftLabels[r]) + 2, rowY + 4.5)
     }
-
-    iy += 5
+    if (r < rightLabels.length) {
+      const rx = margin + contentW * 0.45
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7.5)
+      doc.setTextColor(...TEXT_RGB)
+      doc.text(rightLabels[r], rx + 4, rowY + 4.5)
+      doc.setFont("helvetica", "normal")
+      doc.text(rightValues[r], rx + 4 + doc.getTextWidth(rightLabels[r]) + 2, rowY + 4.5)
+    }
+    doc.line(margin, rowY + infoRowH, margin + contentW, rowY + infoRowH)
   }
 
-  // ── Table title ──
-  y = y + infoBoxH + 6
+  // -- Leyenda --
+  const legendX = pageW - margin - 72
+  const legendY = 37 + 2
+  doc.setFillColor(240, 253, 244)
+  doc.rect(legendX, legendY, 72, 15, "F")
+  doc.setDrawColor(...GREEN_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(legendX, legendY, 72, 15, "S")
+
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(10)
-  doc.setTextColor(...TEXT_RGB)
-  doc.text("LISTADO DE PARTICIPANTES", margin, y)
-  y += 3
-  doc.setDrawColor(...BORDER_RGB)
-  doc.setLineWidth(0.5)
-  doc.line(margin, y, margin + contentW, y)
-  y += 5
+  doc.setFontSize(7)
+  doc.setTextColor(...GREEN_RGB)
+  doc.setFillColor(...GREEN_BG_RGB)
+  doc.rect(legendX + 3, legendY + 2, 4, 4, "F")
+  doc.text("X: ASISTIÓ", legendX + 9, legendY + 5)
 
-  // ── Table header ──
-  drawTableHeader(y)
-  y += headerH
+  doc.setTextColor(...RED_RGB)
+  doc.setFillColor(...RED_BG_RGB)
+  doc.rect(legendX + 3, legendY + 8.5, 4, 4, "F")
+  doc.text("F: FALTÓ", legendX + 9, legendY + 11.5)
 
-  // ── Student rows ──
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(8.5)
-  doc.setTextColor(...TEXT_RGB)
+  // -- Autotable table --
+  y += maxRows * infoRowH + 6
 
-  estudiantes.forEach((nombre, idx) => {
-    if (y + rowH > 268) {
-      doc.addPage()
-      y = 20
-      drawTableHeader(y)
-      y += headerH
+  const fixedColHeaders = [
+    "No.",
+    "C",
+    "F",
+    "Nombres y Apellidos",
+    "Cédula",
+    "Teléfono",
+    "Ciudad",
+  ]
+  const fixedColCount = fixedColHeaders.length
+  const allDates = modulosEfectivos.flatMap((m) => m.fechas)
+
+  const headRow1: { content: string; colSpan?: number; rowSpan?: number }[] = []
+  const headRow2: { content: string; rowSpan?: number }[] = []
+
+  for (const header of fixedColHeaders) {
+    headRow1.push({ content: header, rowSpan: 2 })
+  }
+  for (const mod of modulosEfectivos) {
+    if (mod.fechas.length > 0) {
+      const isSingleModTaller = data.tipo === "taller" && modulosEfectivos.length === 1
+      const displayName = isSingleModTaller ? formatDateShort(mod.fechas[0] ?? "") : mod.nombre
+      headRow1.push({ content: displayName, colSpan: mod.fechas.length })
     }
+  }
 
-    const num = idx + 1
+  for (const dateStr of allDates) {
+    headRow2.push({ content: formatDateShort(dateStr) })
+  }
 
-    if (idx % 2 === 0) {
-      doc.setFillColor(...GRAY_ROW_RGB)
-      doc.rect(margin, y, tableW, rowH, "F")
+  const body = data.participantes.map((p, idx) => {
+    const nombreCompleto = [p.nombres, p.apellidos].filter(Boolean).join(" ")
+    const row: (string | number)[] = [
+      idx + 1,
+      p.conteo_c,
+      p.conteo_f,
+      nombreCompleto,
+      p.cedula,
+      p.telefono,
+      p.ciudad,
+    ]
+    for (const asis of p.asistencias) {
+      row.push(asis ?? "")
     }
-
-    // N°
-    doc.setTextColor(...TEXT_RGB)
-    doc.text(`${num}`, colX[0] + colW[0] / 2, y + 5, { align: "center" })
-
-    // Name
-    doc.text(nombre, colX[1] + 2, y + 5)
-
-    // Checkboxes for P, A, T
-    doc.setDrawColor(...MUTED_RGB)
-    doc.setLineWidth(0.3)
-    const cbSize = 4
-    for (let c = 2; c <= 4; c++) {
-      const cbx = colX[c] + (colW[c] - cbSize) / 2
-      const cby = y + (rowH - cbSize) / 2
-      doc.rect(cbx, cby, cbSize, cbSize)
-    }
-
-    // Firma underline
-    doc.setDrawColor(...BORDER_RGB)
-    doc.setLineWidth(0.3)
-    const fx = colX[5] + 2
-    const fy = y + rowH / 2 + 0.5
-    doc.line(fx, fy, colX[5] + colW[5] - 2, fy)
-
-    // Column separators
-    doc.setDrawColor(...BORDER_RGB)
-    doc.setLineWidth(0.2)
-    for (let c = 1; c < colX.length; c++) {
-      doc.line(colX[c], y, colX[c], y + rowH)
-    }
-
-    // Bottom border
-    doc.line(margin, y + rowH, margin + tableW, y + rowH)
-
-    y += rowH
+    return row
   })
 
-  // ── Legend box ──
-  y += 6
-  const legendH = 18
-  doc.setDrawColor(...BORDER_RGB)
-  doc.setLineWidth(0.3)
-  doc.rect(margin, y, contentW, legendH)
+  ;(doc as any).autoTable({
+    startY: y,
+    head: [headRow1, headRow2],
+    body,
+    theme: "grid",
+    headStyles: {
+      fillColor: PRIMARY_RGB,
+      textColor: WHITE_RGB,
+      fontStyle: "bold",
+      fontSize: 6.5,
+      halign: "center",
+      valign: "middle",
+      lineColor: BORDER_RGB,
+    },
+    styles: {
+      fontSize: 7,
+      cellPadding: 1.2,
+      lineColor: BORDER_RGB,
+      lineWidth: 0.15,
+      textColor: TEXT_RGB,
+    },
+    columnStyles: {
+      0: { cellWidth: 7, halign: "center", fontStyle: "bold" },
+      1: { cellWidth: 7, halign: "center", fontStyle: "bold", textColor: GREEN_RGB },
+      2: { cellWidth: 7, halign: "center", fontStyle: "bold", textColor: RED_RGB },
+      3: { cellWidth: 68, halign: "left" },
+      4: { cellWidth: 22, halign: "center" },
+      5: { cellWidth: 20, halign: "center" },
+      6: { cellWidth: 18, halign: "center" },
+    },
+    alternateRowStyles: {
+      fillColor: [249, 250, 251],
+    },
+    didParseCell: (cellData: any) => {
+      const colIndex = cellData.column.index
+      if (cellData.section === "body" && colIndex >= fixedColCount) {
+        const value = String(cellData.cell.raw ?? "")
+        if (value === "X") {
+          cellData.cell.styles.fillColor = [220, 252, 231]
+          cellData.cell.styles.textColor = [5, 150, 105]
+          cellData.cell.styles.fontStyle = "bold"
+          cellData.cell.styles.halign = "center"
+        } else if (value === "F") {
+          cellData.cell.styles.fillColor = [254, 226, 226]
+          cellData.cell.styles.textColor = [185, 28, 28]
+          cellData.cell.styles.fontStyle = "bold"
+          cellData.cell.styles.halign = "center"
+        } else {
+          cellData.cell.styles.halign = "center"
+        }
+      }
+      if (cellData.section === "head" && colIndex >= fixedColCount) {
+        cellData.cell.styles.halign = "center"
+      }
+    },
+    didDrawPage: (data: any) => {
+      const pageCount = doc.getNumberOfPages()
+      doc.setDrawColor(...FOOTER_LINE_RGB)
+      doc.setLineWidth(0.3)
+      doc.line(margin, 196, pageW - margin, 196)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(6.5)
+      doc.setTextColor(...FOOTER_TEXT_RGB)
+      doc.text(
+        `Comunikate  |  Página ${data.pageNumber} de ${pageCount}  |  Generado: ${fechaImpresion}`,
+        margin,
+        200,
+      )
+    },
+  })
 
-  doc.setFontSize(8)
-  doc.setTextColor(...TEXT_RGB)
-  const legendItems = [
-    { label: "P", desc: "Presente" },
-    { label: "A", desc: "Ausente" },
-    { label: "T", desc: "Tardanza" },
-  ]
+  // -- Observations and signature --
+  const lastY = (doc as any).lastAutoTable?.finalY ?? y
+  let afterY = lastY + 10
 
-  let ly = y + 5
-  for (const item of legendItems) {
-    doc.setDrawColor(...MUTED_RGB)
-    doc.setLineWidth(0.3)
-    doc.rect(margin + 5, ly - 2.5, 4, 4)
-    doc.setFont("helvetica", "bold")
-    doc.setTextColor(...TEXT_RGB)
-    doc.text(item.label, margin + 12, ly + 0.5)
-    doc.setFont("helvetica", "normal")
-    doc.setTextColor(...TEXT_RGB)
-    doc.text(item.desc, margin + 18, ly + 0.5)
-    ly += 5.5
+  if (afterY > 185) {
+    doc.addPage()
+    afterY = 20
   }
 
-  // ── Observations ──
-  y = y + legendH + 8
+  doc.setDrawColor(...BORDER_RGB)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, afterY, contentW, 18)
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(9)
+  doc.setFontSize(8)
   doc.setTextColor(...TEXT_RGB)
-  doc.text("Observaciones", margin, y)
-  y += 5
+  doc.text("Observaciones", margin + 4, afterY + 5)
 
   doc.setDrawColor(...BORDER_RGB)
   doc.setLineWidth(0.2)
-  for (let i = 0; i < 3; i++) {
-    doc.line(margin, y, margin + contentW, y)
-    y += 7
+  for (let i = 0; i < 2; i++) {
+    doc.line(margin + 4, afterY + 9 + i * 5, margin + contentW - 4, afterY + 9 + i * 5)
   }
 
-  // ── Signature ──
-  y += 4
-  const sigX = margin + contentW - 50
+  const sigY = afterY + 22
+  const sigX = margin + contentW - 55
   doc.setDrawColor(...BORDER_RGB)
   doc.setLineWidth(0.5)
-  doc.line(sigX, y, sigX + 50, y)
-  y += 3
+  doc.line(sigX, sigY, sigX + 55, sigY)
   doc.setFont("helvetica", "normal")
-  doc.setFontSize(8)
+  doc.setFontSize(7.5)
   doc.setTextColor(...MUTED_RGB)
-  doc.text("Firma del Instructor", sigX + 25, y, { align: "center" })
+  doc.text("Firma del Instructor", sigX + 27.5, sigY + 4, { align: "center" })
 
-  // ── Footer on each page (second pass) ──
-  const totalPages = doc.getNumberOfPages()
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i)
-    doc.setDrawColor(...FOOTER_LINE_RGB)
-    doc.setLineWidth(0.3)
-    doc.line(margin, 285, pageW - margin, 285)
-
-    doc.setFont("helvetica", "normal")
-    doc.setFontSize(7)
-    doc.setTextColor(...FOOTER_TEXT_RGB)
-    doc.text(
-      `Comunikate  |  Página ${i} de ${totalPages}  |  Generado: ${fechaImpresion}`,
-      margin,
-      291,
-    )
+  const safeName = data.info.nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .trim()
+  doc.save(`lista-asistencia-${safeName}.pdf`)
+  } catch (e) {
+    console.error("PDF generation error:", e)
+    throw e
   }
-
-  const safeName = nombreCurso.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, "").trim()
-  doc.save(`listado-asistencia-${safeName}.pdf`)
 }
 
 export interface EstudianteReporte {
@@ -330,7 +396,7 @@ export async function generarReporteAsistenciaPDF(
   const headerH = 8
 
   function drawTableHeader(y: number) {
-    doc.setFillColor(...ACCENT_RGB)
+    doc.setFillColor(...PRIMARY_RGB)
     doc.rect(margin, y, tableW, headerH, "F")
     doc.setFont("helvetica", "bold")
     doc.setFontSize(7)
@@ -352,26 +418,29 @@ export async function generarReporteAsistenciaPDF(
     }
   }
 
-  // ── Top orange band ──
-  doc.setFillColor(...ACCENT_RGB)
-  doc.rect(0, 0, pageW, 36, "F")
-
+  // -- Encabezado --
   try {
     const logoImg = await loadImage("/Logo_PDF.png")
-    doc.addImage(logoImg, "PNG", margin, 7, 25, 20)
+    doc.addImage(logoImg, "PNG", margin, 8, 22, 18)
   } catch {
     // logo non-critical
   }
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(20)
-  doc.setTextColor(...WHITE_RGB)
-  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
+  doc.setFontSize(17)
+  doc.setTextColor(...PRIMARY_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 17, { align: "center" })
 
-  doc.setFontSize(11)
-  doc.text("REPORTE DE ASISTENCIA", pageW / 2, 27, { align: "center" })
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9.5)
+  doc.setTextColor(...MUTED_RGB)
+  doc.text("REPORTE DE ASISTENCIA", pageW / 2, 24, { align: "center" })
 
-  // ── Info box ──
+  doc.setDrawColor(...ACCENT_RGB)
+  doc.setLineWidth(0.6)
+  doc.line(margin, 29, pageW - margin, 29)
+
+  // -- Info box --
   let y = 42
   const infoBoxH = 28
   doc.setDrawColor(...BORDER_RGB)
@@ -417,7 +486,7 @@ export async function generarReporteAsistenciaPDF(
     iy += 5
   }
 
-  // ── Table title ──
+  // -- Table title --
   y = y + infoBoxH + 6
   doc.setFont("helvetica", "bold")
   doc.setFontSize(10)
@@ -483,7 +552,7 @@ export async function generarReporteAsistenciaPDF(
     y += rowH
   })
 
-  // ── Summary ──
+  // -- Summary --
   y += 6
   doc.setDrawColor(...BORDER_RGB)
   doc.setLineWidth(0.3)
@@ -494,7 +563,7 @@ export async function generarReporteAsistenciaPDF(
   doc.setFont("helvetica", "bold")
   doc.text(`Total: ${totalCount} estudiantes  |  Asistieron: ${presentCount}  |  Ausentes: ${totalCount - presentCount}  |  Porcentaje: ${pct}%`, margin + 4, y + 9)
 
-  // ── Footer ──
+  // -- Footer --
   const totalPages = doc.getNumberOfPages()
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i)
@@ -512,7 +581,7 @@ export async function generarReporteAsistenciaPDF(
     )
   }
 
-  const safeName = nombreCurso.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, "").trim()
+  const safeName = nombreCurso.replace(/[^a-zA-Z0-9\s-]/g, "").trim()
   doc.save(`reporte-asistencia-${safeName}.pdf`)
 }
 
@@ -547,7 +616,7 @@ export async function generarListadoParticipantesPDF(
   const headerH = 8
 
   function drawTableHeader(y: number) {
-    doc.setFillColor(...ACCENT_RGB)
+    doc.setFillColor(...PRIMARY_RGB)
     doc.rect(margin, y, tableW, headerH, "F")
     doc.setFont("helvetica", "bold")
     doc.setFontSize(7)
@@ -569,26 +638,29 @@ export async function generarListadoParticipantesPDF(
     }
   }
 
-  // ── Top orange band ──
-  doc.setFillColor(...ACCENT_RGB)
-  doc.rect(0, 0, pageW, 36, "F")
-
+  // -- Encabezado --
   try {
     const logoImg = await loadImage("/Logo_PDF.png")
-    doc.addImage(logoImg, "PNG", margin, 7, 25, 20)
+    doc.addImage(logoImg, "PNG", margin, 8, 22, 18)
   } catch {
     // logo non-critical
   }
 
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(20)
-  doc.setTextColor(...WHITE_RGB)
-  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
+  doc.setFontSize(17)
+  doc.setTextColor(...PRIMARY_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 17, { align: "center" })
 
-  doc.setFontSize(11)
-  doc.text("LISTADO DE PARTICIPANTES", pageW / 2, 27, { align: "center" })
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9.5)
+  doc.setTextColor(...MUTED_RGB)
+  doc.text("LISTADO DE PARTICIPANTES", pageW / 2, 24, { align: "center" })
 
-  // ── Info box ──
+  doc.setDrawColor(...ACCENT_RGB)
+  doc.setLineWidth(0.6)
+  doc.line(margin, 29, pageW - margin, 29)
+
+  // -- Info box --
   let y = 42
   const infoBoxH = 18
   doc.setDrawColor(...BORDER_RGB)
@@ -615,7 +687,7 @@ export async function generarListadoParticipantesPDF(
   doc.setFont("helvetica", "normal")
   doc.text(fechaImpresion, margin + contentW / 2 + 4 + doc.getTextWidth(fechaLabel) + 2, y + 7)
 
-  // ── Table title ──
+  // -- Table title --
   y = y + infoBoxH + 6
   doc.setFont("helvetica", "bold")
   doc.setFontSize(10)
@@ -656,8 +728,8 @@ export async function generarListadoParticipantesPDF(
     doc.setTextColor(...TEXT_RGB)
     doc.text(`${num}`, colX[0] + colW[0] / 2, y + 5, { align: "center" })
     doc.text(nombreCompleto, colX[1] + 2, y + 5)
-    doc.text(p.cedula || "—", colX[2] + colW[2] / 2, y + 5, { align: "center" })
-    doc.text(p.telefono || "—", colX[3] + colW[3] / 2, y + 5, { align: "center" })
+    doc.text(p.cedula || "�", colX[2] + colW[2] / 2, y + 5, { align: "center" })
+    doc.text(p.telefono || "�", colX[3] + colW[3] / 2, y + 5, { align: "center" })
     doc.text(`$${Number(p.montoPagado).toFixed(2)}`, colX[4] + colW[4] / 2, y + 5, { align: "center" })
     doc.text(`$${Number(p.saldoPendiente).toFixed(2)}`, colX[5] + colW[5] / 2, y + 5, { align: "center" })
 
@@ -674,7 +746,7 @@ export async function generarListadoParticipantesPDF(
     y += rowH
   })
 
-  // ── Totals ──
+  // -- Totals --
   y += 4
   doc.setDrawColor(...BORDER_RGB)
   doc.setLineWidth(0.3)
@@ -686,7 +758,7 @@ export async function generarListadoParticipantesPDF(
   const totalText = `Total participantes: ${participantes.length}  |  Total pagado: $${Number(totalPagado).toFixed(2)}  |  Total pendiente: $${Number(totalSaldo).toFixed(2)}`
   doc.text(totalText, margin + 4, y + 7)
 
-  // ── Footer ──
+  // -- Footer --
   const totalPages = doc.getNumberOfPages()
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i)
@@ -704,15 +776,15 @@ export async function generarListadoParticipantesPDF(
     )
   }
 
-  const safeName = nombreTaller.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ\s]/g, "").trim()
+  const safeName = nombreTaller.replace(/[^a-zA-Z0-9\s-]/g, "").trim()
   doc.save(`listado-participantes-${safeName}.pdf`)
 }
 
 export interface ParticipanteCursoReporte {
   nombres: string
   apellidos: string
-  cedula: string
-  correo: string
+  ciudad: string
+  ocupacion: string
   fechaInscripcion: string
 }
 
@@ -732,14 +804,18 @@ export async function generarListadoParticipantesCursoPDF(
   for (const w of colW) { colX.push(cx); cx += w }
   const tableW = colW.reduce((a, b) => a + b, 0)
 
-  doc.setFillColor(...ACCENT_RGB)
-  doc.rect(0, 0, pageW, 36, "F")
+  // -- Encabezado --
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(20)
-  doc.setTextColor(...WHITE_RGB)
-  doc.text("COMUNIKATE ACADEMY", pageW / 2, 16, { align: "center" })
-  doc.setFontSize(11)
-  doc.text("LISTADO DE PARTICIPANTES", pageW / 2, 27, { align: "center" })
+  doc.setFontSize(17)
+  doc.setTextColor(...PRIMARY_RGB)
+  doc.text("COMUNIKATE ACADEMY", pageW / 2, 17, { align: "center" })
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9.5)
+  doc.setTextColor(...MUTED_RGB)
+  doc.text("LISTADO DE PARTICIPANTES", pageW / 2, 24, { align: "center" })
+  doc.setDrawColor(...ACCENT_RGB)
+  doc.setLineWidth(0.6)
+  doc.line(margin, 29, pageW - margin, 29)
 
   let y = 42
   doc.setDrawColor(...BORDER_RGB)
@@ -760,12 +836,12 @@ export async function generarListadoParticipantesCursoPDF(
 
   y += 16 + 6
 
-  doc.setFillColor(...ACCENT_RGB)
+  doc.setFillColor(...PRIMARY_RGB)
   doc.rect(margin, y, tableW, 8, "F")
   doc.setFont("helvetica", "bold")
   doc.setFontSize(7)
   doc.setTextColor(...WHITE_RGB)
-  const hdrs = ["N°", "Estudiante", "Cédula", "Correo", "Inscripción"]
+  const hdrs = ["N°", "Estudiante", "Ciudad", "Ocupación", "Inscripción"]
   for (let i = 0; i < hdrs.length; i++) {
     const align = i === 1 ? ("left" as const) : ("center" as const)
     const xOff = i === 1 ? 2 : colW[i] / 2
@@ -781,7 +857,7 @@ export async function generarListadoParticipantesCursoPDF(
     if (y + rowH > 287) {
       doc.addPage()
       y = margin
-      doc.setFillColor(...ACCENT_RGB)
+      doc.setFillColor(...PRIMARY_RGB)
       doc.rect(margin, y, tableW, 8, "F")
       doc.setFont("helvetica", "bold")
       doc.setFontSize(7)
@@ -797,11 +873,11 @@ export async function generarListadoParticipantesCursoPDF(
       doc.setFillColor(245, 245, 245)
       doc.rect(margin, y, tableW, rowH, "F")
     }
-    const nombre = [p.nombres, p.apellidos].filter(Boolean).join(" ") || "—"
+    const nombre = [p.nombres, p.apellidos].filter(Boolean).join(" ") || "�"
     doc.text(String(i + 1), colX[0] + colW[0] / 2, y + 5, { align: "center" })
     doc.text(nombre, colX[1] + 2, y + 5)
-    doc.text(p.cedula, colX[2] + colW[2] / 2, y + 5, { align: "center" })
-    doc.text(p.correo, colX[3] + colW[3] / 2, y + 5, { align: "center" })
+    doc.text(p.ciudad, colX[2] + colW[2] / 2, y + 5, { align: "center" })
+    doc.text(p.ocupacion, colX[3] + colW[3] / 2, y + 5, { align: "center" })
     doc.text(p.fechaInscripcion, colX[4] + colW[4] / 2, y + 5, { align: "center" })
     y += rowH
   })
