@@ -6,22 +6,52 @@ import { COLORS } from "@/lib/constants"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 
-const AVAILABLE_FIELDS = [
-  { key: "nombres", label: "Nombres" },
-  { key: "apellidos", label: "Apellidos" },
-  { key: "cedula", label: "Cedula" },
-  { key: "correo", label: "Correo" },
-  { key: "celular", label: "Celular" },
-  { key: "edad", label: "Edad" },
-  { key: "direccion", label: "Direccion" },
-  { key: "ocupacion", label: "Ocupacion" },
-  { key: "estado_civil", label: "Estado Civil" },
-  { key: "total_cursos", label: "Total Cursos" },
-  { key: "estado_pago", label: "Estado Pago" },
-  { key: "saldo_pendiente", label: "Saldo" },
-]
+type Contexto = "curso" | "taller" | "ciudad" | "todos"
 
-export type ExportFormat = "excel" | "pdf"
+const CAMPOS_POR_CONTEXTO: Record<Contexto, { key: string; label: string }[]> = {
+  todos: [
+    { key: "nombres", label: "Nombres" },
+    { key: "apellidos", label: "Apellidos" },
+    { key: "cedula", label: "Cédula" },
+    { key: "correo", label: "Correo" },
+    { key: "telefono", label: "Teléfono" },
+    { key: "direccion", label: "Dirección" },
+    { key: "ocupacion", label: "Ocupación" },
+    { key: "estado_financiero", label: "Estado Financiero" },
+    { key: "saldo", label: "Saldo" },
+    { key: "total_cursos", label: "Total Cursos" },
+  ],
+  curso: [
+    { key: "nombres", label: "Nombres" },
+    { key: "apellidos", label: "Apellidos" },
+    { key: "cedula", label: "Cédula" },
+    { key: "correo", label: "Correo" },
+    { key: "telefono", label: "Teléfono" },
+    { key: "estado_financiero", label: "Estado Financiero" },
+    { key: "saldo", label: "Saldo" },
+    { key: "total_cursos", label: "Total Cursos" },
+  ],
+  taller: [
+    { key: "nombres", label: "Nombres" },
+    { key: "apellidos", label: "Apellidos" },
+    { key: "cedula", label: "Cédula" },
+    { key: "telefono", label: "Teléfono" },
+    { key: "ciudad", label: "Ciudad" },
+    { key: "ocupacion", label: "Ocupación" },
+    { key: "fecha_inscripcion", label: "Fecha Inscripción" },
+  ],
+  ciudad: [
+    { key: "nombres", label: "Nombres" },
+    { key: "apellidos", label: "Apellidos" },
+    { key: "cedula", label: "Cédula" },
+    { key: "correo", label: "Correo" },
+    { key: "telefono", label: "Teléfono" },
+    { key: "direccion", label: "Dirección" },
+    { key: "ocupacion", label: "Ocupación" },
+    { key: "estado_financiero", label: "Estado Financiero" },
+    { key: "total_cursos", label: "Total Cursos" },
+  ],
+}
 
 interface StudentExportDialogProps {
   open: boolean
@@ -30,7 +60,8 @@ interface StudentExportDialogProps {
   extraFilters?: Record<string, string | number | undefined>
   title?: string
   description?: string
-  defaultFormat?: ExportFormat
+  contexto?: Contexto
+  onExport?: (selectedFields: string[]) => Promise<void>
 }
 
 export function StudentExportDialog({
@@ -39,13 +70,28 @@ export function StudentExportDialog({
   selectedIds,
   extraFilters,
   title = "Exportar Estudiantes",
-  description = "Selecciona formato y campos a exportar.",
-  defaultFormat,
+  description = "Selecciona los campos a exportar.",
+  contexto,
+  onExport,
 }: StudentExportDialogProps) {
-  const [format, setFormat] = useState<ExportFormat>(defaultFormat ?? "excel")
-  const [selectedFields, setSelectedFields] = useState<string[]>([
-    "nombres", "apellidos", "cedula", "correo", "estado_pago", "saldo_pendiente",
-  ])
+  const isLegacy = !onExport
+  const camposDisponibles = contexto ? CAMPOS_POR_CONTEXTO[contexto] : [
+    { key: "nombres", label: "Nombres" },
+    { key: "apellidos", label: "Apellidos" },
+    { key: "cedula", label: "Cédula" },
+    { key: "correo", label: "Correo" },
+    { key: "celular", label: "Celular" },
+    { key: "direccion", label: "Dirección" },
+    { key: "ocupacion", label: "Ocupación" },
+    { key: "estado_pago", label: "Estado Pago" },
+    { key: "saldo_pendiente", label: "Saldo" },
+    { key: "total_cursos", label: "Total Cursos" },
+    { key: "estado_civil", label: "Estado Civil" },
+    { key: "edad", label: "Edad" },
+  ]
+  const defaultKeys = camposDisponibles.map(c => c.key)
+
+  const [selectedFields, setSelectedFields] = useState<string[]>(defaultKeys)
   const [exporting, setExporting] = useState(false)
 
   const toggleField = (key: string) => {
@@ -58,25 +104,22 @@ export function StudentExportDialog({
     if (selectedFields.length === 0) return
     setExporting(true)
     try {
-      const blob = await estudiantesService.exportStudents({
-        formato: format,
-        campos: selectedFields,
-        ids: selectedIds?.length ? selectedIds : undefined,
-        ...extraFilters,
-      } as {
-        formato: "csv" | "pdf" | "excel"
-        campos?: string[]
-        ids?: string[]
-        buscar?: string
-        estado_pago?: string
-      })
-      const ext = format === "excel" ? "xlsx" : "pdf"
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `estudiantes.${ext}`
-      a.click()
-      URL.revokeObjectURL(url)
+      if (onExport) {
+        await onExport(selectedFields)
+      } else if (isLegacy) {
+        const blob = await estudiantesService.exportStudents({
+          formato: "pdf",
+          campos: selectedFields,
+          ids: selectedIds?.length ? selectedIds : undefined,
+          ...extraFilters,
+        } as { formato: "csv" | "pdf" | "excel"; campos?: string[]; ids?: string[]; buscar?: string; estado_pago?: string })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "estudiantes.pdf"
+        a.click()
+        URL.revokeObjectURL(url)
+      }
       toast.success("Exportacion completada")
       onOpenChange(false)
     } catch {
@@ -102,28 +145,14 @@ export function StudentExportDialog({
           </div>
           <div className="p-8 space-y-5">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-3 block">Formato</label>
-              <div className="flex gap-2">
-                {(["excel", "pdf"] as ExportFormat[]).map(fmt => (
-                  <button
-                    key={fmt}
-                    onClick={() => setFormat(fmt)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${
-                      format === fmt
-                        ? "text-white border-transparent shadow-sm"
-                        : "text-gray-600 bg-white hover:bg-gray-50"
-                    }`}
-                    style={format === fmt ? { backgroundColor: COLORS.ACCENT } : {}}
-                  >
-                    {fmt === "excel" ? "Excel" : "PDF"}
-                  </button>
-                ))}
-              </div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-3 block">
+                Formato: PDF
+              </label>
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-3 block">Campos</label>
               <div className="grid grid-cols-2 gap-2">
-                {AVAILABLE_FIELDS.map(field => (
+                {camposDisponibles.map(field => (
                   <label
                     key={field.key}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl border hover:bg-gray-50 cursor-pointer transition-colors"

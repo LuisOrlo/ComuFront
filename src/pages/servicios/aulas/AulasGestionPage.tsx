@@ -27,10 +27,8 @@ export function AulasGestionPage() {
   }
 
   useEffect(() => {
-    aulasService.getAulas()
-      .then(setAulas)
-      .catch(() => toast.error("Error al cargar aulas"))
-      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load()
   }, [])
 
   const handleSave = async () => {
@@ -80,13 +78,13 @@ export function AulasGestionPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50/30">
-      <header className="shrink-0 px-8 py-7 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="flex flex-col h-full bg-white">
+      <header className="shrink-0 px-8 py-5 border-b bg-white sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link
               to="/servicios/aulas"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all hover:bg-black/5 active:scale-[0.97] group"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all hover:bg-gray-50 active:scale-[0.97] group"
               style={{ color: COLORS.CHARCOAL }}
             >
               <HugeiconsIcon icon={ArrowLeft02Icon} size={16} className="opacity-40 group-hover:opacity-70 transition-opacity" />
@@ -102,7 +100,7 @@ export function AulasGestionPage() {
           </div>
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-violet-500/20"
+            className="inline-flex items-center gap-2.5 px-5 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
             style={{ backgroundColor: COLORS.ACCENT }}
           >
             <Plus size={18} strokeWidth={2.5} color="white" />
@@ -111,7 +109,7 @@ export function AulasGestionPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col p-6 lg:p-8 gap-5 min-h-0">
+      <div className="flex-1 flex flex-col px-8 py-6 gap-5 min-h-0">
         {!loading && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -141,7 +139,7 @@ export function AulasGestionPage() {
                 <p className="text-sm font-medium opacity-40 max-w-xs" style={{ color: COLORS.CHARCOAL }}>Crea tu primer espacio para empezar a gestionar reservas</p>
               </div>
               <button onClick={openCreate}
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white shadow-xl shadow-violet-500/20 hover:opacity-90 transition-all active:scale-[0.97]"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-all active:scale-[0.97]"
                 style={{ backgroundColor: COLORS.ACCENT }}>
                 <Plus size={16} strokeWidth={2.5} color="white" /> Crear primera aula
               </button>
@@ -156,14 +154,12 @@ export function AulasGestionPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04, type: "spring", stiffness: 400, damping: 30 }}
-                    className="bg-white rounded-2xl border shadow-sm overflow-hidden"
+                    className="bg-white rounded-2xl border overflow-hidden"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
                   >
-                    <div className="relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-violet-500/[0.02] to-transparent pointer-events-none" />
-                      <div className="relative p-5 flex items-center gap-5">
-                        <div className="size-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0 shadow-md shadow-violet-200/50">
-                          <HugeiconsIcon icon={Home02Icon} size={20} className="text-white" />
+                    <div className="p-4 flex items-center gap-4">
+                        <div className="size-10 rounded-xl flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: COLORS.ACCENT }}>
+                          <HugeiconsIcon icon={Home02Icon} size={18} className="text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>{aula.nombre}</h3>
@@ -187,8 +183,8 @@ export function AulasGestionPage() {
                         <div className="flex gap-2 shrink-0">
                           <button
                             onClick={() => openEdit(aula)}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-black/5 hover:bg-black/10 transition-all text-xs font-bold active:scale-[0.97]"
-                            style={{ color: COLORS.CHARCOAL }}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border hover:bg-gray-50 transition-all text-xs font-bold active:scale-[0.97]"
+                            style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
                           >
                             <HugeiconsIcon icon={Edit01Icon} size={13} /> Editar
                           </button>
@@ -199,7 +195,6 @@ export function AulasGestionPage() {
                             <Trash2 size={13} /> Eliminar
                           </button>
                         </div>
-                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -218,13 +213,13 @@ export function AulasGestionPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setModalOpen(false)}
-              className="absolute inset-0 bg-charcoal/60 backdrop-blur-md"
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
+              className="relative bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl"
             >
               <div className="p-8 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div className="space-y-1">
@@ -250,7 +245,7 @@ export function AulasGestionPage() {
                       type="text"
                       value={aulaForm.nombre}
                       onChange={e => setAulaForm({ ...aulaForm, nombre: e.target.value })}
-                      className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                      className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500"
                       style={{ borderColor: COLORS.BORDER_SUBTLE }}
                       placeholder="Ej. Estudio de Producción A"
                     />
@@ -269,7 +264,7 @@ export function AulasGestionPage() {
                         type="number"
                         value={aulaForm.capacidad}
                         onChange={e => setAulaForm({ ...aulaForm, capacidad: parseInt(e.target.value) || 0 })}
-                        className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                        className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500"
                         style={{ borderColor: COLORS.BORDER_SUBTLE }}
                         placeholder="10"
                         min="1"
@@ -287,7 +282,7 @@ export function AulasGestionPage() {
                         type="number"
                         value={aulaForm.precio_hora}
                         onChange={e => setAulaForm({ ...aulaForm, precio_hora: parseFloat(e.target.value) || 0 })}
-                        className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500"
+                        className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500"
                         style={{ borderColor: COLORS.BORDER_SUBTLE }}
                         placeholder="0.00"
                         min="0"
@@ -303,7 +298,7 @@ export function AulasGestionPage() {
                   <textarea
                     value={aulaForm.caracteristicas}
                     onChange={e => setAulaForm({ ...aulaForm, caracteristicas: e.target.value })}
-                    className="w-full h-32 px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 resize-none"
+                    className="w-full h-32 px-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-medium outline-none transition-all focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 resize-none"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
                     placeholder="Describe el equipamiento, capacidad técnica, proyector, sonido, aire acondicionado, etc..."
                   />
@@ -320,7 +315,7 @@ export function AulasGestionPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-12 py-4 rounded-2xl text-sm font-bold text-white transition-all shadow-xl shadow-violet-500/20 active:scale-[0.98] disabled:opacity-50"
+                  className="px-12 py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50"
                   style={{ backgroundColor: COLORS.ACCENT }}
                 >
                   {saving ? "Guardando..." : editingId ? "Actualizar" : "Crear Aula"}
@@ -340,13 +335,13 @@ export function AulasGestionPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirm(null)}
-              className="absolute inset-0 bg-charcoal/60 backdrop-blur-md"
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl text-center space-y-5"
+              className="relative bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl text-center space-y-5"
             >
               <div className="size-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto">
                 <Trash2 size={28} className="text-red-500" />

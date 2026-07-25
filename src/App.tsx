@@ -25,6 +25,7 @@ import { SolicitudesInscripcionPage } from "@/pages/solicitudes-inscripcion/Soli
 import { SolicitudInscripcionDetallePage } from "@/pages/solicitudes-inscripcion/SolicitudInscripcionDetallePage"
 import { AulasPage } from "@/pages/servicios/aulas/AulasPage"
 import { AulasGestionPage } from "@/pages/servicios/aulas/AulasGestionPage"
+import { HistorialAulasPage } from "@/pages/servicios/aulas/HistorialAulasPage"
 import { EquiposPage } from "@/pages/servicios/equipos/EquiposPage"
 import { NuevoEquipoPage } from "@/pages/servicios/equipos/NuevoEquipoPage"
 import { AlquileresListPage } from "@/pages/servicios/equipos/AlquileresListPage"
@@ -33,11 +34,13 @@ import { HistorialEquipoPage } from "@/pages/servicios/equipos/HistorialEquipoPa
 import { PodcastPage } from "@/pages/servicios/podcast/PodcastPage"
 import { PaquetesPage } from "@/pages/servicios/podcast/PaquetesPage"
 import { NuevaReservaPage } from "@/pages/servicios/podcast/NuevaReservaPage"
+import { HistorialPodcastPage } from "@/pages/servicios/podcast/HistorialPodcastPage"
 import { NuevaReservaPage as NuevaReservaAulaPage } from "@/pages/servicios/aulas/NuevaReservaPage"
 
 import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPage"
 import { EdicionVideoFormPage } from "@/pages/servicios/edicion-video/EdicionVideoFormPage"
 import { EdicionVideoDetallePage } from "@/pages/servicios/edicion-video/EdicionVideoDetallePage"
+import { HistorialEdicionVideoPage } from "@/pages/servicios/edicion-video/HistorialEdicionVideoPage"
 import { RadioPage } from "@/pages/servicios/radio/RadioPage"
 import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
 import { ClientesPage } from "@/pages/clientes/ClientesPage"
@@ -154,14 +157,12 @@ function AppLayout() {
       </div>
 
       <div className="hidden lg:block shrink-0">
-        <Sidebar collapsed={collapsed} pendientesCount={pendientesCount} />
+        <Sidebar collapsed={collapsed} onToggleClick={() => setCollapsed(!collapsed)} pendientesCount={pendientesCount} />
       </div>
 
       <div className="flex flex-col flex-1 min-w-0 overflow-x-hidden">
         <TopBar
           onMenuClick={() => setMobileOpen(true)}
-          onToggleClick={() => setCollapsed(!collapsed)}
-          collapsed={collapsed}
           pendientesCount={pendientesCount}
           showNotifications={showNotifications}
           onNotificationToggle={() => setShowNotifications(prev => !prev)}
@@ -205,6 +206,7 @@ function AppLayout() {
             <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudesInscripcionPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
             <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasPage /></RoleGuard>} />
+            <Route path="/servicios/aulas/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialAulasPage /></RoleGuard>} />
             <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasGestionPage /></RoleGuard>} />
             <Route path="/servicios/aulas/nueva-reserva/:aulaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
             <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EquiposPage /></RoleGuard>} />
@@ -214,9 +216,11 @@ function AppLayout() {
             <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquileresListPage /></RoleGuard>} />
             <Route path="/servicios/equipos/:id/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEquipoPage /></RoleGuard>} />
             <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PodcastPage /></RoleGuard>} />
+            <Route path="/servicios/podcast/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPodcastPage /></RoleGuard>} />
             <Route path="/servicios/podcast/nueva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaPage /></RoleGuard>} />
             <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PaquetesPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoPage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEdicionVideoPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoFormPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoDetallePage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoFormPage /></RoleGuard>} />

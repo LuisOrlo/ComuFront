@@ -90,6 +90,7 @@ export async function generarListadoAsistenciaPDF(
 ) {
   try {
   const _doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const doc = _doc as any
   const margin = 14
   const pageW = 297
@@ -244,6 +245,7 @@ export async function generarListadoAsistenciaPDF(
     return row
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(doc as any).autoTable({
     startY: y,
     head: [headRow1, headRow2],
@@ -277,6 +279,7 @@ export async function generarListadoAsistenciaPDF(
     alternateRowStyles: {
       fillColor: [249, 250, 251],
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     didParseCell: (cellData: any) => {
       const colIndex = cellData.column.index
       if (cellData.section === "body" && colIndex >= fixedColCount) {
@@ -299,6 +302,7 @@ export async function generarListadoAsistenciaPDF(
         cellData.cell.styles.halign = "center"
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     didDrawPage: (data: any) => {
       const pageCount = doc.getNumberOfPages()
       doc.setDrawColor(...FOOTER_LINE_RGB)
@@ -316,6 +320,7 @@ export async function generarListadoAsistenciaPDF(
   })
 
   // -- Observations and signature --
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lastY = (doc as any).lastAutoTable?.finalY ?? y
   let afterY = lastY + 10
 

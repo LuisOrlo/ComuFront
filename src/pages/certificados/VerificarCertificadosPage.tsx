@@ -49,8 +49,8 @@ export function VerificarCertificadosPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-gray-50 to-white flex flex-col">
-      <header className="px-6 py-8 border-b bg-white/80 backdrop-blur-md" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="min-h-dvh bg-white flex flex-col">
+      <header className="px-6 py-8 border-b bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-2xl mx-auto text-center space-y-3">
           <div className="flex items-center justify-center mb-2">
             <img src="/Logo_PDF.png" alt="Logo" className="h-28 w-auto" />
@@ -63,7 +63,7 @@ export function VerificarCertificadosPage() {
       </header>
 
       <div className="max-w-2xl mx-auto w-full px-6 py-8">
-        <div className="bg-white rounded-2xl border p-6 shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="bg-white rounded-2xl border p-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="flex gap-3">
             <div className="relative flex-1">
               <input
@@ -80,7 +80,7 @@ export function VerificarCertificadosPage() {
             <button
               onClick={handleSearch}
               disabled={loading}
-              className="px-8 py-4 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20 hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-4 rounded-xl text-sm font-bold text-white shadow-lg hover:opacity-90 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" style={{ backgroundColor: COLORS.ACCENT }}
             >
               <HugeiconsIcon icon={SearchIcon} size={16} />
               {loading ? "Consultando..." : "Consultar"}
@@ -118,7 +118,7 @@ export function VerificarCertificadosPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all"
+                className="bg-white rounded-2xl border p-5 transition-all"
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
               >
                 <div className="flex items-start justify-between gap-4">

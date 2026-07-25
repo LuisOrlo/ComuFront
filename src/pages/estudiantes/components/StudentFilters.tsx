@@ -37,8 +37,7 @@ export function StudentFilters({
 }: StudentFiltersProps) {
   return (
     <>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-0">
+        <div className="relative max-w-sm mb-4">
           <HugeiconsIcon
             icon={Search01Icon}
             size={16}
@@ -65,26 +64,21 @@ export function StudentFilters({
             }}
           />
         </div>
-      </div>
 
-      <div className="flex items-center gap-1 p-1 bg-gray-50 rounded-lg mb-4">
+      <div className="flex items-center gap-1 border-b mb-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         {filters.map((f) => (
           <button
             key={f.id}
             onClick={() => onPaymentFilterChange(f.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 ${
-              paymentFilter === f.id
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'hover:bg-white/80'
-            }`}
-            style={paymentFilter !== f.id ? { color: COLORS.TEXT_MUTED } : undefined}
+            className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+            style={{
+              borderColor: paymentFilter === f.id ? COLORS.ACCENT : "transparent",
+              color: paymentFilter === f.id ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+            }}
           >
             <HugeiconsIcon icon={f.icon} size={14} style={{ color: paymentFilter === f.id ? indicatorColor[f.id] : undefined }} />
             <span className="hidden sm:inline">{f.label}</span>
-            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${paymentFilter === f.id ? 'bg-gray-100 text-gray-700' : ''}`} style={paymentFilter !== f.id ? { color: COLORS.TEXT_MUTED } : undefined}>
-              {stats[f.id]}
-            </span>
-            {paymentFilter === f.id && <div className="w-1 h-1 rounded-full" style={{ backgroundColor: indicatorColor[f.id] }} />}
+            <span className="text-xs opacity-50">({stats[f.id]})</span>
           </button>
         ))}
       </div>

@@ -10,14 +10,14 @@ import {
   BookOpenIcon,
   MoneyIcon,
   CalendarIcon,
+  CalendarDaysIcon,
+  ClipboardCheckIcon,
   CertificateIcon,
   UserCheckIcon,
   SettingsIcon,
   BellIcon,
   SearchIcon,
   Menu09Icon,
-  ArrowLeftIcon,
-  ArrowRightIcon,
   AiFolderIcon,
   AiLearningIcon,
   BookmarkIcon,
@@ -29,6 +29,8 @@ import {
   CoinsDollarIcon,
   BanknoteArrowDownIcon,
   BarChartIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
@@ -114,7 +116,7 @@ function NavItem({
   )
 }
 
-export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
+export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
   const { logout, user } = useAuth()
   const navRef = useRef<HTMLDivElement>(null)
   const [initialize, getInstance] = useOverlayScrollbars({
@@ -167,102 +169,101 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
     }
 
     if (isSecretaria) {
-      groups.push(
-        {
-          label: "Principal",
-          items: [
-            { icon: LayoutDashboard, label: "Dashboard", path: "/secretaria" },
-          ],
-        },
-        {
-          label: "Académico",
-          items: [
-            { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
-            { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
-            { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
-            { icon: AiLearningIcon, label: "Matrículas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
-            { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
-          ],
-        },
-        {
-          label: "Finanzas",
-          items: [
-            { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
-          ],
-        },
-        {
-          label: "Operaciones",
-          items: [
-            { icon: CalendarIcon, label: "Agenda", path: "/agenda" },
-            { icon: CalendarIcon, label: "Tareas", path: "/tareas" },
-            { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
-            { icon: UserCheckIcon, label: "Solicitudes", path: "/secretaria/solicitudes" },
-          ],
-        },
-        {
-          label: "Servicios",
-          items: [
-            { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
-            { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
-            { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
-            { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
-            { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
-          ],
-        },
-      )
-    }
+  groups.push(
+    {
+      label: "Principal",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/secretaria" },
+      ],
+    },
+    {
+      label: "Académico",
+      items: [
+        { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
+        { icon: AiLearningIcon, label: "Matrículas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
+        { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
+        { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
+        { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
+      ],
+    },
+    {
+      label: "Operaciones",
+      items: [
+        { icon: CalendarDaysIcon, label: "Agenda", path: "/agenda" },
+        { icon: ClipboardCheckIcon, label: "Tareas", path: "/tareas" },
+        { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
+        { icon: UserCheckIcon, label: "Solicitudes", path: "/secretaria/solicitudes" },
+      ],
+    },
+    {
+      label: "Finanzas",
+      items: [
+        { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
+      ],
+    },
+    {
+      label: "Servicios",
+      items: [
+        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+        { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
+        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
+        { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
+      ],
+    },
+  )
+}
 
-    if (isAdmin) {
-      groups.push(
-        {
-          label: "Académico",
-          items: [
-            { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
-            { icon: AiFolderIcon, label: "Categorías", path: "/catalogos" },
-            { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
-            { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
-            { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
-            { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
-          ],
-        },
-        {
-          label: "Gestión",
-          items: [
-            { icon: UserCheckIcon, label: "Personal", path: "/personas" },
-            { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
-            { icon: CalendarIcon, label: "Tareas", path: "/tareas" },
-            { icon: SettingsIcon, label: "Cuentas", path: "/cuentas" },
-            { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },
-          ],
-        },
-        {
-          label: "Finanzas",
-          items: [
-            { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
-            { icon: CoinsDollarIcon, label: "Ingresos", path: "/finanzas/ingresos" },
-            { icon: BanknoteArrowDownIcon, label: "Egresos", path: "/finanzas/egresos" },
-            { icon: BarChartIcon, label: "Estadísticas", path: "/finanzas/estadisticas" },
-          ],
-        },
-        {
-          label: "Operaciones",
-          items: [
-            { icon: CalendarIcon, label: "Agenda", path: "/agenda" },
-            
-          ],
-        },
-        {
-          label: "Servicios",
-          items: [
-            { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
-            { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
-            { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
-            { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
-            { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
-          ],
-        }
-      )
-    }
+if (isAdmin) {
+  groups.push(
+    {
+      label: "Académico",
+      items: [
+        { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
+        { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
+        { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
+        { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
+        { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
+        { icon: AiFolderIcon, label: "Categorías", path: "/catalogos" },
+      ],
+    },
+    {
+      label: "Operaciones",
+      items: [
+        { icon: CalendarDaysIcon, label: "Agenda", path: "/agenda" },
+        { icon: ClipboardCheckIcon, label: "Tareas", path: "/tareas" },
+        { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
+      ],
+    },
+    {
+      label: "Finanzas",
+      items: [
+        { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
+        { icon: CoinsDollarIcon, label: "Ingresos", path: "/finanzas/ingresos" },
+        { icon: BanknoteArrowDownIcon, label: "Egresos", path: "/finanzas/egresos" },
+        { icon: BarChartIcon, label: "Estadísticas", path: "/finanzas/estadisticas" },
+      ],
+    },
+    {
+      label: "Gestión",
+      items: [
+        { icon: UserCheckIcon, label: "Personal", path: "/personas" },
+        { icon: SettingsIcon, label: "Cuentas", path: "/cuentas" },
+        { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },
+      ],
+    },
+    {
+      label: "Servicios",
+      items: [
+        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+        { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
+        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
+        { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
+      ],
+    },
+  )
+}
 
     return groups
   }, [isAdmin, isInstructor, isSecretaria, pendientesCount])
@@ -273,11 +274,11 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
       style={{
         backgroundColor: COLORS.CHARCOAL,
         width: collapsed ? "72px" : "260px",
-        transition: "width 280ms cubic-bezier(0.77, 0, 0.175, 1)",
+        transition: "width 300ms cubic-bezier(0.2, 0, 0, 1)",
       }}
     >
       <div
-        className="flex items-center justify-center h-14 border-b shrink-0"
+        className="flex items-center justify-center h-14 border-b shrink-0 relative group"
         style={{ borderColor: "rgba(255,255,255,0.06)" }}
       >
         <img
@@ -285,6 +286,27 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
           alt="Comunikate Academy"
           className="h-12 w-auto object-contain"
         />
+        {onToggleClick && (
+          <button
+            onClick={onToggleClick}
+            aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
+            className="absolute right-0.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-[34px] rounded-md select-none"
+            style={{ transition: "background-color 180ms ease-out" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent"
+            }}
+          >
+            <HugeiconsIcon
+              icon={collapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon}
+              size={16}
+              className="opacity-30 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200"
+              style={{ color: COLORS.ACCENT }}
+            />
+          </button>
+        )}
       </div>
 
       <div ref={navRef} className="flex-1 px-3 py-5">
@@ -348,16 +370,12 @@ export function Sidebar({ collapsed, onClose, pendientesCount }: SidebarProps & 
 
 export function TopBar({
   onMenuClick,
-  onToggleClick,
-  collapsed,
   pendientesCount,
   showNotifications,
   onNotificationToggle,
   bellRef,
 }: {
   onMenuClick: () => void
-  onToggleClick: () => void
-  collapsed: boolean
   pendientesCount: number
   showNotifications: boolean
   onNotificationToggle: () => void
@@ -384,32 +402,6 @@ export function TopBar({
           onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
           <HugeiconsIcon icon={Menu09Icon} size={20} />
-        </button>
-
-        <button
-          onClick={onToggleClick}
-          className="hidden lg:flex items-center justify-center size-8 rounded-lg select-none"
-          style={{
-            backgroundColor: COLORS.CHARCOAL,
-            color: "rgba(255,255,255,0.6)",
-            transition: "background-color 180ms ease-out, color 180ms ease-out, transform 120ms ease-out",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = ACCENT
-            e.currentTarget.style.color = "white"
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = COLORS.CHARCOAL
-            e.currentTarget.style.color = "rgba(255,255,255,0.6)"
-          }}
-          onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.93)")}
-          onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        >
-          <HugeiconsIcon
-            icon={collapsed ? ArrowRightIcon : ArrowLeftIcon}
-            size={16}
-            className="transition-transform duration-200 ease-out"
-          />
         </button>
       </div>
 

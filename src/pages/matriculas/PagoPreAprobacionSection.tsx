@@ -211,14 +211,6 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     if (inscripcionVal > 0) {
       const excedente = Math.max(0, totalARegistrar - totalPrecio)
       const cubierta = Math.min(inscripcionVal, excedente)
-
-      if (cubierta < inscripcionVal) {
-        toast.warning(
-          `El monto registrado no cubre por completo el precio de inscripción.\n\n` +
-          `Inscripción: $${inscripcionVal.toLocaleString()} | Cubierto: $${cubierta.toLocaleString()} | Pendiente: $${(inscripcionVal - cubierta).toLocaleString()}`
-        )
-      }
-
       onSubmit(pagos, metodoPagoInicial || "efectivo", { total: inscripcionVal, cubierto: cubierta })
     } else {
       onSubmit(pagos, metodoPagoInicial || "efectivo")

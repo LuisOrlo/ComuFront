@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Link, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Download02Icon } from "@hugeicons/core-free-icons"
+import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Download02Icon, Clock01Icon } from "@hugeicons/core-free-icons"
 import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
@@ -200,6 +200,14 @@ export function PodcastPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              to="/servicios/podcast/historial"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-[0.97] hover:bg-gray-50"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+            >
+              <HugeiconsIcon icon={Clock01Icon} size={14} />
+              Historial
+            </Link>
             <Link
               to="/servicios/podcast/paquetes"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"

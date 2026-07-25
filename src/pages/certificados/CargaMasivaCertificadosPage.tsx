@@ -211,13 +211,13 @@ export function CargaMasivaCertificadosPage() {
   }, [])
 
   return (
-    <div className="flex flex-col h-full bg-gray-50/30">
-      <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="flex flex-col h-full bg-white">
+      <header className="shrink-0 px-8 py-6 border-b bg-white sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="space-y-1">
             
             <div className="flex items-center gap-3">
-              <a href="/certificados" className="size-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors">
+              <a href="/certificados" className="size-10 flex items-center justify-center rounded-full bg-gray-50 hover:bg-gray-100 transition-colors">
                 <ArrowLeft size={18} />
               </a>
               <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>Carga Masiva</h1>
@@ -230,7 +230,7 @@ export function CargaMasivaCertificadosPage() {
       </header>
 
       {totalCount > 0 && (
-        <div className="shrink-0 px-8 py-3 border-b bg-white/50 flex items-center gap-3 flex-wrap" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="shrink-0 px-8 py-3 border-b bg-white flex items-center gap-3 flex-wrap" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <select
             value={filtroCurso}
             onChange={e => setCursoForAll(e.target.value)}
@@ -286,7 +286,7 @@ export function CargaMasivaCertificadosPage() {
         <div
           ref={dropZoneRef}
           className={cn(
-            "relative border-2 border-dashed rounded-3xl transition-all duration-200",
+            "relative border-2 border-dashed rounded-2xl transition-all duration-200",
             files.length === 0 ? "p-16" : "p-6 mb-6",
             dragOver ? "border-amber-400 bg-amber-50/50 scale-[1.01]" : "border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50/30"
           )}
@@ -328,7 +328,7 @@ export function CargaMasivaCertificadosPage() {
 
         {/* File list */}
         {files.length > 0 && (
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="overflow-auto max-h-[calc(100vh-400px)]">
               <table className="w-full">
                 <thead className="sticky top-0 bg-gray-50/80 backdrop-blur-sm">
@@ -524,12 +524,12 @@ export function CargaMasivaCertificadosPage() {
       <AnimatePresence>
         {manualOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-charcoal/60 backdrop-blur-md" onClick={() => setManualOpen(null)} />
+            <div className="absolute inset-0 bg-charcoal/60 backdrop-blur-sm" onClick={() => setManualOpen(null)} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+              className="relative bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
             >
               <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div>

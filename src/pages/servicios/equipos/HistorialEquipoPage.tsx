@@ -76,9 +76,9 @@ export function HistorialEquipoPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-amber-50/30">
+      <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin size-8 border-[3px] border-amber-600 border-t-transparent rounded-full" />
+          <div className="animate-spin size-8 border-[3px] border-t-transparent rounded-full" style={{ borderColor: COLORS.ACCENT }} />
           <p className="text-xs font-medium opacity-40">Cargando historial...</p>
         </div>
       </div>
@@ -94,8 +94,8 @@ export function HistorialEquipoPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-amber-50/20">
-      <header className="shrink-0 border-b bg-white/90 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="flex flex-col h-full bg-white">
+      <header className="shrink-0 border-b bg-white sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-5">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/servicios/equipos")}
@@ -103,8 +103,8 @@ export function HistorialEquipoPage() {
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="size-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
-                <HugeiconsIcon icon={Home02Icon} size={20} className="text-white" />
+              <div className="size-11 rounded-2xl flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: COLORS.ACCENT }}>
+                <HugeiconsIcon icon={Home02Icon} size={20} />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>
@@ -130,7 +130,7 @@ export function HistorialEquipoPage() {
       <div className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-6 space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                 <HugeiconsIcon icon={Home02Icon} size={18} className="opacity-40" />
               </div>
@@ -139,7 +139,7 @@ export function HistorialEquipoPage() {
                 <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>{stats.total}</p>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="size-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
                 <HugeiconsIcon icon={Clock01Icon} size={18} className="text-amber-600" />
               </div>
@@ -148,7 +148,7 @@ export function HistorialEquipoPage() {
                 <p className="text-lg font-black text-amber-600">{stats.activos}</p>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="size-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
                 <HugeiconsIcon icon={Alert02Icon} size={18} className="text-red-600" />
               </div>
@@ -157,7 +157,7 @@ export function HistorialEquipoPage() {
                 <p className="text-lg font-black text-red-600">{stats.vencidos}</p>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="size-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
                 <HugeiconsIcon icon={CheckmarkCircle04Icon} size={18} className="text-green-600" />
               </div>
@@ -184,7 +184,7 @@ export function HistorialEquipoPage() {
 
                 return (
                   <div key={a.id}
-                    className="bg-white rounded-2xl border shadow-sm hover:shadow-md transition-all overflow-hidden"
+                    className="bg-white rounded-2xl border hover:shadow-sm transition-all overflow-hidden"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <div className={cn("h-1.5 w-full", STRIP_COLORS[displayEstado] || "bg-gray-400")} />
 
@@ -230,7 +230,7 @@ export function HistorialEquipoPage() {
                             <HugeiconsIcon icon={UserIcon} size={14} className="text-indigo-500" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Responsable</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
                             <p className="text-xs font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
                               {getResponsable(a)}
                             </p>
@@ -241,12 +241,16 @@ export function HistorialEquipoPage() {
                           <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                             <HugeiconsIcon icon={Money01Icon} size={14} className="text-emerald-500" />
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio total</p>
                             <p className="text-sm font-black" style={{ color: COLORS.ACCENT }}>
                               ${Number(a.precio_total).toFixed(2)}
                             </p>
                           </div>
+                          <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: getResponsable(a), montoTotal: Number(a.precio_total) || 0, montoSaldo: Number(a.precio_total) || 0, nombreServicio: `Alquiler de ${equipo.nombre}` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0" style={{ backgroundColor: COLORS.ACCENT }}>
+                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                            Registrar pago
+                          </button>
                         </div>
                       </div>
 

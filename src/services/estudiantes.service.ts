@@ -187,7 +187,7 @@ export interface StudentStats {
 }
 
 export interface CiudadesResponse {
-  datos: Array<{ ciudad: string; total: number }>
+  datos: Array<{ ciudad: string; total: number; cursos_activos: number; talleres_activos: number }>
   meta: {
     current_page: number
     last_page: number

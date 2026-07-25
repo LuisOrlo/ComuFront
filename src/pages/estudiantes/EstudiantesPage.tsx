@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react"
 import { Link, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreHorizontalIcon, BarChartIcon, LayersIcon, AddCircleIcon } from "@hugeicons/core-free-icons"
+import { MoreHorizontalIcon, BarChartIcon, LayersIcon, AddCircleIcon, UserGroupIcon, GraduationCapIcon, BookOpenIcon, MapsLocation01Icon } from "@hugeicons/core-free-icons"
+import type { IconSvgElement } from "@hugeicons/react"
 import { COLORS } from "@/lib/constants"
 import { TodosTab } from "./tabs/TodosTab"
 import { CursosTab } from "./tabs/CursosTab"
@@ -37,11 +38,11 @@ export function EstudiantesPage() {
     loadCounts()
   }, [loadCounts])
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "todos", label: "Todos" },
-    { id: "cursos", label: "Cursos" },
-    { id: "talleres", label: "Talleres" },
-    { id: "ciudades", label: "Ciudades" },
+  const tabs: { id: Tab; label: string; icon: IconSvgElement }[] = [
+    { id: "todos", label: "Todos", icon: UserGroupIcon },
+    { id: "cursos", label: "Cursos", icon: GraduationCapIcon },
+    { id: "talleres", label: "Talleres", icon: BookOpenIcon },
+    { id: "ciudades", label: "Ciudades", icon: MapsLocation01Icon },
   ]
 
   return (
@@ -104,29 +105,20 @@ export function EstudiantesPage() {
             </div>
           </header>
 
-          <div className="flex items-center gap-1 rounded-xl border bg-white p-1 shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="flex gap-1 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => { setActiveTab(tab.id); setSearchParams({ tab: tab.id }) }}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? "text-white shadow-sm"
-                    : "hover:bg-gray-50"
-                }`}
-                style={activeTab === tab.id ? { backgroundColor: COLORS.ACCENT } : { color: COLORS.TEXT_MUTED }}
+                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+                style={{
+                  borderColor: activeTab === tab.id ? COLORS.ACCENT : "transparent",
+                  color: activeTab === tab.id ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+                }}
               >
+                <HugeiconsIcon icon={tab.icon} size={14} />
                 {tab.label}
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  activeTab === tab.id
-                    ? "bg-white/20 text-white"
-                    : "bg-gray-100"
-                }`} style={activeTab !== tab.id ? { color: COLORS.TEXT_MUTED } : undefined}>
-                  {tabCounts[tab.id]}
-                </span>
-                {activeTab === tab.id && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                )}
+                <span className="text-xs opacity-50">({tabCounts[tab.id]})</span>
               </button>
             ))}
           </div>

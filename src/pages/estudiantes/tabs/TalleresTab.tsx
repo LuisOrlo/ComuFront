@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, ArrowRight02Icon, ArrowLeft01Icon, ArrowRight01Icon, ArrowDown01Icon, Clock04Icon } from "@hugeicons/core-free-icons"
+import { Search01Icon, ArrowRight02Icon, ArrowLeft01Icon, ArrowRight01Icon, Clock04Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService, type Taller } from "@/services/taller.service"
 
@@ -85,7 +85,7 @@ export function TalleresTab() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 min-w-0">
+        <div className="relative max-w-sm">
           <HugeiconsIcon
             icon={Search01Icon}
             size={16}
@@ -112,60 +112,40 @@ export function TalleresTab() {
             }}
           />
         </div>
-        <div className="relative">
-          <select
-            value={modalidadFilter}
-            onChange={(e) => setModalidadFilter(e.target.value)}
-            className="appearance-none bg-white border rounded-lg pl-3 pr-8 py-2 text-sm outline-none cursor-pointer min-w-[130px] select-none transition-all duration-180 ease-out"
+      </div>
+
+      <div className="flex items-center gap-1 border-b mb-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2 shrink-0">Modalidad:</span>
+        {[{ value: "", label: "Todos" }, { value: "presencial", label: "Presencial" }, { value: "virtual", label: "Virtual" }].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setModalidadFilter(opt.value)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-all"
             style={{
-              borderColor: COLORS.BORDER_SUBTLE,
-              color: modalidadFilter ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = COLORS.ACCENT
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-              e.currentTarget.style.boxShadow = "none"
+              borderColor: modalidadFilter === opt.value ? COLORS.ACCENT : "transparent",
+              color: modalidadFilter === opt.value ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
             }}
           >
-            <option value="">Todos</option>
-            <option value="presencial">Presencial</option>
-            <option value="virtual">Virtual</option>
-          </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-            <HugeiconsIcon icon={ArrowDown01Icon} size={12} />
-          </span>
-        </div>
-        <div className="relative">
-          <select
-            value={estadoFilter}
-            onChange={(e) => setEstadoFilter(e.target.value)}
-            className="appearance-none bg-white border rounded-lg pl-3 pr-8 py-2 text-sm outline-none cursor-pointer min-w-[130px] select-none transition-all duration-180 ease-out"
+            <HugeiconsIcon icon={Clock04Icon} size={13} />
+            {opt.label}
+          </button>
+        ))}
+        <span className="flex-1" />
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2 shrink-0">Estado:</span>
+        {[{ value: "", label: "Todos" }, { value: "pendiente", label: "Pendiente" }, { value: "confirmado", label: "Confirmado" }, { value: "en_progreso", label: "En progreso" }, { value: "completado", label: "Completado" }].map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setEstadoFilter(opt.value)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-all"
             style={{
-              borderColor: COLORS.BORDER_SUBTLE,
-              color: estadoFilter ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = COLORS.ACCENT
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-              e.currentTarget.style.boxShadow = "none"
+              borderColor: estadoFilter === opt.value ? COLORS.ACCENT : "transparent",
+              color: estadoFilter === opt.value ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
             }}
           >
-            <option value="">Todos</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="en_progreso">En progreso</option>
-            <option value="completado">Completado</option>
-          </select>
-          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-            <HugeiconsIcon icon={ArrowDown01Icon} size={12} />
-          </span>
-        </div>
+            <HugeiconsIcon icon={Clock04Icon} size={13} />
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -179,11 +159,11 @@ export function TalleresTab() {
       ) : (
         <div className="bg-white border rounded-xl shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
               <thead>
                 <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Taller</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Instructor</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Ciudad</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Fecha</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Modalidad</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Inscritos</th>
@@ -213,7 +193,7 @@ export function TalleresTab() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>
-                          {t.instructor ? `${t.instructor.nombres} ${t.instructor.apellidos}` : "Sin asignar"}
+                          {t.modalidad === "virtual" ? "No aplica" : (t.ciudad?.nombre || "—")}
                         </span>
                       </td>
                       <td className="px-4 py-3">

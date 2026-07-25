@@ -36,6 +36,11 @@ interface EstudianteFinanciero {
   modulos: Record<string, ModulePayData>
   total_pagado: number
   total_esperado: number
+  inscripcion?: {
+    monto_ajustado: number
+    monto_abonado: number
+    saldo_pendiente: number
+  }
 }
 
 interface ModuloInfo {
@@ -79,7 +84,9 @@ export function CursoPagosSection({ cursoId }: Props) {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursoId])
 
   const recaudado = totales.recaudado_real ?? 0
@@ -274,6 +281,18 @@ export function CursoPagosSection({ cursoId }: Props) {
                                   )
                                 })}
                               </div>
+                              {est.inscripcion && (
+                                <div className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border mt-2" style={{ borderColor: BORDER }}>
+                                  <span className="font-semibold text-sm" style={{ color: CHARCOAL }}>Inscripción / Matrícula</span>
+                                  <div className="flex items-center gap-4 text-sm">
+                                    <span style={{ color: CHARCOAL }}>Precio: <strong>${est.inscripcion.monto_ajustado.toFixed(2)}</strong></span>
+                                    <span style={{ color: "oklch(0.45 0.12 140)" }}>Abonado: <strong>${est.inscripcion.monto_abonado.toFixed(2)}</strong></span>
+                                    <span style={{ color: est.inscripcion.saldo_pendiente > 0 ? "oklch(0.5 0.15 25)" : "oklch(0.45 0.12 140)" }}>
+                                      Saldo: <strong>${est.inscripcion.saldo_pendiente.toFixed(2)}</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                               <div className="flex justify-end pt-2 border-t mt-2" style={{ borderColor: BORDER }}>
                                 <span className="text-sm font-bold" style={{ color: CHARCOAL }}>
                                   Total Pagado: <span style={{ color: "oklch(0.45 0.12 140)" }}>${Number(est.total_pagado ?? 0).toFixed(2)}</span>

@@ -130,6 +130,7 @@ export interface Curso {
   horaFin: string
   precioBase: number
   observaciones: string
+  catalogoNombre?: string
   colorCatalogo?: string
   horario?: {
     id: string
@@ -287,6 +288,7 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     precioBase: Number(typed.precio_base) || 0,
     observaciones: typed.observaciones || "",
     colorCatalogo: typed.catalogo?.color,
+    catalogoNombre: typed.catalogo?.nombre || "",
     horario: typed.horario ? {
       id: typed.horario.id,
       hora_inicio: typed.horario.hora_inicio?.substring(0, 5) || "",

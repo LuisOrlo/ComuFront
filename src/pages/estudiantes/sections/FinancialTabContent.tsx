@@ -265,6 +265,7 @@ function ModuleRow({ linea, isLast }: { linea: LineaPagoModulo; isLast: boolean 
   }
   const s = estadoStyle[linea.estado] || estadoStyle.pendiente
   const pct = linea.monto_ajustado > 0 ? Math.round((linea.monto_abonado / linea.monto_ajustado) * 100) : 0
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const esInscripcion = (linea as any).tipo === 'inscripcion'
   const nombre = esInscripcion
     ? 'Inscripción / Matrícula'

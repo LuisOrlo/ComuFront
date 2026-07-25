@@ -65,26 +65,6 @@ export function CursoCuentasDetallePage() {
     })
   }, [estudiantes, selectedModulo])
 
-  const totalesPorModulo = useMemo(() => {
-    if (selectedModulo !== "todos") return null
-    const map: Record<string, { total: number; abono: number; saldo: number }> = {}
-    modulos.forEach((m: any) => {
-      map[m.id] = { total: 0, abono: 0, saldo: 0 }
-    })
-    estudiantes.forEach((e: any) => {
-      const mods = toArray(e.modulos || e.lineas_pago_modulo)
-      mods.forEach((lm: any) => {
-        const mid = lm.modulo_id || lm.id
-        if (map[mid]) {
-          map[mid].total += Number(lm.precio || lm.monto_ajustado || lm.monto_original || 0)
-          map[mid].abono += Number(lm.abonado || lm.monto_abonado || 0)
-          map[mid].saldo += Number(lm.saldo || lm.saldo_pendiente || 0)
-        }
-      })
-    })
-    return map
-  }, [estudiantes, modulos, selectedModulo])
-
   const getNombreEstudiante = (e: any) => {
     if (e.nombre && e.nombre !== "—") return e.nombre
     if (e.estudiante) return `${e.estudiante.nombres || ""} ${e.estudiante.apellidos || ""}`.trim()
@@ -111,6 +91,13 @@ export function CursoCuentasDetallePage() {
     const mods = toArray(e.modulos || e.lineas_pago_modulo)
     return mods.reduce((sum: number, m: any) => sum + Number(m.abonado || m.monto_abonado || 0), 0)
   }
+
+  const totalRecaudado = estudiantes.reduce((sum, e) => sum + getTotalPagado(e), 0)
+
+  const totalEsperado = estudiantes.reduce((sum, e) => {
+    const mods = toArray(e.modulos || e.lineas_pago_modulo)
+    return sum + mods.reduce((s: number, m: any) => s + Number(m.precio || m.monto_ajustado || m.monto_original || 0), 0)
+  }, 0)
 
   const getStudentAdjustments = (e: any) => {
     const mods = toArray(e.modulos || e.lineas_pago_modulo)
@@ -244,7 +231,7 @@ export function CursoCuentasDetallePage() {
         >
               <div className="p-6 border-b flex items-center justify-between flex-wrap gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <h3 className="text-base font-black" style={{ color: COLORS.CHARCOAL }}>
-                  Estudiantes ({estudiantes.length})
+                  Estudiantes ({estudiantes.length}) · ${totalRecaudado.toLocaleString()} / ${totalEsperado.toLocaleString()}
                 </h3>
                 {modulos.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -267,10 +254,11 @@ export function CursoCuentasDetallePage() {
               </div>
 
           <div className="overflow-x-auto" ref={tablaRef}>
-            <table className="w-full text-left min-w-[800px]">
+            <table className="w-full text-left min-w-[800px] [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
               <thead>
                 <tr style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky left-0 z-10" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)" }}>Nombre</th>
+                  <th className="px-2 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky left-0 z-10 w-[36px] min-w-[36px] text-center" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)" }}>#</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky z-10" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)", left: "36px" }}>Nombre</th>
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cédula</th>
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Tel</th>
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Ciudad</th>
@@ -278,7 +266,7 @@ export function CursoCuentasDetallePage() {
                     modulos.map((m: any) => (
                       <th key={m.id} className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
                         <div className="text-center mb-1">{m.nombre || `M${m.orden}`}</div>
-                        <div className="grid grid-cols-3 gap-1 text-[8px] text-center opacity-60">
+                        <div className="grid grid-cols-3 text-[8px] text-center opacity-60 divide-x divide-[oklch(0.85_0_0)]">
                           <span>Total</span>
                           <span>Abono</span>
                           <span>Saldo</span>
@@ -292,16 +280,13 @@ export function CursoCuentasDetallePage() {
                       <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Saldo</th>
                     </>
                   ) : null}
-                  {selectedModulo === "todos" && modulos.length > 0 && (
-                    <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Total Pagado</th>
-                  )}
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 {filteredEstudiantes.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>
+                    <td colSpan={20} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>
                       No hay estudiantes registrados
                     </td>
                   </tr>
@@ -311,14 +296,15 @@ export function CursoCuentasDetallePage() {
                     const inscripcion = e.inscripcion || null
                     const isExpanded = expandedStudent === e.matricula_id
                     const ajustes = isExpanded ? getStudentAdjustments(e) : []
-                    const colSpan = 4 + (selectedModulo === "todos" ? (modulos.length > 0 ? modulos.length + 1 : 0) : 3) + 1
+                    const colSpan = 5 + (selectedModulo === "todos" ? (modulos.length > 0 ? modulos.length : 0) : 3) + 1
                     return (
                       <Fragment key={e.id || idx}>
                       <tr
                         className="transition-colors"
                         style={{ backgroundColor: idx % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}
                       >
-                        <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)" }}>
+                        <td className="px-2 py-3 sticky left-0 z-10 text-center text-xs opacity-40" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)" }}>{idx + 1}</td>
+                        <td className="px-4 py-3 sticky z-10" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)", left: "36px" }}>
                           <p className="text-xs font-bold truncate max-w-[200px]" style={{ color: COLORS.CHARCOAL }}>{getNombreEstudiante(e)}</p>
                         </td>
                         <td className="px-3 py-3 text-xs opacity-60" style={{ color: COLORS.CHARCOAL }}>{getCedula(e)}</td>
@@ -334,7 +320,7 @@ export function CursoCuentasDetallePage() {
                               return (
                                 <td key={m.id} className="px-3 py-3 text-center">
                                   {lm ? (
-                                    <div className="grid grid-cols-3 gap-1 text-[10px] text-center">
+                                    <div className="grid grid-cols-3 text-[10px] text-center divide-x divide-[oklch(0.85_0_0)]">
                                       <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${totalM.toLocaleString()}</span>
                                       <span className="text-green-600 font-bold">${abonoM.toLocaleString()}</span>
                                       <span className={cn("font-bold", saldoM > 0 ? "text-red-600" : "text-green-600")}>${saldoM.toLocaleString()}</span>
@@ -345,11 +331,6 @@ export function CursoCuentasDetallePage() {
                                 </td>
                               )
                             })}
-                            <td className="px-3 py-3 text-right">
-                              <p className="text-xs font-black" style={{ color: COLORS.ACCENT }}>
-                                ${getTotalPagado(e).toLocaleString()}
-                              </p>
-                            </td>
                           </>
                         ) : selectedModulo !== "todos" ? (
                           (() => {
@@ -418,34 +399,6 @@ export function CursoCuentasDetallePage() {
                   })
                 )}
               </tbody>
-              {selectedModulo === "todos" && modulos.length > 0 && filteredEstudiantes.length > 0 && (
-                <tfoot>
-                  <tr style={{ backgroundColor: COLORS.CHARCOAL }}>
-                    <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: COLORS.CHARCOAL }}>
-                      <span className="text-xs font-black text-white">Totales</span>
-                    </td>
-                      <td className="px-3 py-3" colSpan={3}></td>
-                      {modulos.map((m: any) => {
-                        const t = totalesPorModulo?.[m.id]
-                        return (
-                          <td key={m.id} className="px-3 py-3 text-center">
-                            {t ? (
-                              <span className="text-[10px] font-bold text-white">${t.total.toLocaleString()}</span>
-                            ) : (
-                              <span className="text-[10px] text-white/20">—</span>
-                            )}
-                          </td>
-                        )
-                      })}
-                      <td className="px-3 py-3 text-right">
-                        <p className="text-xs font-black text-white">
-                          ${filteredEstudiantes.reduce((sum, e) => sum + getTotalPagado(e), 0).toLocaleString()}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3"></td>
-                    </tr>
-                  </tfoot>
-              )}
             </table>
           </div>
         </div>

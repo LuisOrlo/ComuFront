@@ -292,6 +292,15 @@ export function AulasPage() {
               )}
             </div>
 
+            <div className="flex items-center gap-2">
+              <Link to="/servicios/aulas/historial"
+                className="flex items-center gap-2 px-4 py-2 rounded-[10px] text-xs font-bold border transition-all hover:bg-gray-50"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                <HugeiconsIcon icon={Clock01Icon} size={14} />
+                <span className="hidden sm:inline">Historial de reservas</span>
+              </Link>
+            </div>
+
             {modoVista === "general" && (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
@@ -325,6 +334,7 @@ export function AulasPage() {
                     key="aula-cal"
                     aula={selectedAula}
                     reservas={reservas}
+                    onSelect={(r) => { setDetalleReserva(r); setDetalleOpen(true) }}
                     onSlotClick={(dateStr, hour) => {
                       navigate(`/servicios/aulas/nueva-reserva/${selectedAula.id}`, {
                         state: { fecha_reserva: dateStr, hora_inicio: `${hour.toString().padStart(2, "0")}:00`, hora_fin: `${(hour + 1).toString().padStart(2, "0")}:00` }
@@ -411,7 +421,7 @@ export function AulasPage() {
                   <span className={cn("inline-block px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider", ESTADO_LABELS[detalleReserva.estado]?.color || "bg-gray-100 text-gray-600")}>{ESTADO_LABELS[detalleReserva.estado]?.label || detalleReserva.estado}</span>
                 </div>
                 <div className="p-4 rounded-2xl bg-gray-50 space-y-3">
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Responsable</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
                   {detalleReserva.persona ? (
                     <div className="flex items-center gap-3">
                       <div className="size-10 rounded-xl bg-indigo-100 flex items-center justify-center"><HugeiconsIcon icon={UserIcon} size={18} className="text-indigo-600" /></div>
@@ -446,7 +456,7 @@ export function AulasPage() {
   )
 }
 
-function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva }: { aula: Aula; reservas: ReservaAula[]; onSlotClick: (dateStr: string, hour: number) => void; onCrearReserva: () => void }) {
+function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva, onSelect }: { aula: Aula; reservas: ReservaAula[]; onSlotClick: (dateStr: string, hour: number) => void; onCrearReserva: () => void; onSelect?: (r: ReservaAula) => void }) {
   const today = new Date()
   const days: Date[] = []
   for (let i = 0; i < 7; i++) {
@@ -505,10 +515,12 @@ function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva }: { aula: A
                     onClick={() => { if (!isPast && !r) onSlotClick(dateStr, hour) }}
                   >
                     {first && (
-                      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className={cn("absolute top-0.5 left-0.5 right-0.5 p-2 rounded-xl text-[9px] z-10 shadow-lg border flex flex-col justify-between", r.persona_id ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-indigo-400/50" : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-400/50")}
-                        style={{ height: `calc(${Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0]))}*100% - 4px)` }}>
-                        <span className="font-bold">{fmtHora(r.hora_inicio)} – {fmtHora(r.hora_fin)}</span>
-                        <span className="uppercase font-black tracking-wider opacity-70 text-[7px]">{r.persona_id ? "Interno" : "Externo"}</span>
+                      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className={cn("absolute top-0.5 left-0.5 right-0.5 p-2 rounded-xl z-10 shadow-lg border flex flex-col items-center justify-center text-center cursor-pointer", r.persona_id ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-indigo-400/50" : "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-400/50")}
+                        style={{ height: `calc(${Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0]))}*100% - 4px)` }}
+                        onClick={(e) => { e.stopPropagation(); onSelect?.(r) }}>
+                        <span className="font-bold text-[10px]">{fmtHora(r.hora_inicio)} – {fmtHora(r.hora_fin)}</span>
+                        <span className="uppercase font-black tracking-wider opacity-70 text-[9px]">{r.persona_id ? "Interno" : "Externo"}</span>
+                        <span className="text-[9px] truncate opacity-80 mt-0.5 font-medium max-w-full">{r.persona?.nombres || r.cliente_externo?.nombres || ""}</span>
                       </motion.div>
                     )}
                     {!r && !isPast && <div className="absolute inset-1 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100"><Plus size={12} className="text-blue-300/50" /></div>}
@@ -581,6 +593,7 @@ function SemanalView({ weekDays, horas, colorForAula, getReservasSlot, isFirstHo
                           <button key={r.id} onClick={(e) => { e.stopPropagation(); onSelect(r) }} className={cn("flex-1 rounded-lg p-1.5 text-left hover:brightness-110 cursor-pointer border", c.bgLight, c.border)} style={{ minHeight: `${span * 50 - 6}px` }}>
                             <p className={cn("text-[9px] font-bold leading-tight truncate", c.text)}>{r.aula?.nombre}</p>
                             <p className="text-[8px] font-medium opacity-50 truncate">{fmtHora(r.hora_inicio)}-{fmtHora(r.hora_fin)}</p>
+                            <p className="text-[8px] truncate opacity-60 mt-0.5">{r.persona?.nombres || r.cliente_externo?.nombres || ""}</p>
                           </button>
                         )
                       })}
@@ -651,7 +664,7 @@ function ListaView({ reservas, colorForAula, onSelect }: { reservas: ReservaAula
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-b from-gray-50 to-gray-100/80">
-                {["Fecha", "Aula", "Entrada", "Salida", "Tipo", "Responsable", "Estado", "Precio"].map(h => (
+                {["Fecha", "Aula", "Entrada", "Salida", "Tipo", "Cliente", "Estado", "Precio"].map(h => (
                   <th key={h} className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 border-r last:border-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{h}</th>
                 ))}
               </tr>
@@ -659,7 +672,7 @@ function ListaView({ reservas, colorForAula, onSelect }: { reservas: ReservaAula
             <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               {reservas.map(r => {
                 const c = colorForAula(r.aula_id)
-                const responsable = r.persona_id ? `${r.persona?.nombres || ""} ${r.persona?.apellidos || ""}`.trim() || "—" : `${r.cliente_externo?.nombres || ""} ${r.cliente_externo?.apellidos || ""}`.trim() || "—"
+                const clienteNombre = r.persona_id ? `${r.persona?.nombres || ""} ${r.persona?.apellidos || ""}`.trim() || "—" : `${r.cliente_externo?.nombres || ""} ${r.cliente_externo?.apellidos || ""}`.trim() || "—"
                 const isToday = r.fecha_reserva === fmtDate(new Date())
                 return (
                   <tr key={r.id} onClick={() => onSelect(r)} className={cn("cursor-pointer hover:bg-gray-50/80", isToday && "bg-amber-50/40")}>
@@ -670,7 +683,7 @@ function ListaView({ reservas, colorForAula, onSelect }: { reservas: ReservaAula
                     <td className="p-3 border-r text-xs font-mono opacity-60" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{fmtHora(r.hora_inicio)}</td>
                     <td className="p-3 border-r text-xs font-mono opacity-60" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{fmtHora(r.hora_fin)}</td>
                     <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{r.persona_id ? <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg"><HugeiconsIcon icon={UserIcon} size={10} />Interno</span> : <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg"><HugeiconsIcon icon={Money01Icon} size={10} />Externo</span>}</td>
-                    <td className="p-3 border-r text-xs font-medium opacity-60 max-w-[100px] truncate" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{responsable}</td>
+                    <td className="p-3 border-r text-xs font-medium opacity-60 max-w-[100px] truncate" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{clienteNombre}</td>
                     <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{(() => { const e = ESTADO_LABELS[r.estado]; return <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider", e?.color || "bg-gray-100 text-gray-600")}>{e?.label || r.estado}</span> })()}</td>
                     <td className="p-3 text-xs font-bold text-right" style={{ color: COLORS.CHARCOAL }}>${Number(r.precio_total).toFixed(2)}</td>
                   </tr>

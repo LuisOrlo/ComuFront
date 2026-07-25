@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft02Icon, Download04Icon, MapPinIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft02Icon, Download04Icon, MapPinIcon, UserGroupIcon, GraduationCapIcon, BookOpenIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { InfoBadge } from "@/components/InfoBadge"
 import { StudentTable, type StudentRow } from "../components/StudentTable"
 import { BulkActionsBar } from "../components/BulkActionsBar"
 import { StudentExportDialog } from "../components/StudentExportDialog"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
+import { generarListadoEstudiantesPDF, type EstudiantePDF } from "@/lib/generarEstudiantesPDF"
 
 export function EstudiantesCiudadDetallePage() {
   const { ciudadId } = useParams<{ ciudadId: string }>()
@@ -16,6 +18,7 @@ export function EstudiantesCiudadDetallePage() {
 
   const [estudiantes, setEstudiantes] = useState<StudentRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [ciudadStats, setCiudadStats] = useState<{ cursos_activos: number; talleres_activos: number }>({ cursos_activos: 0, talleres_activos: 0 })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [exportOpen, setExportOpen] = useState(false)
 
@@ -38,11 +41,20 @@ export function EstudiantesCiudadDetallePage() {
           apellidos: e.apellidos,
           cedula: e.cedula,
           correo: e.correo,
+          telefono: e.celular,
+          direccion: e.perfil_estudiante?.direccion,
+          ocupacion: e.perfil_estudiante?.ocupacion,
           estado_pago: e.estado_pago,
           total_cursos: e.total_cursos,
           saldo_pendiente: e.saldo_pendiente,
         }))
       setEstudiantes(filtered)
+
+      try {
+        const cResp = await estudiantesService.getCiudades({ buscar: ciudadNombre })
+        const found = (cResp.datos || []).find(c => c.ciudad.toLowerCase() === nameLower)
+        if (found) setCiudadStats({ cursos_activos: found.cursos_activos, talleres_activos: found.talleres_activos })
+      } catch { /* silent */ }
     } catch {
       toast.error("Error al cargar estudiantes")
     } finally {
@@ -76,6 +88,30 @@ export function EstudiantesCiudadDetallePage() {
 
   const selectedArray = Array.from(selectedIds)
 
+  const handleExportPDF = async (selectedFields: string[]) => {
+    const rows = selectedIds.size > 0
+      ? estudiantes.filter(r => selectedIds.has(r.id))
+      : estudiantes
+
+    const estudiantesPDF: EstudiantePDF[] = rows.map(r => ({
+      nombres: r.nombres ?? "",
+      apellidos: r.apellidos ?? "",
+      cedula: r.cedula ?? "",
+      correo: r.correo,
+      telefono: r.telefono,
+      direccion: r.direccion,
+      ocupacion: r.ocupacion,
+      estado_financiero: r.estado_pago,
+      total_cursos: r.total_cursos,
+    }))
+
+    await generarListadoEstudiantesPDF("ciudad", {
+      nombre: ciudadNombre,
+      ciudad: ciudadNombre,
+      total: rows.length,
+    }, estudiantesPDF, selectedFields)
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <button
@@ -105,6 +141,20 @@ export function EstudiantesCiudadDetallePage() {
             </div>
           </div>
         </div>
+
+        {ciudadStats.cursos_activos > 0 || ciudadStats.talleres_activos > 0 ? (
+          <div
+            className="rounded-2xl border bg-white p-6 mb-6"
+            style={{ borderColor: COLORS.BORDER_SUBTLE }}
+          >
+            <div className="grid grid-cols-3 gap-4">
+              <InfoBadge icon={UserGroupIcon} label="Estudiantes" value={String(estudiantes.length)} />
+              <InfoBadge icon={GraduationCapIcon} label="Cursos activos" value={String(ciudadStats.cursos_activos)} />
+              <InfoBadge icon={BookOpenIcon} label="Talleres activos" value={String(ciudadStats.talleres_activos)} />
+            </div>
+          </div>
+        ) : null}
+
         <button
           onClick={() => setExportOpen(true)}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md shrink-0"
@@ -138,12 +188,10 @@ export function EstudiantesCiudadDetallePage() {
         open={exportOpen}
         onOpenChange={setExportOpen}
         selectedIds={selectedArray}
-        extraFilters={{
-          buscar: ciudadNombre,
-        }}
-        title="Exportar Estudiantes de la Ciudad"
-        description={`${selectedArray.length > 0 ? selectedArray.length : estudiantes.length} estudiante(s). Elige formato y campos.`}
-        defaultFormat="pdf"
+        contexto="ciudad"
+        onExport={handleExportPDF}
+        title="Exportar PDF"
+        description={`${selectedArray.length > 0 ? selectedArray.length : estudiantes.length} estudiante(s).`}
       />
     </div>
   )

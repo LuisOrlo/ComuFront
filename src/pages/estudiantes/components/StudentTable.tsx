@@ -10,9 +10,14 @@ export interface StudentRow {
   apellidos: string
   cedula?: string
   correo?: string
+  telefono?: string
+  ciudad?: string
+  direccion?: string
+  ocupacion?: string
   estado_pago?: string
   total_cursos?: number
   saldo_pendiente?: number
+  fecha_inscripcion?: string
 }
 
 interface StudentTableProps {
@@ -45,7 +50,7 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse">
+      <table className="w-full text-left border-collapse [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
         <thead>
           <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <th className="w-12 px-4 py-3">

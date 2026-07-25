@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, AddCircleIcon, ImageIcon, Delete02Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, AddCircleIcon, ImageIcon, Delete02Icon, UserIcon, DashboardSquareIcon, GraduationCapIcon, MoneyIcon } from "@hugeicons/core-free-icons"
 import { useStudentProfile } from "../hooks/useStudentProfile"
 import { ProfileHeader } from "../sections/ProfileHeader"
 import { InfoTabContent } from "../sections/InfoTabContent"
@@ -16,10 +16,10 @@ import { getStorageUrl } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 
 const tabs = [
-  { key: "informacion" as const, label: "Informacion" },
-  { key: "resumen" as const, label: "Resumen" },
-  { key: "academico" as const, label: "Academico" },
-  { key: "financiero" as const, label: "Financiero" },
+  { key: "informacion" as const, label: "Informacion", icon: UserIcon },
+  { key: "resumen" as const, label: "Resumen", icon: DashboardSquareIcon },
+  { key: "academico" as const, label: "Academico", icon: GraduationCapIcon },
+  { key: "financiero" as const, label: "Financiero", icon: MoneyIcon },
 ]
 
 export function EstudiantePerfilAcademicoPage() {
@@ -56,7 +56,7 @@ export function EstudiantePerfilAcademicoPage() {
   if (notFound) {
     return (
       <div className="p-8 text-center">
-        <p className="text-gray-500">Estudiante no encontrado.</p>
+        <p style={{ color: COLORS.TEXT_MUTED }}>Estudiante no encontrado.</p>
         <Link to="/estudiantes" className="text-sm font-bold mt-4 inline-block" style={{ color: COLORS.ACCENT }}>
           Volver al listado
         </Link>
@@ -111,7 +111,8 @@ export function EstudiantePerfilAcademicoPage() {
       <div className="flex items-center justify-between mb-2">
         <Link
           to="/estudiantes"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all"
+          style={{ color: COLORS.CHARCOAL }}
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
           Volver a listado de estudiantes
@@ -179,7 +180,7 @@ export function EstudiantePerfilAcademicoPage() {
           </div>
         ) : (
           <div className="flex items-center gap-2 flex-1">
-            <span className="text-xs opacity-50">Sin foto de cédula</span>
+            <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Sin foto de cédula</span>
           </div>
         )}
       </div>
@@ -196,21 +197,20 @@ export function EstudiantePerfilAcademicoPage() {
         onCancel={() => setDeleteCedulaOpen(false)}
       />
 
-      <div className="bg-white border rounded-2xl overflow-hidden">
-        <div className="flex border-b overflow-x-auto">
+      <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex gap-1 border-b overflow-x-auto" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative px-5 py-3.5 text-sm font-bold whitespace-nowrap transition-colors ${
-                activeTab === tab.key ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
-              }`}
+              className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap"
+              style={{
+                borderColor: activeTab === tab.key ? COLORS.ACCENT : "transparent",
+                color: activeTab === tab.key ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+              }}
             >
+              <HugeiconsIcon icon={tab.icon} size={14} />
               {tab.label}
-              {activeTab === tab.key && (
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ backgroundColor: COLORS.ACCENT }} />
-              )}
             </button>
           ))}
         </div>

@@ -54,10 +54,20 @@ export function ServicioPagoPage() {
         .catch(() => {})
       return () => { cancelled = true }
     } else if (esPagoDirecto) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCuentaValida(true)
+      ;(async () => {
+        try {
+          const res = await financeService.getServicioFinanciero(state.tipo, state.servicioId)
+          const d = (res as any)?.datos || res
+          setSaldoActual(Number(d?.saldo_pendiente ?? state.montoSaldo ?? 0))
+          setMontoTotalCuenta(Number(d?.monto_total ?? state.montoTotal ?? 0))
+        } catch {
+          // no cuenta yet, fallback to state values
+        }
+        setCuentaValida(true)
+      })()
     }
-  }, [state?.cuentaId, esPagoPorCuenta, esPagoDirecto])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.cuentaId, esPagoPorCuenta, esPagoDirecto, state?.montoSaldo])
 
   useEffect(() => {
     return () => {

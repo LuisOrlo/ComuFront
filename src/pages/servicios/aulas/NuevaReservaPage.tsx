@@ -179,7 +179,7 @@ export function NuevaReservaPage() {
     if (horaInicio && horaFin && horaFin <= horaInicio)
       newErrors.horaFin = "Debe ser posterior a la hora de inicio"
     if (!selectedCliente)
-      newErrors.cliente = "Debe seleccionar un responsable"
+      newErrors.cliente = "Debe seleccionar un cliente"
     setErrors(newErrors)
     setTouched({ fechaReserva: true, horaInicio: true, horaFin: true, cliente: true })
     return Object.keys(newErrors).length === 0
@@ -352,13 +352,13 @@ export function NuevaReservaPage() {
               )}
             </div>
 
-            {/* Sección: Responsable unificado */}
+            {/* Sección: Cliente */}
             <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <h2 className="text-xs font-bold flex items-center gap-2.5 mb-4 tracking-wide" style={{ color: COLORS.CHARCOAL }}>
                 <span className="size-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.92 0.04 160)", color: "#059669" }}>
                   <HugeiconsIcon icon={UserIcon} size={14} />
                 </span>
-                Responsable
+                Cliente
               </h2>
 
               <div className="space-y-2">

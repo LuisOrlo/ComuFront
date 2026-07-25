@@ -6,6 +6,7 @@ import { StudentFilters } from "../components/StudentFilters"
 import { StudentTable, type StudentRow } from "../components/StudentTable"
 import { BulkActionsBar } from "../components/BulkActionsBar"
 import { StudentExportDialog } from "../components/StudentExportDialog"
+import { generarListadoEstudiantesPDF, type EstudiantePDF } from "@/lib/generarEstudiantesPDF"
 import { COLORS } from "@/lib/constants"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { estudiantesService } from "@/services/estudiantes.service"
@@ -36,6 +37,30 @@ export function TodosTab() {
   const [exportOpen, setExportOpen] = useState(false)
 
   const selectedArray = Array.from(selectedIds)
+
+  const handleExportPDF = async (selectedFields: string[]) => {
+    const rows = selectedIds.size > 0
+      ? studentRows.filter(r => selectedIds.has(r.id))
+      : studentRows
+
+    const estudiantesPDF: EstudiantePDF[] = rows.map(r => ({
+      nombres: r.nombres,
+      apellidos: r.apellidos,
+      cedula: r.cedula ?? "",
+      correo: r.correo,
+      telefono: r.telefono,
+      direccion: r.direccion,
+      ocupacion: r.ocupacion,
+      estado_financiero: r.estado_pago,
+      saldo: r.saldo_pendiente,
+      total_cursos: r.total_cursos,
+    }))
+
+    await generarListadoEstudiantesPDF("todos", {
+      nombre: "Estudiantes",
+      total: rows.length,
+    }, estudiantesPDF, selectedFields)
+  }
 
   const handleBulkDeleteConfirm = useCallback(async () => {
     if (selectedArray.length === 0) return
@@ -75,6 +100,9 @@ export function TodosTab() {
     apellidos: e.apellidos,
     cedula: e.cedula,
     correo: e.correo,
+    telefono: e.celular,
+    direccion: e.perfil_estudiante?.direccion,
+    ocupacion: e.perfil_estudiante?.ocupacion,
     estado_pago: e.estado_pago,
     total_cursos: e.total_cursos,
     saldo_pendiente: e.saldo_pendiente,
@@ -173,11 +201,9 @@ export function TodosTab() {
         open={exportOpen}
         onOpenChange={setExportOpen}
         selectedIds={selectedArray}
-        extraFilters={{
-          buscar: search || undefined,
-          estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
-        }}
-        description={`${selectedArray.length > 0 ? selectedArray.length : (meta?.total ?? 0)} estudiante(s). Elige formato y campos.`}
+        contexto="todos"
+        onExport={handleExportPDF}
+        description={`${selectedArray.length > 0 ? selectedArray.length : (meta?.total ?? 0)} estudiante(s).`}
       />
 
       <ConfirmationModal

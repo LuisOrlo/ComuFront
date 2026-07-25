@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { SearchIcon, BadgeCheckIcon } from "@hugeicons/core-free-icons"
+import { SearchIcon, BadgeCheckIcon, UserGroupIcon, Clock04Icon, CertificateIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { createPortal } from "react-dom"
 import { X, Trash2, FileText, Eye, MoreHorizontal, Download, Upload } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -31,11 +31,11 @@ const ESTADO_CERT_LABELS: Record<string, string> = {
 }
 
 const TAB_CONFIG = [
-  { key: "", label: "Todos", color: CHARCOAL },
-  { key: "pendiente", label: "Pendientes", color: AMBER },
-  { key: "generado", label: "Emitidos", color: GREEN },
-  { key: "entregado", label: "Entregados", color: BLUE },
-  { key: "borrado", label: "Borrados", color: GRAY },
+  { key: "", label: "Todos", color: CHARCOAL, icon: UserGroupIcon },
+  { key: "pendiente", label: "Pendientes", color: AMBER, icon: Clock04Icon },
+  { key: "generado", label: "Emitidos", color: GREEN, icon: CertificateIcon },
+  { key: "entregado", label: "Entregados", color: BLUE, icon: BadgeCheckIcon },
+  { key: "borrado", label: "Borrados", color: GRAY, icon: Cancel01Icon },
 ]
 
 const SORT_OPTIONS = [
@@ -237,8 +237,8 @@ export function CertificadosPage() {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "#FAF8F5" }}>
-      <header className="shrink-0 px-8 pt-8 pb-4 bg-white/90 backdrop-blur-md border-b" style={{ borderColor: BORDER }}>
+    <div className="flex flex-col h-full bg-white">
+      <header className="shrink-0 px-8 pt-8 pb-4 bg-white border-b" style={{ borderColor: BORDER }}>
         <h1 className="text-3xl font-bold tracking-tighter" style={{ color: CHARCOAL }}>Certificados</h1>
         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm" style={{ color: CHARCOAL }}>
           <span>{total} estudiantes</span>
@@ -249,17 +249,18 @@ export function CertificadosPage() {
         </div>
       </header>
 
-      <div className="shrink-0 px-8 py-3 bg-white/70 border-b space-y-3" style={{ borderColor: BORDER }}>
-        <div className="flex gap-0">
+      <div className="shrink-0 px-8 py-3 bg-white border-b space-y-3" style={{ borderColor: BORDER }}>
+        <div className="flex gap-1 border-b" style={{ borderColor: BORDER }}>
           {TAB_CONFIG.map(t => (
             <button key={t.key || "todos"} onClick={() => { setFiltroCert(t.key); setPage(1) }}
-              className="px-4 py-2 text-sm font-medium transition-all relative"
-              style={{ color: filtroCert === t.key ? CHARCOAL : "oklch(0.7 0 0)" }}>
+              className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+              style={{
+                borderColor: filtroCert === t.key ? COLORS.ACCENT : "transparent",
+                color: filtroCert === t.key ? CHARCOAL : COLORS.TEXT_MUTED,
+              }}>
+              <HugeiconsIcon icon={t.icon} size={14} />
               {t.label}
-              <span className="ml-1 text-xs opacity-50">({tabCounts[t.key] ?? rows.length})</span>
-              {filtroCert === t.key && (
-                <motion.div layoutId="cert-tab-line" className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full" style={{ backgroundColor: t.color }} />
-              )}
+              <span className="text-xs opacity-50">({tabCounts[t.key] ?? rows.length})</span>
             </button>
           ))}
         </div>
@@ -283,7 +284,7 @@ export function CertificadosPage() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white border" style={{ borderColor: BORDER }}>
+              <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white border" style={{ borderColor: BORDER }}>
                 <div className="space-y-2 flex-1"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-24" /></div>
                 <Skeleton className="h-3 w-32" />
                 <Skeleton className="h-6 w-20 rounded-full" />
@@ -303,8 +304,8 @@ export function CertificadosPage() {
         ) : (
           <>
             {selectedIds.size > 0 && (
-              <div className="flex items-center gap-4 px-6 py-3 bg-green-50/80 border border-green-100 rounded-2xl mb-4">
-                <span className="text-sm font-bold text-green-700">
+              <div className="flex items-center gap-4 px-6 py-3 bg-white border rounded-2xl mb-4" style={{ borderColor: BORDER }}>
+                <span className="text-sm font-bold" style={{ color: CHARCOAL }}>
                   {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
                 </span>
                 <div className="flex items-center gap-2 ml-auto">
@@ -635,7 +636,7 @@ function ModalOverlay({ onClose, children }: { onClose: () => void; children: Re
       className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm" onClick={onClose} />
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
-        className="relative bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl">
+        className="relative bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
         {children}
       </motion.div>
     </motion.div>

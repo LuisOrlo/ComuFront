@@ -8,6 +8,8 @@ import { estudiantesService } from "@/services/estudiantes.service"
 interface CiudadRow {
   ciudad: string
   total: number
+  cursos_activos: number
+  talleres_activos: number
 }
 
 interface Meta {
@@ -55,7 +57,7 @@ export function CiudadesTab() {
   return (
     <div>
       <div className="mb-4">
-        <div className="relative flex-1 min-w-0">
+        <div className="relative max-w-sm">
           <HugeiconsIcon
             icon={Search01Icon}
             size={16}
@@ -95,18 +97,21 @@ export function CiudadesTab() {
       ) : (
         <div className="bg-white border rounded-xl shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
               <thead>
                 <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <th className="px-2 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 w-[36px] text-center" style={{ color: COLORS.CHARCOAL }}>#</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Ciudad</th>
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Estudiantes</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Cursos</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Talleres</th>
                   <th className="px-4 py-3 w-16" />
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-8 py-20 text-center">
+                    <td colSpan={6} className="px-8 py-20 text-center">
                       <div className="size-16 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-4">
                         <HugeiconsIcon icon={Clock04Icon} size={24} className="text-gray-300" />
                       </div>
@@ -115,16 +120,23 @@ export function CiudadesTab() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map(c => (
+                  filtered.map((c, idx) => (
                     <tr key={c.ciudad} className="transition-colors duration-150" style={{ ["--hover-bg" as string]: "oklch(0.98 0 0)" } as React.CSSProperties}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
+                      <td className="px-2 py-3 text-center text-xs opacity-40" style={{ color: COLORS.CHARCOAL }}>{idx + 1}</td>
                       <td className="px-4 py-3">
                         <span className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.ciudad}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-base font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.total}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-base font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.cursos_activos}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-base font-semibold" style={{ color: COLORS.CHARCOAL }}>{c.talleres_activos}</span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button

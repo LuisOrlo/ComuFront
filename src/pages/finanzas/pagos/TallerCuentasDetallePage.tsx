@@ -167,15 +167,16 @@ export function TallerCuentasDetallePage() {
         >
           <div className="p-6 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <h3 className="text-base font-black" style={{ color: COLORS.CHARCOAL }}>
-              Participantes ({participantes.length})
+              Participantes ({participantes.length}) · ${(totales.recaudado || 0).toLocaleString()} / ${(totales.esperado || 0).toLocaleString()}
             </h3>
           </div>
 
           <div className="overflow-x-auto" ref={tablaRef}>
-            <table className="w-full text-left min-w-[700px]">
+            <table className="w-full text-left min-w-[700px] [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
               <thead>
                 <tr style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky left-0 z-10" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)" }}>Nombre</th>
+                  <th className="px-2 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky left-0 z-10 w-[36px] min-w-[36px] text-center" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)" }}>#</th>
+                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 sticky z-10" style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.97 0 0)", left: "36px" }}>Nombre</th>
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cédula</th>
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Teléfono</th>
                   <th className="px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Abonado</th>
@@ -186,7 +187,7 @@ export function TallerCuentasDetallePage() {
               <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 {participantes.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>
+                    <td colSpan={7} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>
                       No hay participantes registrados
                     </td>
                   </tr>
@@ -207,7 +208,8 @@ export function TallerCuentasDetallePage() {
                         className="transition-colors"
                         style={{ backgroundColor: idx % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}
                       >
-                        <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)" }}>
+                        <td className="px-2 py-3 sticky left-0 z-10 text-center text-xs opacity-40" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)" }}>{idx + 1}</td>
+                        <td className="px-4 py-3 sticky z-10" style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)", left: "36px" }}>
                           <p className="text-xs font-bold truncate max-w-[200px]" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
                         </td>
                         <td className="px-3 py-3 text-xs opacity-60" style={{ color: COLORS.CHARCOAL }}>{getCedula(p)}</td>
@@ -252,7 +254,7 @@ export function TallerCuentasDetallePage() {
                       </tr>
                       {isExpanded && p.motivo_ajuste && (
                         <tr style={{ backgroundColor: "oklch(0.64 0.2 150 / 0.06)" }}>
-                          <td colSpan={6} className="px-5 py-3">
+                          <td colSpan={7} className="px-5 py-3">
                             <div className="flex items-center gap-2 text-[11px]" style={{ color: COLORS.CHARCOAL }}>
                               <span className="font-bold">Ajuste:</span>
                               {Number(p.precio_taller || 0) > 0 && Number(p.precio_taller) !== Number(p.monto_total || 0) && (
@@ -269,27 +271,6 @@ export function TallerCuentasDetallePage() {
                   })
                 )}
               </tbody>
-              {participantes.length > 0 && (
-                <tfoot>
-                  <tr style={{ backgroundColor: COLORS.CHARCOAL }}>
-                    <td className="px-4 py-3 sticky left-0 z-10" style={{ backgroundColor: COLORS.CHARCOAL }}>
-                      <span className="text-xs font-black text-white">Totales</span>
-                    </td>
-                    <td className="px-3 py-3" colSpan={2}></td>
-                    <td className="px-3 py-3 text-right">
-                      <span className="text-xs font-bold text-green-300">
-                        ${(totales.recaudado || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <span className="text-xs font-bold text-red-300">
-                        ${((totales.esperado || 0) - (totales.recaudado || 0)).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3"></td>
-                  </tr>
-                </tfoot>
-              )}
             </table>
           </div>
         </div>

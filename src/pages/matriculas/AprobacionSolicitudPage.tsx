@@ -554,7 +554,7 @@ export function AprobacionSolicitudPage() {
                         montoSolicitado={Number(selected.pago?.monto_solicitado) || 0}
                         onMontoModulo1Change={setMontoModulo1Valido}
                         onTotalPrecioChange={setTotalPrecioModulos}
-                        onSubmit={(pagos, metodoPago) => handleApprove(pagos, metodoPago)}
+                        onSubmit={(pagos, metodoPago, inscripcion) => handleApprove(pagos, metodoPago, inscripcion)}
                       />
                     </div>
                   )}

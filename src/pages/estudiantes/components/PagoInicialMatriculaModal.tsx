@@ -116,7 +116,7 @@ export function PagoInicialMatriculaModal({
       }
 
       if (pagos.length === 0) {
-        toast.error("Todos los m\u00f3dulos ya est\u00e1n pagados")
+        toast.error("Todos los módulos ya están pagados")
         setSaving(false)
         return
       }
@@ -232,9 +232,11 @@ export function PagoInicialMatriculaModal({
                         className="size-8 shrink-0 rounded-lg flex items-center justify-center text-xs font-black text-white"
                         style={{ backgroundColor: pagado ? "#10b981" : COLORS.ACCENT }}
                       >
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {(linea as any).tipo === 'inscripcion' ? 'Insc' : (linea.numero_orden ?? '—')}
                       </div>
                       <div className="min-w-0">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         <p className="text-sm font-semibold text-gray-800 truncate">{(linea as any).tipo === 'inscripcion' ? 'Inscripción / Matrícula' : (linea.nombre_modulo || '')}</p>
                         <p className="text-[11px] text-gray-400">
                           ${linea.monto_ajustado.toLocaleString()}

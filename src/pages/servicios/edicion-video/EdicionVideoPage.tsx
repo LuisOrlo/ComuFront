@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useNavigate } from "react-router"
+import { Link, useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -144,6 +144,14 @@ export function EdicionVideoPage() {
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
               />
             </div>
+            <Link
+              to="/servicios/edicion-video/historial"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-[0.97] hover:bg-gray-50"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+            >
+              <HugeiconsIcon icon={Calendar03Icon} size={14} />
+              Historial
+            </Link>
             <button
               onClick={() => navigate("/servicios/edicion-video/nuevo")}
               className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-blue-500/20"

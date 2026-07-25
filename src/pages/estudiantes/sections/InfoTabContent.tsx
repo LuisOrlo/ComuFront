@@ -35,8 +35,8 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
   if (loading) {
     return (
       <div className="text-center py-20">
-        <div className="animate-spin size-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-3" />
-        <p className="text-sm text-gray-400">Cargando informacion del estudiante...</p>
+        <div className="animate-spin size-6 border-2 border-t-transparent rounded-full mx-auto mb-3" style={{ borderColor: COLORS.ACCENT }} />
+        <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando informacion del estudiante...</p>
       </div>
     )
   }
@@ -44,7 +44,7 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
   if (!data) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500">No se encontro informacion del estudiante.</p>
+        <p style={{ color: COLORS.TEXT_MUTED }}>No se encontro informacion del estudiante.</p>
       </div>
     )
   }
@@ -83,24 +83,24 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
     <div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
         <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Datos Personales</h3>
-          <div className="divide-y divide-gray-50">
+          <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: COLORS.TEXT_MUTED }}>Datos Personales</h3>
+          <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {personalFields.map((row) => (
               <div key={row.label} className="flex justify-between py-2.5 text-sm">
-                <span className="text-gray-500 shrink-0">{row.label}</span>
-                <span className="font-bold text-gray-800 text-right ml-4 truncate">{row.value}</span>
+                <span className="shrink-0" style={{ color: COLORS.TEXT_MUTED }}>{row.label}</span>
+                <span className="font-bold text-right ml-4 truncate" style={{ color: COLORS.CHARCOAL }}>{row.value}</span>
               </div>
             ))}
           </div>
         </div>
 
         <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Perfil Academico</h3>
-          <div className="divide-y divide-gray-50">
+          <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: COLORS.TEXT_MUTED }}>Perfil Academico</h3>
+          <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {academicFields.map((row) => (
               <div key={row.label} className={`py-2.5 text-sm ${row.full ? "" : "flex justify-between"}`}>
-                <span className="text-gray-500">{row.label}</span>
-                <span className={`font-bold text-gray-800 ${row.full ? "block mt-1" : "text-right ml-4 truncate"}`}>
+                <span style={{ color: COLORS.TEXT_MUTED }}>{row.label}</span>
+                <span className={`font-bold ${row.full ? "block mt-1" : "text-right ml-4 truncate"}`} style={{ color: COLORS.CHARCOAL }}>
                   {row.value}
                 </span>
               </div>
@@ -110,16 +110,16 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
       </div>
 
       {matriculasActivas.length > 0 && (
-        <div className="mt-8 pt-6 border-t">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+        <div className="mt-8 pt-6 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: COLORS.TEXT_MUTED }}>
             Matriculas Activas ({matriculasActivas.length})
           </h3>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {matriculasActivas.map((matricula) => (
               <div key={matricula.id} className="flex items-center justify-between gap-4 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{matricula.curso}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{matricula.curso}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
                     {matricula.notas.length} modulo{matricula.notas.length !== 1 ? "s" : ""}
                     {matricula.promedio !== null && (
                       <>

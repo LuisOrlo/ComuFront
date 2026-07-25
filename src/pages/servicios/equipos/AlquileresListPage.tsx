@@ -10,7 +10,7 @@ import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { equiposService, type AlquilerEquipo } from "@/services/equipos.service"
 import { toast } from "sonner"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 
 const ESTADO_COLORS: Record<string, string> = {
   pendiente: "bg-blue-100 text-blue-700 border-blue-200",
@@ -25,6 +25,7 @@ const ESTADO_LABELS: Record<string, string> = {
 }
 
 export function AlquileresListPage() {
+  const navigate = useNavigate()
   const [alquileres, setAlquileres] = useState<AlquilerEquipo[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -97,14 +98,14 @@ export function AlquileresListPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50/30">
-      <header className="shrink-0 px-8 py-4 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <Link to="/servicios/equipos" className="size-9 flex items-center justify-center rounded-full hover:bg-black/5">
-          <HugeiconsIcon icon={ArrowLeft02Icon} size={18} className="opacity-50" />
+    <div className="flex flex-col h-full bg-white">
+      <header className="shrink-0 px-8 py-4 border-b bg-white sticky top-0 z-20 flex items-center gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <Link to="/servicios/equipos" className="size-9 flex items-center justify-center rounded-full hover:bg-gray-100">
+          <HugeiconsIcon icon={ArrowLeft02Icon} size={18} style={{ color: COLORS.TEXT_MUTED }} />
         </Link>
         <div>
           <h1 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Alquileres de Equipos</h1>
-          <p className="text-[10px] font-medium opacity-40">Registro general de todos los alquileres</p>
+          <p className="text-[10px] font-medium" style={{ color: COLORS.TEXT_MUTED }}>Registro general de todos los alquileres</p>
         </div>
       </header>
 
@@ -146,20 +147,27 @@ export function AlquileresListPage() {
         ) : (
           <div className="space-y-2">
             <div className="overflow-x-auto border rounded-2xl bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <table className="w-full">
-                <thead><tr className="bg-gray-50/80">{["Equipo", "Responsable", "Entrega", "Devolución esperada", "Estado", "Precio"].map(h => <th key={h} className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 border-r last:border-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{h}</th>)}</tr></thead>
+              <table className="w-full [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
+                <thead><tr className="bg-gray-50/80">{["Equipo", "Cliente", "Entrega", "Devolución esperada", "Estado", "Precio", "Acciones"].map(h => <th key={h} className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>{h}</th>)}</tr></thead>
                 <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   {alquileres.map(a => {
                     const isOverdue = (a.estado === "activo" || a.estado === "entregado") && new Date(a.fecha_devolucion_esperada) < new Date()
                     const displayEstado = a.estado === "vencido" ? "vencido" : isOverdue ? "vencido" : a.estado
+                    const clienteNombre = getResponsable(a)
                     return (
-                      <tr key={a.id} onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }} className="cursor-pointer hover:bg-gray-50/60 transition-colors">
-                        <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}><div className="flex items-center gap-2"><div className="size-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Home02Icon} size={14} className="text-amber-600" /></div><span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{a.equipo?.nombre || "—"}</span></div></td>
-                        <td className="p-3 border-r text-xs font-medium opacity-70 max-w-[120px] truncate" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{getResponsable(a)}</td>
-                        <td className="p-3 border-r text-xs font-mono opacity-60" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{new Date(a.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="p-3 border-r text-xs font-mono opacity-60" style={{ borderColor: COLORS.BORDER_SUBTLE }}>{new Date(a.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}><span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span></td>
-                        <td className="p-3 text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>${Number(a.precio_total).toFixed(2)}</td>
+                      <tr key={a.id} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="p-3 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}><div className="flex items-center gap-2"><div className="size-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Home02Icon} size={14} className="text-amber-600" /></div><span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{a.equipo?.nombre || "—"}</span></div></td>
+                        <td className="p-3 text-xs font-medium opacity-70 max-w-[120px] truncate cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{clienteNombre}</td>
+                        <td className="p-3 text-xs font-mono opacity-60 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="p-3 text-xs font-mono opacity-60 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="p-3 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}><span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span></td>
+                        <td className="p-3 text-xs font-bold cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }} style={{ color: COLORS.CHARCOAL }}>${Number(a.precio_total).toFixed(2)}</td>
+                        <td className="p-3">
+                          <button onClick={(e) => { e.stopPropagation(); navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: clienteNombre, montoTotal: Number(a.precio_total) || 0, montoSaldo: Number(a.precio_total) || 0, nombreServicio: `Alquiler de ${a.equipo?.nombre || "Equipo"}` } }) }} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap" style={{ backgroundColor: COLORS.ACCENT }}>
+                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                            Registrar pago
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -174,11 +182,11 @@ export function AlquileresListPage() {
       <AnimatePresence>
         {detailOpen && selectedAlquiler && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetailOpen(false)} className="absolute inset-0 bg-charcoal/60 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-3xl w-full max-w-xl flex flex-col max-h-[85vh] shadow-2xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetailOpen(false)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-2xl w-full max-w-xl flex flex-col max-h-[85vh] shadow-2xl">
               <div className="shrink-0 p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div><h2 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Detalle de Alquiler</h2><p className="text-xs opacity-40 mt-0.5">{selectedAlquiler.equipo?.nombre}</p></div>
-                <button onClick={() => setDetailOpen(false)} className="size-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10"><X size={18} /></button>
+                <button onClick={() => setDetailOpen(false)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}><X size={18} /></button>
               </div>
               <div className="overflow-y-auto p-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="grid grid-cols-2 gap-3">
@@ -199,7 +207,7 @@ export function AlquileresListPage() {
                   </div>
                 )}
                 <div className="p-4 rounded-2xl bg-gray-50">
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Responsable</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
                   {selectedAlquiler.persona ? (
                     <div className="flex items-center gap-3 mt-2"><div className="size-10 rounded-xl bg-indigo-100 flex items-center justify-center"><HugeiconsIcon icon={UserIcon} size={18} className="text-indigo-600" /></div><div><p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{selectedAlquiler.persona.nombres} {selectedAlquiler.persona.apellidos}</p>{selectedAlquiler.persona.correo && <p className="text-[10px] opacity-50">{selectedAlquiler.persona.correo}</p>}</div></div>
                   ) : selectedAlquiler.cliente_externo ? (
@@ -209,12 +217,12 @@ export function AlquileresListPage() {
                 {selectedAlquiler.observaciones && <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Observaciones</p><p className="text-xs mt-1 opacity-70">{selectedAlquiler.observaciones}</p></div>}
               </div>
               <div className="shrink-0 px-6 py-5 bg-gray-50 border-t flex justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <button onClick={() => setDetailOpen(false)} className="px-6 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10">Cerrar</button>
+                <button onClick={() => setDetailOpen(false)} className="px-6 py-3 rounded-xl border text-sm font-bold transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cerrar</button>
                 {selectedAlquiler.estado === "pendiente" && (
-                  <button onClick={handleEntregar} className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg"><HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Marcar como Entregado</button>
+                  <button onClick={handleEntregar} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}><HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Marcar como Entregado</button>
                 )}
                 {(selectedAlquiler.estado === "activo" || selectedAlquiler.estado === "vencido" || selectedAlquiler.estado === "entregado") && (
-                  <button onClick={() => { setDevolverForm({ foto_retorno_url: "", observaciones: "" }); setFotoRetornoFile(null); setFotoRetornoPreview(null); setDevolverOpen(true) }} className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg">Registrar Devolución</button>
+                  <button onClick={() => { setDevolverForm({ foto_retorno_url: "", observaciones: "" }); setFotoRetornoFile(null); setFotoRetornoPreview(null); setDevolverOpen(true) }} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>Registrar Devolución</button>
                 )}
               </div>
             </motion.div>
@@ -226,9 +234,9 @@ export function AlquileresListPage() {
       <AnimatePresence>
         {devolverOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDevolverOpen(false)} className="absolute inset-0 bg-charcoal/60 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-              <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}><h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registrar Devolución</h2><button onClick={() => setDevolverOpen(false)} className="size-10 flex items-center justify-center rounded-full bg-black/5"><X size={18} /></button></div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDevolverOpen(false)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+              <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}><h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registrar Devolución</h2><button onClick={() => setDevolverOpen(false)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}><X size={18} /></button></div>
               <div className="p-6 space-y-4">
                 <div className="space-y-1"><label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Foto retorno</label>
                   <div className="flex items-center gap-3">
@@ -248,8 +256,8 @@ export function AlquileresListPage() {
                 <div className="space-y-1"><label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Observaciones</label><textarea value={devolverForm.observaciones} onChange={e => setDevolverForm({ ...devolverForm, observaciones: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none resize-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} /></div>
               </div>
               <div className="px-6 py-5 bg-gray-50 border-t flex justify-end gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <button onClick={() => setDevolverOpen(false)} className="px-6 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60">Cancelar</button>
-                <button onClick={handleDevolver} className="px-6 py-3 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700">Confirmar Devolución</button>
+                <button onClick={() => setDevolverOpen(false)} className="px-6 py-3 rounded-xl border text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cancelar</button>
+                <button onClick={handleDevolver} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>Confirmar Devolución</button>
               </div>
             </motion.div>
           </div>
