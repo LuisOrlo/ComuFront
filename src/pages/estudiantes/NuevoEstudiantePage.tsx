@@ -480,7 +480,18 @@ export function NuevoEstudiantePage() {
             <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.ocupacion && errors.ocupacion && <p className="text-[11px] mt-1 text-red-500">{errors.ocupacion}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option><option value="otro">Otro</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Fecha de Nacimiento</label><input type="date" value={estudiante.fecha_nacimiento} onChange={e => { const fn = e.target.value; updateEstudiante("fecha_nacimiento", fn); setEstudiante(prev => ({ ...prev, fecha_nacimiento: fn, edad: calcularEdad(fn) })) }} onBlur={() => blurEstudiante("fecha_nacimiento")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.fecha_nacimiento && errors.fecha_nacimiento ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.fecha_nacimiento && errors.fecha_nacimiento && <p className="text-[11px] mt-1 text-red-500">{errors.fecha_nacimiento}</p>}</div>
-            <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" readOnly value={estudiante.edad} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50" /></div>
+            <div>
+  <label className="block text-xs font-medium mb-1.5">Edad</label>
+  <input
+    type="number"
+    readOnly
+    value={estudiante.edad}
+    className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50"
+  />
+  <p className="mt-1 text-[11px] text-orange-500">
+    * La edad se calcula automáticamente a partir de la fecha de nacimiento.
+  </p>
+</div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>
               <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value.toUpperCase()}); const err = validateField("ciudad", e.target.value.toUpperCase()); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />

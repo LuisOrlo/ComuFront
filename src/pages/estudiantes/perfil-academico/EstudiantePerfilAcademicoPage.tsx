@@ -145,7 +145,7 @@ export function EstudiantePerfilAcademicoPage() {
         saving={saving}
       />
 
-      <div className="bg-white border rounded-2xl p-4 mb-6 flex items-center gap-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+      <div className="bg-white  p-4 mb-6 flex items-center gap-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex items-center gap-3">
           <HugeiconsIcon icon={ImageIcon} size={18} style={{ color: COLORS.ACCENT }} />
           <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>Foto de Cédula</span>
@@ -197,7 +197,7 @@ export function EstudiantePerfilAcademicoPage() {
         onCancel={() => setDeleteCedulaOpen(false)}
       />
 
-      <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+      <div className="bg-white  overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex gap-1 border-b overflow-x-auto" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           {tabs.map((tab) => (
             <button

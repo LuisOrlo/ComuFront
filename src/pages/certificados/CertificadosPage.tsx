@@ -1,14 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { SearchIcon, BadgeCheckIcon, UserGroupIcon, Clock04Icon, CertificateIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
-import { createPortal } from "react-dom"
-import { X, Trash2, FileText, Eye, MoreHorizontal, Download, Upload } from "lucide-react"
+import { BadgeCheckIcon, UserGroupIcon, Clock04Icon, CertificateIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { X, FileText, Eye, Upload } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
-import { certificadosService, type Certificado, type EstudiantePanel } from "@/services/certificados.service"
+import { certificadosService } from "@/services/certificados.service"
+import type { Certificado, EstudiantePanel, HistorialItem } from "@/services/certificados.service"
+import { CertificadosTable } from "./components/CertificadosTable"
+import { CERT_STATUS_LABELS } from "./certStatus"
 import { toast } from "sonner"
 
 const GREEN = "#0F9F6E"
@@ -18,6 +19,8 @@ const GRAY = "#6B7280"
 const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
 
+const PANEL_BATCH = 500
+
 const ESTADO_CERT_STYLES: Record<string, string> = {
   generado: "text-emerald-700 border-emerald-200",
   entregado: "text-blue-700 border-blue-200",
@@ -25,9 +28,6 @@ const ESTADO_CERT_STYLES: Record<string, string> = {
 }
 const ESTADO_CERT_BG: Record<string, string> = {
   generado: "bg-emerald-50", entregado: "bg-blue-50", borrado: "bg-gray-50",
-}
-const ESTADO_CERT_LABELS: Record<string, string> = {
-  generado: "Emitido", entregado: "Entregado", borrado: "Borrado",
 }
 
 const TAB_CONFIG = [
@@ -38,25 +38,15 @@ const TAB_CONFIG = [
   { key: "borrado", label: "Borrados", color: GRAY, icon: Cancel01Icon },
 ]
 
-const SORT_OPTIONS = [
-  { k: "recientes", l: "Más recientes" },
-  { k: "az", l: "A — Z" },
-  { k: "pendientes", l: "Pendientes primero" },
-]
-
 export function CertificadosPage() {
   const [rows, setRows] = useState<EstudiantePanel[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
   const [filtroCert, setFiltroCert] = useState("")
-  const [sort, setSort] = useState("recientes")
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
   const [detailCert, setDetailCert] = useState<Certificado | null>(null)
   const [detailPurgado, setDetailPurgado] = useState(false)
-  const [historial, setHistorial] = useState<any[]>([])
+  const [historial, setHistorial] = useState<HistorialItem[]>([])
   const [detailOpen, setDetailOpen] = useState(false)
 
   const [emitirRow, setEmitirRow] = useState<EstudiantePanel | null>(null)
@@ -70,50 +60,19 @@ export function CertificadosPage() {
   const loadPanel = useCallback(async () => {
     try {
       setLoading(true)
-      const params: Record<string, string | number | undefined> = { page, per_page: 15 }
-      if (search) params.search = search
+      const params: Record<string, string | number> = { per_page: PANEL_BATCH }
       if (filtroCert) params.estado_certificado = filtroCert
       const res = await certificadosService.getPanelEstudiantes(params)
       setRows(res.data)
-      setTotalPages(res.last_page || 1)
-      setTotal(res.total || 0)
+      setTotal(res.total || res.data.length)
     } catch { toast.error("Error al cargar datos") }
     finally { setLoading(false) }
-  }, [search, filtroCert, page])
+  }, [filtroCert])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPanel()
   }, [loadPanel])
-
-  const sortedRows = [...rows].sort((a, b) => {
-    if (sort === "az") return `${a.nombres} ${a.apellidos}`.localeCompare(`${b.nombres} ${b.apellidos}`)
-    if (sort === "pendientes") return (a.certificado_id ? 1 : 0) - (b.certificado_id ? 1 : 0)
-    return 0
-  })
-
-  const [menuOpen, setMenuOpen] = useState<string | null>(null)
-  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
-  const menuBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkDeleting, setBulkDeleting] = useState(false)
-
-  useEffect(() => {
-    return () => { setMenuOpen(null) }
-  }, [])
-
-  const getIniciales = (name: string) => name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
-  const getAvatarColor = (name: string) => {
-    const colors = ["#0F9F6E", "#2563EB", "#7C3AED", "#D97706", "#DC2626"]
-    return colors[(name.charCodeAt(0) || 0) % colors.length]
-  }
-
-  const STATUS_DOT: Record<string, string> = {
-    generado: GREEN, entregado: BLUE, borrado: GRAY, pendiente: AMBER,
-  }
-  const STATUS_LABEL: Record<string, string> = {
-    generado: "Emitido", entregado: "Entregado", borrado: "Borrado", pendiente: "Pendiente",
-  }
 
   const tabCounts: Record<string, number> = {
     "": rows.length,
@@ -140,6 +99,12 @@ export function CertificadosPage() {
     input.click()
   }
 
+  const closeEmitir = () => {
+    setEmitirRow(null); setEmitirFile(null)
+    if (emitirPreview) URL.revokeObjectURL(emitirPreview)
+    setEmitirPreview(null)
+  }
+
   const confirmEmitir = async () => {
     if (!emitirRow || !emitirFile) return
     try {
@@ -150,9 +115,7 @@ export function CertificadosPage() {
       form.append("pdf", emitirFile)
       await certificadosService.createCertificado(form)
       toast.success(`Certificado emitido para ${emitirRow.nombres} ${emitirRow.apellidos}`)
-      setEmitirRow(null); setEmitirFile(null)
-      if (emitirPreview) URL.revokeObjectURL(emitirPreview)
-      setEmitirPreview(null)
+      closeEmitir()
       loadPanel()
     } catch { toast.error("Error al emitir certificado") }
     finally { setEmitirSubmitting(false) }
@@ -174,34 +137,14 @@ export function CertificadosPage() {
     finally { setDeleteSubmitting(false) }
   }
 
-  const handleBulkDownload = () => {
-    const certIds = sortedRows
-      .filter(r => r.certificado_id && selectedIds.has(r.matricula_id))
-      .map(r => r.certificado_id!)
-    if (certIds.length === 0) { toast.error("No hay certificados seleccionados con PDF"); return }
-    certIds.forEach(id => certificadosService.descargarPdf(id))
-    toast.success(`Descargando ${certIds.length} certificado(s)`)
-  }
+  const handleDescargar = (certId: string) => certificadosService.descargarPdf(certId)
 
-  const handleBulkDelete = async () => {
-    const certIds = sortedRows
-      .filter(r => r.certificado_id && selectedIds.has(r.matricula_id))
-      .map(r => r.certificado_id!)
-    if (certIds.length === 0) { toast.error("No hay certificados seleccionados"); return }
-    setBulkDeleting(true)
+  const handleMarcarEntregado = async (certId: string) => {
     try {
-      await Promise.all(certIds.map(id => certificadosService.removePdf(id)))
-      toast.success(`${certIds.length} PDF(s) eliminados`)
-      setSelectedIds(new Set())
+      await certificadosService.marcarEntregado(certId, { fecha_entrega: new Date().toISOString().split("T")[0] })
+      toast.success("Certificado marcado como entregado")
       loadPanel()
-    } catch { toast.error("Error al borrar certificados") }
-    finally { setBulkDeleting(false) }
-  }
-
-  const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds)
-    if (next.has(id)) next.delete(id); else next.add(id)
-    setSelectedIds(next)
+    } catch { toast.error("Error al marcar como entregado") }
   }
 
   const handleReuploadPdf = (row: EstudiantePanel) => {
@@ -230,7 +173,7 @@ export function CertificadosPage() {
         certificadosService.getHistorial(certId),
       ])
       setDetailCert(cert)
-      setDetailPurgado((cert as any).archivo_purgado === true)
+      setDetailPurgado(cert.archivo_purgado === true)
       setHistorial(hist || [])
       setDetailOpen(true)
     } catch { toast.error("Error al cargar detalle") }
@@ -249,10 +192,10 @@ export function CertificadosPage() {
         </div>
       </header>
 
-      <div className="shrink-0 px-8 py-3 bg-white border-b space-y-3" style={{ borderColor: BORDER }}>
+      <div className="shrink-0 px-8 pt-3 bg-white border-b" style={{ borderColor: BORDER }}>
         <div className="flex gap-1 border-b" style={{ borderColor: BORDER }}>
           {TAB_CONFIG.map(t => (
-            <button key={t.key || "todos"} onClick={() => { setFiltroCert(t.key); setPage(1) }}
+            <button key={t.key || "todos"} onClick={() => setFiltroCert(t.key)}
               className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
               style={{
                 borderColor: filtroCert === t.key ? COLORS.ACCENT : "transparent",
@@ -263,20 +206,6 @@ export function CertificadosPage() {
               <span className="text-xs opacity-50">({tabCounts[t.key] ?? rows.length})</span>
             </button>
           ))}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
-            <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
-            <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-              placeholder="Buscar por nombre o cédula..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border bg-gray-50 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20"
-              style={{ borderColor: BORDER }} />
-          </div>
-          <select value={sort} onChange={e => setSort(e.target.value)}
-            className="px-3 py-2 rounded-xl border bg-gray-50 text-xs font-medium outline-none" style={{ borderColor: BORDER }}>
-            {SORT_OPTIONS.map(o => <option key={o.k} value={o.k}>{o.l}</option>)}
-          </select>
         </div>
       </div>
 
@@ -292,7 +221,7 @@ export function CertificadosPage() {
               </div>
             ))}
           </div>
-        ) : sortedRows.length === 0 ? (
+        ) : rows.length === 0 ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-24 text-center space-y-3">
             <div className="size-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${AMBER}10` }}>
@@ -302,185 +231,23 @@ export function CertificadosPage() {
             <p className="text-xs opacity-20">Ajusta los filtros o emite nuevos certificados</p>
           </motion.div>
         ) : (
-          <>
-            {selectedIds.size > 0 && (
-              <div className="flex items-center gap-4 px-6 py-3 bg-white border rounded-2xl mb-4" style={{ borderColor: BORDER }}>
-                <span className="text-sm font-bold" style={{ color: CHARCOAL }}>
-                  {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
-                </span>
-                <div className="flex items-center gap-2 ml-auto">
-                  <button onClick={handleBulkDownload}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-green-200 text-green-700 hover:bg-green-100 transition-colors">
-                    <Download size={14} />
-                    Descargar
-                  </button>
-                  <button onClick={handleBulkDelete} disabled={bulkDeleting}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50">
-                    <Trash2 size={14} />
-                    {bulkDeleting ? "Borrando..." : "Eliminar"}
-                  </button>
-                  <button onClick={() => setSelectedIds(new Set())}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors">
-                    <X size={14} />
-                    Deseleccionar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white rounded-2xl border" style={{ borderColor: BORDER }}>
-              <div className="divide-y" style={{ borderColor: `${BORDER}60` }}>
-                {sortedRows.map((row) => {
-                  const estado = row.certificado_id ? row.estado_certificado || "generado" : "pendiente"
-                  const dotColor = STATUS_DOT[estado] || GRAY
-                  const statusLabel = STATUS_LABEL[estado] || estado
-                  const nombreCompleto = `${row.nombres} ${row.apellidos}`
-                  const initials = getIniciales(nombreCompleto)
-                  const avatarColor = getAvatarColor(nombreCompleto)
-                  const isSelected = selectedIds.has(row.matricula_id)
-
-                  return (
-                    <motion.div
-                      key={row.matricula_id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 px-5 py-3 hover:bg-white hover:shadow-sm transition-all relative group"
-                    >
-                      {row.certificado_id && (
-                        <input type="checkbox" checked={isSelected}
-                          onChange={() => toggleSelect(row.matricula_id)}
-                          className="accent-current rounded shrink-0" style={{ accentColor: GREEN, width: 16, height: 16 }} />
-                      )}
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="size-10 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white"
-                          style={{ backgroundColor: avatarColor }}>
-                          {initials}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate" style={{ color: CHARCOAL }}>{nombreCompleto}</p>
-                          <p className="text-xs opacity-40">{row.cedula}</p>
-                        </div>
-                      </div>
-
-                      <div className="hidden sm:block flex-1 min-w-0">
-                        <p className="text-xs font-medium" style={{ color: CHARCOAL }}>{row.nombre_instancia || row.catalogo_nombre}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                            style={{ color: GREEN, backgroundColor: `${GREEN}08` }}>
-                            {row.catalogo_nombre}
-                          </span>
-                          {row.modalidad && <span className="text-[10px] opacity-30 capitalize">· {row.modalidad}</span>}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold">
-                          <span className="size-2 rounded-full" style={{ backgroundColor: dotColor }} />
-                          <span style={{ color: dotColor }}>{statusLabel}</span>
-                        </span>
-
-                        {estado === "pendiente" ? (
-                          <button onClick={() => handleEmitir(row)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-                            style={{ backgroundColor: GREEN }}>
-                            <HugeiconsIcon icon={BadgeCheckIcon} size={13} /> Emitir
-                          </button>
-                        ) : row.archivo_purgado ? (
-                          <button onClick={() => handleReuploadPdf(row)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 border"
-                            style={{ color: AMBER, borderColor: `${AMBER}40`, backgroundColor: `${AMBER}08` }}>
-                            <Upload size={13} /> Re-subir PDF
-                          </button>
-                        ) : row.archivo_pdf_url ? (
-                          <button onClick={() => certificadosService.descargarPdf(row.certificado_id!)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 border"
-                            style={{ color: dotColor, borderColor: `${dotColor}40`, backgroundColor: `${dotColor}08` }}>
-                            <Download size={13} /> Descargar
-                          </button>
-                        ) : null}
-
-                        {row.certificado_id && (
-                          <div className="relative">
-                            <button ref={el => { menuBtnRefs.current[row.matricula_id] = el }}
-                              onClick={(e) => {
-                                if (menuOpen === row.matricula_id) { setMenuOpen(null); return }
-                                const rect = e.currentTarget.getBoundingClientRect()
-                                setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
-                                setMenuOpen(row.matricula_id)
-                              }}
-                              className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-200/60 transition-colors">
-                              <MoreHorizontal size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </div>
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button key={i + 1} onClick={() => setPage(i + 1)}
-                    className={cn("size-9 rounded-xl text-xs font-bold transition-colors", page === i + 1 ? "text-white shadow-sm" : "bg-white border hover:bg-gray-50")}
-                    style={{ backgroundColor: page === i + 1 ? AMBER : undefined, borderColor: BORDER }}>{i + 1}</button>
-                ))}
-              </div>
-            )}
-          </>
+          <CertificadosTable
+            key={filtroCert}
+            rows={rows}
+            onEmitir={handleEmitir}
+            onDescargar={handleDescargar}
+            onReupload={handleReuploadPdf}
+            onMarcarEntregado={handleMarcarEntregado}
+            onOpenDetail={openDetail}
+            onOpenDelete={openDeleteModal}
+          />
         )}
       </div>
-
-      {/* Context menu (portal to body) */}
-      {menuOpen && createPortal(
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
-          <div className="fixed z-50 bg-white rounded-xl shadow-xl border py-1 min-w-[160px]"
-            style={{ top: menuPos.top, left: menuPos.left, borderColor: BORDER }}>
-            {rows.find(r => r.matricula_id === menuOpen)?.certificado_id && (
-              <>
-                <button onClick={() => { const certId = rows.find(r => r.matricula_id === menuOpen)?.certificado_id; if (certId) { openDetail(certId); setMenuOpen(null) } }}
-                  className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
-                  <Eye size={13} /> Ver certificado
-                </button>
-                {(() => {
-                  const menuRow = rows.find(r => r.matricula_id === menuOpen)
-                  if (!menuRow) return null
-                  if (menuRow.archivo_purgado) {
-                    return (
-                      <button onClick={() => { handleReuploadPdf(menuRow); setMenuOpen(null) }}
-                        className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-amber-50 flex items-center gap-2 text-amber-600">
-                        <Upload size={13} /> Re-subir PDF
-                      </button>
-                    )
-                  }
-                  if (menuRow.archivo_pdf_url) {
-                    return (
-                      <button onClick={() => { const certId = menuRow.certificado_id; if (certId) { certificadosService.descargarPdf(certId); setMenuOpen(null) } }}
-                        className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
-                        <Download size={13} /> Descargar
-                      </button>
-                    )
-                  }
-                  return null
-                })()}
-                <div className="border-t my-1" style={{ borderColor: BORDER }} />
-                <button onClick={() => { const row = rows.find(r => r.matricula_id === menuOpen); if (row) { openDeleteModal(row); setMenuOpen(null) } }}
-                  className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-red-50 flex items-center gap-2 text-red-600">
-                  <Trash2 size={13} /> Eliminar PDF
-                </button>
-              </>
-            )}
-          </div>
-        </>,
-        document.body
-      )}
 
       {/* Emitir modal - 2 columns */}
       <AnimatePresence>
         {!!(emitirRow && emitirFile) && (
-          <ModalOverlay onClose={() => { setEmitirRow(null); setEmitirFile(null); if (emitirPreview) URL.revokeObjectURL(emitirPreview); setEmitirPreview(null) }}>
+          <ModalOverlay onClose={closeEmitir}>
             <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: BORDER }}>
               <div>
                 <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: CHARCOAL }}>
@@ -489,7 +256,7 @@ export function CertificadosPage() {
                 </h2>
                 <p className="text-xs opacity-40 mt-0.5">Confirma los datos antes de emitir el documento</p>
               </div>
-              <button onClick={() => { setEmitirRow(null); setEmitirFile(null); if (emitirPreview) URL.revokeObjectURL(emitirPreview); setEmitirPreview(null) }}
+              <button onClick={closeEmitir}
                 className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={18} /></button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: BORDER }}>
@@ -512,7 +279,7 @@ export function CertificadosPage() {
               </div>
             </div>
             <div className="px-6 py-5 bg-gray-50/80 border-t flex justify-end gap-3" style={{ borderColor: BORDER }}>
-              <button onClick={() => { setEmitirRow(null); setEmitirFile(null); if (emitirPreview) URL.revokeObjectURL(emitirPreview); setEmitirPreview(null) }}
+              <button onClick={closeEmitir}
                 className="px-6 py-3 rounded-xl text-sm font-bold opacity-50 hover:opacity-100">Cancelar</button>
               <button onClick={confirmEmitir} disabled={emitirSubmitting}
                 className="px-8 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg"
@@ -542,7 +309,7 @@ export function CertificadosPage() {
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1">Estado</p>
                   <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border", ESTADO_CERT_STYLES[detailCert.estado], ESTADO_CERT_BG[detailCert.estado])}>
-                    {ESTADO_CERT_LABELS[detailCert.estado]}
+                    {CERT_STATUS_LABELS[detailCert.estado]}
                   </span>
                 </div>
               </div>
@@ -550,7 +317,7 @@ export function CertificadosPage() {
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-3">Historial</p>
                   <div className="relative pl-8 border-l-2 space-y-4" style={{ borderColor: `${COLORS.ACCENT}20` }}>
-                    {historial.map((h: any, i: number) => {
+                    {historial.map((h, i) => {
                       const dotColor = h.accion.includes("Archivo eliminado") ? "#EF4444"
                         : h.accion === "Archivo restaurado" ? AMBER
                         : h.accion === "Borrado" ? GRAY

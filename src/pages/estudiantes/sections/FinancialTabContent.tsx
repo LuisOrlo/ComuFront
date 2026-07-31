@@ -125,6 +125,7 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
                 <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-right">Pendiente</th>
                 <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-right">%</th>
                 <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-center">Estado</th>
+                <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-center">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -145,6 +146,36 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
                     <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${estadoClasses[cuenta.estado] || 'bg-gray-100 text-gray-600'}`}>
                       {cuenta.estado}
                     </span>
+                  </td>
+                  <td className="px-5 py-3 text-center">
+                    {isAdmin && cuenta.saldo_pendiente > 0 && cuenta.estado !== 'pagado' && (
+                      <button
+                        onClick={() => {
+                          if (cuenta.origen === 'matricula') {
+                            const params = new URLSearchParams({
+                              curso: cuenta.concepto,
+                              nombre: data?.estudiante?.nombre_completo || '',
+                              cedula: data?.estudiante?.cedula || '',
+                            })
+                            navigate(`/estudiantes/${estudianteId}/academico/registrar-pago/${cuenta.origen_id}?${params.toString()}`)
+                          } else {
+                            navigate(`/finanzas/pagos/cuentas/servicios/pago/${cuenta.id}`, {
+                              state: {
+                                cuentaId: cuenta.id,
+                                montoSaldo: cuenta.saldo_pendiente,
+                                montoTotal: cuenta.monto_total,
+                                concepto: cuenta.concepto,
+                              },
+                            })
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}
+                      >
+                        <HugeiconsIcon icon={PaymentIcon} size={12} />
+                        Pagar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -136,7 +136,17 @@ export function EstudiantesCursoDetallePage() {
       </button>
 
       <header className="mb-4">
-        <h1 className="text-2xl font-black text-black">{cursoNombre || "Curso"}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-black text-black">{cursoNombre || "Curso"}</h1>
+          <button
+            onClick={() => setExportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98] shadow-sm"
+            style={{ backgroundColor: COLORS.ACCENT }}
+          >
+            <HugeiconsIcon icon={Download04Icon} size={14} />
+            Exportar PDF
+          </button>
+        </div>
         <p className="text-sm text-gray-400 mt-1">{matriculas.length} estudiante{matriculas.length !== 1 ? 's' : ''} matriculado{matriculas.length !== 1 ? 's' : ''}</p>
       </header>
 
@@ -157,17 +167,6 @@ export function EstudiantesCursoDetallePage() {
           </div>
         </div>
       )}
-
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setExportOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98] shadow-sm"
-          style={{ backgroundColor: COLORS.ACCENT }}
-        >
-          <HugeiconsIcon icon={Download04Icon} size={14} />
-          Exportar PDF
-        </button>
-      </div>
 
       <div className="min-h-[32px]">
         <BulkActionsBar

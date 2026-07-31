@@ -112,6 +112,11 @@ export function PagoForm({ metodoPago, comprobanteFile, comprobantePreview, paym
             <p className="text-sm font-bold leading-snug" style={{ color: COLORS.CHARCOAL }}>
               {esTaller ? tallerSel?.nombre : (curso?.nombre_instancia || curso?.catalogo?.nombre)}
             </p>
+            {!esTaller && curso?.catalogo?.nombre && (
+              <p className="text-[11px] font-medium mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                {curso.catalogo.nombre}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
                 style={{ backgroundColor: esTaller ? "oklch(0.92 0.05 80)" : "oklch(0.92 0.08 220)", color: esTaller ? "oklch(0.55 0.12 70)" : "oklch(0.45 0.12 220)" }}>

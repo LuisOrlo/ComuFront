@@ -526,9 +526,17 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               {touched.fecha_nacimiento && errors.fecha_nacimiento && <p className="text-[11px] mt-1 text-red-500">{errors.fecha_nacimiento}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5">Edad</label>
-              <input type="number" readOnly value={estudiante.edad} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50" />
-            </div>
+  <label className="block text-xs font-medium mb-1.5">Edad</label>
+  <input
+    type="number"
+    readOnly
+    value={estudiante.edad}
+    className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50"
+  />
+  <p className="mt-1 text-[11px] text-orange-500">
+    * La edad se calcula automáticamente a partir de la fecha de nacimiento.
+  </p>
+</div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>
               <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value.toUpperCase()}); const err = validateField("ciudad", e.target.value.toUpperCase()); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />

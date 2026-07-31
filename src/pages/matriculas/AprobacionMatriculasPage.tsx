@@ -325,7 +325,7 @@ export function AprobacionMatriculasPage() {
                   <div className="space-y-3">
                     {grupo.items.map((ins: any) => (
                       <div key={ins.id} className="flex items-start gap-2">
-                        <div className="flex-1 bg-white rounded-xl overflow-hidden transition-all border"
+                        <div className="flex-1 bg-white rounded-xl overflow-hidden transition-all border hover:bg-orange-100"
                           style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeft: `3px solid ${COLORS.ACCENT}` }}>
                           <button onClick={() => navigate(`/matriculas/aprobacion/taller/${ins.id}`, { state: { nombre: ins.nombres, apellido: ins.apellidos, cursoNombre: ins.taller?.nombre } })}
                             className="w-full text-left p-5 flex items-center gap-4">
@@ -390,7 +390,7 @@ export function AprobacionMatriculasPage() {
                   </div>
                   <div className="space-y-3">
                     {grupo.items.map((s: any) => (
-                      <div key={s.id} className="bg-white rounded-xl overflow-hidden transition-all border"
+                      <div key={s.id} className="bg-white rounded-xl overflow-hidden transition-all border hover:bg-orange-100"
                         style={{
                           borderColor: COLORS.BORDER_SUBTLE,
                           borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
@@ -441,7 +441,7 @@ export function AprobacionMatriculasPage() {
             <div className="space-y-3">
               {solicitudesFiltradas.map(s => (
                 <div key={s.id} className="flex items-start gap-2">
-                  <div className="flex-1 bg-white rounded-xl overflow-hidden transition-all border"
+                  <div className="flex-1 bg-white rounded-xl overflow-hidden transition-all border hover:bg-orange-100"
                     style={{
                       borderColor: COLORS.BORDER_SUBTLE,
                       borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,

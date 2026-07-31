@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft02Icon, Money01Icon, UserIcon, UploadIcon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import api from "@/services/auth.service"
@@ -30,6 +30,7 @@ export function ServicioPagoPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [modalImage, setModalImage] = useState<string | null>(null)
   const [cuentaValida, setCuentaValida] = useState<boolean | null>(null)
   const [saldoActual, setSaldoActual] = useState(state?.montoSaldo ?? 0)
   const [montoTotalCuenta, setMontoTotalCuenta] = useState(state?.montoTotal ?? 0)
@@ -172,24 +173,79 @@ export function ServicioPagoPage() {
     }
   }
 
+  const pctPagado = montoTotalCuenta > 0 ? Math.round((montoTotalCuenta - saldoActual) / montoTotalCuenta * 100) : 0
+
   return (
-    <div className="px-8 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
       <button
         onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl transition-all hover:bg-black/5 text-xs font-bold active:scale-[0.97]"
-        style={{ color: COLORS.TEXT_MUTED }}
+        className="inline-flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all"
+        style={{ color: COLORS.CHARCOAL }}
       >
-        <HugeiconsIcon icon={ArrowLeft02Icon} size={14} />
+        <HugeiconsIcon icon={ArrowLeft02Icon} size={18} />
         Volver
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-2xl border bg-white p-6 space-y-4" style={{ borderColor: BORDER }}>
+      <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <div
+            className="size-10 sm:size-12 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: "oklch(0.95 0.01 45)" }}
+          >
+            <HugeiconsIcon icon={UserIcon} size={20} style={{ color: ACCENT }} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-black truncate" style={{ color: CHARCOAL }}>
+              {nombre || "Cliente"}
+            </h2>
+            <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+              {nombreServicio || (state?.concepto || "Servicio")}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Total</p>
+            <p className="text-base sm:text-lg font-black mt-0.5" style={{ color: CHARCOAL }}>
+              ${montoTotalCuenta.toLocaleString()}
+            </p>
+          </div>
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Pagado</p>
+            <p className="text-base sm:text-lg font-black mt-0.5" style={{ color: "oklch(0.5 0.15 150)" }}>
+              ${(montoTotalCuenta - saldoActual).toLocaleString()}
+            </p>
+          </div>
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Saldo</p>
+            <p className="text-base sm:text-lg font-black mt-0.5" style={{ color: saldoActual > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.5 0.15 150)" }}>
+              {saldoActual > 0 ? `$${saldoActual.toLocaleString()}` : "$0"}
+            </p>
+          </div>
+          <div className="p-3 sm:p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estado</p>
+            <p className="text-base sm:text-lg font-black mt-0.5" style={{ color: saldoActual <= 0 ? "oklch(0.5 0.15 150)" : "oklch(0.65 0.15 75)" }}>
+              {saldoActual <= 0 ? "Pagado" : "Pendiente"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
+          <div className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4 sm:space-y-5" style={{ borderColor: BORDER }}>
+            <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: COLORS.TEXT_MUTED }}>
+              <HugeiconsIcon icon={Money01Icon} size={14} />
+              Registrar Pago
+            </h3>
+
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest opacity-40">Monto a pagar</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Monto a pagar
+              </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold opacity-30">$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold" style={{ color: COLORS.TEXT_MUTED }}>$</span>
                 <input
                   type="number"
                   value={monto}
@@ -204,39 +260,79 @@ export function ServicioPagoPage() {
                   min={0}
                   max={saldoActual}
                   step="0.01"
-                  className="w-full pl-8 pr-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-bold outline-none focus:bg-white transition-all"
-                  style={{ borderColor: monto && !montoValido ? "#dc2626" : BORDER }}
+                  placeholder={`0.00 (máx $${saldoActual.toLocaleString()})`}
+                  className="w-full pl-10 pr-4 py-3.5 rounded-xl border text-base sm:text-lg font-bold font-mono outline-none transition-all bg-white"
+                  style={{
+                    borderColor: monto && !montoValido ? "#dc2626" : BORDER,
+                    MozAppearance: "textfield",
+                  }}
                 />
                 {monto && !montoValido && (
-                  <p className="text-[10px] text-red-600 mt-1">
-                    {montoNum <= 0 ? "Debe ser mayor a 0" : montoNum > saldoActual ? `Supera el saldo pendiente ($${saldoActual.toFixed(2)})` : "Monto inválido"}
+                  <p className="text-[11px] text-red-600 mt-1.5 font-medium">
+                    {montoNum <= 0
+                      ? "Debe ser mayor a 0"
+                      : montoNum > saldoActual
+                        ? `Supera el saldo pendiente ($${saldoActual.toFixed(2)})`
+                        : "Monto inválido"}
                   </p>
                 )}
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest opacity-40">Fecha de pago</label>
-              <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-medium outline-none focus:bg-white transition-all"
-                style={{ borderColor: BORDER }} />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest opacity-40">Método de pago</label>
-              <select
-                value={metodoPago}
-                onChange={e => setMetodoPago(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-medium outline-none focus:bg-white transition-all"
+              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Fecha de pago
+              </label>
+              <input
+                type="date"
+                value={fechaPago}
+                onChange={e => setFechaPago(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all bg-white"
                 style={{ borderColor: BORDER }}
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia / Depósito</option>
-              </select>
+              />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest opacity-40">Comprobante</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Método de pago
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {["efectivo", "transferencia"].map((metodo) => (
+                  <button
+                    key={metodo}
+                    type="button"
+                    onClick={() => setMetodoPago(metodo)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold transition-all text-left"
+                    style={{
+                      borderColor: metodoPago === metodo ? ACCENT : BORDER,
+                      backgroundColor: metodoPago === metodo ? "oklch(0.95 0.02 45 / 0.3)" : "white",
+                      color: CHARCOAL,
+                    }}
+                  >
+                    <div
+                      className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: metodoPago === metodo ? ACCENT : "oklch(0.97 0 0)",
+                      }}
+                    >
+                      <HugeiconsIcon
+                        icon={Money01Icon}
+                        size={14}
+                        style={{ color: metodoPago === metodo ? "white" : COLORS.TEXT_MUTED }}
+                      />
+                    </div>
+                    <span>
+                      {metodo === "efectivo" ? "Efectivo" : "Transferencia / Depósito"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Comprobante
+              </label>
               <input
                 type="file"
                 ref={fileRef}
@@ -246,16 +342,18 @@ export function ServicioPagoPage() {
               />
               {previewUrl ? (
                 <div className="space-y-2">
-                  <div className="relative rounded-xl overflow-hidden border bg-gray-50" style={{ borderColor: BORDER }}>
+                  <div className="relative rounded-xl overflow-hidden border" style={{ borderColor: BORDER }}>
                     <img
                       src={previewUrl}
                       alt="Vista previa del comprobante"
-                      className="w-full max-h-48 object-contain"
+                      className="w-full max-h-40 sm:max-h-48 object-contain bg-gray-50"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <HugeiconsIcon icon={Tick02Icon} size={14} className="text-green-600" />
-                    <span className="text-[11px] font-medium text-green-600">{comprobanteFile?.name}</span>
+                    <HugeiconsIcon icon={Tick02Icon} size={14} style={{ color: "oklch(0.5 0.15 150)" }} />
+                    <span className="text-xs font-medium" style={{ color: "oklch(0.5 0.15 150)" }}>
+                      {comprobanteFile?.name}
+                    </span>
                     <button
                       onClick={() => {
                         setComprobanteFile(null)
@@ -263,7 +361,8 @@ export function ServicioPagoPage() {
                         setPreviewUrl(null)
                         if (fileRef.current) fileRef.current.value = ""
                       }}
-                      className="ml-auto text-[10px] font-bold opacity-40 hover:opacity-100 hover:text-red-500 transition-all"
+                      className="ml-auto text-[10px] font-bold opacity-40 hover:opacity-100 transition-all"
+                      style={{ color: CHARCOAL }}
                     >
                       Quitar
                     </button>
@@ -272,100 +371,150 @@ export function ServicioPagoPage() {
               ) : (
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className="w-full py-3 rounded-xl border-2 border-dashed text-xs font-bold transition-all hover:bg-gray-50 flex items-center justify-center gap-2"
-                  style={{ borderColor: BORDER, color: CHARCOAL }}
+                  className="w-full py-3.5 sm:py-4 rounded-xl border-2 border-dashed text-sm font-semibold transition-all hover:bg-gray-50 flex items-center justify-center gap-2"
+                  style={{ borderColor: BORDER, color: COLORS.TEXT_MUTED }}
                 >
-                  <HugeiconsIcon icon={UploadIcon} size={14} />
+                  <HugeiconsIcon icon={UploadIcon} size={16} />
                   Subir comprobante
                 </button>
               )}
             </div>
-
-            <div className="py-3 rounded-2xl px-5 flex items-center justify-between text-white"
-              style={{ background: "linear-gradient(135deg, oklch(0.2 0 0), oklch(0.15 0 0))" }}
-            >
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={Money01Icon} size={18} />
-                <span className="text-sm font-bold">Total a pagar</span>
-              </div>
-              <span className="text-xl font-black">${parseFloat(monto || "0").toFixed(2)}</span>
-            </div>
-
-            <button
-              onClick={handlePagar}
-              disabled={saving || !montoValido}
-              className="w-full py-3.5 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40"
-              style={{ backgroundColor: ACCENT }}
-            >
-              {saving ? "Registrando..." : "Registrar Pago"}
-            </button>
           </div>
         </div>
 
-        <div className="rounded-2xl border bg-white p-6 space-y-4 h-fit" style={{ borderColor: BORDER }}>
-          <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
-              <HugeiconsIcon icon={UserIcon} size={18} style={{ color: ACCENT }} />
+        <div className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4 h-fit" style={{ borderColor: BORDER }}>
+          <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+            Resumen
+          </h3>
+
+          <div className="p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+              Monto a pagar
+            </p>
+            <p className="text-xl sm:text-2xl font-black mt-1" style={{ color: ACCENT }}>
+              ${montoNum > 0 ? montoNum.toFixed(2) : "0.00"}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+              Saldo restante
+            </p>
+            <p className="text-xl sm:text-2xl font-black mt-1" style={{ color: saldoRestante > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.5 0.15 150)" }}>
+              {saldoRestante > 0 ? `$${saldoRestante.toFixed(2)}` : "$0.00"}
+            </p>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span style={{ color: COLORS.TEXT_MUTED }}>Progreso</span>
+              <span className="font-bold" style={{ color: CHARCOAL }}>{pctPagado}%</span>
             </div>
-            <div>
-              <p className="text-sm font-bold" style={{ color: CHARCOAL }}>{nombre || "Cliente"}</p>
-              <p className="text-[10px] opacity-40">{nombreServicio || "Servicio"}</p>
+            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "oklch(0.92 0 0)" }}>
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${pctPagado}%`,
+                  backgroundColor: pctPagado >= 100 ? "oklch(0.5 0.15 150)" : ACCENT,
+                }}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-xl bg-gray-50">
-              <p className="text-[10px] opacity-40">Total del servicio</p>
-              <p className="font-bold" style={{ color: CHARCOAL }}>${montoTotalCuenta.toFixed(2)}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-gray-50">
-              <p className="text-[10px] opacity-40">Saldo pendiente</p>
-              <p className="font-bold" style={{ color: saldoActual > 0 ? "#dc2626" : "rgb(22 163 74)" }}>
-                {saldoActual > 0 ? `$${saldoActual.toFixed(2)}` : "Pagado"}
-              </p>
-            </div>
-            <div className="p-3 rounded-xl bg-gray-50">
-              <p className="text-[10px] opacity-40">Total a pagar ahora</p>
-              <p className="font-bold" style={{ color: CHARCOAL }}>${montoNum.toFixed(2)}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-gray-50">
-              <p className="text-[10px] opacity-40">Saldo restante</p>
-              <p className="font-bold" style={{ color: saldoRestante > 0 ? "#dc2626" : "rgb(22 163 74)" }}>
-                {saldoRestante > 0 ? `$${saldoRestante.toFixed(2)}` : "Pagado"}
-              </p>
-            </div>
-          </div>
+          <button
+            onClick={handlePagar}
+            disabled={saving || !montoValido}
+            className="w-full py-3.5 sm:py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40 flex items-center justify-center gap-2"
+            style={{ backgroundColor: ACCENT }}
+          >
+            <HugeiconsIcon icon={Money01Icon} size={16} />
+            {saving ? "Registrando..." : "Registrar Pago"}
+          </button>
         </div>
       </div>
 
       {esPagoPorCuenta && transacciones.length > 0 && (
-        <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
-          <div className="px-5 py-3.5 border-b bg-gray-50/80" style={{ borderColor: BORDER }}>
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Historial de pagos</span>
-          </div>
-          <div className="divide-y" style={{ borderColor: BORDER }}>
-            {transacciones.map((t: any) => (
-              <div key={t.id} className="px-5 py-3 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
-                    <HugeiconsIcon icon={Money01Icon} size={14} className="text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: CHARCOAL }}>${Number(t.monto || 0).toLocaleString()}</p>
-                    <p className="text-[10px] opacity-40">{t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES") : "—"} · {t.metodo_pago || "—"}</p>
-                  </div>
+        <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
+          <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5" style={{ color: COLORS.TEXT_MUTED }}>
+            Historial de Pagos
+          </h3>
+          <div className="space-y-3">
+            {transacciones.map((t: any, idx: number) => (
+              <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
+                <div
+                  className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor:
+                      t.estado_verificacion === "aprobado" ? "oklch(0.9 0.1 150 / 0.3)" :
+                      t.estado_verificacion === "rechazado" ? "oklch(0.9 0.1 20 / 0.3)" :
+                      "oklch(0.9 0.1 75 / 0.3)",
+                  }}
+                >
+                  <HugeiconsIcon
+                    icon={Money01Icon}
+                    size={16}
+                    style={{
+                      color:
+                        t.estado_verificacion === "aprobado" ? "oklch(0.5 0.15 150)" :
+                        t.estado_verificacion === "rechazado" ? "oklch(0.5 0.15 20)" :
+                        "oklch(0.65 0.15 75)",
+                    }}
+                  />
                 </div>
-                <span className={cn(
-                  "text-[9px] font-bold uppercase px-2 py-1 rounded-full",
-                  t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
-                  t.estado_verificacion === "rechazado" ? "bg-red-100 text-red-700" :
-                  "bg-amber-100 text-amber-700"
-                )}>
-                  {t.estado_verificacion === "aprobado" ? "Verificado" :
-                   t.estado_verificacion === "rechazado" ? "Rechazado" : "Pendiente"}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-black" style={{ color: CHARCOAL }}>
+                      ${Number(t.monto || 0).toLocaleString()}
+                    </span>
+                    <span className={cn(
+                      "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
+                      t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
+                      t.estado_verificacion === "rechazado" ? "bg-red-100 text-red-700" :
+                      "bg-amber-100 text-amber-700"
+                    )}>
+                      {t.estado_verificacion === "aprobado" ? "Verificado" :
+                       t.estado_verificacion === "rechazado" ? "Rechazado" : "Pendiente"}
+                    </span>
+                  </div>
+                  <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                    {t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                    {t.metodo_pago ? ` · ${t.metodo_pago}` : ""}
+                  </p>
+                </div>
+                {t.comprobante_url && (
+                  <button
+                    onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold shrink-0 hover:underline"
+                    style={{ color: ACCENT }}
+                  >
+                    <HugeiconsIcon icon={Tick02Icon} size={12} />
+                    Ver comp.
+                  </button>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {modalImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setModalImage(null)}
+        >
+          <div className="relative flex items-center justify-center" style={{ maxWidth: "min(90vw, 1200px)", maxHeight: "90vh" }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setModalImage(null) }}
+              className="absolute -top-8 right-0 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors"
+            >
+              Cerrar [X]
+            </button>
+            <img
+              src={modalImage}
+              alt="Comprobante"
+              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}

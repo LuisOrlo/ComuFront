@@ -59,7 +59,7 @@ export function ProfileHeader({ estudiante, totalCursos, totalTalleres = 0, esta
     .toUpperCase()
 
   return (
-    <div className="rounded-2xl border bg-white overflow-hidden mb-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+    <div className="bg-white overflow-hidden mb-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
       <div className="px-8 py-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div className="flex items-center gap-5">
           <div className="size-16 rounded-2xl flex items-center justify-center text-2xl font-bold shrink-0 text-white" style={{ backgroundColor: COLORS.ACCENT }}>

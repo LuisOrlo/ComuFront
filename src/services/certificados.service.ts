@@ -10,6 +10,7 @@ export interface Certificado {
   fecha_emision: string
   codigo_certificado: string
   archivo_pdf_url?: string
+  archivo_purgado?: boolean
   estado: "generado" | "entregado" | "borrado"
   fecha_entrega?: string
   entregado_fisicamente: boolean
@@ -44,6 +45,13 @@ export interface CertificadoListResponse {
   per_page: number
   total: number
   last_page: number
+}
+
+export interface HistorialItem {
+  accion: string
+  fecha: string
+  usuario?: string
+  detalle?: string
 }
 
 export interface EstudiantePanel {
@@ -180,7 +188,7 @@ export const certificadosService = {
   },
 
   getHistorial: async (id: string) => {
-    const { data } = await api.get<{ data: { accion: string; fecha: string; usuario?: string; detalle?: string }[] }>(`/academic/certificados/${id}/historial`)
+    const { data } = await api.get<{ data: HistorialItem[] }>(`/academic/certificados/${id}/historial`)
     return data.data
   },
 
@@ -201,11 +209,7 @@ export const certificadosService = {
   },
 
   descargarPdf: (id: string) => {
-    const token = localStorage.getItem("auth_token")
     const baseUrl = import.meta.env.VITE_API_URL
-    const url = token
-      ? `${baseUrl}/certificados/${id}/descargar`
-      : `${baseUrl}/certificados/${id}/descargar`
-    window.open(url, "_blank")
+    window.open(`${baseUrl}/certificados/${id}/descargar`, "_blank")
   },
 }

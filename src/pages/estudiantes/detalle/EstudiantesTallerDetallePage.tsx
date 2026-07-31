@@ -8,6 +8,7 @@ import { StudentTable, type StudentRow } from "../components/StudentTable"
 import { BulkActionsBar } from "../components/BulkActionsBar"
 import { StudentExportDialog } from "../components/StudentExportDialog"
 import { tallerService, type InscripcionTaller, type Taller } from "@/services/taller.service"
+import { estudiantesService, type Estudiante } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 import { generarListadoEstudiantesPDF, type EstudiantePDF } from "@/lib/generarEstudiantesPDF"
 
@@ -16,6 +17,7 @@ export function EstudiantesTallerDetallePage() {
   const navigate = useNavigate()
 
   const [inscripciones, setInscripciones] = useState<InscripcionTaller[]>([])
+  const [estudiantesMap, setEstudiantesMap] = useState<Map<string, Estudiante>>(new Map())
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [exportOpen, setExportOpen] = useState(false)
@@ -26,15 +28,24 @@ export function EstudiantesTallerDetallePage() {
     if (!tallerId) return
     setLoading(true)
     try {
-      const [insRes, tallerRes] = await Promise.all([
+      const [insRes, tallerRes, estResp] = await Promise.all([
         tallerService.listarInscripciones(tallerId),
         tallerService.obtener(tallerId).catch(() => null),
+        estudiantesService.getEstudiantes({ per_page: 2000 }).catch(() => ({ datos: [] })),
       ])
+
+      const allEstudiantes = estResp.datos || []
+      const map = new Map<string, Estudiante>()
+      for (const e of allEstudiantes) {
+        if (e.cedula) map.set(e.cedula, e)
+      }
+      setEstudiantesMap(map)
+
       const data = insRes.data || insRes.datos || []
       setInscripciones(Array.isArray(data) ? data : [])
-      if (tallerRes?.data?.nombre) {
-        setTallerNombre(tallerRes.data.nombre)
-        setTaller(tallerRes.data)
+      if (tallerRes?.nombre) {
+        setTallerNombre(tallerRes.nombre)
+        setTaller(tallerRes)
       }
     } catch {
       toast.error("Error al cargar participantes del taller")
@@ -58,30 +69,44 @@ export function EstudiantesTallerDetallePage() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === inscripciones.length) {
+    if (selectedIds.size === studentRows.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(inscripciones.map(ins => ins.id)))
+      setSelectedIds(new Set(studentRows.map(r => r.id)))
     }
   }
 
   const clearSelection = () => setSelectedIds(new Set())
 
-  const studentRows: StudentRow[] = inscripciones.map(ins => ({
-    id: ins.id,
-    nombres: ins.nombres,
-    apellidos: ins.apellidos,
-    cedula: ins.cedula,
-    correo: ins.correo,
-    telefono: ins.telefono,
-    ciudad: ins.ciudad,
-    fecha_inscripcion: ins.fecha_inscripcion
-      ? new Date(ins.fecha_inscripcion).toLocaleDateString("es-ES")
-      : undefined,
-    estado_pago: undefined,
-    total_cursos: undefined,
-    saldo_pendiente: undefined,
-  }))
+  const seenCedulas = new Set<string>()
+  const studentRows: StudentRow[] = inscripciones
+    .filter(ins => {
+      if (!ins.cedula) return true
+      if (seenCedulas.has(ins.cedula)) return false
+      seenCedulas.add(ins.cedula)
+      return true
+    })
+    .map(ins => {
+      const estudianteRecord = ins.cedula ? estudiantesMap.get(ins.cedula) : undefined
+      const tallerEstadoPago = ins.pago_verificado
+        ? "al_dia"
+        : (ins.monto_pagado && ins.monto_pagado > 0 ? "pendiente" : "ninguno")
+      return {
+        id: ins.id,
+        nombres: ins.nombres,
+        apellidos: ins.apellidos,
+        cedula: ins.cedula,
+        correo: ins.correo,
+        telefono: ins.telefono,
+        ciudad: ins.ciudad,
+        fecha_inscripcion: ins.fecha_inscripcion
+          ? new Date(ins.fecha_inscripcion).toLocaleDateString("es-ES")
+          : undefined,
+        estado_pago: estudianteRecord?.estado_pago || tallerEstadoPago,
+        total_cursos: estudianteRecord?.total_cursos ?? 0,
+        saldo_pendiente: estudianteRecord?.saldo_pendiente,
+      }
+    })
 
   const selectedArray = Array.from(selectedIds)
 
@@ -123,8 +148,18 @@ export function EstudiantesTallerDetallePage() {
       </button>
 
       <header className="mb-4">
-        <h1 className="text-2xl font-black text-black">{tallerNombre || "Taller"}</h1>
-        <p className="text-sm text-gray-400 mt-1">{inscripciones.length} participante{inscripciones.length !== 1 ? 's' : ''} inscrito{inscripciones.length !== 1 ? 's' : ''}</p>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-black text-black">{tallerNombre || "Taller"}</h1>
+          <button
+            onClick={() => setExportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98] shadow-sm"
+            style={{ backgroundColor: COLORS.ACCENT }}
+          >
+            <HugeiconsIcon icon={Download04Icon} size={14} />
+            Exportar PDF
+          </button>
+        </div>
+        <p className="text-sm text-gray-400 mt-1">{studentRows.length} participante{studentRows.length !== 1 ? 's' : ''} inscrito{studentRows.length !== 1 ? 's' : ''}</p>
       </header>
 
       {taller && (
@@ -143,17 +178,6 @@ export function EstudiantesTallerDetallePage() {
           </div>
         </div>
       )}
-
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setExportOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98] shadow-sm"
-          style={{ backgroundColor: COLORS.ACCENT }}
-        >
-          <HugeiconsIcon icon={Download04Icon} size={14} />
-          Exportar PDF
-        </button>
-      </div>
 
       <div className="min-h-[32px]">
         <BulkActionsBar
@@ -182,7 +206,7 @@ export function EstudiantesTallerDetallePage() {
         contexto="taller"
         onExport={handleExportPDF}
         title="Exportar PDF"
-        description={`${selectedArray.length > 0 ? selectedArray.length : inscripciones.length} participante(s).`}
+        description={`${selectedArray.length > 0 ? selectedArray.length : studentRows.length} participante(s).`}
       />
     </div>
   )
