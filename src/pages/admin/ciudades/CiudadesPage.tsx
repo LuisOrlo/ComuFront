@@ -67,7 +67,7 @@ export function CiudadesPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     cargarCiudades()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
@@ -154,7 +154,7 @@ export function CiudadesPage() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>Ciudades</h1>
-                
+
               </div>
             </div>
             <span className="text-sm px-3 py-1 rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>

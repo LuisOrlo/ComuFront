@@ -46,7 +46,7 @@ export function TareaFormPanel({ isOpen, tarea, staff, onClose, onSave }: TareaF
   }
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+
     if (tarea) {
       setTitulo(tarea.titulo)
       setDescripcion(tarea.descripcion || "")
@@ -58,7 +58,7 @@ export function TareaFormPanel({ isOpen, tarea, staff, onClose, onSave }: TareaF
     } else {
       resetForm()
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
+
   }, [tarea, isOpen, staff])
 
   useEffect(() => {

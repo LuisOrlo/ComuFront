@@ -62,7 +62,7 @@ export function RadioHistorialPage() {
   }, [page, filtroEstado, fechaDesde, fechaHasta])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     loadHistorial()
   }, [loadHistorial])
 

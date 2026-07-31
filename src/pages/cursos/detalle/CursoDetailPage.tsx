@@ -77,7 +77,7 @@ export function CursoDetailPage() {
     } finally { setLoading(false) }
   }
 
-  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {  
     if (id) cargarTodo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
@@ -419,13 +419,13 @@ function getDiaNombre(numero: number): string {
 
 function calcularEstadoModulo(fechaInicio?: string, fechaFin?: string): string {
   if (!fechaInicio || !fechaFin) return "pendiente"
-  
+
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
-  
+
   const inicio = new Date(fechaInicio + "T00:00:00")
   const fin = new Date(fechaFin + "T23:59:59")
-  
+
   if (hoy < inicio) return "pendiente"
   if (hoy > fin) return "completado"
   return "en_progreso"

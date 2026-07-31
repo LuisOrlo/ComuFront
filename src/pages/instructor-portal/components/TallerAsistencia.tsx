@@ -30,7 +30,7 @@ export function TallerAsistencia({ taller }: Props) {
 
   useEffect(() => {
     if (!taller.asistencias || taller.asistencias.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setCargando(false)
       return
     }

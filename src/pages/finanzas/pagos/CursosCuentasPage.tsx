@@ -33,7 +33,7 @@ export function CursosCuentasPage() {
   }, [searchInput])
 
   useEffect(() => {
-    setClientPage(1) // eslint-disable-line react-hooks/set-state-in-effect
+    setClientPage(1)  
   }, [filter, modalidad, search])
 
   useEffect(() => {

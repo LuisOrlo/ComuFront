@@ -18,7 +18,7 @@ import { toast } from "sonner"
 export function SolicitudInscripcionDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  
+
   const [solicitud, setSolicitud] = useState<SolicitudInscripcionDetallada | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +44,7 @@ export function SolicitudInscripcionDetallePage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     if (id) cargarDetalle()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])

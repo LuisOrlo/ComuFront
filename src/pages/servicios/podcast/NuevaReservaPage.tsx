@@ -136,7 +136,7 @@ export function NuevaReservaPage() {
   }, [clienteSearch])
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+
     const state = location.state as { nuevoCliente?: ClienteExterno } | null
     if (state?.nuevoCliente && !clienteId) {
       const c = state.nuevoCliente
@@ -146,7 +146,7 @@ export function NuevaReservaPage() {
       setClienteSearch(`${c.nombres} ${c.apellidos || ""}`.trim())
       window.history.replaceState({}, "")
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
+
   }, [location.state, clienteId])
 
   useEffect(() => {

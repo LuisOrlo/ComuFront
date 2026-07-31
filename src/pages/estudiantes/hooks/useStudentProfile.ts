@@ -64,7 +64,7 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
 
   useEffect(() => {
     if (id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       loadData()
     }
   }, [id, loadData])

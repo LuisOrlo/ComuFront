@@ -1,6 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
+import { Eye, Pencil } from "lucide-react"
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type PaginationState,
+} from "@tanstack/react-table"
 import { COLORS } from "@/lib/constants"
+import { PaginationControls } from "@/components/table/PaginationControls"
 
 const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
@@ -25,85 +39,204 @@ const CAT_TEXT: Record<string, string> = {
   "Asesorías": "#ca8a04", "Otros": "#6b7280",
 }
 
+interface IngresoRow {
+  id: string
+  tipo_movimiento: "ingreso" | "egreso"
+  fecha_pago: string
+  concepto?: string
+  estudiante_nombre?: string
+  categoria?: string
+  monto: number
+  metodo_pago?: string
+}
+
+interface Props {
+  data: IngresoRow[]
+  loading: boolean
+}
+
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
 }
 
-interface Props {
-  data: any[]
-  loading: boolean
-  page: number
-  lastPage: number
-  onPageChange: (p: number) => void
-  onSort: (col: string) => void
-  sortCol: string
-  sortDir: string
-}
-
-export function IngresosTabla({ data, loading, page, lastPage, onPageChange, onSort, sortCol, sortDir }: Props) {
+export function IngresosTabla({ data, loading }: Props) {
   const navigate = useNavigate()
+  const [sorting, setSorting] = useState<SortingState>([{ id: "fecha_pago", desc: true }])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
 
-  const SortIcon = ({ col }: { col: string }) => (
-    <span className="inline-block w-3 text-center opacity-30 ml-0.5">
-      {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-    </span>
-  )
+  useEffect(() => {
+    if (loading) {
+      setPagination(p => ({ ...p, pageIndex: 0 }))
+    }
+  }, [loading])
 
-  const sortableHeader = (col: string, label: string) => (
-    <th onClick={() => onSort(col)} className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer hover:opacity-70 select-none">
-      {label}<SortIcon col={col} />
-    </th>
-  )
+  const columns = useMemo<ColumnDef<IngresoRow>[]>(() => [
+    {
+      id: "fecha_pago",
+      accessorFn: (item) => item.fecha_pago,
+      header: "Fecha",
+      cell: ({ getValue }) => <span className="text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(getValue<string>())}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "concepto",
+      accessorFn: (item) => item.concepto,
+      header: "Concepto",
+      cell: ({ row }) => {
+        const item = row.original
+        const esEgreso = item.tipo_movimiento === "egreso"
+        return (
+          <span className="text-xs truncate max-w-[160px] block" style={{ color: CHARCOAL }}>
+            {esEgreso && <span className="px-1.5 py-0.5 mr-1.5 rounded-full text-[7px] font-bold uppercase bg-red-100 text-red-700">Egreso</span>}
+            {item.concepto || "—"}
+          </span>
+        )
+      },
+      enableSorting: false,
+    },
+    {
+      id: "estudiante",
+      accessorFn: (item) => item.estudiante_nombre,
+      header: "Estudiante",
+      cell: ({ getValue }) => <span className="text-xs" style={{ color: CHARCOAL }}>{getValue<string>() || "—"}</span>,
+      enableSorting: false,
+    },
+    {
+      id: "categoria",
+      accessorFn: (item) => item.categoria,
+      header: "Categoría",
+      cell: ({ row }) => {
+        const item = row.original
+        const esEgreso = item.tipo_movimiento === "egreso"
+        return (
+          <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
+            style={{
+              backgroundColor: esEgreso ? "oklch(0.55 0.15 30 / 0.1)" : (CAT_COLORS[item.categoria || ""] || "oklch(0.4 0.02 0 / 0.12)"),
+              color: esEgreso ? "#dc2626" : (CAT_TEXT[item.categoria || ""] || "#6b7280"),
+            }}>
+            {item.categoria || "—"}
+          </span>
+        )
+      },
+      enableSorting: false,
+    },
+    {
+      id: "monto",
+      accessorFn: (item) => Number(item.monto || 0),
+      header: "Monto",
+      cell: ({ row }) => {
+        const item = row.original
+        const esEgreso = item.tipo_movimiento === "egreso"
+        return (
+          <span className="text-xs font-bold" style={{ color: esEgreso ? "#dc2626" : "oklch(0.55 0.15 150)" }}>
+            {esEgreso ? "-" : "+"}${Number(item.monto || 0).toLocaleString()}
+          </span>
+        )
+      },
+      enableSorting: true,
+    },
+    {
+      id: "metodo",
+      accessorFn: (item) => item.metodo_pago,
+      header: "Método",
+      cell: ({ getValue }) => <span className="text-xs capitalize opacity-60">{getValue<string>() || "—"}</span>,
+      enableSorting: false,
+    },
+    {
+      id: "acciones",
+      header: "",
+      cell: ({ row }) => {
+        const item = row.original
+        const esEgreso = item.tipo_movimiento === "egreso"
+        return (
+          <div className="flex items-center justify-center">
+            {esEgreso ? (
+              <button onClick={() => navigate(`/finanzas/egresos/${item.id}/editar`)}
+                className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                title="Editar">
+                <Pencil size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-amber-600 transition-colors" />
+              </button>
+            ) : (
+              <button onClick={() => navigate(`/finanzas/ingresos/${item.id}`)}
+                className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                title="Ver detalle">
+                <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
+              </button>
+            )}
+          </div>
+        )
+      },
+      enableSorting: false,
+    },
+  ], [navigate])
 
-  const totalFila = data.reduce((s: number, r: any) => s + Number(r.monto || 0), 0)
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getRowId: (row) => `${row.tipo_movimiento}-${row.id}`,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetAll: false,
+  })
+
+  const totalFila = data.reduce((s, r) => s + Number(r.monto || 0), 0)
 
   return (
     <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
       <table className="w-full">
         <thead>
-          <tr className="bg-gray-50/80">
-            {sortableHeader("fecha_pago", "Fecha")}
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Concepto</th>
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Estudiante</th>
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Categoría</th>
-            {sortableHeader("monto", "Monto")}
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Método</th>
-          </tr>
+          {table.getHeaderGroups().map((hg) => (
+            <tr key={hg.id} className="bg-gray-50/80">
+              {hg.headers.map((header) => {
+                const canSort = header.column.getCanSort()
+                const sorted = header.column.getIsSorted()
+                const isCenter = header.id === "acciones"
+                return (
+                  <th key={header.id}
+                    onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                    className={canSort ? "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer hover:opacity-70 select-none" : "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40"}
+                    style={{ textAlign: isCenter ? "center" : "left" }}>
+                    <div className="flex items-center gap-1" style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
+                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                      {canSort && (
+                        <span className="inline-flex flex-col leading-none ml-1">
+                          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sorted === "asc" ? "" : "opacity-40"} />
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sorted === "desc" ? "" : "opacity-40"} />
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                )
+              })}
+            </tr>
+          ))}
         </thead>
         <tbody className="divide-y" style={{ borderColor: BORDER }}>
           {loading ? (
-            <tr><td colSpan={6} className="p-10 text-center opacity-40">Cargando...</td></tr>
+            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Cargando...</td></tr>
           ) : data.length === 0 ? (
-            <tr><td colSpan={6} className="p-10 text-center opacity-40">Sin ingresos</td></tr>
-          ) : data.map((item: any) => {
-            const esEgreso = item.tipo_movimiento === "egreso"
-            return (
-              <tr key={`${item.tipo_movimiento}-${item.id}`} onClick={() => navigate(esEgreso ? `/finanzas/egresos/${item.id}/editar` : `/finanzas/ingresos/${item.id}`)}
-                className="hover:bg-gray-50 cursor-pointer transition-colors">
-                <td className="px-3 py-2 text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(item.fecha_pago)}</td>
-                <td className="px-3 py-2 text-xs truncate max-w-[160px]" style={{ color: CHARCOAL }}>
-                  {esEgreso && <span className="px-1.5 py-0.5 mr-1.5 rounded-full text-[7px] font-bold uppercase bg-red-100 text-red-700">Egreso</span>}
-                  {item.concepto || "—"}
+            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Sin ingresos</td></tr>
+          ) : table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id}
+                  className={cell.column.id === "acciones" ? "px-3 py-2 text-center" : "px-3 py-2"}
+                  style={{ color: CHARCOAL }}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
-                <td className="px-3 py-2 text-xs" style={{ color: CHARCOAL }}>{item.estudiante_nombre || "—"}</td>
-                <td className="px-3 py-2">
-                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
-                    style={{ backgroundColor: esEgreso ? "oklch(0.55 0.15 30 / 0.1)" : (CAT_COLORS[item.categoria] || "oklch(0.4 0.02 0 / 0.12)"), color: esEgreso ? "#dc2626" : (CAT_TEXT[item.categoria] || "#6b7280") }}>
-                    {item.categoria}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-xs font-bold" style={{ color: esEgreso ? "#dc2626" : "oklch(0.55 0.15 150)" }}>
-                  {esEgreso ? "-" : "+" }${Number(item.monto || 0).toLocaleString()}
-                </td>
-                <td className="px-3 py-2 text-xs capitalize opacity-60">{item.metodo_pago}</td>
-              </tr>
-            )
-          })}
+              ))}
+            </tr>
+          ))}
         </tbody>
         {data.length > 0 && (
           <tfoot>
             <tr style={{ backgroundColor: CHARCOAL }}>
-              <td className="px-3 py-2" colSpan={4}>
+              <td className="px-3 py-2" colSpan={5}>
                 <span className="text-[10px] font-bold text-white/60">Total ({data.length} registros)</span>
               </td>
               <td className="px-3 py-2 text-xs font-bold text-white">${totalFila.toLocaleString()}</td>
@@ -112,11 +245,9 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange, onS
           </tfoot>
         )}
       </table>
-      {lastPage > 1 && (
-        <div className="flex justify-center gap-2 py-3 border-t" style={{ borderColor: BORDER }}>
-          <button disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-gray-100 disabled:opacity-30">Anterior</button>
-          <span className="px-2 py-1.5 text-[10px] opacity-40">{page} de {lastPage}</span>
-          <button disabled={page >= lastPage} onClick={() => onPageChange(page + 1)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-gray-100 disabled:opacity-30">Siguiente</button>
+      {data.length > 0 && (
+        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+          <PaginationControls table={table} />
         </div>
       )}
     </div>

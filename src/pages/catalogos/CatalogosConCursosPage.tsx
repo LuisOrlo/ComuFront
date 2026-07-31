@@ -74,7 +74,7 @@ export function CatalogosConCursosPage() {
   }, [searchCatalogo])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     if (!selectedCatalogoId) { setCursos([]); return }
     const load = async () => {
       setLoadingCursos(true)
@@ -88,7 +88,7 @@ export function CatalogosConCursosPage() {
   }, [selectedCatalogoId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     if (!selectedCursoId) { setMatriculas([]); return }
     const load = async () => {
       setLoadingMatriculas(true)

@@ -62,7 +62,7 @@ export function AprobacionMatriculasPage() {
     finally { setLoadingTalleres(false) }
   }
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+
   useEffect(() => {
     cargarSolicitudes()
     cargarTallerInscripciones()
@@ -77,7 +77,7 @@ export function AprobacionMatriculasPage() {
       cargarSolicitudes()
     }
   }, [mainTab])
-  /* eslint-enable react-hooks/set-state-in-effect */
+
 
   useEffect(() => {
     if (mainTab !== "talleres" && statusFilter === "aprobados") {

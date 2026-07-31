@@ -20,7 +20,7 @@ interface ClienteOption {
   cedula?: string
   correo?: string
 }
- 
+
 export function ReservaForm({
   isOpen,
   onClose,
@@ -147,17 +147,17 @@ export function ReservaForm({
   }
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+
     if (!nuevoCliente) return
     setClienteId(nuevoCliente.id)
     setClienteTipo("cliente_externo")
     setClienteSearch(`${nuevoCliente.nombres} ${nuevoCliente.apellidos || ""}`.trim())
     setShowClienteDropdown(false)
-    /* eslint-enable react-hooks/set-state-in-effect */
+
   }, [nuevoCliente])
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+
     if (!isOpen) return
     if (editingReserva) {
       setTarifaId(editingReserva.tarifa_id)
@@ -198,7 +198,7 @@ export function ReservaForm({
       setClienteSearch("")
       setClientesDisponibles([])
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
+
   }, [isOpen, editingReserva, fechaPreseleccionada, horaPreseleccionada, tarifas])
 
   useEffect(() => {

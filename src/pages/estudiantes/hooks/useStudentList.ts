@@ -13,6 +13,7 @@ interface Meta {
 
 interface UseStudentListOptions {
   extraFilters?: Record<string, string | number | undefined>
+  pageSize?: number
 }
 
 interface UseStudentListReturn {
@@ -34,7 +35,7 @@ interface UseStudentListReturn {
 }
 
 export function useStudentList(options: UseStudentListOptions = {}): UseStudentListReturn {
-  const { extraFilters = {} } = options
+  const { extraFilters = {}, pageSize = 500 } = options
 
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +55,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       const params: Record<string, string | number | undefined> = {
         buscar: debouncedSearch || undefined,
         estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
+        per_page: pageSize,
         page,
         ...extraFilters,
       }
@@ -67,7 +69,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       setLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, paymentFilter, extraFiltersKey])
+  }, [debouncedSearch, paymentFilter, extraFiltersKey, pageSize])
 
   const handleSetSearch = useCallback((value: string) => {
     setSearch(value)
@@ -76,7 +78,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     loadData()
   }, [loadData])
 

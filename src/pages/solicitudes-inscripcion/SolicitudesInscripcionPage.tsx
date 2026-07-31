@@ -16,12 +16,12 @@ export function SolicitudesInscripcionPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudInscripcionResumen[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [filtros, setFiltros] = useState({
     estado: "",
     search: "",
   })
-  
+
   const [paginacion, setPaginacion] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -58,7 +58,7 @@ export function SolicitudesInscripcionPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     cargarSolicitudes()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtros, paginacion.currentPage])

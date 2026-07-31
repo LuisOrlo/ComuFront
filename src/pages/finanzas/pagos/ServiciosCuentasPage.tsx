@@ -65,7 +65,7 @@ export function ServiciosCuentasPage() {
   }, [searchInput])
 
   useEffect(() => {
-    setClientPage(1) // eslint-disable-line react-hooks/set-state-in-effect
+    setClientPage(1)  
   }, [filter, search])
 
   useEffect(() => {

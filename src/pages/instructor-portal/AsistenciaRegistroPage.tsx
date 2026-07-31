@@ -65,7 +65,7 @@ export function AsistenciaRegistroPage() {
 
   useEffect(() => {
     if (cursoId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

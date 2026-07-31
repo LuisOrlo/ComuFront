@@ -49,7 +49,7 @@ export function EquiposPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     loadEquipos()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filtroEstado])

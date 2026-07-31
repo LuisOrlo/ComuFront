@@ -146,7 +146,7 @@ export function TallerFormPage() {
 
   // Cargar instructores al montar
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     buscarInstructores("")
     ciudadesService.getCiudadesTodas().then(setCiudades).catch(() => {})
   }, [])

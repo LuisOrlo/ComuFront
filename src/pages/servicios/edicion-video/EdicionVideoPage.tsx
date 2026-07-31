@@ -48,7 +48,7 @@ export function EdicionVideoPage() {
   }, [debouncedSearch])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true)
     loadTrabajos().finally(() => setLoading(false))
   }, [loadTrabajos])

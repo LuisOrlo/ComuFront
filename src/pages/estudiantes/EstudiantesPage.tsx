@@ -34,7 +34,7 @@ export function EstudiantesPage() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     loadCounts()
   }, [loadCounts])
 

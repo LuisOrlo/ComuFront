@@ -44,7 +44,7 @@ export function MatriculasListPage() {
 
   // Al seleccionar catálogo, cargar sus cursos abiertos
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     if (!selectedCatalogoId) { setCursosAbiertos([]); return }
     const load = async () => {
       setLoadingCursos(true)
@@ -59,7 +59,7 @@ export function MatriculasListPage() {
 
   // Al seleccionar curso, cargar sus matrículas
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     if (!selectedCursoId) { setMatriculas([]); return }
     const load = async () => {
       setLoadingMatriculas(true)
@@ -122,7 +122,7 @@ export function MatriculasListPage() {
                 style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 12%, white)`, color: COLORS.ACCENT, border: `1.5px solid ${COLORS.ACCENT}30` }}>
                 <HugeiconsIcon icon={CheckmarkCircleIcon} size={16} />Aprobación de Matrículas
               </button>
-             
+
             </div>
           </div>
 

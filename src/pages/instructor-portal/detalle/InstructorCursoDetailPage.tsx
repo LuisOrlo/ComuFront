@@ -54,7 +54,7 @@ export function InstructorCursoDetailPage() {
 
   useEffect(() => {
     if (id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,7 +125,7 @@ export function InstructorCursoDetailPage() {
   const getEstudianteCedula = (e: EstudianteCurso) =>
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
-  
+
 
   const handleDescargarAsistencia = async () => {
     if (!curso) return

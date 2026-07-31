@@ -26,12 +26,12 @@ export function CursosPage() {
   const [cursos, setCursos] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Estados para confirmación de eliminación
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [cursoToDelete, setCursoToDelete] = useState<{ id: string; nombre: string } | null>(null)
   const [deletingCurso, setDeletingCurso] = useState(false)
-  
+
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -62,7 +62,7 @@ export function CursosPage() {
 
   // Cargar cursos cuando cambian página o filtros
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     cargarCursos()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, filtros])
@@ -134,7 +134,7 @@ export function CursosPage() {
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
                 Cursos Activos
               </h1>
-              
+
             </div>
             {isAdmin && (
             <button

@@ -32,7 +32,7 @@ export function TarifasPage() {
     }
   }
 
-  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {  
     loadTarifas() }, [])
 
   const openCreate = () => {
@@ -96,7 +96,7 @@ export function TarifasPage() {
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Link
                 to="/servicios/radio"

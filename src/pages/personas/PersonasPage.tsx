@@ -46,7 +46,7 @@ export function PersonasPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     cargarPersonas()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filtroTipo])
@@ -87,7 +87,7 @@ export function PersonasPage() {
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
                 Personal
               </h1>
-              
+
             </div>
             <button
               onClick={() => setModal({ open: true, editingId: null })}

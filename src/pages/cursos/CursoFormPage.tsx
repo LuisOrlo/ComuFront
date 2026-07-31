@@ -153,7 +153,7 @@ export function CursoFormPage() {
   useEffect(() => {
     if (form.catalogo_curso_id && !isEdit) {
       const modulos = calcularFechasModulos(numModulosDefault, form.fecha_inicio, form.fecha_fin)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setForm(prev => ({ ...prev, modulos }))
     }
   }, [form.catalogo_curso_id, numModulosDefault, form.fecha_inicio, form.fecha_fin, isEdit])
@@ -162,7 +162,7 @@ export function CursoFormPage() {
     if (form.modulos.length > 0 && form.fecha_fin && !isEdit) {
       const lastModuleIndex = form.modulos.length - 1
       if (form.modulos[lastModuleIndex].fecha_fin !== form.fecha_fin) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+
         setForm(prev => {
           const updated = [...prev.modulos]
           updated[lastModuleIndex] = { ...updated[lastModuleIndex], fecha_fin: prev.fecha_fin }
@@ -178,7 +178,7 @@ export function CursoFormPage() {
       const tipoDelCatalogo = selectedCatalogo?.categoria || "regular"
       const capacidadAutomatica = tipoDelCatalogo === "regular" && form.modalidad === "presencial" ? 18 : 99
       if (form.capacidad_maxima !== capacidadAutomatica) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+
         setForm(prev => ({ ...prev, capacidad_maxima: capacidadAutomatica }))
       }
     }
@@ -436,7 +436,7 @@ export function CursoFormPage() {
                           style={{ color: form.catalogo_curso_id === cat.id ? ACCENT : CHARCOAL }}>
                           {cat.nombre}
                         </span>
-                        
+
                       </div>
                       {form.catalogo_curso_id === cat.id && <span className="ml-2 text-lg">✓</span>}
                     </button>

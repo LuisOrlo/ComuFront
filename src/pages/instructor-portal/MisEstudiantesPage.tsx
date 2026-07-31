@@ -28,7 +28,7 @@ export function MisEstudiantesPage() {
     }
   }
 
-  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {  
     loadData() }, [])
 
   const filtered = useMemo(() => {
@@ -100,7 +100,7 @@ export function MisEstudiantesPage() {
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Curso</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
                   <th className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Promedio</th>
-                  
+
                   <th className="px-5 py-4" />
                 </tr>
               </thead>
@@ -149,7 +149,7 @@ export function MisEstudiantesPage() {
                         {e.promedio_notas > 0 ? e.promedio_notas.toFixed(1) : "—"}
                       </span>
                     </td>
-                    
+
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center gap-3 ">
                         {!!e.estudianteId && (

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef } from "react"
 import FullCalendar from "@fullcalendar/react"
 import dayGridPlugin from "@fullcalendar/daygrid"
 import timeGridPlugin from "@fullcalendar/timegrid"
@@ -14,7 +14,6 @@ import {
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { agendaService, type AgendaEvent } from "@/services/agenda.service"
-import { cursosService } from "@/services/cursos.service"
 import { AgendaLegend } from "./components/AgendaLegend"
 import { EventDetailModal } from "./components/EventDetailModal"
 import { exportToPDF } from "@/lib/pdf-export"
@@ -35,38 +34,29 @@ const VIEWS = [
   { key: "listWeek", label: "Lista", icon: Calendar03Icon },
 ]
 
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
 export function AgendaPage() {
   const calendarRef = useRef<FullCalendar>(null)
   const [activeTypes, setActiveTypes] = useState<string[]>([])
-  const [activeCatalogs, setActiveCatalogs] = useState<string[]>([])
-  const [catalogs, setCatalogs] = useState<{id: string, nombre: string}[]>([])
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
   const [currentView, setCurrentView] = useState("dayGridMonth")
   const [currentTitle, setCurrentTitle] = useState("")
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
 
-  useEffect(() => {
-    cursosService.getCatalogos(undefined, 1, { per_page: 100 }).then(res => setCatalogs(res.data))
-  }, [])
-
   const handleToggleType = useCallback((tipo: string) => {
     setActiveTypes((prev) => {
       if (prev.includes(tipo)) {
         const next = prev.filter((t) => t !== tipo)
-        if (tipo === 'CLASE_CURSO') setActiveCatalogs([]) // Reset si se quita curso
         return next.length === 0 ? [] : next
       }
       return [...prev, tipo]
-    })
-  }, [])
-
-  const handleToggleCatalog = useCallback((catalogId: string) => {
-    setActiveCatalogs((prev) => {
-      if (prev.includes(catalogId)) {
-        return prev.filter((c) => c !== catalogId)
-      }
-      return [...prev, catalogId]
     })
   }, [])
 
@@ -74,14 +64,11 @@ export function AgendaPage() {
     async ({ start, end }: { start: Date; end: Date }, successCallback: (events: object[]) => void, failureCallback: (error: Error) => void) => {
       setLoading(true)
       try {
-        const fechaInicio = start.toISOString().split("T")[0]
-        const fechaFin = end.toISOString().split("T")[0]
+        const fechaInicio = toLocalDateStr(start)
+        const fechaFin = toLocalDateStr(end)
         const params: Record<string, unknown> = { fecha_inicio: fechaInicio, fecha_fin: fechaFin, per_page: 500 }
         if (activeTypes.length > 0) {
           params.tipos = activeTypes
-        }
-        if (activeCatalogs.length > 0) {
-            params.catalogos = activeCatalogs
         }
         const response = await agendaService.getEvents(params as Parameters<typeof agendaService.getEvents>[0])
         const fullCalendarEvents = response.data.map((event) => {
@@ -107,7 +94,7 @@ export function AgendaPage() {
         setLoading(false)
       }
     },
-    [activeTypes, activeCatalogs],
+    [activeTypes],
   )
 
   const handleEventClick = useCallback((arg: EventClickArg) => {
@@ -279,20 +266,6 @@ export function AgendaPage() {
         {/* FILTERS */}
         <div className="flex flex-wrap items-center gap-2">
           <AgendaLegend activeTypes={activeTypes} onToggle={handleToggleType} />
-          {activeTypes.includes('CLASE_CURSO') && (
-            <div className="flex items-center gap-1 border-l pl-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <span className="text-xs font-bold" style={{ color: COLORS.TEXT_MUTED }}>Catálogos:</span>
-                {catalogs.map(cat => (
-                    <button
-                        key={cat.id}
-                        onClick={() => handleToggleCatalog(cat.id)}
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${activeCatalogs.includes(cat.id) ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                    >
-                        {cat.nombre}
-                    </button>
-                ))}
-            </div>
-          )}
         </div>
       </header>
 

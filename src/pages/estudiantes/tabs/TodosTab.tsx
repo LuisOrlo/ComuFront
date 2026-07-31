@@ -1,6 +1,4 @@
 import { useState, useCallback } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ChevronLeftIcon, ChevronRightIcon } from "@hugeicons/core-free-icons"
 import { useStudentList } from "../hooks/useStudentList"
 import { StudentFilters } from "../components/StudentFilters"
 import { StudentTable, type StudentRow } from "../components/StudentTable"
@@ -24,14 +22,12 @@ export function TodosTab() {
     paymentFilter,
     setPaymentFilter,
     stats,
-    meta,
     selectedIds,
     toggleSelect,
     toggleSelectAll,
     clearSelection,
-    loadPage,
     deleteStudents,
-  } = useStudentList()
+  } = useStudentList({ pageSize: 2000 })
   const [deleting, setDeleting] = useState(false)
   const [deletingCedulas, setDeletingCedulas] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -136,65 +132,6 @@ export function TodosTab() {
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
         />
-
-        {meta && meta.ultima_pagina > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-              Mostrando {meta.total > 0 ? (meta.actual - 1) * meta.per_page + 1 : 0} - {Math.min(meta.actual * meta.per_page, meta.total)} de {meta.total} estudiantes
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => loadPage(meta.actual - 1)}
-                disabled={meta.actual === 1}
-                className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
-                style={{
-                  backgroundColor: "oklch(0.97 0 0)",
-                  color: COLORS.TEXT_MUTED,
-                  opacity: meta.actual === 1 ? 0.4 : 1,
-                  cursor: meta.actual === 1 ? "not-allowed" : "pointer",
-                }}
-              >
-                <HugeiconsIcon icon={ChevronLeftIcon} size={16} />
-              </button>
-              {(() => {
-                const maxBotones = 5
-                let desde = Math.max(1, meta.actual - Math.floor(maxBotones / 2))
-                const hasta = Math.min(meta.ultima_pagina, desde + maxBotones - 1)
-                if (hasta - desde + 1 < maxBotones) {
-                  desde = Math.max(1, hasta - maxBotones + 1)
-                }
-                const paginas: number[] = []
-                for (let i = desde; i <= hasta; i++) paginas.push(i)
-                return paginas.map(pagina => (
-                  <button
-                    key={pagina}
-                    onClick={() => loadPage(pagina)}
-                    className="size-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors duration-150"
-                    style={{
-                      backgroundColor: pagina === meta.actual ? COLORS.ACCENT : "oklch(0.97 0 0)",
-                      color: pagina === meta.actual ? "white" : COLORS.TEXT_MUTED,
-                    }}
-                  >
-                    {pagina}
-                  </button>
-                ))
-              })()}
-              <button
-                onClick={() => loadPage(meta.actual + 1)}
-                disabled={meta.actual === meta.ultima_pagina}
-                className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
-                style={{
-                  backgroundColor: "oklch(0.97 0 0)",
-                  color: COLORS.TEXT_MUTED,
-                  opacity: meta.actual === meta.ultima_pagina ? 0.4 : 1,
-                  cursor: meta.actual === meta.ultima_pagina ? "not-allowed" : "pointer",
-                }}
-              >
-                <HugeiconsIcon icon={ChevronRightIcon} size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <StudentExportDialog
@@ -203,7 +140,7 @@ export function TodosTab() {
         selectedIds={selectedArray}
         contexto="todos"
         onExport={handleExportPDF}
-        description={`${selectedArray.length > 0 ? selectedArray.length : (meta?.total ?? 0)} estudiante(s).`}
+        description={`${selectedArray.length > 0 ? selectedArray.length : studentRows.length} estudiante(s).`}
       />
 
       <ConfirmationModal

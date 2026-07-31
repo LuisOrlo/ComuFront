@@ -91,14 +91,14 @@ export function RadioPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true)
     Promise.all([loadTarifas(), loadReservas()])
       .finally(() => setLoading(false))
   }, [loadReservas])
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
+
     const state = location.state as { nuevoCliente?: ClienteExterno } | undefined
     if (state?.nuevoCliente) {
       setNuevoCliente(state.nuevoCliente)
@@ -106,7 +106,7 @@ export function RadioPage() {
       setEditingReserva(null)
       navigate(".", { replace: true, state: {} })
     }
-    /* eslint-enable react-hooks/set-state-in-effect */
+
   }, [location.state, navigate])
 
   const handleEdit = (r: ReservaRadio) => {

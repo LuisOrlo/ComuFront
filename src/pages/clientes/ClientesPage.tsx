@@ -7,39 +7,31 @@ import { toast } from "sonner"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { ClientesFilters } from "./components/ClientesFilters"
 import { ClientesTable } from "./components/ClientesTable"
-import { ClientesPagination } from "./components/ClientesPagination"
 
-const ITEMS_PER_PAGE = 15
+const ITEMS_PER_PAGE = 500
 
 export function ClientesPage() {
   const navigate = useNavigate()
   const [clientes, setClientes] = useState<ClienteExterno[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 })
   const [search, setSearch] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const loadClientes = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await clientesService.getClientes({ search: search || undefined, per_page: ITEMS_PER_PAGE, page }) as {
+      const res = await clientesService.getClientes({ per_page: ITEMS_PER_PAGE }) as {
         data: ClienteExterno[]
-        current_page: number
-        last_page: number
-        total: number
       }
       setClientes(res.data)
-      setMeta({ current_page: res.current_page, last_page: res.last_page, total: res.total })
     } catch {
       toast.error("Error al cargar clientes")
     } finally {
       setLoading(false)
     }
-  }, [search, page])
+  }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadClientes()
   }, [loadClientes])
 
@@ -57,7 +49,6 @@ export function ClientesPage() {
 
   const handleSearch = (value: string) => {
     setSearch(value)
-    setPage(1)
   }
 
   return (
@@ -87,14 +78,10 @@ export function ClientesPage() {
           <ClientesTable
             clientes={clientes}
             loading={loading}
+            search={search}
+            onSearchChange={handleSearch}
             onEdit={(c) => navigate(`/clientes/${c.id}/editar`)}
             onDelete={(c) => setDeleteConfirm({ id: c.id, name: `${c.nombres} ${c.apellidos || ""}`.trim() })}
-          />
-          <ClientesPagination
-            page={page}
-            lastPage={meta.last_page}
-            total={meta.total}
-            onPageChange={setPage}
           />
         </div>
       </div>

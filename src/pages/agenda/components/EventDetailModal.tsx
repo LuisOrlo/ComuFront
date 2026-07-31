@@ -30,6 +30,27 @@ function formatDate(date: string) {
   })
 }
 
+const DETALLE_LABELS: Record<string, string> = {
+  modulo: "Módulo",
+  observaciones: "Observaciones",
+  descripcion: "Descripción",
+  precio: "Precio",
+  precio_total: "Precio total",
+  abierto_externos: "Abierto a externos",
+  notas_sesion: "Notas de sesión",
+  cliente: "Cliente",
+  aula_capacidad: "Capacidad del aula",
+  aula_caracteristicas: "Características del aula",
+}
+
+function formatDetailValue(key: string, value: unknown): string {
+  if (typeof value === "boolean") return value ? "Sí" : "No"
+  if (typeof value === "number" && key.includes("precio")) {
+    return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD" }).format(value)
+  }
+  return String(value)
+}
+
 function estadoBadge(estado: string | null) {
   if (!estado) return null
   const colors: Record<string, { bg: string; text: string }> = {
@@ -65,7 +86,7 @@ export function EventDetailModal({
 
   useEffect(() => {
     if (event.tipo_evento && event.referencia_id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setLoading(true)
       agendaService
         .getEventDetail(event.tipo_evento, event.referencia_id)
@@ -122,12 +143,18 @@ export function EventDetailModal({
             <div className="grid grid-cols-2 gap-3">
               <InfoField icon={Clock01Icon} label="Horario" value={`${formatTime(data.hora_inicio)} – ${formatTime(data.hora_fin)}`} />
               <InfoField icon={Calendar03Icon} label="Fecha" value={formatDate(data.fecha)} />
-              <InfoField icon={UserIcon} label="Instructor" value={data.instructor_nombre ?? "—"} />
-              {data.tipo_evento !== "CLASE_CURSO" && data.tipo_evento !== "TALLER" && (
-                <InfoField icon={Home02Icon} label="Aula" value={data.aula_nombre ?? "—"} />
+              {data.instructor_nombre && (
+                <InfoField icon={UserIcon} label="Instructor" value={data.instructor_nombre} />
               )}
-              <InfoField icon={SignalIcon} label="Modalidad" value={data.modalidad ?? "—"} />
-              <InfoField icon={UserGroupIcon} label="Participantes" value={data.participantes_count != null ? String(data.participantes_count) : "—"} />
+              {data.tipo_evento !== "CLASE_CURSO" && data.tipo_evento !== "TALLER" && data.aula_nombre && (
+                <InfoField icon={Home02Icon} label="Aula" value={data.aula_nombre} />
+              )}
+              {data.modalidad && (
+                <InfoField icon={SignalIcon} label="Modalidad" value={data.modalidad} />
+              )}
+              {data.participantes_count != null && (
+                <InfoField icon={UserGroupIcon} label="Participantes" value={String(data.participantes_count)} />
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -139,18 +166,23 @@ export function EventDetailModal({
               <div>
                 <h4 className="text-xs font-bold mb-1.5" style={{ color: COLORS.CHARCOAL }}>Detalles adicionales</h4>
                 <div className="bg-gray-50 rounded-xl p-3 space-y-1">
-                  {Object.entries(data.detalle).map(([key, value]) => (
-                    value != null && (
+                  {Object.entries(data.detalle).map(([key, value]) => {
+                    if (value == null || value === "") return null
+                    const label = DETALLE_LABELS[key] ?? key.replace(/_/g, " ")
+                    return (
                       <div key={key} className="text-xs flex gap-2">
-                        <span className="font-bold capitalize" style={{ color: COLORS.CHARCOAL }}>
-                          {key.replace(/_/g, " ")}:
+                        <span
+                          className={`font-bold ${DETALLE_LABELS[key] ? "" : "capitalize"}`}
+                          style={{ color: COLORS.CHARCOAL }}
+                        >
+                          {label}:
                         </span>
                         <span style={{ color: COLORS.TEXT_MUTED }}>
-                          {typeof value === "boolean" ? (value ? "Sí" : "No") : String(value)}
+                          {formatDetailValue(key, value)}
                         </span>
                       </div>
                     )
-                  ))}
+                  })}
                 </div>
               </div>
             )}

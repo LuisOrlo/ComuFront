@@ -1,19 +1,128 @@
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon } from "@hugeicons/core-free-icons"
+import { UserGroupIcon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import { Eye, Pencil, Trash2 } from "lucide-react"
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type PaginationState,
+} from "@tanstack/react-table"
 import { COLORS } from "@/lib/constants"
 import type { ClienteExterno } from "@/services/clientes.service"
+import { PaginationControls } from "@/components/table/PaginationControls"
 
 interface ClientesTableProps {
   clientes: ClienteExterno[]
   loading: boolean
+  search: string
+  onSearchChange: (value: string) => void
   onEdit: (cliente: ClienteExterno) => void
   onDelete: (cliente: ClienteExterno) => void
 }
 
-export function ClientesTable({ clientes, loading, onEdit, onDelete }: ClientesTableProps) {
+const BORDER = COLORS.BORDER_SUBTLE
+const CHARCOAL = COLORS.CHARCOAL
+
+export function ClientesTable({ clientes, loading, search, onSearchChange, onEdit, onDelete }: ClientesTableProps) {
   const navigate = useNavigate()
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 })
+
+  useEffect(() => {
+    setPagination(p => ({ ...p, pageIndex: 0 }))
+  }, [search])
+
+  const columns = useMemo<ColumnDef<ClienteExterno>[]>(() => [
+    {
+      id: "nombres",
+      accessorFn: (c) => `${c.nombres} ${c.apellidos || ""}`.trim(),
+      header: "Nombres",
+      cell: ({ row }) => {
+        const c = row.original
+        return <span className="font-bold">{c.nombres} {c.apellidos || ""}</span>
+      },
+      enableSorting: true,
+    },
+    {
+      id: "cedula",
+      accessorFn: (c) => c.cedula,
+      header: "Cédula",
+      cell: ({ getValue }) => <span className="text-xs opacity-60">{getValue<string>() || "—"}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "correo",
+      accessorFn: (c) => c.correo,
+      header: "Correo",
+      cell: ({ getValue }) => <span className="text-xs">{getValue<string>() || "—"}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "celular",
+      accessorFn: (c) => c.celular,
+      header: "Celular",
+      cell: ({ getValue }) => <span className="text-xs">{getValue<string>() || "—"}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "ciudad",
+      accessorFn: (c) => c.ciudad,
+      header: "Ciudad",
+      cell: ({ getValue }) => <span className="text-xs">{getValue<string>() || "—"}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "acciones",
+      header: "",
+      cell: ({ row }) => {
+        const c = row.original
+        return (
+          <div className="flex items-center justify-center gap-1">
+            <button onClick={() => navigate(`/clientes/${c.id}`)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              title="Ver detalle">
+              <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
+            </button>
+            <button onClick={() => onEdit(c)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              title="Editar">
+              <Pencil size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-amber-600 transition-colors" />
+            </button>
+            <button onClick={() => onDelete(c)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
+              title="Eliminar">
+              <Trash2 size={14} className="opacity-40 text-red-500 group-hover:opacity-100 group-hover:text-red-600 transition-colors" />
+            </button>
+          </div>
+        )
+      },
+      enableSorting: false,
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [navigate])
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data: clientes,
+    columns,
+    state: { sorting, pagination, globalFilter: search },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    onGlobalFilterChange: onSearchChange,
+    getRowId: (row) => row.id,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetAll: false,
+  })
 
   if (loading) {
     return (
@@ -33,53 +142,70 @@ export function ClientesTable({ clientes, loading, onEdit, onDelete }: ClientesT
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b text-[9px] font-bold uppercase tracking-wider opacity-40" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <th className="text-left px-6 py-3">Nombres</th>
-            <th className="text-left px-6 py-3">Cédula</th>
-            <th className="text-left px-6 py-3">Correo</th>
-            <th className="text-left px-6 py-3">Celular</th>
-            <th className="text-left px-6 py-3">Ciudad</th>
-            <th className="text-center px-6 py-3">Acciones</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y text-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          {clientes.map(c => (
-            <tr key={c.id}
-              className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-              onClick={() => navigate(`/clientes/${c.id}`)}>
-              <td className="px-6 py-4 font-bold">
-                {c.nombres} {c.apellidos || ""}
-              </td>
-              <td className="px-6 py-4 text-xs opacity-60">{c.cedula || "—"}</td>
-              <td className="px-6 py-4 text-xs">{c.correo || "—"}</td>
-              <td className="px-6 py-4 text-xs">{c.celular || "—"}</td>
-              <td className="px-6 py-4 text-xs">{c.ciudad || "—"}</td>
-              <td className="px-6 py-4 text-center" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-center gap-1">
-                  <button onClick={() => navigate(`/clientes/${c.id}`)}
-                    className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                    title="Ver detalle">
-                    <Eye size={14} className="opacity-40" />
-                  </button>
-                  <button onClick={() => onEdit(c)}
-                    className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                    title="Editar">
-                    <Pencil size={14} className="opacity-40" />
-                  </button>
-                  <button onClick={() => onDelete(c)}
-                    className="size-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
-                    title="Eliminar">
-                    <Trash2 size={14} className="opacity-40 text-red-500" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="flex-1 overflow-auto">
+        <table className="w-full">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="border-b text-[9px] font-bold uppercase tracking-wider opacity-40" style={{ borderColor: BORDER }}>
+                {hg.headers.map((header) => {
+                  const canSort = header.column.getCanSort()
+                  const sorted = header.column.getIsSorted()
+                  const isCenter = header.id === "acciones"
+                  return (
+                    <th key={header.id}
+                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      className={canSort ? "cursor-pointer select-none" : ""}
+                      style={{
+                        textAlign: isCenter ? "center" : "left",
+                        padding: "12px 24px",
+                      }}>
+                      <div className="flex items-center gap-1"
+                        style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
+                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                        {canSort && (
+                          <span className="inline-flex flex-col leading-none ml-1">
+                            <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "" : "opacity-40"} />
+                            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "" : "opacity-40"} />
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y text-sm" style={{ borderColor: BORDER }}>
+            {table.getRowModel().rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-6 py-16 text-center">
+                  <HugeiconsIcon icon={UserGroupIcon} size={40} className="opacity-20 mx-auto mb-3" />
+                  <p className="text-sm font-bold opacity-40">No se encontraron clientes</p>
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id}
+                  className="hover:bg-gray-50/50 transition-colors">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id}
+                      className={cell.column.id === "acciones" ? "px-6 py-4 text-center" : "px-6 py-4"}
+                      style={{ color: CHARCOAL }}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {table.getRowModel().rows.length > 0 && (
+        <div className="shrink-0 px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+          <PaginationControls table={table} />
+        </div>
+      )}
+    </>
   )
 }

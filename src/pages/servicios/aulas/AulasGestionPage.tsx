@@ -27,7 +27,7 @@ export function AulasGestionPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     load()
   }, [])
 
@@ -92,7 +92,7 @@ export function AulasGestionPage() {
             </Link>
             <div className="h-8 w-px bg-gray-200" />
             <div className="space-y-0.5">
-              
+
               <h1 className="text-2xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
                 Gestión de Aulas
               </h1>

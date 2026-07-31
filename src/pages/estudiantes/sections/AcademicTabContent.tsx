@@ -15,7 +15,7 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
 
   useEffect(() => {
     if (!data?.estudiante?.id) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setAsistenciasLoading(true)
     estudiantesService.getAsistencias(data.estudiante.id)
       .then(setAsistencias)

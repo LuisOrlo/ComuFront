@@ -35,7 +35,7 @@ export function TransferCursoModal({ isOpen, onClose, onSuccess, matricula }: Tr
 
   useEffect(() => {
     if (!isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setStep(1)
       setSelectedId(null)
       setMotivo("")

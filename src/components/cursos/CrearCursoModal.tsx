@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-/* eslint-disable react-hooks/set-state-in-effect */
+
 import { X, Plus, ChevronRight, ChevronLeft, Search } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { ValidatedInput } from "@/components/form"
@@ -71,14 +71,14 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
     return Array.from({ length: numModulos }, (_, i) => {
       const semanaInicio = i * semanasModulo + 1
       const semanaFin = i === numModulos - 1 ? totalSemanas : (i + 1) * semanasModulo
-      
+
       // Calcular fecha real del módulo (para visualización)
       const fechaModInicio = new Date(inicio)
       fechaModInicio.setDate(fechaModInicio.getDate() + (semanaInicio - 1) * 7)
-      
+
       const fechaModFin = new Date(inicio)
       fechaModFin.setDate(fechaModFin.getDate() + semanaFin * 7 - 1)
-      
+
       // Si es el último módulo, asegurar que termina en la fecha final del curso
       if (i === numModulos - 1) {
         fechaModFin.setTime(fin.getTime())
@@ -177,16 +177,16 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
   }, [isOpen, editingId])
 
   useEffect(() => {
-     
+
     if (form.catalogo_curso_id && !editingId) {
       const modulos = calcularFechasModulos(numModulosDefault, form.fecha_inicio, form.fecha_fin)
       setForm(prev => ({ ...prev, modulos }))
     }
-     
+
   }, [form.catalogo_curso_id, numModulosDefault, form.fecha_inicio, form.fecha_fin, editingId])
 
   useEffect(() => {
-     
+
     if (form.modulos.length > 0 && form.fecha_fin && !editingId) {
       const lastModuleIndex = form.modulos.length - 1
       const lastModule = form.modulos[lastModuleIndex]
@@ -205,7 +205,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
   }, [form.fecha_fin, editingId, form.modulos.length])
 
   useEffect(() => {
-     
+
     if (form.catalogo_curso_id && !editingId) {
       const tipoDelCatalogo = selectedCatalogo?.categoria || "regular"
       let capacidadAutomatica = 30
@@ -240,11 +240,11 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
   // Validar todos los pasos
   const validateAllSteps = (): boolean => {
     const newErrors: Record<string, string> = {}
-    
+
     // Paso 1
     if (!form.catalogo_curso_id) newErrors.catalogo_curso_id = "Selecciona un catálogo"
     if (!form.docente_id) newErrors.docente_id = "Selecciona un docente"
-    
+
     // Paso 2
     if (!form.nombre_instancia.trim()) newErrors.nombre_instancia = "El nombre es obligatorio"
     if (!form.fecha_inicio) newErrors.fecha_inicio = "La fecha de inicio es obligatoria"
@@ -254,13 +254,13 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
     }
     if (!form.hora_inicio) newErrors.hora_inicio = "La hora de inicio es obligatoria"
     if (!form.hora_fin) newErrors.hora_fin = "La hora de fin es obligatoria"
-    
+
     // Paso 3
     if (form.capacidad_maxima < 1 || form.capacidad_maxima > 99) {
       newErrors.capacidad_maxima = "La capacidad debe estar entre 1 y 99"
     }
     if (!form.precio_base || Number(form.precio_base) < 0) newErrors.precio_base = "El precio base es obligatorio"
-    
+
     // Paso 4 - Validar módulos
     if (form.modulos.length > 0) {
       form.modulos.forEach((mod, idx) => {
@@ -268,7 +268,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
       })
     }
     if (!form.modalidad) newErrors.modalidad = "Selecciona la modalidad"
-    
+
     setFieldErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -277,10 +277,10 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
   const cascadeModuleDates = (moduloIndex: number, newFechaFin: string) => {
     setForm(prev => {
       const updated = [...prev.modulos]
-      
+
       // Actualizar fecha_fin del módulo actual
       updated[moduloIndex] = { ...updated[moduloIndex], fecha_fin: newFechaFin }
-      
+
       // Propagar hacia adelante: el siguiente módulo empieza un día después
       for (let j = moduloIndex + 1; j < updated.length; j++) {
         const prevFechaFin = updated[j - 1].fecha_fin
@@ -288,7 +288,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
           const nextStart = new Date(prevFechaFin)
           nextStart.setDate(nextStart.getDate() + 1)
           const nextStartStr = nextStart.toISOString().split('T')[0]
-          
+
           // Si es el último módulo, termina en la fecha fin del curso
           if (j === updated.length - 1) {
             updated[j] = {
@@ -303,7 +303,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
             const duracionOriginal = !isNaN(originalInicio.getTime()) && !isNaN(originalFin.getTime())
               ? Math.max(1, Math.ceil((originalFin.getTime() - originalInicio.getTime()) / (1000 * 60 * 60 * 24)) + 1)
               : 7
-            
+
             const newEnd = new Date(nextStart)
             newEnd.setDate(newEnd.getDate() + duracionOriginal - 1)
             updated[j] = {
@@ -314,14 +314,14 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
           }
         }
       }
-      
+
       return { ...prev, modulos: updated }
     })
   }
 
   const handleNextStep = () => {
     const newErrors: Record<string, string> = {}
-    
+
     if (currentStep === 1) {
       if (!form.catalogo_curso_id) newErrors.catalogo_curso_id = "Selecciona un catálogo"
       if (!form.docente_id) newErrors.docente_id = "Selecciona un docente"
@@ -346,9 +346,9 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
       if (!form.precio_base || Number(form.precio_base) < 0) newErrors.precio_base = "El precio base es obligatorio"
       if (!form.modalidad) newErrors.modalidad = "Selecciona la modalidad"
     }
-    
+
     setFieldErrors(newErrors)
-    
+
     if (Object.keys(newErrors).length === 0) {
       setCurrentStep(Math.min(currentStep + 1, 5))
     }
@@ -360,19 +360,19 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
-    
+
     // Solo permitir envío si estamos en el paso final
     if (currentStep < 5) {
       handleNextStep()
       return
     }
-    
+
     // Validar todos los pasos antes de enviar
     if (!validateAllSteps()) {
       toast.error("Revisa los campos marcados en rojo antes de continuar")
       return
     }
-    
+
     setLoading(true)
     try {
       const baseData = {
@@ -389,7 +389,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
         observaciones: form.observaciones || undefined,
         dias_semana: form.dias_semana.length > 0 ? form.dias_semana : undefined,
       }
-      
+
       if (editingId) {
         await cursosService.actualizarCursoAbierto(editingId, baseData)
         toast.success("Curso actualizado")
@@ -431,7 +431,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        
+
         {/* === HEADER === */}
         <div 
           className="flex items-center justify-between px-8 py-6 shrink-0"
@@ -501,7 +501,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
             className={`flex-1 ${hiddenScroll} px-8 py-6`}
             onKeyDown={e => { if (e.key === "Enter" && e.target instanceof HTMLInputElement) e.preventDefault() }}
           >
-            
+
             {/* === PASO 1: CATÁLOGO Y DOCENTE === */}
             {currentStep === 1 && (
               <div className="space-y-6 animate-in fade-in duration-200">
@@ -538,7 +538,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                           >
                             {cat.nombre}
                           </span>
-                          
+
                         </div>
                         {form.catalogo_curso_id === cat.id && (
                           <span className="ml-2 text-lg">✓</span>
@@ -864,7 +864,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                               </button>
                             )}
                           </div>
-                          
+
                           <input 
                             type="text" 
                             value={mod.nombre}
@@ -879,7 +879,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                           {getError(`modulo_${i}_nombre`) && (
                             <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{getError(`modulo_${i}_nombre`)}</p>
                           )}
-                          
+
                           <div className="grid grid-cols-2 gap-3 mt-3">
                             <div>
                               <label className="text-xs font-semibold mb-1.5 block" style={{ color: COLORS.TEXT_MUTED }}>Fecha Inicio</label>
@@ -916,7 +916,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="mt-3 p-2 rounded text-xs" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 5%, white)`, color: COLORS.TEXT_MUTED }}>
                             Duración: {mod.fecha_inicio && mod.fecha_fin ? Math.ceil((new Date(mod.fecha_fin).getTime() - new Date(mod.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24) + 1) : "?"} días
                             {i === form.modulos.length - 1 && (

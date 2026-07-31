@@ -44,7 +44,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
   useEffect(() => {
     if (!isOpen) return
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true)
     fetchData().finally(() => setLoading(false))
   }, [isOpen, fetchData])

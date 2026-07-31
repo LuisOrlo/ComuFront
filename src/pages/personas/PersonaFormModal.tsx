@@ -75,7 +75,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setFieldErrors({})
     if (editingId) cargarPersona()
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -64,7 +64,7 @@ export function HistorialPage() {
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {  
     setPage(1) }, [fechaDesde, fechaHasta])
 
   const getNombreEstudiante = useCallback((t: any): string => {

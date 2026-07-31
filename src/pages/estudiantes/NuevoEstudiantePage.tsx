@@ -148,7 +148,7 @@ export function NuevoEstudiantePage() {
   }, [filterModalidad, filterCiudadId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoadingCursos(true)
     setSelectedCourseId("")
     Promise.allSettled([cargarCursos(), cargarTalleres()])

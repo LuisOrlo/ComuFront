@@ -20,7 +20,7 @@ export function CatalogoDetallePage() {
   useEffect(() => {
     if (!id) return
     let cancelled = false
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true)
     financeService.getEstadisticasCatalogo(id, { desde, hasta })
       .then((res) => { if (!cancelled) setData(res) })

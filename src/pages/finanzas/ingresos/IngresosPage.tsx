@@ -24,16 +24,12 @@ export function IngresosPage() {
   const [graficoCategorias, setGraficoCategorias] = useState<any[]>([])
   const [pdfModalOpen, setPdfModalOpen] = useState(false)
   const [analytics, setAnalytics] = useState<any>(null)
-  const [page, setPage] = useState(1)
-  const [lastPage, setLastPage] = useState(1)
-  const [sortCol, setSortCol] = useState("fecha_pago")
-  const [sortDir, setSortDir] = useState("desc")
   const [filtros, setFiltros] = useState({ categoria: "", metodo_pago: "", search: "", fecha_desde: "", fecha_hasta: "" })
 
-  const load = useCallback(async (p = 1) => {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = { page: p, per_page: 25, order_by: sortCol, order_dir: sortDir }
+      const params: any = { per_page: 500 }
       if (filtros.categoria) params.categoria = filtros.categoria
       if (filtros.metodo_pago) params.metodo_pago = filtros.metodo_pago
       if (filtros.search) params.search = filtros.search
@@ -46,19 +42,12 @@ export function IngresosPage() {
       setGraficoMetodo(res.grafico_metodo || [])
       setGraficoCategorias(res.grafico_categorias || [])
       setAnalytics(res.analytics || null)
-      setPage(res.current_page || 1)
-      setLastPage(res.last_page || 1)
     } catch { toast.error("Error al cargar ingresos") }
     finally { setLoading(false) }
-  }, [filtros, sortCol, sortDir])
+  }, [filtros])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+
   useEffect(() => { load() }, [load])
-
-  const handleSort = (col: string) => {
-    if (sortCol === col) setSortDir(sortDir === "asc" ? "desc" : "asc")
-    else { setSortCol(col); setSortDir("desc") }
-  }
 
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
@@ -75,8 +64,7 @@ export function IngresosPage() {
         <IngresosGraficos grafico={grafico} graficoMetodo={graficoMetodo} graficoCategorias={graficoCategorias} />
         <IngresosAnalisis analytics={analytics} />
         <IngresosFiltros filtros={filtros} onChange={setFiltros} />
-        <IngresosTabla data={data} loading={loading} page={page} lastPage={lastPage}
-          onPageChange={(p) => load(p)} onSort={handleSort} sortCol={sortCol} sortDir={sortDir} />
+        <IngresosTabla data={data} loading={loading} />
         <ExportPDFModal isOpen={pdfModalOpen} onClose={() => setPdfModalOpen(false)}
           data={data} totales={totales} grafico={grafico} graficoCategorias={graficoCategorias} filtros={filtros} />
       </div>

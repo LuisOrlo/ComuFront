@@ -45,7 +45,7 @@ export function EgresoDetallePage() {
 
   useEffect(() => {
     if (!id) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoading(true)
     financeService.getEgreso(id)
       .then(res => setData(res.data))
@@ -78,8 +78,9 @@ export function EgresoDetallePage() {
   const catLabel = data.categoria_nombre || "Sin categoría"
   const catIcon = (["Personal", "Servicios", "Equipos"].includes(catLabel) ? CAT_ICONS[catLabel] : CAT_ICONS.Varios)
   const CatIconComponent = catIcon.icon
+
   return (
-    <div className="px-8 py-6 max-w-2xl mx-auto">
+    <div className="px-8 py-6">
       <button onClick={() => navigate("/finanzas/pagos/historial")}
         className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 mb-6 transition-opacity"
         style={{ color: CHARCOAL }}>
@@ -87,49 +88,53 @@ export function EgresoDetallePage() {
         Volver al historial
       </button>
 
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
+      <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
 
-        <div className="p-6 border-b" style={{ borderColor: BORDER }}>
-          <div className="flex items-center gap-3">
-            <div className="size-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: `${catIcon.color}12` }}>
-              <HugeiconsIcon icon={CatIconComponent} size={24} style={{ color: catIcon.color }} />
+            <div className="p-6 border-b" style={{ borderColor: BORDER }}>
+              <div className="flex items-center gap-3">
+                <div className="size-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${catIcon.color}12` }}>
+                  <HugeiconsIcon icon={CatIconComponent} size={24} style={{ color: catIcon.color }} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black flex items-center gap-2" style={{ color: CHARCOAL }}>
+                    <HugeiconsIcon icon={BanknoteArrowDownIcon} size={20} style={{ color: "oklch(0.55 0.15 30)" }} />
+                    Egreso
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700">
+                      {catLabel}
+                    </span>
+                  </h2>
+                </div>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-black flex items-center gap-2" style={{ color: CHARCOAL }}>
-                <HugeiconsIcon icon={BanknoteArrowDownIcon} size={20} style={{ color: "oklch(0.55 0.15 30)" }} />
-                Egreso
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700">
-                  {catLabel}
-                </span>
-              </h2>
+
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                <Ficha icon={CalendarIcon} label="Fecha" value={data.fecha_pago ? new Date(data.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) : "—"} />
+                <Ficha icon={PaymentIcon} label="Monto" value={`-$${data.monto?.toLocaleString()}`} color="oklch(0.55 0.15 30)" bold />
+                <Ficha icon={UserIcon} label="Beneficiario" value={data.proveedor_beneficiario || "—"} />
+                <Ficha icon={InvoiceIcon} label="Método de pago" value={data.metodo_pago ? data.metodo_pago.charAt(0).toUpperCase() + data.metodo_pago.slice(1) : "—"} />
+                <Ficha icon={AiFolderIcon} label="Descripción" value={data.descripcion || "—"} />
+                {data.subcategoria && (
+                  <Ficha icon={PackageIcon} label="Subcategoría" value={data.subcategoria} />
+                )}
+              </div>
+
+              <Ficha icon={UserIcon} label="Registrado por" value={data.registrado_por || "—"} />
+
+              {data.notas && (
+                <Ficha icon={InvoiceIcon} label="Notas" value={data.notas} />
+              )}
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        <div className="p-6 space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <Ficha icon={CalendarIcon} label="Fecha" value={data.fecha_pago ? new Date(data.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" }) : "—"} />
-            <Ficha icon={PaymentIcon} label="Monto" value={`-$${data.monto?.toLocaleString()}`} color="oklch(0.55 0.15 30)" bold />
-            <Ficha icon={UserIcon} label="Beneficiario" value={data.proveedor_beneficiario || "—"} />
-            <Ficha icon={InvoiceIcon} label="Método de pago" value={data.metodo_pago ? data.metodo_pago.charAt(0).toUpperCase() + data.metodo_pago.slice(1) : "—"} />
-          </div>
-
-          <Ficha icon={AiFolderIcon} label="Descripción" value={data.descripcion || "—"} />
-
-          {data.subcategoria && (
-            <Ficha icon={PackageIcon} label="Subcategoría" value={data.subcategoria} />
-          )}
-
-          <Ficha icon={UserIcon} label="Registrado por" value={data.registrado_por || "—"} />
-
-          {data.notas && (
-            <Ficha icon={InvoiceIcon} label="Notas" value={data.notas} />
-          )}
-
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-3">Comprobante</p>
+        <div className="lg:col-span-2">
+          <div className="rounded-2xl border bg-white p-6" style={{ borderColor: BORDER }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Comprobante</p>
             {comprobanteEliminado ? (
               <div>
                 <div className="p-4 rounded-xl border bg-red-50/50 text-center" style={{ borderColor: BORDER }}>
@@ -142,7 +147,7 @@ export function EgresoDetallePage() {
                 <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer mb-3" style={{ borderColor: BORDER }}
                   onClick={() => setExpandedImage(getStorageUrl(data.comprobante_url))}>
                   <img src={getStorageUrl(data.comprobante_url)} alt="Comprobante"
-                    className="w-full object-contain max-h-[500px]" />
+                    className="w-full object-contain max-h-[400px]" />
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setExpandedImage(getStorageUrl(data.comprobante_url))}
@@ -165,7 +170,7 @@ export function EgresoDetallePage() {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <ConfirmationModal
         isOpen={deleteModalOpen}

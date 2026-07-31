@@ -82,13 +82,13 @@ export function InstructorHorarioPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     loadHorario()
   }, [])
 
   const agendaItems = useMemo<AgendaItem[]>(() => {
     const items: AgendaItem[] = []
-    
+
     if (!Array.isArray(cursos)) return items;
 
     // Comparación robusta de IDs (soporta string/number mezclados)
@@ -106,9 +106,9 @@ export function InstructorHorarioPage() {
       const rawDias = (Array.isArray(h.dias_semana) && h.dias_semana.length > 0)
         ? h.dias_semana
         : (h.dia_semana ?? [])
-      
+
       const diasArray = Array.isArray(rawDias) ? rawDias : [rawDias]
-      
+
       const dias = diasArray
         .map((d: { dia_semana?: number }) => {
           if (typeof d === "number") return d;
@@ -137,7 +137,7 @@ export function InstructorHorarioPage() {
   const timeRange = useMemo(() => {
     // Si no hay items, mostramos un rango estándar por defecto
     if (agendaItems.length === 0) return { start: 7, end: 21, slots: 14 }
-    
+
     let min = 24
     let max = 0
     agendaItems.forEach((item) => {
@@ -146,7 +146,7 @@ export function InstructorHorarioPage() {
       if (s < min) min = s
       if (e > max) max = e
     })
-    
+
     // Ajustar a la hora entera más cercana con un margen
     const start = Math.max(0, Math.floor(min) - 1)
     const end = Math.min(24, Math.ceil(max) + 1)
@@ -295,7 +295,7 @@ export function InstructorHorarioPage() {
           {cursos.map((curso, idx) => {
             const isSelected = selectedCursoId && String(selectedCursoId) === String(curso.id);
             const courseColor = COURSE_COLORS[idx % COURSE_COLORS.length];
-            
+
             return (
               <button
                 key={curso.id}

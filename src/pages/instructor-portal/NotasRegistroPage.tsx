@@ -53,7 +53,7 @@ export function NotasRegistroPage() {
 
   useEffect(() => {
     if (cursoId && moduloId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,9 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Edit01Icon } from "@hugeicons/core-free-icons"
-import { Trash2 } from "lucide-react"
+import { ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
+import { Eye, Pencil, Trash2 } from "lucide-react"
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type PaginationState,
+} from "@tanstack/react-table"
 import { COLORS } from "@/lib/constants"
+import { PaginationControls } from "@/components/table/PaginationControls"
 
 const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
@@ -16,89 +27,191 @@ const CAT_BADGE: Record<string, { bg: string; text: string }> = {
   "Equipos": { bg: "oklch(0.5 0.15 280 / 0.12)", text: "#7c3aed" },
 }
 
+interface EgresoRow {
+  id: string
+  fecha_pago: string
+  descripcion?: string
+  categoria_nombre?: string
+  proveedor_beneficiario?: string
+  monto: number
+  metodo_pago?: string
+}
+
 interface Props {
-  data: any[]
+  data: EgresoRow[]
   loading: boolean
-  page: number; lastPage: number
-  onPageChange: (p: number) => void
-  onSort: (col: string) => void
-  sortCol: string; sortDir: string
   onDelete: (id: string) => void
 }
 
-export function EgresosTabla({ data, loading, page, lastPage, onPageChange, onSort, sortCol, sortDir, onDelete }: Props) {
+export function EgresosTabla({ data, loading, onDelete }: Props) {
   const navigate = useNavigate()
+  const [sorting, setSorting] = useState<SortingState>([{ id: "fecha_pago", desc: true }])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
 
-  const SortIcon = ({ col }: { col: string }) => (
-    <span className="inline-block w-3 text-center opacity-30 ml-0.5">
-      {sortCol === col ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-    </span>
-  )
+  useEffect(() => {
+    if (loading) {
+      setPagination(p => ({ ...p, pageIndex: 0 }))
+    }
+  }, [loading])
 
-  const Th = ({ col, label }: { col: string; label: string }) => (
-    <th onClick={() => onSort(col)} className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer hover:opacity-70 select-none">
-      {label}<SortIcon col={col} />
-    </th>
-  )
+  const columns = useMemo<ColumnDef<EgresoRow>[]>(() => [
+    {
+      id: "fecha_pago",
+      accessorFn: (item) => item.fecha_pago,
+      header: "Fecha",
+      cell: ({ getValue }) => <span className="text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(getValue<string>())}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "descripcion",
+      accessorFn: (item) => item.descripcion,
+      header: "Descripción",
+      cell: ({ getValue }) => <span className="text-xs truncate max-w-[180px] block" style={{ color: CHARCOAL }}>{getValue<string>() || "—"}</span>,
+      enableSorting: false,
+    },
+    {
+      id: "categoria",
+      accessorFn: (item) => item.categoria_nombre,
+      header: "Categoría",
+      cell: ({ getValue }) => {
+        const cat = getValue<string>()
+        return (
+          <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
+            style={{ backgroundColor: CAT_BADGE[cat || ""]?.bg || "#dc262618", color: CAT_BADGE[cat || ""]?.text || "#dc2626" }}>
+            {cat || "—"}
+          </span>
+        )
+      },
+      enableSorting: false,
+    },
+    {
+      id: "proveedor",
+      accessorFn: (item) => item.proveedor_beneficiario,
+      header: "Proveedor",
+      cell: ({ getValue }) => <span className="text-xs opacity-60">{getValue<string>() || "—"}</span>,
+      enableSorting: false,
+    },
+    {
+      id: "monto",
+      accessorFn: (item) => Number(item.monto || 0),
+      header: "Monto",
+      cell: ({ getValue }) => <span className="text-xs font-bold" style={{ color: "#dc2626" }}>${Number(getValue<number>() || 0).toLocaleString()}</span>,
+      enableSorting: true,
+    },
+    {
+      id: "metodo",
+      accessorFn: (item) => item.metodo_pago,
+      header: "Método",
+      cell: ({ getValue }) => <span className="text-xs capitalize opacity-60">{getValue<string>() || "—"}</span>,
+      enableSorting: false,
+    },
+    {
+      id: "acciones",
+      header: "",
+      cell: ({ row }) => {
+        const item = row.original
+        return (
+          <div className="flex items-center justify-center gap-1">
+            <button onClick={() => navigate(`/finanzas/egresos/${item.id}`)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              title="Ver detalle">
+              <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
+            </button>
+            <button onClick={() => navigate(`/finanzas/egresos/${item.id}/editar`)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              title="Editar">
+              <Pencil size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-amber-600 transition-colors" />
+            </button>
+            <button onClick={() => onDelete(item.id)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
+              title="Eliminar">
+              <Trash2 size={14} className="opacity-40 text-red-500 group-hover:opacity-100 group-hover:text-red-600 transition-colors" />
+            </button>
+          </div>
+        )
+      },
+      enableSorting: false,
+    },
+  ], [navigate, onDelete])
 
-  const totalFila = data.reduce((s: number, r: any) => s + Number(r.monto || 0), 0)
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data,
+    columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getRowId: (row) => row.id,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetAll: false,
+  })
+
+  const totalFila = data.reduce((s, r) => s + Number(r.monto || 0), 0)
 
   return (
     <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
       <table className="w-full">
         <thead>
-          <tr className="bg-gray-50/80">
-            {Th({ col: "fecha_pago", label: "Fecha" })}
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Descripción</th>
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Categoría</th>
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Proveedor</th>
-            {Th({ col: "monto", label: "Monto" })}
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40">Método</th>
-            <th className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 w-16"></th>
-          </tr>
+          {table.getHeaderGroups().map((hg) => (
+            <tr key={hg.id} className="bg-gray-50/80">
+              {hg.headers.map((header) => {
+                const canSort = header.column.getCanSort()
+                const sorted = header.column.getIsSorted()
+                const isCenter = header.id === "acciones"
+                return (
+                  <th key={header.id}
+                    onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                    className={canSort ? "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer hover:opacity-70 select-none" : "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40"}
+                    style={{ textAlign: isCenter ? "center" : "left" }}>
+                    <div className="flex items-center gap-1" style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
+                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                      {canSort && (
+                        <span className="inline-flex flex-col leading-none ml-1">
+                          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sorted === "asc" ? "" : "opacity-40"} />
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sorted === "desc" ? "" : "opacity-40"} />
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                )
+              })}
+            </tr>
+          ))}
         </thead>
         <tbody className="divide-y" style={{ borderColor: BORDER }}>
           {loading ? (
-            <tr><td colSpan={7} className="p-10 text-center opacity-40">Cargando...</td></tr>
+            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Cargando...</td></tr>
           ) : data.length === 0 ? (
-            <tr><td colSpan={7} className="p-10 text-center opacity-40">Sin egresos registrados</td></tr>
-          ) : data.map((item, i) => (
-            <tr key={item.id} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }} className="hover:bg-gray-100/50 transition-colors">
-              <td className="px-3 py-2 text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(item.fecha_pago)}</td>
-              <td className="px-3 py-2 text-xs truncate max-w-[180px]" style={{ color: CHARCOAL }}>{item.descripcion || "—"}</td>
-              <td className="px-3 py-2">
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
-                  style={{ backgroundColor: CAT_BADGE[item.categoria_nombre]?.bg || "#dc262618", color: CAT_BADGE[item.categoria_nombre]?.text || "#dc2626" }}>
-                  {item.categoria_nombre || "—"}
-                </span>
-              </td>
-              <td className="px-3 py-2 text-xs opacity-60">{item.proveedor_beneficiario || "—"}</td>
-              <td className="px-3 py-2 text-xs font-bold" style={{ color: "#dc2626" }}>${Number(item.monto || 0).toLocaleString()}</td>
-              <td className="px-3 py-2 text-xs capitalize opacity-60">{item.metodo_pago || "—"}</td>
-              <td className="px-3 py-2 flex gap-1">
-                <button onClick={() => navigate(`/finanzas/egresos/${item.id}/editar`)} className="size-7 rounded-full flex items-center justify-center hover:bg-gray-100"><HugeiconsIcon icon={Edit01Icon} size={12} /></button>
-                <button onClick={() => onDelete(item.id)} className="size-7 rounded-full flex items-center justify-center hover:bg-red-50"><Trash2 size={12} className="text-red-500" /></button>
-              </td>
+            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Sin egresos registrados</td></tr>
+          ) : table.getRowModel().rows.map((row, i) => (
+            <tr key={row.id} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }} className="hover:bg-gray-100/50 transition-colors">
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id}
+                  className={cell.column.id === "acciones" ? "px-3 py-2 text-center" : "px-3 py-2"}
+                  style={{ color: CHARCOAL }}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
         {data.length > 0 && (
           <tfoot>
             <tr style={{ backgroundColor: CHARCOAL }}>
-              <td className="px-3 py-2" colSpan={4}>
+              <td className="px-3 py-2" colSpan={5}>
                 <span className="text-[10px] font-bold text-white/60">Total ({data.length} registros)</span>
               </td>
               <td className="px-3 py-2 text-xs font-bold text-white">${totalFila.toLocaleString()}</td>
-              <td colSpan={2}></td>
+              <td></td>
             </tr>
           </tfoot>
         )}
       </table>
-      {lastPage > 1 && (
-        <div className="flex justify-center gap-2 py-3 border-t" style={{ borderColor: BORDER }}>
-          <button disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-gray-100 disabled:opacity-30">Anterior</button>
-          <span className="px-2 py-1.5 text-[10px] opacity-40">{page} de {lastPage}</span>
-          <button disabled={page >= lastPage} onClick={() => onPageChange(page + 1)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-gray-100 disabled:opacity-30">Siguiente</button>
+      {data.length > 0 && (
+        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+          <PaginationControls table={table} />
         </div>
       )}
     </div>

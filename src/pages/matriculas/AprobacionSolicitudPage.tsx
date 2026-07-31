@@ -89,11 +89,11 @@ export function AprobacionSolicitudPage() {
     }
   }, [id])
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+
   useEffect(() => {
     fetchDetail()
   }, [fetchDetail])
-  /* eslint-enable react-hooks/set-state-in-effect */
+
 
   const loadCursosAbiertos = useCallback(async () => {
     try {

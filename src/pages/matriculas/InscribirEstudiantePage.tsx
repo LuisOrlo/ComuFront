@@ -34,7 +34,7 @@ export function InscribirEstudiantePage() {
 
   useEffect(() => {
     if (!id) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoadingEstudiante(true)
     estudiantesService.getStudentById(id)
       .then((data) => setEstudiante(data as unknown as Record<string, unknown>))
@@ -43,7 +43,7 @@ export function InscribirEstudiantePage() {
   }, [id, navigate])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setLoadingOpciones(true)
     setSelectedCurso(null)
     setSelectedTaller(null)

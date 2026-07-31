@@ -35,7 +35,7 @@ export function CuentasPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {  
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
@@ -103,7 +103,7 @@ export function CuentasPage() {
           <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>Cuentas de Sistema</h1>
-              
+
             </div>
           </header>
 

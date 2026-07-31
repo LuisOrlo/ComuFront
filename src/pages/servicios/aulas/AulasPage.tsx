@@ -74,7 +74,7 @@ export function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAula, setSelectedAula] = useState<Aula | null>(null)
-  
+
   // Reservas
   const [reservas, setReservas] = useState<ReservaAula[]>([])
   const navigate = useNavigate()
@@ -128,7 +128,7 @@ export function AulasPage() {
 
   useEffect(() => {
     if (modoVista === "general") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       loadReservasGenerales()
     }
   }, [modoVista, loadReservasGenerales])
@@ -154,7 +154,7 @@ export function AulasPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     loadAulas()
     loadReservasGenerales()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,12 +168,12 @@ export function AulasPage() {
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div className="space-y-1">
-            
+
             <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
               Alquiler de Aulas
             </h1>
           </div>
-          
+
           <Link
             to="/servicios/aulas/gestion"
             className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
