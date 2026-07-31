@@ -62,9 +62,11 @@ export const agendaService = {
   },
 
   async downloadPDF(params: {
+    vista: "mes" | "semana"
     fecha_inicio?: string
     fecha_fin?: string
     tipos?: string[]
+    titulo?: string
   }): Promise<Blob> {
     const response = await api.get("/academic/agenda/exportar/pdf", {
       params,

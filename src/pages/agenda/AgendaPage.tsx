@@ -16,16 +16,8 @@ import { COLORS } from "@/lib/constants"
 import { agendaService, type AgendaEvent } from "@/services/agenda.service"
 import { AgendaLegend } from "./components/AgendaLegend"
 import { EventDetailModal } from "./components/EventDetailModal"
-import { exportToPDF } from "@/lib/pdf-export"
 import { toast } from "sonner"
-import {
-  MONTHS,
-  EVENT_TYPE_LABELS,
-  formatDay,
-  formatDayMonth,
-  formatDayMonthYear,
-  buildCardScheduleElement,
-} from "./utils"
+import { EVENT_TYPE_LABELS } from "./utils"
 
 const VIEWS = [
   { key: "dayGridMonth", label: "Mes", icon: Calendar03Icon },
@@ -110,63 +102,34 @@ export function AgendaPage() {
       const start = view?.activeStart ? new Date(view.activeStart) : null
       const end = view?.activeEnd ? new Date(view.activeEnd.getTime() - 86400000) : null
 
-      const title = activeTypes.length === 0
+      if (!start || !end) throw new Error("Sin rango visible")
+
+      const vista = currentView === 'dayGridMonth' ? 'mes' : 'semana'
+      const titulo = activeTypes.length === 0
         ? 'AGENDA GENERAL'
         : `AGENDA DE ${activeTypes.map(t => EVENT_TYPE_LABELS[t] || t.replace('CLASE_', '')).join(' - ')}`
 
-      let subtitle = ''
-      if (start && end) {
-        if (currentView === 'dayGridMonth') {
-          if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-            subtitle = `${formatDay(start)} - ${formatDay(end)} DE ${MONTHS[end.getMonth()]}`
-          } else {
-            subtitle = `${formatDayMonth(start)} - ${formatDayMonth(end)}`
-          }
-        } else if (currentView === 'timeGridDay') {
-          subtitle = formatDayMonthYear(start)
-        } else {
-          if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
-            subtitle = `${formatDay(start)} - ${formatDayMonth(end)}`
-          } else {
-            subtitle = `${formatDayMonth(start)} - ${formatDayMonth(end)}`
-          }
-        }
-      }
-
-      const tipoStr = activeTypes.length > 0 
-        ? activeTypes.map(t => t.replace('CLASE_', '')).join('_') 
+      const tipoStr = activeTypes.length > 0
+        ? activeTypes.map(t => t.replace('CLASE_', '')).join('_')
         : 'GENERAL'
-      const fileName = `AGENDA_${tipoStr.toUpperCase()}`
+      const fileName = `AGENDA_${tipoStr.toUpperCase()}.pdf`
 
-      const isWeekOrDay = currentView === 'timeGridWeek' || currentView === 'timeGridDay'
+      const blob = await agendaService.downloadPDF({
+        vista,
+        fecha_inicio: toLocalDateStr(start),
+        fecha_fin: toLocalDateStr(end),
+        titulo,
+        tipos: activeTypes.length > 0 ? activeTypes : undefined,
+      })
 
-      if (isWeekOrDay) {
-        const events = api?.getEvents() ?? []
-        const viewStart = view?.activeStart
-        const viewEnd = view?.activeEnd
-
-        if (viewStart && viewEnd) {
-          const scheduleEl = buildCardScheduleElement(
-            events.map(ev => ({
-              start: ev.start,
-              end: ev.end,
-              title: ev.title,
-              backgroundColor: ev.backgroundColor,
-            })),
-            viewStart,
-            viewEnd
-          )
-
-          document.body.appendChild(scheduleEl)
-          try {
-            await exportToPDF('agenda-card-schedule', fileName, { title, subtitle, titleColor: COLORS.ACCENT })
-          } finally {
-            scheduleEl.remove()
-          }
-        }
-      } else {
-        await exportToPDF('agenda-calendar-container', fileName, { title, subtitle, titleColor: COLORS.ACCENT, viewType: currentView })
-      }
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
 
       toast.success("PDF exportado correctamente")
     } catch (err) {
