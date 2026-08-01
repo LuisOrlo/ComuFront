@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Coins01Icon,
-  CheckmarkCircle02Icon,
   LibraryIcon,
   SchoolIcon,
   AiFolderIcon,
   ArrowDown01Icon,
   UserIcon,
+  SearchIcon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 interface FinanceResumenProps {
@@ -134,31 +133,34 @@ function getCuentaName(cuenta: any): string {
   return "Curso"
 }
 
-function HealthBar({ recaudado, total }: { recaudado: number; total: number }) {
-  const pct = total > 0 ? (recaudado / total) * 100 : 0
-  const barColor =
-    pct >= 80 ? "oklch(0.55 0.15 150)" :
-    pct >= 50 ? "oklch(0.65 0.15 75)" :
-    "oklch(0.5 0.15 20)"
 
+
+function RowProgressBar({ pct }: { pct: number }) {
+  const barColor =
+    pct >= 80 ? "bg-green-500" :
+    pct >= 40 ? "bg-amber-500" :
+    "bg-red-500"
   return (
-    <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "oklch(0.93 0 0)" }}>
-      <motion.div
-        initial={{ width: 0 }}
-        animate={{ width: `${Math.min(pct, 100)}%` }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="h-full rounded-full"
-        style={{ backgroundColor: barColor }}
-      />
+    <div className="w-[80px] h-1.5 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0">
+      <div className={cn("h-full rounded-full transition-all duration-300", barColor)} style={{ width: `${Math.min(pct, 100)}%` }} />
     </div>
   )
 }
 
 export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
-  const [filter, setFilter] = useState<string>("todos")
+  const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState<string>("todos") // 'todos', 'cursos', 'talleres', 'servicios'
   const [modalidadFilter, setModalidadFilter] = useState<string>("todos")
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<"deuda" | "nombre" | "porcentaje">("deuda")
+  
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({})
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
   const [modulosExpandidos, setModulosExpandidos] = useState<Set<string>>(new Set())
+  const [categoryPages, setCategoryPages] = useState<Record<string, number>>({
+    cursos: 1,
+    talleres: 1,
+    servicios: 1,
+  })
 
   const toggleModulos = (id: string) => {
     setModulosExpandidos(prev => {
@@ -169,28 +171,15 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     })
   }
 
+  // Reset pages and expanded row when filters change
+  useEffect(() => {
+    setCategoryPages({ cursos: 1, talleres: 1, servicios: 1 })
+    setExpandedRowId(null)
+  }, [search, filter, modalidadFilter, sortBy])
+
   const totalConDeuda = Number(stats?.cuentas_con_deuda || 0)
-
-  const totalCobradoLocal = useMemo(() => {
-    return cuentas.reduce((sum, cuenta) => sum + Number(cuenta.monto_abonado || 0), 0)
-  }, [cuentas])
-
-  const kpiCards = [
-    {
-      title: "Cobrado",
-      value: `$${totalCobradoLocal.toLocaleString()}`,
-      icon: CheckmarkCircle02Icon,
-      color: "oklch(0.55 0.15 150)",
-      bg: "oklch(0.55 0.15 150 / 0.12)",
-    },
-    {
-      title: "Con Deuda",
-      value: totalConDeuda,
-      icon: Coins01Icon,
-      color: "oklch(0.5 0.1 240)",
-      bg: "oklch(0.5 0.1 240 / 0.12)",
-    },
-  ]
+  const totalCobrado = Number(stats?.total_cobrado || 0)
+  const totalPendiente = Number(stats?.total_pendiente || 0)
 
   const getModalidad = (cuenta: any): string | null => {
     return cuenta.matricula?.curso_abierto?.modalidad
@@ -296,282 +285,444 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
     return groups
   }, [cuentasFiltradas, stats])
 
-  const filteredData = useMemo(() => {
-    if (filter === "todos") return processedData
-    return { [filter]: processedData[filter] }
-  }, [filter, processedData])
+
+
+  // Filter and sort items per category
+  const filteredAndSortedGroups = useMemo(() => {
+    const result: Record<string, { label: string; items: any[] }> = {}
+    const categories = filter === "todos" ? ["cursos", "talleres", "servicios"] : [filter]
+
+    categories.forEach(cat => {
+      const group = processedData[cat]
+      if (!group) return
+
+      // Convert items map to array
+      let itemsArray = Object.entries(group.items).map(([name, item]: [string, any]) => ({
+        name,
+        ...item
+      }))
+
+      // Apply search filter (match name or student names)
+      if (search.trim()) {
+        const query = search.toLowerCase()
+        itemsArray = itemsArray.filter(item => {
+          const matchName = item.name.toLowerCase().includes(query)
+          const matchStudent = item.entries.some((entry: any) => {
+            const studentName = getNombrePersona(entry)
+            return studentName.toLowerCase().includes(query)
+          })
+          return matchName || matchStudent
+        })
+      }
+
+      // Apply sorting
+      itemsArray.sort((a, b) => {
+        if (sortBy === "deuda") {
+          return b.saldo - a.saldo
+        }
+        if (sortBy === "nombre") {
+          return a.name.localeCompare(b.name)
+        }
+        if (sortBy === "porcentaje") {
+          const pctA = a.total > 0 ? (a.cobrado / a.total) * 100 : 0
+          const pctB = b.total > 0 ? (b.cobrado / b.total) * 100 : 0
+          return pctA - pctB // lower percentage (more pending work) first
+        }
+        return 0
+      })
+
+      if (itemsArray.length > 0) {
+        result[cat] = {
+          label: group.label,
+          items: itemsArray
+        }
+      }
+    })
+
+    return result
+  }, [processedData, filter, search, sortBy])
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
-        {kpiCards.map((card, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.06, type: "spring", stiffness: 400, damping: 30 }}
-            className="relative rounded-2xl border bg-white p-5 overflow-hidden"
-            style={{ borderColor: COLORS.BORDER_SUBTLE }}
-          >
-            <motion.div
-              className="absolute -top-6 -right-6 size-20 rounded-full blur-3xl pointer-events-none"
-              style={{ backgroundColor: card.bg }}
-            />
-            <div className="relative z-10 flex items-center gap-3">
-              <div className="size-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: card.bg }}>
-                <HugeiconsIcon icon={card.icon} size={18} style={{ color: card.color }} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>{card.title}</p>
-                <p className="text-lg font-black truncate" style={{ color: COLORS.CHARCOAL }}>{card.value}</p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+      {/* 1. KPIs Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Cobrado */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-1">Cobrado</p>
+          <p className="text-2xl font-black text-gray-900 dark:text-white">${totalCobrado.toLocaleString()}</p>
+        </div>
+        {/* Con Deuda */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-1">Con Deuda</p>
+          <p className="text-2xl font-black text-gray-900 dark:text-white">{totalConDeuda}</p>
+        </div>
+        {/* Total Pendiente */}
+        <div className="bg-red-50 dark:bg-red-950/40 rounded-xl p-4 border border-red-100 dark:border-red-900/30">
+          <p className="text-xs text-red-700 dark:text-red-300 font-bold uppercase tracking-wider mb-1">Total Pendiente</p>
+          <p className="text-2xl font-black text-red-700 dark:text-red-300">${totalPendiente.toLocaleString()}</p>
+        </div>
       </div>
 
-      <div className="rounded-2xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex items-center justify-between p-6 pb-4">
-          <div>
-            <h3 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>Distribución Detallada</h3>
-            <p className="text-[11px] opacity-40 mt-0.5">{(cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0) + (stats?.sin_cuenta?.cursos?.items?.length || 0)} cuenta{((cuentas?.length || 0) + (stats?.sin_cuenta?.talleres?.items?.length || 0) + (stats?.sin_cuenta?.servicios?.items?.length || 0) + (stats?.sin_cuenta?.cursos?.items?.length || 0)) !== 1 ? "s" : ""} registradas</p>
-          </div>
-          <div className="flex gap-1.5">
-            {[
-              { key: "todos", label: "Todo" },
-              { key: "cursos", label: "Cursos" },
-              { key: "talleres", label: "Talleres" },
-              { key: "servicios", label: "Servicios" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
-                  filter === f.key
-                    ? "text-white shadow-sm"
-                    : "hover:opacity-60"
-                )}
-                style={filter === f.key ? { backgroundColor: COLORS.ACCENT } : { color: COLORS.TEXT_MUTED, backgroundColor: "oklch(0.95 0 0)" }}
-              >
-                {f.label}
-              </button>
-            ))}
-            <span className="mx-2 w-px self-stretch bg-gray-200" />
-            {[
-              { key: "todos", label: "Ambas" },
-              { key: "presencial", label: "Presencial" },
-              { key: "virtual", label: "Virtual" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setModalidadFilter(f.key === "todos" ? "todos" : f.key)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
-                  modalidadFilter === f.key
-                    ? "text-white shadow-sm"
-                    : "hover:opacity-60"
-                )}
-                style={modalidadFilter === f.key ? { backgroundColor: COLORS.CHARCOAL } : { color: COLORS.TEXT_MUTED, backgroundColor: "oklch(0.95 0 0)" }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+      {/* 2. Controls Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Buscar por curso o estudiante..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-9 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 text-xs font-semibold outline-none focus:ring-2 focus:ring-violet-500/10 dark:text-white"
+          />
+          <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40 dark:text-white" />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 opacity-35 hover:opacity-100 dark:text-white"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={13} />
+            </button>
+          )}
         </div>
 
-        <div className="px-6 pb-6 space-y-2">
-          {Object.entries(filteredData).map(([type, group]: [string, any]) => (
-            <div key={type}>
-              <h4 className="font-bold uppercase text-[10px] tracking-widest mb-1.5 ml-1" style={{ color: COLORS.TEXT_MUTED }}>
-                {group.label}
-              </h4>
-              {Object.entries(group.items).map(([name, item]: [string, any]) => {
-                const id = `${type}-${name}`
-                const hasDebtors = item.deudores > 0
-                const isExpanded = expandedId === id
-                const recaudadoPct = item.total > 0 ? (item.cobrado / item.total) * 100 : 0
-                return (
-                  <div key={id} className="border rounded-xl overflow-hidden mb-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : id)}
-                      className="w-full px-4 py-3 flex items-center justify-between text-left transition-colors hover:bg-black/[0.02]"
-                      style={{ backgroundColor: hasDebtors ? "oklch(0.5 0.15 20 / 0.04)" : "transparent" }}
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="size-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: hasDebtors ? "oklch(0.5 0.15 20 / 0.1)" : "oklch(0.5 0.1 240 / 0.1)" }}
-                        >
-                          <HugeiconsIcon
-                            icon={ORIGEN_CONFIG[type]?.icon || LibraryIcon}
-                            size={14}
-                            color={hasDebtors ? "#ef4444" : (ORIGEN_CONFIG[type]?.color || "#4f46e5")}
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold truncate block" style={{ color: COLORS.CHARCOAL }}>{name}</span>
-                            <span className="text-[10px] opacity-40 shrink-0">{item.personas} persona{item.personas !== 1 ? "s" : ""}</span>
-                          </div>
-                          <div className="mt-1.5 pr-2">
-                            <div className="flex items-center gap-2">
-                              <HealthBar recaudado={item.cobrado} total={item.total} />
-                              <span className="text-[10px] font-bold shrink-0" style={{ color: recaudadoPct >= 80 ? "oklch(0.55 0.15 150)" : recaudadoPct >= 50 ? "oklch(0.65 0.15 75)" : "oklch(0.5 0.15 20)" }}>
-                                {Math.round(recaudadoPct)}%
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-right shrink-0 ml-4">
-                        <div className="hidden sm:block">
-                          <p className="text-[10px] opacity-40">Total a tener</p>
-                          <p className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p>
-                        </div>
-                        <div className="hidden sm:block">
-                          <p className="text-[10px] opacity-40">Recaudado</p>
-                          <p className="text-sm font-black text-green-600">${item.cobrado.toLocaleString()}</p>
-                        </div>
-                        <div className="hidden sm:block">
-                          <p className="text-[10px] opacity-40">Pendiente</p>
-                          <p className={cn("text-sm font-black", hasDebtors ? "text-red-600" : "")} style={{ color: hasDebtors ? undefined : COLORS.CHARCOAL }}>
-                            ${item.saldo.toLocaleString()}
-                          </p>
-                        </div>
-                        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="opacity-40" />
-                        </motion.div>
-                      </div>
-                    </button>
+        <div className="flex items-center gap-2">
+          {/* Categoria select */}
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold outline-none cursor-pointer dark:text-white"
+          >
+            <option value="todos">Todas las categorías</option>
+            <option value="cursos">Cursos</option>
+            <option value="talleres">Talleres</option>
+            <option value="servicios">Servicios</option>
+          </select>
 
-                    <AnimatePresence mode="wait">
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="border-t overflow-hidden"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        >
-                          <div className="px-4 py-3 border-b" style={{ backgroundColor: "oklch(0.97 0 0)", borderColor: COLORS.BORDER_SUBTLE }}>
-                            <div className="grid grid-cols-4 gap-3 text-xs">
-                              <div><p className="text-[10px] opacity-40">Valor Total a tener</p><p className="font-bold" style={{ color: COLORS.CHARCOAL }}>${item.total.toLocaleString()}</p></div>
-                              <div><p className="text-[10px] opacity-40">Cobrado</p><p className="font-bold text-green-600">${item.cobrado.toLocaleString()}</p></div>
-                              <div><p className="text-[10px] opacity-40">Pendiente</p><p className="font-bold text-red-600">${item.saldo.toLocaleString()}</p></div>
-                              <div><p className="text-[10px] opacity-40">{hasDebtors ? "Deudores" : "Pagado"}</p><p className={cn("font-bold", hasDebtors ? "text-red-600" : "text-green-600")}>{item.deudores}/{item.personas}</p></div>
-                            </div>
-                          </div>
-                          <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                            {item.entries.length === 0 ? (
-                              <div className="p-4 text-xs opacity-40 text-center">Sin registros</div>
-                            ) : (
-                              item.entries.map((cuenta: any) => {
-                                const nombre = getNombrePersona(cuenta)
-                                const pendiente = Number(cuenta.saldo_pendiente || 0)
-                                const abonado = Number(cuenta.monto_abonado || 0)
-                                const lineasPago = cuenta.lineas_pago || []
+          {/* Modalidad Filter */}
+          <select
+            value={modalidadFilter}
+            onChange={(e) => setModalidadFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold outline-none cursor-pointer dark:text-white"
+          >
+            <option value="todos">Todas las modalidades</option>
+            <option value="presencial">Presencial</option>
+            <option value="virtual">Virtual</option>
+          </select>
 
-                                return (
-                                     <div key={cuenta.id || Math.random()} className="px-4 py-3 transition-colors hover:bg-white/50">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                        <div className="size-6 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.9 0 0)" }}>
-                                          <HugeiconsIcon icon={UserIcon} size={12} style={{ color: COLORS.TEXT_MUTED }} />
-                                        </div>
-                                        <div className="min-w-0">
-                                          <p className="text-xs font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>{nombre}</p>
-                                          <p className="text-[10px] opacity-40">
-                                            Total: ${(Number(cuenta.monto_total) || 0).toLocaleString()}
-                                            
-                                          </p>
-                                        </div>
+          {/* Sorting select */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold outline-none cursor-pointer dark:text-white"
+          >
+            <option value="deuda">Mayor deuda primero</option>
+            <option value="nombre">Nombre A-Z</option>
+            <option value="porcentaje">% cobrado</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 3. Accordions Container */}
+      <div className="space-y-4">
+        {Object.entries(filteredAndSortedGroups).map(([type, group]) => {
+          const isOpen = !!openCategories[type]
+          
+          // Calculate Aggregated totals
+          const catCobrado = group.items.reduce((sum, item) => sum + item.cobrado, 0)
+          const catSaldo = group.items.reduce((sum, item) => sum + item.saldo, 0)
+
+          // Paginate items inside this category
+          const currentPage = categoryPages[type] || 1
+          const PAGE_SIZE = 15
+          const totalPages = Math.ceil(group.items.length / PAGE_SIZE)
+          const paginatedItems = group.items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+          return (
+            <div
+              key={type}
+              className="border border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900/30 overflow-hidden"
+            >
+              {/* Category Header */}
+              <div
+                onClick={() => setOpenCategories(prev => ({ ...prev, [type]: !prev[type] }))}
+                className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 cursor-pointer hover:bg-black/[0.01] dark:hover:bg-white/[0.01] select-none transition-colors border-b border-transparent [&:not(:last-child)]:border-gray-100"
+              >
+                <div className="flex items-center gap-3">
+                  <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
+                    <HugeiconsIcon icon={ArrowDown01Icon} size={16} className="text-gray-400 dark:text-gray-500" />
+                  </motion.div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-sm text-gray-800 dark:text-gray-200 uppercase tracking-wider">{group.label}</span>
+                    <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full font-bold">
+                      {group.items.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs mt-2 sm:mt-0 font-bold ml-7 sm:ml-0">
+                  <span className="text-gray-500 dark:text-gray-400">Recaudado: <span className="text-gray-800 dark:text-gray-200">${catCobrado.toLocaleString()}</span></span>
+                  <span className={cn("text-gray-500 dark:text-gray-400")}>
+                    Pendiente:{" "}
+                    <span className={cn(catSaldo > 0 ? "text-red-500 dark:text-red-400 font-extrabold" : "text-gray-800 dark:text-gray-200")}>
+                      ${catSaldo.toLocaleString()}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Rows inside Category */}
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: "auto" }}
+                    exit={{ height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden bg-white dark:bg-transparent"
+                  >
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800/80">
+                      {paginatedItems.map((item) => {
+                        const itemPct = item.total > 0 ? (item.cobrado / item.total) * 100 : 0
+                        const rowId = `${type}-${item.name}`
+                        const isExpanded = expandedRowId === rowId
+
+                        return (
+                          <div key={item.name} className="transition-colors hover:bg-black/[0.005] dark:hover:bg-white/[0.005]">
+                            {/* Row Header clickable to toggle details */}
+                            <div
+                              onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
+                              className="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div
+                                  className="size-7 rounded-lg flex items-center justify-center shrink-0"
+                                  style={{
+                                    backgroundColor: item.saldo > 0 ? "oklch(0.5 0.15 20 / 0.08)" : "oklch(0.55 0.15 150 / 0.08)"
+                                  }}
+                                >
+                                  <HugeiconsIcon
+                                    icon={ORIGEN_CONFIG[type]?.icon || LibraryIcon}
+                                    size={14}
+                                    color={item.saldo > 0 ? "#ef4444" : (ORIGEN_CONFIG[type]?.color || "#4f46e5")}
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="text-xs font-extrabold text-gray-800 dark:text-gray-200 truncate max-w-[200px] sm:max-w-md">
+                                      {item.name}
+                                    </span>
+                                    <span className="hidden sm:inline text-[10px] text-gray-400 dark:text-gray-500 font-bold shrink-0">
+                                      {item.personas} persona{item.personas !== 1 ? "s" : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-4 shrink-0 ml-4">
+                                {/* Row Progress Bar (hidden on mobile) */}
+                                <div className="hidden sm:block">
+                                  <RowProgressBar pct={itemPct} />
+                                </div>
+
+                                {/* Percentage */}
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold w-10 text-right shrink-0">
+                                  {Math.round(itemPct)}%
+                                </span>
+
+                                {/* Pendiente */}
+                                <span className={cn(
+                                  "text-xs font-bold w-20 text-right shrink-0",
+                                  item.saldo > 0 ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500"
+                                )}>
+                                  ${item.saldo.toLocaleString()}
+                                </span>
+
+                                <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.15 }}>
+                                  <HugeiconsIcon icon={ArrowDown01Icon} size={12} className="opacity-45 text-gray-500 dark:text-gray-400" />
+                                </motion.div>
+                              </div>
+                            </div>
+
+                            {/* Row Expanded Details (Inline) */}
+                            <AnimatePresence initial={false}>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="border-t border-gray-100 dark:border-gray-800 overflow-hidden"
+                                >
+                                  {/* Consolidated Summary */}
+                                  <div className="px-5 py-3 bg-gray-50/50 dark:bg-gray-800/20 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="grid grid-cols-4 gap-3 text-[10px] sm:text-xs">
+                                      <div>
+                                        <p className="opacity-50 dark:text-gray-400 font-bold uppercase tracking-wider text-[8px] sm:text-[9px]">Valor Total</p>
+                                        <p className="font-extrabold text-gray-800 dark:text-gray-200">${item.total.toLocaleString()}</p>
                                       </div>
-                                      <div className="flex items-center gap-3 shrink-0">
-                                        <div className="text-right">
-                                          <p className="text-[10px] opacity-40">Abonado</p>
-                                          <p className="text-xs font-bold text-green-600">${abonado.toLocaleString()}</p>
-                                        </div>
-                                        <div className="text-right">
-                                          <p className="text-[10px] opacity-40">Saldo</p>
-                                          <p className={cn("text-xs font-bold", pendiente > 0 ? "text-red-600" : "")} style={{ color: pendiente > 0 ? undefined : COLORS.CHARCOAL }}>
-                                            ${pendiente.toLocaleString()}
-                                          </p>
-                                        </div>
-                                        <span className={cn(
-                                          "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
-                                          pendiente === 0 ? "bg-green-100 text-green-700" : abonado > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                                        )}>
-                                          {pendiente === 0 ? "Al día" : abonado > 0 ? "Parcial" : "Deuda"}
-                                        </span>
-                                        {lineasPago.length > 0 && (
-                                          <button
-                                            onClick={() => toggleModulos(cuenta.id || cuenta.matricula_id)}
-                                            className="text-[10px] font-medium hover:underline shrink-0"
-                                            style={{ color: COLORS.TEXT_MUTED }}
-                                          >
-                                            {modulosExpandidos.has(cuenta.id || cuenta.matricula_id) ? "Ocultar módulos" : "Ver módulos"}
-                                          </button>
-                                        )}
+                                      <div>
+                                        <p className="opacity-50 dark:text-gray-400 font-bold uppercase tracking-wider text-[8px] sm:text-[9px]">Recaudado</p>
+                                        <p className="font-extrabold text-green-600 dark:text-green-400">${item.cobrado.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="opacity-50 dark:text-gray-400 font-bold uppercase tracking-wider text-[8px] sm:text-[9px]">Pendiente</p>
+                                        <p className="font-extrabold text-red-500 dark:text-red-400">${item.saldo.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="opacity-50 dark:text-gray-400 font-bold uppercase tracking-wider text-[8px] sm:text-[9px]">{item.deudores > 0 ? "Deudores" : "Pagado"}</p>
+                                        <p className={cn("font-extrabold", item.deudores > 0 ? "text-red-500 dark:text-red-400" : "text-green-600 dark:text-green-400")}>
+                                          {item.deudores}/{item.personas}
+                                        </p>
                                       </div>
                                     </div>
+                                  </div>
 
-                                    {lineasPago.length > 0 && modulosExpandidos.has(cuenta.id || cuenta.matricula_id) && (
-                                      <div className="mt-2 overflow-x-auto border-t pt-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                        <table className="w-full text-[10px]">
-                                          <thead>
-                                            <tr className="border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                                              <th className="text-left py-1 pr-2 font-bold uppercase opacity-40">Módulo</th>
-                                              <th className="text-right py-1 px-2 font-bold uppercase opacity-40">Precio</th>
-                                              <th className="text-right py-1 px-2 font-bold uppercase opacity-40">Abonado</th>
-                                              <th className="text-right py-1 px-2 font-bold uppercase opacity-40">Saldo</th>
-                                              <th className="text-center py-1 pl-2 font-bold uppercase opacity-40">Estado</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {lineasPago.map((lp: any) => {
-                                              const lpPrecio = Number(lp.monto_ajustado || 0)
-                                              const lpAbonado = Number(lp.monto_abonado || 0)
-                                              const lpSaldo = Math.max(0, lpPrecio - lpAbonado)
-                                              return (
-                                                <tr key={lp.id || lp.modulo_id} className="border-b border-gray-50">
-                                                  <td className="py-1 pr-2 text-left font-medium" style={{ color: COLORS.CHARCOAL }}>
-                                                    {(lp as any).tipo === 'inscripcion' ? 'Inscripción / Matrícula' : (lp.nombre_modulo || `Módulo ${lp.numero_orden || '—'}`)}
-                                                  </td>
-                                                  <td className="py-1 px-2 text-right">${lpPrecio.toLocaleString()}</td>
-                                                  <td className="py-1 px-2 text-right text-green-600 font-medium">${lpAbonado.toLocaleString()}</td>
-                                                  <td className="py-1 px-2 text-right" style={{ color: lpSaldo > 0 ? '#dc2626' : COLORS.CHARCOAL }}>
-                                                    ${lpSaldo.toLocaleString()}
-                                                  </td>
-                                                  <td className="py-1 pl-2 text-center">
-                                                    <span className={cn(
-                                                      "text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full",
-                                                      lpSaldo === 0 ? "bg-green-100 text-green-700" : lpAbonado > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                                                    )}>
-                                                      {lpSaldo === 0 ? "Pagado" : lpAbonado > 0 ? "Parcial" : "Pendiente"}
-                                                    </span>
-                                                  </td>
-                                                </tr>
-                                              )
-                                            })}
-                                          </tbody>
-                                        </table>
-                                      </div>
+                                  {/* List of accounts entries */}
+                                  <div className="divide-y divide-gray-100 dark:divide-gray-800/60 bg-white/40 dark:bg-transparent">
+                                    {item.entries.length === 0 ? (
+                                      <div className="p-4 text-xs opacity-40 text-center dark:text-white">Sin registros</div>
+                                    ) : (
+                                      item.entries.map((cuenta: any) => {
+                                        const nombre = getNombrePersona(cuenta)
+                                        const pendiente = Number(cuenta.saldo_pendiente || 0)
+                                        const abonado = Number(cuenta.monto_abonado || 0)
+                                        const lineasPago = cuenta.lineas_pago || []
+
+                                        return (
+                                          <div key={cuenta.id || Math.random()} className="px-5 py-3 transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                <div className="size-6 rounded-full flex items-center justify-center shrink-0 bg-gray-100 dark:bg-gray-800">
+                                                  <HugeiconsIcon icon={UserIcon} size={11} className="text-gray-400 dark:text-gray-500" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{nombre}</p>
+                                                  <p className="text-[10px] opacity-40 dark:text-gray-400 font-bold">
+                                                    Total: ${(Number(cuenta.monto_total) || 0).toLocaleString()}
+                                                  </p>
+                                                </div>
+                                              </div>
+
+                                              <div className="flex items-center gap-3 shrink-0 ml-8 sm:ml-0">
+                                                <div className="text-right">
+                                                  <p className="text-[9px] opacity-45 dark:text-gray-400 font-bold">Abonado</p>
+                                                  <p className="text-xs font-extrabold text-green-600 dark:text-green-400">${abonado.toLocaleString()}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                  <p className="text-[9px] opacity-45 dark:text-gray-400 font-bold">Saldo</p>
+                                                  <p className={cn("text-xs font-extrabold", pendiente > 0 ? "text-red-500 dark:text-red-400" : "text-gray-800 dark:text-gray-200")}>
+                                                    ${pendiente.toLocaleString()}
+                                                  </p>
+                                                </div>
+                                                <span className={cn(
+                                                  "text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full",
+                                                  pendiente === 0 ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300" : abonado > 0 ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+                                                )}>
+                                                  {pendiente === 0 ? "Al día" : abonado > 0 ? "Parcial" : "Deuda"}
+                                                </span>
+                                                {lineasPago.length > 0 && (
+                                                  <button
+                                                    onClick={() => toggleModulos(cuenta.id || cuenta.matricula_id)}
+                                                    className="text-[10px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 shrink-0 ml-2"
+                                                  >
+                                                    {modulosExpandidos.has(cuenta.id || cuenta.matricula_id) ? "Ocultar módulos" : "Ver módulos"}
+                                                  </button>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {lineasPago.length > 0 && modulosExpandidos.has(cuenta.id || cuenta.matricula_id) && (
+                                              <div className="mt-3 overflow-x-auto border-t border-gray-100 dark:border-gray-800 pt-3">
+                                                <table className="w-full text-[10px]">
+                                                  <thead>
+                                                    <tr className="border-b border-gray-100 dark:border-gray-850">
+                                                      <th className="text-left py-1 pr-2 font-extrabold uppercase opacity-45 dark:text-gray-400">Módulo</th>
+                                                      <th className="text-right py-1 px-2 font-extrabold uppercase opacity-45 dark:text-gray-400">Precio</th>
+                                                      <th className="text-right py-1 px-2 font-extrabold uppercase opacity-45 dark:text-gray-400">Abonado</th>
+                                                      <th className="text-right py-1 px-2 font-extrabold uppercase opacity-45 dark:text-gray-400">Saldo</th>
+                                                      <th className="text-center py-1 pl-2 font-extrabold uppercase opacity-45 dark:text-gray-400">Estado</th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody className="divide-y divide-gray-50 dark:divide-gray-850">
+                                                    {lineasPago.map((lp: any) => {
+                                                      const lpPrecio = Number(lp.monto_ajustado || 0)
+                                                      const lpAbonado = Number(lp.monto_abonado || 0)
+                                                      const lpSaldo = Math.max(0, lpPrecio - lpAbonado)
+                                                      return (
+                                                        <tr key={lp.id || lp.modulo_id} className="text-gray-650 dark:text-gray-300">
+                                                          <td className="py-1.5 pr-2 text-left font-bold text-gray-700 dark:text-gray-200">
+                                                            {(lp as any).tipo === 'inscripcion' ? 'Inscripción / Matrícula' : (lp.nombre_modulo || `Módulo ${lp.numero_orden || '—'}`)}
+                                                          </td>
+                                                          <td className="py-1.5 px-2 text-right">${lpPrecio.toLocaleString()}</td>
+                                                          <td className="py-1.5 px-2 text-right text-green-600 dark:text-green-400 font-bold">${lpAbonado.toLocaleString()}</td>
+                                                          <td className="py-1.5 px-2 text-right font-bold" style={{ color: lpSaldo > 0 ? '#ef4444' : undefined }}>
+                                                            ${lpSaldo.toLocaleString()}
+                                                          </td>
+                                                          <td className="py-1.5 pl-2 text-center">
+                                                            <span className={cn(
+                                                              "text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full",
+                                                              lpSaldo === 0 ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300" : lpAbonado > 0 ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" : "bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
+                                                            )}>
+                                                              {lpSaldo === 0 ? "Pagado" : lpAbonado > 0 ? "Parcial" : "Pendiente"}
+                                                            </span>
+                                                          </td>
+                                                        </tr>
+                                                      )
+                                                    })}
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })
                                     )}
                                   </div>
-                                )
-                              })
-                            )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )
-              })}
+                        )
+                      })}
+                    </div>
+
+                    {/* 4. Internal Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/20">
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500 font-bold">
+                          Página {currentPage} de {totalPages} ({group.items.length} registros)
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={currentPage <= 1}
+                            onClick={() => setCategoryPages(prev => ({ ...prev, [type]: currentPage - 1 }))}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-white transition-colors"
+                          >
+                            Anterior
+                          </button>
+                          <button
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCategoryPages(prev => ({ ...prev, [type]: currentPage + 1 }))}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-white transition-colors"
+                          >
+                            Siguiente
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          ))}
-        </div>
+          )
+        })}
+
+        {Object.keys(filteredAndSortedGroups).length === 0 && (
+          <div className="text-center py-16 border border-dashed border-gray-250 dark:border-gray-850 rounded-2xl bg-white dark:bg-transparent">
+            <p className="text-sm font-semibold opacity-40 dark:text-white">
+              No se encontraron cuentas o cobros pendientes con los filtros seleccionados
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
