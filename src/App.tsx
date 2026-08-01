@@ -66,7 +66,7 @@ import { CursosCuentasPage } from "@/pages/finanzas/pagos/CursosCuentasPage"
 import { CursoCuentasDetallePage } from "@/pages/finanzas/pagos/CursoCuentasDetallePage"
 import { CursoEstudiantePagoPage } from "@/pages/finanzas/pagos/CursoEstudiantePagoPage"
 import { ServiciosCuentasPage } from "@/pages/finanzas/pagos/ServiciosCuentasPage"
-import { ServicioDetallePage } from "@/pages/finanzas/pagos/ServicioDetallePage"
+import { ServicioCuentaDetallePage } from "@/pages/finanzas/pagos/ServicioCuentaDetallePage"
 import { ServicioPagoPage } from "@/pages/finanzas/pagos/ServicioPagoPage"
 import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
 import { PagoDetallePage } from "@/pages/finanzas/pagos/PagoDetallePage"
@@ -240,7 +240,7 @@ function AppLayout() {
                 <Route path="cursos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursosCuentasPage /></RoleGuard>} />
                 <Route path="cursos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoCuentasDetallePage /></RoleGuard>} />
                 <Route path="servicios" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServiciosCuentasPage /></RoleGuard>} />
-                <Route path="servicios/:name" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServicioDetallePage /></RoleGuard>} />
+                <Route path="servicios/:name" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServicioCuentaDetallePage /></RoleGuard>} />
                 <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador"]}><ServicioPagoPage /></RoleGuard>} />
               </Route>
             </Route>
