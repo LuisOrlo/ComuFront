@@ -74,7 +74,7 @@ export function AprobacionSolicitudPage() {
   const comprobanteRef = useRef<HTMLInputElement>(null)
 
   const pagoRef = useRef<PagoPreAprobacionRef>(null)
-  const [montoModulo1Valido, setMontoModulo1Valido] = useState(false)
+  const [montoValido, setMontoValido] = useState(false)
   const [, setTotalPrecioModulos] = useState(-1)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -595,7 +595,7 @@ export function AprobacionSolicitudPage() {
                         cursoNombre={getCursoNombre()}
                         metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
                         montoSolicitado={Number(selected.pago?.monto_solicitado) || 0}
-                        onMontoModulo1Change={setMontoModulo1Valido}
+                        onMontoValidoChange={setMontoValido}
                         onTotalPrecioChange={setTotalPrecioModulos}
                         onSubmit={(pagos, metodoPago, inscripcion) => handleApprove(pagos, metodoPago, inscripcion)}
                       />
@@ -712,7 +712,7 @@ export function AprobacionSolicitudPage() {
               <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
             </button>
             <button onClick={() => pagoRef.current?.submit()}
-              disabled={actionLoading || !montoModulo1Valido || yaProcesada}
+              disabled={actionLoading || !montoValido || yaProcesada}
               className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
               style={{ backgroundColor: COLORS.ACCENT }}>
               <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar

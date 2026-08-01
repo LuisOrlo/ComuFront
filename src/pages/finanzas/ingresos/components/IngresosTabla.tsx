@@ -48,6 +48,8 @@ interface IngresoRow {
   categoria?: string
   monto: number
   metodo_pago?: string
+  modulos_count?: number
+  modulos_detalle?: { id: string; modulo_nombre: string; monto: number }[]
 }
 
 interface Props {
@@ -89,6 +91,11 @@ export function IngresosTabla({ data, loading }: Props) {
           <span className="text-xs truncate max-w-[160px] block" style={{ color: CHARCOAL }}>
             {esEgreso && <span className="px-1.5 py-0.5 mr-1.5 rounded-full text-[7px] font-bold uppercase bg-red-100 text-red-700">Egreso</span>}
             {item.concepto || "—"}
+            {!esEgreso && item.modulos_count && item.modulos_count > 1 && (
+              <span className="block text-[9px] opacity-50 truncate mt-0.5">
+                {item.modulos_detalle?.map(m => m.modulo_nombre).join(" · ")}
+              </span>
+            )}
           </span>
         )
       },

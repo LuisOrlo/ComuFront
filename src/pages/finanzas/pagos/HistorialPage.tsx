@@ -308,9 +308,11 @@ export function HistorialPage() {
                                   <p className="text-[10px] opacity-40 truncate">
                                     {esEgreso(t)
                                       ? `${getCursoNombre(t) || t.metodo_pago}`
-                                      : esPagoPorModulo(t) && t.modulo_nombre
-                                        ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulo_nombre}`
-                                        : (getCursoNombre(t) || t.metodo_pago)}
+                                      : t.modulos_count > 1
+                                        ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulos_count} módulos`
+                                        : esPagoPorModulo(t) && t.modulo_nombre
+                                          ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulo_nombre}`
+                                          : (getCursoNombre(t) || t.metodo_pago)}
                                   </p>
                                 </div>
                               </div>
@@ -345,6 +347,10 @@ export function HistorialPage() {
                                   {esEgreso(t) ? (
                                     <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-red-100 text-red-700">
                                       Egreso
+                                    </span>
+                                  ) : t.modulos_count > 1 ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-purple-100 text-purple-700">
+                                      {t.modulos_count} módulos
                                     </span>
                                   ) : esPagoPorModulo(t) ? (
                                     <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase bg-purple-100 text-purple-700">

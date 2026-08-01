@@ -14,6 +14,7 @@ interface PagoPreAprobacionSectionProps {
   metodoPagoInicial?: string
   montoSolicitado?: number
   onMontoModulo1Change?: (valido: boolean) => void
+  onMontoValidoChange?: (valido: boolean) => void
   onTotalPrecioChange?: (total: number) => void
   onSubmit: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
 }
@@ -22,10 +23,11 @@ export type PagoPreAprobacionRef = {
   submit: () => void
   tieneMontoModulo1: boolean
   totalPrecio: number
+  montoValido: boolean
 }
 
 export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSection({
-  cursoAbiertoId, metodoPagoInicial, montoSolicitado, onMontoModulo1Change, onTotalPrecioChange, onSubmit,
+  cursoAbiertoId, metodoPagoInicial, montoSolicitado, onMontoModulo1Change, onMontoValidoChange, onTotalPrecioChange, onSubmit,
 }: PagoPreAprobacionSectionProps, ref) {
   const [montos, setMontos] = useState<Record<string, string>>({})
   const [montoTotalInput, setMontoTotalInput] = useState("")
@@ -34,6 +36,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   const [ajustes, setAjustes] = useState<Record<string, { expandido: boolean; nuevoPrecio: string; motivo: string }>>({})
   const [incluirInscripcion, setIncluirInscripcion] = useState(false)
   const [precioInscripcionManual, setPrecioInscripcionManual] = useState("")
+  const [montoInvalido, setMontoInvalido] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -101,6 +104,32 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     }
   }, [totalPrecio, onTotalPrecioChange, modulosCargados])
 
+  const inscripcionVal = useMemo(
+    () => (incluirInscripcion ? (parseFloat(precioInscripcionManual) || 0) : 0),
+    [incluirInscripcion, precioInscripcionManual]
+  )
+
+  const totalAPagar = useMemo(() => totalPrecio + inscripcionVal, [totalPrecio, inscripcionVal])
+
+  const totalIngresado = useMemo(() => parseFloat(montoTotalInput) || 0, [montoTotalInput])
+
+  const inscripcionCubierta = useMemo(
+    () => Math.min(inscripcionVal, Math.max(0, totalIngresado - totalPrecio)),
+    [inscripcionVal, totalIngresado, totalPrecio]
+  )
+
+  const montoValido = !montoInvalido && totalIngresado > 0 && totalIngresado <= totalAPagar
+
+  useEffect(() => {
+    if (montoInvalido && totalIngresado > 0 && totalIngresado <= totalAPagar) {
+      setMontoInvalido(false)
+    }
+  }, [montoInvalido, totalIngresado, totalAPagar])
+
+  useEffect(() => {
+    onMontoValidoChange?.(montoValido)
+  }, [montoValido, onMontoValidoChange])
+
   const handleMontoChange = useCallback((moduloId: string, valor: string) => {
     const nuevoMonto = parseFloat(valor) || 0
     const moduloActual = modulos.find((m: any) => m.id === moduloId)
@@ -110,10 +139,11 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     const idx = sorted.findIndex((m: any) => m.id === moduloId)
 
     const simulated = { ...montos }
+    let resto = 0
 
     if (excedente > 0) {
       simulated[moduloId] = String(precio)
-      let resto = excedente
+      resto = excedente
       for (let i = idx + 1; i < sorted.length && resto > 0; i++) {
         const sig = sorted[i]
         const sigPrecio = getPrecioEfectivo(sig)
@@ -121,9 +151,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         simulated[sig.id] = String(aplicado)
         resto = Math.round((resto - aplicado) * 100) / 100
       }
-      const limiteTotal = totalPrecio
-      if (resto > 0) {
-        toast.error(`El monto excede el precio total de los módulos ($${limiteTotal.toLocaleString()}). El excedente se aplicará a la inscripción si está activa.`)
+      if (resto > inscripcionVal) {
+        setMontoInvalido(true)
+        toast.error(`El monto excede el total a pagar ($${totalAPagar.toLocaleString()}). Ajusta los montos.`)
         return
       }
     } else {
@@ -133,20 +163,25 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       }
     }
 
+    setMontoInvalido(false)
     setMontos(simulated)
     const suma = Object.values(simulated).reduce((acc: number, v: any) => acc + (parseFloat(v) || 0), 0)
-    setMontoTotalInput(suma > 0 ? String(Math.round(suma * 100) / 100) : "")
-  }, [modulos, sorted, montos, getPrecioEfectivo, totalPrecio])
+    const restoInscripcion = Math.max(0, Math.min(resto, inscripcionVal))
+    const totalRegistrado = suma + restoInscripcion
+    setMontoTotalInput(totalRegistrado > 0 ? String(Math.round(totalRegistrado * 100) / 100) : "")
+  }, [modulos, sorted, montos, getPrecioEfectivo, totalAPagar, inscripcionVal])
 
   const handleTotalChange = useCallback((valor: string) => {
     setMontoTotalInput(valor)
     const total = parseFloat(valor) || 0
     if (total <= 0 || sorted.length === 0) return
     const totalPrecios = sorted.reduce((sum, m) => sum + getPrecioEfectivo(m), 0)
-    if (total > totalPrecios) {
-      toast.error(`El monto total ($${total.toLocaleString()}) supera el precio total de los módulos ($${totalPrecios.toLocaleString()})`)
+    if (total > totalAPagar) {
+      setMontoInvalido(true)
+      toast.error(`El monto total ($${total.toLocaleString()}) supera el total a pagar (módulos $${totalPrecios.toLocaleString()} + inscripción $${inscripcionVal.toLocaleString()} = $${totalAPagar.toLocaleString()})`)
       return
     }
+    setMontoInvalido(false)
     setMontos({})
     let resto = total
     const nuevosMontos: Record<string, string> = {}
@@ -158,7 +193,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       if (resto <= 0) break
     }
     setMontos(nuevosMontos)
-  }, [sorted, getPrecioEfectivo])
+  }, [sorted, getPrecioEfectivo, totalAPagar, inscripcionVal])
 
   const toggleAjuste = (moduloId: string) => {
     setAjustes(prev => {
@@ -185,9 +220,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }
 
   const handleSubmit = useCallback(() => {
-    const inscripcionVal = incluirInscripcion ? (parseFloat(precioInscripcionManual) || 0) : 0
-    if (totalARegistrar > totalPrecio) {
-      toast.error(`El total a registrar ($${totalARegistrar.toLocaleString()}) supera el precio de los módulos ($${totalPrecio.toLocaleString()}). Ajusta los montos.`)
+    if (totalARegistrar > totalAPagar) {
+      toast.error(`El total a registrar ($${totalARegistrar.toLocaleString()}) supera el total a pagar ($${totalAPagar.toLocaleString()}). Ajusta los montos.`)
       return
     }
     const pagos = modulos
@@ -210,19 +244,20 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       })
 
     if (inscripcionVal > 0) {
-      const excedente = Math.max(0, totalARegistrar - totalPrecio)
+      const excedente = Math.max(0, totalIngresado - totalPrecio)
       const cubierta = Math.min(inscripcionVal, excedente)
       onSubmit(pagos, metodoPagoInicial || "efectivo", { total: inscripcionVal, cubierto: cubierta })
     } else {
       onSubmit(pagos, metodoPagoInicial || "efectivo")
     }
-  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, totalARegistrar, totalPrecio, incluirInscripcion, precioInscripcionManual])
+  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, totalARegistrar, totalAPagar, totalIngresado, totalPrecio, inscripcionVal])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
     tieneMontoModulo1: montoModulo1 > 0,
     totalPrecio,
-  }), [handleSubmit, montoModulo1, totalPrecio])
+    montoValido,
+  }), [handleSubmit, montoModulo1, totalPrecio, montoValido])
 
   if (!modulosCargados) {
     return (
@@ -260,6 +295,11 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           <p className="text-sm font-black mt-0.5" style={{ color: totalARegistrar > 0 ? "oklch(0.55 0.15 150)" : COLORS.CHARCOAL }}>
             ${totalARegistrar.toLocaleString()}
           </p>
+          {inscripcionCubierta > 0 && (
+            <p className="text-[10px] font-semibold mt-1" style={{ color: "oklch(0.55 0.15 150)" }}>
+              + ${inscripcionCubierta.toLocaleString()} cubren la inscripción
+            </p>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -431,7 +471,10 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         )}
         <div className="flex items-center justify-between text-xs pt-1" style={{ borderTopColor: COLORS.BORDER_SUBTLE, borderTopWidth: incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 ? 0 : 1 }}>
           <span style={{ color: COLORS.TEXT_MUTED }}>Valor pagado</span>
-          <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${totalARegistrar.toLocaleString()} <span className="font-normal opacity-50">({modulosCubiertos}/{sorted.length} módulos)</span></span>
+          <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>
+            ${totalIngresado.toLocaleString()}{" "}
+            <span className="font-normal opacity-50">({modulosCubiertos}/{sorted.length} módulos)</span>
+          </span>
         </div>
         {(montoSolicitado ?? 0) > 0 && (
           <div className="flex items-center justify-between text-xs pt-0.5">
