@@ -1,45 +1,51 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowUp01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 
 const SCROLL_PERCENT_THRESHOLD = 0.3
+const MIN_CONTAINER_RATIO = 0.4
 
 export function ScrollToTop() {
   const [isVisible, setIsVisible] = useState(false)
+  const scrollTarget = useRef<Element | null>(null)
 
   useEffect(() => {
-    const scrollContainer = document.querySelector("main")
+    const onScrollCapture = (e: Event) => {
+      const raw = e.target as Element | Document
 
-    const toggleVisibility = () => {
-      const el = scrollContainer ?? document.documentElement
-      const scrollTop = el.scrollTop
+      // document => la página scrollea sobre la ventana/<main>, usar main como fallback
+      const el: Element = raw === document
+        ? (document.querySelector("main") ?? document.documentElement)
+        : (raw as Element)
+
+      const scrollTop = el.scrollTop ?? 0
       const scrollHeight = el.scrollHeight
       const clientHeight = el.clientHeight
-      const percent = scrollHeight > clientHeight ? scrollTop / (scrollHeight - clientHeight) : 0
 
+      // Ignorar contenedores pequeños o con solo scroll horizontal
+      // (tablas, dropdowns, listas internas) para no alterar el estado
+      const hasVerticalScroll = scrollHeight > clientHeight
+      const isPageLevel = clientHeight >= window.innerHeight * MIN_CONTAINER_RATIO
+      if (!hasVerticalScroll || !isPageLevel) return
+
+      scrollTarget.current = el
+      const percent = scrollTop / (scrollHeight - clientHeight)
       setIsVisible(percent >= SCROLL_PERCENT_THRESHOLD)
     }
 
-    if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", toggleVisibility, { passive: true })
-    }
-    window.addEventListener("scroll", toggleVisibility, { passive: true })
-    toggleVisibility()
+    window.addEventListener("scroll", onScrollCapture, { passive: true, capture: true })
 
     return () => {
-      if (scrollContainer) {
-        scrollContainer.removeEventListener("scroll", toggleVisibility)
-      }
-      window.removeEventListener("scroll", toggleVisibility)
+      window.removeEventListener("scroll", onScrollCapture, { capture: true } as EventListenerOptions)
     }
   }, [])
 
   const scrollToTop = () => {
-    const scrollContainer = document.querySelector("main")
-    if (scrollContainer) {
-      scrollContainer.scrollTo({ top: 0, behavior: "smooth" })
+    const el = scrollTarget.current
+    if (el && typeof (el as HTMLElement).scrollTo === "function") {
+      ;(el as HTMLElement).scrollTo({ top: 0, behavior: "smooth" })
     } else {
       window.scrollTo({ top: 0, behavior: "smooth" })
     }

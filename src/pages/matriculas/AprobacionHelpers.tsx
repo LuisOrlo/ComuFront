@@ -53,11 +53,12 @@ const VALIDATORS: Record<string, ((v: string) => string | null) | undefined> = {
   fecha_nacimiento: validarFechaNacimiento,
 }
 
-export function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, onSave, onCancel, bold, saving, inputType, groupColor }: {
+export function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, onSave, onCancel, bold, saving, inputType, groupColor, validator }: {
   icon: any; label: string; field: string; data: any
   editField: string | null; editVal: string
   onEdit: (f: string, v: string) => void; onChange: (v: string) => void; onSave: () => void; onCancel: () => void
   bold?: boolean; saving?: boolean; inputType?: string; groupColor?: string
+  validator?: (v: string) => string | null
 }) {
   const [error, setError] = useState<string | null>(null)
 
@@ -67,6 +68,7 @@ export function EF({ icon, label, field, data, editField, editVal, onEdit, onCha
   const value = displayRaw ?? "—"
 
   const validar = (valor: string, inputTipo?: string): string | null => {
+    if (validator) return validator(valor)
     if (inputTipo === "date") {
       const validator = VALIDATORS["fecha_nacimiento"]
       return validator ? validator(valor) : null

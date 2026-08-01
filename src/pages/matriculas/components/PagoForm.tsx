@@ -85,6 +85,9 @@ export function PagoForm({ metodoPago, comprobanteFile, comprobantePreview, paym
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5">Comprobante</label>
+          <p className="text-[11px] text-gray-500 mb-2">
+  Asegúrese de que la imagen esté en formato JPG, JPEG o PNG y no supere los <strong>5 MB</strong> de tamaño.
+</p>
           <input ref={comprobanteInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) onComprobanteChange(file) }} />
           <div onClick={() => !comprobantePreview && comprobanteInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: paymentErrors.comprobante ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
             {comprobantePreview ? <img src={comprobantePreview} className="max-h-64 rounded" alt="Comprobante" /> : <div className="text-xs text-gray-400">{comprobanteFile ? comprobanteFile.name : "Subir comprobante"}</div>}

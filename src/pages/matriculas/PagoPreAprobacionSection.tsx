@@ -102,7 +102,6 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }, [totalPrecio, onTotalPrecioChange, modulosCargados])
 
   const handleMontoChange = useCallback((moduloId: string, valor: string) => {
-    setMontoTotalInput("")
     const nuevoMonto = parseFloat(valor) || 0
     const moduloActual = modulos.find((m: any) => m.id === moduloId)
     if (!moduloActual) return
@@ -135,6 +134,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     }
 
     setMontos(simulated)
+    const suma = Object.values(simulated).reduce((acc: number, v: any) => acc + (parseFloat(v) || 0), 0)
+    setMontoTotalInput(suma > 0 ? String(Math.round(suma * 100) / 100) : "")
   }, [modulos, sorted, montos, getPrecioEfectivo, totalPrecio])
 
   const handleTotalChange = useCallback((valor: string) => {

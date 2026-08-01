@@ -53,6 +53,10 @@ export function AprobacionSolicitudPage() {
   const [editVal, setEditVal] = useState("")
   const [savingEdit, setSavingEdit] = useState(false)
 
+  const [editPagoField, setEditPagoField] = useState<string | null>(null)
+  const [editPagoVal, setEditPagoVal] = useState("")
+  const [savingPagoEdit, setSavingPagoEdit] = useState(false)
+
   const [editCursoField, setEditCursoField] = useState<string | null>(null)
   const [editCursoVal, setEditCursoVal] = useState("")
   const [savingCursoEdit, setSavingCursoEdit] = useState(false)
@@ -103,10 +107,8 @@ export function AprobacionSolicitudPage() {
   }, [])
 
   const getCursoNombre = useCallback(() => {
-    if (!selected?.curso?.id) return selected?.curso?.nombre || "—"
-    const found = cursosAbiertosList.find((c: any) => c.id === selected.curso.id) as any
-    return found?.nombre || selected.curso?.nombre || "—"
-  }, [selected, cursosAbiertosList])
+    return selected?.curso?.nombre || "—"
+  }, [selected])
 
   const filteredCursosAbiertos = useMemo(() => {
     if (!searchCursoQuery.trim()) return cursosAbiertosList
@@ -121,6 +123,13 @@ export function AprobacionSolicitudPage() {
 
   const cursoInicio = selected?.curso?.fechas?.inicio?.split("T")[0] || "—"
   const cursoPrecio = selected?.curso?.precio_base || 0
+  const cursoColor = selected?.curso?.color || COLORS.ACCENT
+  const cursoModalidad = selected?.curso?.modalidad ? selected.curso.modalidad.charAt(0).toUpperCase() + selected.curso.modalidad.slice(1) : "—"
+  const cursoCatalogo = selected?.curso?.nombre_catalogo || "—"
+  const cursoDocente = selected?.curso?.docente?.nombre || "—"
+  const cursoCiudad = selected?.curso?.ciudad || "—"
+  const cursoHorario = selected?.curso?.horario?.descripcion || "—"
+  const cursoFin = selected?.curso?.fechas?.fin_estimada?.split("T")[0] || "—"
 
   const startEdit = (field: string, value: string) => { setEditField(field); setEditVal(value) }
   const cancelEdit = () => { setEditField(null); setEditVal("") }
@@ -177,6 +186,31 @@ export function AprobacionSolicitudPage() {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al guardar curso")
     } finally {
       setSavingCursoEdit(false)
+    }
+  }
+
+  const startEditPago = (field: string, value: string) => {
+    setEditPagoField(field)
+    setEditPagoVal(value.includes("T") ? value.split("T")[0] : value)
+  }
+  const cancelEditPago = () => { setEditPagoField(null); setEditPagoVal("") }
+
+  const saveEditPago = async () => {
+    if (!id || editPagoField !== "fecha_pago_declarada" || !editPagoVal) return
+    setSavingPagoEdit(true)
+    try {
+      await cursosService.actualizarPago(id, { fecha_pago_declarada: editPagoVal })
+      setSelected((prev: any) => {
+        if (!prev) return prev
+        return { ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, fecha_pago_declarada: editPagoVal } } }
+      })
+      toast.success("Fecha de pago actualizada")
+      setEditPagoField(null); setEditPagoVal("")
+      fetchDetail()
+    } catch (err) {
+      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al guardar fecha")
+    } finally {
+      setSavingPagoEdit(false)
     }
   }
 
@@ -397,7 +431,7 @@ export function AprobacionSolicitudPage() {
 
             {activeTab === "curso" && (
               <Section title="Curso" icon={BookOpenIcon}>
-                <div className="p-4 rounded-xl space-y-2" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)`, borderLeft: `3px solid ${(solicitudRaw as any)?.curso_abierto?.catalogo?.color || (solicitudRaw as any)?.curso?.color || COLORS.ACCENT}` }}>
+                <div className="p-4 rounded-xl space-y-2" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)`, borderLeft: `3px solid ${cursoColor}` }}>
                   <div className="grid grid-cols-2 gap-2">
                     {editCursoField === "curso" ? (
                       <div className="col-span-2 space-y-2.5">
@@ -453,8 +487,14 @@ export function AprobacionSolicitudPage() {
                             <HugeiconsIcon icon={Edit01Icon} size={14} />
                           </button>
                         </div>
-                        <InfoItem icon={CalendarIcon} label="Inicio" value={cursoInicio} groupColor={COLORS.ACCENT} />
-                        <InfoItem icon={PaymentIcon} label="Precio" value={`$${cursoPrecio || 0}`} bold groupColor={COLORS.ACCENT} />
+                        <InfoItem icon={BookOpenIcon} label="Catálogo" value={cursoCatalogo} groupColor={cursoColor} />
+                        <InfoItem icon={BookOpenIcon} label="Modalidad" value={cursoModalidad} groupColor={cursoColor} />
+                        <InfoItem icon={UserIcon} label="Docente" value={cursoDocente} groupColor={cursoColor} />
+                        <InfoItem icon={Location01Icon} label="Ciudad" value={cursoCiudad} groupColor={cursoColor} />
+                        <InfoItem icon={Calendar03Icon} label="Horario" value={cursoHorario} groupColor={cursoColor} />
+                        <InfoItem icon={CalendarIcon} label="Inicio" value={cursoInicio} groupColor={cursoColor} />
+                        <InfoItem icon={CalendarIcon} label="Fin estimada" value={cursoFin} groupColor={cursoColor} />
+                        <InfoItem icon={PaymentIcon} label="Precio" value={`$${cursoPrecio || 0}`} bold groupColor={cursoColor} />
                       </>
                     )}
                   </div>
@@ -484,7 +524,10 @@ export function AprobacionSolicitudPage() {
                         {(selected.pago?.comprobante?.tipo || "—").toUpperCase()}
                       </span>
                     </div>
-                    <InfoItem icon={CalendarIcon} label="Fecha" value={selected.pago?.comprobante?.fecha_pago_declarada?.split?.("T")?.[0] || "—"} groupColor={AMBAR} />
+                    <EF icon={CalendarIcon} label="Fecha" field="fecha_pago_declarada" data={selected.pago?.comprobante}
+                      editField={editPagoField} editVal={editPagoVal} onEdit={startEditPago} onChange={setEditPagoVal}
+                      onSave={saveEditPago} onCancel={cancelEditPago} saving={savingPagoEdit}
+                      inputType="date" validator={() => null} groupColor={AMBAR} />
                     <div className="flex items-center justify-between text-sm">
                       <span style={{ color: COLORS.TEXT_MUTED }}>Monto declarado</span>
                       {Number(selected.pago?.monto_solicitado) > 0 ? (

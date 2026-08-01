@@ -561,7 +561,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
           </div>
           <div>
             <br />
-            <label className="block text-xs font-medium mb-1.5">Foto de la Cédula2</label>
+            <label className="block text-xs font-medium mb-1.5">Foto de la Cédula</label>
+            <p className="text-[11px] text-gray-500 mb-2">
+  Asegúrese de que la imagen esté en formato JPG, JPEG o PNG y no supere los <strong>2 MB</strong> de tamaño.
+</p>
             <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
               const file = e.target.files?.[0]
               if (!file) return
