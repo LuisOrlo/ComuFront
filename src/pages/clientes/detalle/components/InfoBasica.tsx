@@ -16,7 +16,6 @@ export function InfoBasica({ cliente }: InfoBasicaProps) {
     { label: "Direcci\u00f3n", value: cliente.direccion, icon: Location01Icon },
     { label: "Ocupaci\u00f3n", value: cliente.ocupacion, icon: Briefcase01Icon },
     { label: "Estado Civil", value: cliente.estado_civil, icon: HeartIcon },
-    { label: "Fecha de Nacimiento", value: cliente.fecha_nacimiento, icon: Calendar01Icon },
   ]
 
   return (

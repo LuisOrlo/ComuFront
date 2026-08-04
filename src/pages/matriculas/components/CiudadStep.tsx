@@ -1,6 +1,8 @@
 import { motion } from "motion/react"
 import { COLORS } from "@/lib/constants"
 
+const SEL = "oklch(0.55 0.16 145)"
+
 interface CiudadStepProps {
   ciudades: Array<{ id: number; nombre: string }>
   selectedCiudadId: number | null
@@ -21,7 +23,7 @@ export function CiudadStep({ ciudades, selectedCiudadId, loadingCursos, onSelect
     >
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Modalidad:</span>
-        <span className="text-xs font-semibold" style={{ color: COLORS.ACCENT }}>Presencial</span>
+        <span className="text-xs font-semibold" style={{ color: SEL }}>Presencial</span>
         <button onClick={onBack} className="ml-auto text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors hover:bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Regresar</button>
       </div>
       <p className="text-sm font-medium" style={{ color: COLORS.TEXT_MUTED }}>Selecciona la ciudad donde deseas estudiar</p>
@@ -41,7 +43,7 @@ export function CiudadStep({ ciudades, selectedCiudadId, loadingCursos, onSelect
           {ciudades.map(c => (
             <button key={c.id} onClick={() => onSelect(c.id, c.nombre)}
               className="px-4 py-3 rounded-lg text-sm font-medium border transition-all hover:shadow-sm text-left active:scale-[0.98] hover-orange"
-              style={{ borderColor: selectedCiudadId === c.id ? COLORS.ACCENT : COLORS.BORDER_SUBTLE, backgroundColor: selectedCiudadId === c.id ? `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)` : "white", color: selectedCiudadId === c.id ? COLORS.ACCENT : COLORS.CHARCOAL }}>
+              style={{ borderColor: selectedCiudadId === c.id ? SEL : COLORS.BORDER_SUBTLE, backgroundColor: selectedCiudadId === c.id ? `color-mix(in srgb, ${SEL} 6%, transparent)` : "white", color: selectedCiudadId === c.id ? SEL : COLORS.CHARCOAL }}>
               {c.nombre}
             </button>
           ))}

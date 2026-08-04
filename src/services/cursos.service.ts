@@ -212,7 +212,6 @@ export interface MatriculaDetallada {
     perfil_estudiante?: {
       ocupacion?: string
       direccion?: string
-      fecha_nacimiento?: string
       edad?: number
     } | null
   } | null
@@ -227,7 +226,6 @@ export interface MatriculaDetallada {
       perfil_estudiante?: {
         ocupacion?: string
         direccion?: string
-        fecha_nacimiento?: string
         edad?: number
       } | null
     } | null
@@ -538,22 +536,6 @@ export const cursosService = {
     await api.delete(`/academic/catalogos-cursos/${id}`)
   },
 
-  /**
-   * POST /api/academic/catalogos-cursos/upload-imagen
-   * Subir imagen para un catálogo
-   */
-  async uploadImagenCatalogo(file: File): Promise<string> {
-    const formData = new FormData()
-    formData.append("imagen", file)
-
-      const response = await apiMultipart.post<{ data: { url: string } }>(
-        "/academic/catalogos-cursos/upload-imagen",
-        formData
-      )
-
-    return response.data.data.url
-  },
-
   // ========================================================================
   // MÉTODOS DE CURSOS ABIERTOS (CREAR INSTANCIAS)
   // ========================================================================
@@ -765,7 +747,7 @@ export const cursosService = {
   /**
    * Actualizar datos del estudiante/participante externo de una solicitud
    */
-  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; ciudad?: string; fecha_nacimiento?: string; edad?: number }): Promise<Record<string, unknown>> {
+  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; ciudad?: string; edad?: number }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-estudiante`, datos)
     return response.data
   },
@@ -782,6 +764,18 @@ export const cursosService = {
 
   async eliminarSolicitud(id: string) {
     const response = await api.delete(`/academic/solicitudes-inscripcion/${id}`)
+    return response.data
+  },
+
+  async getSolicitudAdjacent(id: string, filtros: Record<string, string | undefined>) {
+    const params: Record<string, string> = {}
+    for (const [k, v] of Object.entries(filtros)) {
+      if (v) params[k] = v
+    }
+    const response = await api.get<{
+      prev_id: string | null; next_id: string | null; first_id: string | null
+      position: number; total: number; stale: boolean; stale_estado?: string
+    }>(`/academic/solicitudes-inscripcion/${id}/adjacent`, { params })
     return response.data
   },
 
@@ -805,6 +799,20 @@ export const cursosService = {
   async getAsistenciaPDFData(cursoAbiertoId: string): Promise<DatosAsistenciaPDF> {
     const response = await api.get<DatosAsistenciaPDF>(`/academic/cursos-abiertos/${cursoAbiertoId}/asistencia-pdf`)
     return response.data
+  },
+
+  async getClase(id: string): Promise<Record<string, unknown>> {
+    const response = await api.get(`/academic/clases/${id}`)
+    return response.data.data
+  },
+
+  async updateClase(id: string, data: { fecha_clase?: string; hora_inicio?: string; hora_fin?: string; instructor_id?: string }): Promise<Record<string, unknown>> {
+    const response = await api.put(`/academic/clases/${id}`, data)
+    return response.data
+  },
+
+  async deleteClase(id: string): Promise<void> {
+    await api.delete(`/academic/clases/${id}`)
   },
 
   async deleteArchivoSolicitud(solicitudId: string, campo: "archivo_comprobante_url" | "archivo_cedula_url") {

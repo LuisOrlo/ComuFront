@@ -14,7 +14,6 @@ import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
 import { StepIndicator } from "./components/StepIndicator"
 import { ModalidadStep } from "./components/ModalidadStep"
 import { CiudadStep } from "./components/CiudadStep"
-import { TipoStep } from "./components/TipoStep"
 import { ListaStep } from "./components/ListaStep"
 import { PagoForm } from "./components/PagoForm"
 import { useCursosAbiertos, useTalleres } from "@/hooks/useMatriculaData"
@@ -32,22 +31,9 @@ interface EstudianteData {
   direccion: string
   ciudad: string
   estado_civil: string
-  fecha_nacimiento: string
   edad: string
 }
 
-function calcularEdad(fecha: string): string {
-  if (!fecha) return ""
-  const nacimiento = new Date(fecha)
-  if (isNaN(nacimiento.getTime())) return ""
-  const hoy = new Date()
-  let edad = hoy.getFullYear() - nacimiento.getFullYear()
-  const mesDiff = hoy.getMonth() - nacimiento.getMonth()
-  if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--
-  }
-  return edad >= 0 ? String(edad) : ""
-}
 
 const pasos = [
   { num: 1 as Paso, label: "Datos del Estudiante", icon: UserIcon },
@@ -63,24 +49,16 @@ const placeholders: Record<string, string> = {
   correo: "correo@ejemplo.com",
 }
 
-const TIPO_OPTIONS = [
-  { key: "curso" as const, label: "Curso", desc: "Formación completa en un área específica", categoria: "regular" },
-  { key: "taller" as const, label: "Taller", desc: "Capacitación práctica y corta", categoria: "taller" },
-  { key: "personalizado" as const, label: "Curso Personalizado", desc: "Programa adaptado a tus necesidades", categoria: "personalizado" },
-]
-
 export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean; onSuccess?: () => void }) {
   const [paso, setPaso] = useState<Paso>(1)
-  const [subStep, setSubStep] = useState<"modalidad" | "ciudad" | "tipo" | "lista">("modalidad")
+  const [subStep, setSubStep] = useState<"modalidad" | "ciudad" | "lista">("modalidad")
   const [selectedModalidad, setSelectedModalidad] = useState("")
   const [selectedCiudadId, setSelectedCiudadId] = useState<number | null>(null)
-  const [selectedCiudadNombre, setSelectedCiudadNombre] = useState("")
-  const [selectedTipo, setSelectedTipo] = useState("")
   const [selectedCourseId, setSelectedCourseId] = useState("")
   const [estudiante, setEstudiante] = useState<EstudianteData>({
     tipo_id: "cedula",
     nombres: "", apellidos: "", cedula: "", telefono: "", correo: "",
-    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", fecha_nacimiento: "", edad: "",
+    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", edad: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -155,7 +133,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const esTaller = !!tallerSel && !curso
 
   const step1CanProceed = useMemo(() => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"]
     const allFilled = fields.every(f => estudiante[f]?.trim())
     return allFilled && !!cedulaFile && Object.keys(errors).length === 0
   }, [estudiante, cedulaFile, errors])
@@ -165,15 +143,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (!esTaller && !comprobanteFile) return false
     return Object.keys(paymentErrors).length === 0
   }, [metodoPago, esTaller, comprobanteFile, paymentErrors])
-
-  const availableTipos = useMemo(() => {
-    return TIPO_OPTIONS.filter(t => {
-      if (t.categoria === "taller") return talleres.length > 0
-      if (t.categoria === "regular") return cursosAbiertos.some(c => c.catalogo?.categoria === "regular")
-      if (t.categoria === "personalizado") return cursosAbiertos.some(c => c.catalogo?.categoria === "personalizado")
-      return false
-    })
-  }, [cursosAbiertos, talleres])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -220,7 +189,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   }
 
   const validateStep1 = (): boolean => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"]
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach(f => {
@@ -258,9 +227,9 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       cedula: estudiante.tipo_id === "cedula" ? "Cédula" : "DNI",
       nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo",
       ocupacion: "Ocupación", direccion: "Dirección", ciudad: "Residencia",
-      estado_civil: "Estado Civil", fecha_nacimiento: "Fecha de Nacimiento",
+      estado_civil: "Estado Civil",
     }
-    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"].includes(campo) && !valor.trim()) {
+    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
     if (campo === "cedula") {
@@ -274,10 +243,10 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
     if (campo === "correo" && valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "Correo inválido"
-    if (campo === "fecha_nacimiento" && valor) {
-      const edad = Number(calcularEdad(valor))
-      if (edad < 10) return "Debes tener al menos 10 años para inscribirte"
-      if (edad > 120) return "La fecha de nacimiento no es válida"
+    if (campo === "edad" && valor) {
+      const edadNum = Number(valor)
+      if (isNaN(edadNum) || edadNum < 10) return "Debes tener al menos 10 años para inscribirte"
+      if (edadNum > 120) return "La edad ingresada no es válida"
     }
     return null
   }
@@ -311,7 +280,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         formData.append("direccion", estudiante.direccion)
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
-        formData.append("fecha_nacimiento", estudiante.fecha_nacimiento)
         formData.append("edad", estudiante.edad)
         formData.append("tipo_pago", "abono")
         formData.append("monto_pagado", "0")
@@ -337,7 +305,6 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         formData.append("direccion", estudiante.direccion)
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
-        formData.append("fecha_nacimiento", estudiante.fecha_nacimiento)
         formData.append("edad", estudiante.edad)
         formData.append("monto_solicitado", "0")
         if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
@@ -363,21 +330,13 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const handleModalidadSelect = (mod: string) => {
     setSelectedModalidad(mod)
     setSelectedCiudadId(null)
-    setSelectedCiudadNombre("")
-    setSelectedTipo("")
-    if (mod === "virtual") setSubStep("tipo")
+    setSelectedCourseId("")
+    if (mod === "virtual") setSubStep("lista")
     else setSubStep("ciudad")
   }
 
-  const handleCiudadSelect = (id: number, nombre: string) => {
+  const handleCiudadSelect = (id: number) => {
     setSelectedCiudadId(id)
-    setSelectedCiudadNombre(nombre)
-    setSelectedCourseId("")
-    setSubStep("tipo")
-  }
-
-  const handleTipoSelect = (tipo: string) => {
-    setSelectedTipo(tipo)
     setSelectedCourseId("")
     setSubStep("lista")
   }
@@ -386,42 +345,34 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     setSelectedCourseId(id)
   }
 
-  const handleSwitchToTaller = () => {
-    setSelectedTipo("taller")
-    setSubStep("lista")
-  }
-
   const handleWizardBack = () => {
     if (subStep === "modalidad") setPaso(1)
     else if (subStep === "ciudad") setSubStep("modalidad")
-    else if (subStep === "tipo") {
+    else if (subStep === "lista") {
       if (selectedModalidad === "virtual") setSubStep("modalidad")
       else setSubStep("ciudad")
     }
-    else if (subStep === "lista") setSubStep("tipo")
   }
 
   const handleWizardNext = () => {
     if (subStep === "lista") handleNext()
     else if (subStep === "modalidad" && selectedModalidad) {
-      if (selectedModalidad === "virtual") setSubStep("tipo")
+      if (selectedModalidad === "virtual") setSubStep("lista")
       else setSubStep("ciudad")
     }
-    else if (subStep === "ciudad" && selectedCiudadId) setSubStep("tipo")
-    else if (subStep === "tipo" && selectedTipo) setSubStep("lista")
+    else if (subStep === "ciudad" && selectedCiudadId) setSubStep("lista")
   }
 
   const wizardNextDisabled = subStep === "modalidad" ? !selectedModalidad
     : subStep === "ciudad" ? !selectedCiudadId
-    : subStep === "tipo" ? !selectedTipo
     : !selectedCourseId
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
       <style>{`
         .hover-orange:hover {
-          border-color: #fdba74 !important;
-          background-color: #fff7ed !important;
+          border-color: #86efac !important;
+          background-color: #f0fdf4 !important;
         }
       `}</style>
 
@@ -521,22 +472,15 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               {touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5">Fecha de Nacimiento</label>
-              <input type="date" value={estudiante.fecha_nacimiento} onChange={e => { const fn = e.target.value; updateEstudiante("fecha_nacimiento", fn); setEstudiante(prev => ({ ...prev, fecha_nacimiento: fn, edad: calcularEdad(fn) })) }} onBlur={() => blurEstudiante("fecha_nacimiento")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.fecha_nacimiento && errors.fecha_nacimiento ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
-              {touched.fecha_nacimiento && errors.fecha_nacimiento && <p className="text-[11px] mt-1 text-red-500">{errors.fecha_nacimiento}</p>}
+              <label className="block text-xs font-medium mb-1.5">Edad</label>
+              <input type="number" min="10" max="120" value={estudiante.edad}
+                onChange={e => updateEstudiante("edad", e.target.value)}
+                onBlur={() => blurEstudiante("edad")}
+                placeholder="Ej: 25"
+                className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none"
+                style={{ borderColor: touched.edad && errors.edad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
+              {touched.edad && errors.edad && <p className="text-[11px] mt-1 text-red-500">{errors.edad}</p>}
             </div>
-            <div>
-  <label className="block text-xs font-medium mb-1.5">Edad</label>
-  <input
-    type="number"
-    readOnly
-    value={estudiante.edad}
-    className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50"
-  />
-  <p className="mt-1 text-[11px] text-orange-500">
-    * La edad se calcula automáticamente a partir de la fecha de nacimiento.
-  </p>
-</div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>
               <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value.toUpperCase()}); const err = validateField("ciudad", e.target.value.toUpperCase()); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
@@ -607,11 +551,8 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             {subStep === "ciudad" && (
               <CiudadStep ciudades={ciudades} selectedCiudadId={selectedCiudadId} loadingCursos={isLoadingData} onSelect={handleCiudadSelect} onBack={() => setSubStep("modalidad")} />
             )}
-            {subStep === "tipo" && (
-              <TipoStep availableTipos={availableTipos} selectedTipo={selectedTipo} loadingCursos={isLoadingData} selectedModalidad={selectedModalidad} selectedCiudadNombre={selectedCiudadNombre} onSelect={handleTipoSelect} onBack={() => selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} />
-            )}
             {subStep === "lista" && (
-              <ListaStep talleres={talleres} cursosAbiertos={cursosAbiertos} selectedCourseId={selectedCourseId} selectedTipo={selectedTipo} loadingCursos={isLoadingData} onSelect={handleCursoSelect} onSwitchToTaller={handleSwitchToTaller} onBack={() => setSubStep("tipo")} />
+              <ListaStep talleres={talleres} cursosAbiertos={cursosAbiertos} selectedCourseId={selectedCourseId} loadingCursos={isLoadingData} onSelect={handleCursoSelect} onBack={() => selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} />
             )}
           </AnimatePresence>
 

@@ -125,6 +125,9 @@ export function InstructorCursoDetailPage() {
   const getEstudianteCedula = (e: EstudianteCurso) =>
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
+  const getEstudianteId = (e: EstudianteCurso) =>
+    e.estudiante?.id ?? null
+
 
 
   const handleDescargarAsistencia = async () => {
@@ -307,12 +310,13 @@ export function InstructorCursoDetailPage() {
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Cédula</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: COLORS.TEXT_MUTED }}>Promedio</th>
+                    <th className="px-6 py-4" />
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: "#f1f3f5" }}>
                   {estudiantes.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-8 py-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                        <td colSpan={5} className="px-8 py-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>
                         No hay estudiantes matriculados en este curso.
                       </td>
                     </tr>
@@ -365,6 +369,15 @@ export function InstructorCursoDetailPage() {
                             >
                               {promedio}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {getEstudianteId(e) && (
+                              <Link to={`/instructor/estudiantes/${getEstudianteId(e)}`}
+                                className="text-xs font-semibold hover:underline"
+                                style={{ color: COLORS.ACCENT }}>
+                                Ver perfil
+                              </Link>
+                            )}
                           </td>
                         </tr>
                       )

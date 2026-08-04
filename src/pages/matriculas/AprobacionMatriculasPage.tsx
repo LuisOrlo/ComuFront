@@ -396,7 +396,7 @@ export function AprobacionMatriculasPage() {
                           borderLeft: s.curso_abierto?.catalogo?.color ? `3px solid ${s.curso_abierto.catalogo.color}` : undefined,
                           borderLeftColor: s.curso_abierto?.catalogo?.color ? s.curso_abierto.catalogo.color : COLORS.BORDER_SUBTLE,
                         }}>
-                        <button onClick={() => navigate(`/matriculas/aprobacion/solicitud/${s.id}`)}
+                        <button onClick={() => navigate(`/matriculas/aprobacion/solicitud/${s.id}?estado=${statusFilter === "pendientes" ? "pendiente_validacion" : statusFilter === "aprobados" ? "matricula_creada" : "rechazado"}`)}
                           className="w-full text-left p-5 flex items-center gap-4">
                           <div className="size-12 rounded-lg flex items-center justify-center shrink-0 text-base font-bold"
                             style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`, color: COLORS.ACCENT }}>
@@ -450,7 +450,7 @@ export function AprobacionMatriculasPage() {
                     <button onClick={() => {
                         const nombre = s.estudiante?.nombres || s.participante_externo?.nombres || ""
                         const apellido = s.estudiante?.apellidos || s.participante_externo?.apellidos || ""
-                        navigate(`/matriculas/aprobacion/solicitud/${s.id}`, { state: { nombre, apellido, cursoNombre: s.curso_abierto?.nombre_instancia || s.curso_abierto?.catalogo?.nombre || "" } })
+                        navigate(`/matriculas/aprobacion/solicitud/${s.id}?estado=${statusFilter === "pendientes" ? "pendiente_validacion" : statusFilter === "aprobados" ? "matricula_creada" : "rechazado"}`, { state: { nombre, apellido, cursoNombre: s.curso_abierto?.nombre_instancia || s.curso_abierto?.catalogo?.nombre || "" } })
                       }}
                       className="w-full text-left p-5 flex items-center gap-4">
                       <div className="size-12 rounded-lg flex items-center justify-center shrink-0 text-base font-bold"

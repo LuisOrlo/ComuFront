@@ -2,17 +2,17 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
-import { Upload, X } from "lucide-react"
 import { COLORS } from "@/lib/constants"
-import { cn, getStorageUrl } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import { cursosService } from "@/services/cursos.service"
 import { toast } from "sonner"
+import { IconPickerModal } from "./components/IconPickerModal"
+import { CATALOG_ICONS, iconMap } from "./components/catalog-icons"
 
 interface FormData {
   nombre: string
   descripcion: string
   imagen: string
-  imagenFile: File | null
   color: string
 }
 
@@ -20,20 +20,19 @@ const emptyForm: FormData = {
   nombre: "",
   descripcion: "",
   imagen: "",
-  imagenFile: null,
   color: "#3B82F6",
 }
 
 export function CatalogoFormPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const fileRef = useRef<HTMLInputElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<FormData>(emptyForm)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!id)
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   const isEditing = !!id
 
@@ -47,23 +46,12 @@ export function CatalogoFormPage() {
           nombre: cat.nombre,
           descripcion: cat.descripcion || "",
           imagen: cat.imagen || "",
-          imagenFile: null,
           color: cat.color || "#3B82F6",
         })
       })
       .catch(() => toast.error("Error al cargar catálogo"))
       .finally(() => setLoading(false))
   }, [id])
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (form.imagen?.startsWith("blob:")) {
-      URL.revokeObjectURL(form.imagen)
-    }
-    const previewUrl = URL.createObjectURL(file)
-    setForm((prev) => ({ ...prev, imagen: previewUrl, imagenFile: file }))
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,17 +64,11 @@ export function CatalogoFormPage() {
 
     setSaving(true)
     try {
-      let imagenUrl = form.imagen
-
-      if (form.imagenFile) {
-        imagenUrl = await cursosService.uploadImagenCatalogo(form.imagenFile)
-      }
-
       const payload = {
         nombre: form.nombre,
         descripcion: form.descripcion || undefined,
         categoria: "regular" as const,
-        imagen: imagenUrl?.startsWith("blob:") ? undefined : imagenUrl || undefined,
+        imagen: form.imagen || undefined,
         color: form.color || undefined,
       }
 
@@ -152,51 +134,66 @@ export function CatalogoFormPage() {
         <div className="w-full max-w-[1080px] grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] bg-white rounded-[2.5rem] overflow-hidden shadow-xl border"
           style={{ borderColor: COLORS.BORDER_SUBTLE }}>
 
-          {/* LEFT: Image */}
-          <div className="p-6 border-b lg:border-b-0 lg:border-r flex flex-col justify-start"
+          {/* LEFT: Icon Preview */}
+          <div className="p-6 border-b lg:border-b-0 lg:border-r flex flex-col items-center justify-center gap-5"
             style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <label className="text-xs font-bold uppercase tracking-widest opacity-50 mb-3 block">
-              Imagen representativa
+            <label className="text-xs font-bold uppercase tracking-widest opacity-50 block">
+              Ícono representativo
             </label>
-            <div className="flex-1 flex items-center justify-center min-h-0">
-              {form.imagen ? (
-                <div className="relative rounded-2xl overflow-hidden border aspect-[4/3] max-h-[300px] w-full shadow-inner"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <img src={getStorageUrl(form.imagen)} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (form.imagen?.startsWith("blob:")) URL.revokeObjectURL(form.imagen)
-                      setForm({ ...form, imagen: "", imagenFile: null })
-                    }}
-                    className="absolute top-3 right-3 size-9 flex items-center justify-center rounded-full bg-white/90 backdrop-blur transition-colors hover:bg-white"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+
+            <div
+              className="rounded-2xl border aspect-square flex items-center justify-center shadow-inner w-28"
+              style={{
+                background: form.imagen
+                  ? `linear-gradient(135deg, ${form.color}30, ${form.color}60)`
+                  : `color-mix(in srgb, ${COLORS.TEXT_MUTED} 8%, transparent)`,
+                borderColor: COLORS.BORDER_SUBTLE,
+              }}
+            >
+              {form.imagen && iconMap[form.imagen] ? (
+                <HugeiconsIcon icon={iconMap[form.imagen]} size={72} style={{ color: form.color }} />
               ) : (
+                <span className="text-xs px-4 text-center" style={{ color: COLORS.TEXT_MUTED }}>
+                  Sin ícono
+                </span>
+              )}
+            </div>
+
+            {form.imagen && CATALOG_ICONS.find(i => i.name === form.imagen) && (
+              <div className="text-center -mt-1">
+                <p className="text-sm font-semibold" style={{ color: form.color }}>
+                  {CATALOG_ICONS.find(i => i.name === form.imagen)?.label}
+                </p>
+                <p className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
+                  {CATALOG_ICONS.find(i => i.name === form.imagen)?.category}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col items-center gap-2 w-full max-w-[220px]">
+              <button
+                type="button"
+                onClick={() => setIconPickerOpen(true)}
+                className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 hover:opacity-90"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                Cambiar ícono
+              </button>
+              {form.imagen && (
                 <button
                   type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full min-h-[240px] flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed transition-all hover:bg-gray-50 active:scale-[0.98]"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                  onClick={() => setForm({ ...form, imagen: "" })}
+                  className="text-[11px] font-medium hover:underline"
+                  style={{ color: COLORS.TEXT_MUTED }}
                 >
-                  <div className="size-14 rounded-2xl flex items-center justify-center bg-black/5">
-                    <Upload size={24} />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Subir imagen de portada</p>
-                    <p className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>PNG, JPG o WebP</p>
-                  </div>
+                  Quitar ícono
                 </button>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
           </div>
 
           {/* RIGHT: Fields */}
-          <div className="p-6 space-y-5 overflow-y-auto">
+          <div className="p-6 space-y-5">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
                 Color Identificador
@@ -243,8 +240,7 @@ export function CatalogoFormPage() {
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest opacity-50 px-1">
                 Nombre <span className="text-red-500">*</span>
-              </label>
-              <input
+              </label>              <input
                 type="text"
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
@@ -292,6 +288,14 @@ export function CatalogoFormPage() {
           </div>
         </div>
       </form>
+
+      <IconPickerModal
+        open={iconPickerOpen}
+        onOpenChange={setIconPickerOpen}
+        selectedIcon={form.imagen || null}
+        catalogColor={form.color}
+        onApply={(iconName) => setForm({ ...form, imagen: iconName })}
+      />
     </div>
   )
 }

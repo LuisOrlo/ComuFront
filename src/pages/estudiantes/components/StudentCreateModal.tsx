@@ -42,7 +42,6 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
     correo: "",
     celular: "",
     ciudad_id: "",
-    fecha_nacimiento: "",
     ocupacion: "",
     direccion: "",
     estado_civil: "",
@@ -61,7 +60,7 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
     setSearchNombre("")
     setSearchCorreo("")
     setResultados([])
-    setForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "", ciudad_id: "", fecha_nacimiento: "", ocupacion: "", direccion: "", estado_civil: "", edad: "" })
+    setForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "", ciudad_id: "",     ocupacion: "", direccion: "", estado_civil: "", edad: "" })
   }
 
   const handleBuscar = async () => {
@@ -103,7 +102,6 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
         correo: form.correo || undefined,
         celular: form.celular || undefined,
         ciudad_id: form.ciudad_id || undefined,
-        fecha_nacimiento: form.fecha_nacimiento || undefined,
         ocupacion: form.ocupacion || undefined,
         direccion: form.direccion || undefined,
         estado_civil: form.estado_civil || undefined,
@@ -266,7 +264,7 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Fecha Nacimiento</label>
-                    <input type="date" value={form.fecha_nacimiento} onChange={e => setForm({ ...form, fecha_nacimiento: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
+                    <input type="number" min="0" max="150" value={form.edad} onChange={e => setForm({ ...form, edad: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" placeholder="Edad" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-5">

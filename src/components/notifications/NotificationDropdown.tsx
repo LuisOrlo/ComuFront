@@ -134,7 +134,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                 {grupo.items.map((item) => (
                   <Link
                     key={item.id}
-                    to={`/matriculas/aprobacion?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
+                    to={`/matriculas?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
                     onClick={onClose}
                     className="flex items-start gap-3 px-4 py-3 border-b transition-colors hover:bg-gray-50/60"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
@@ -181,7 +181,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
           {data && data.recientes.length > 0 && (
             <div className="p-3 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <Link
-                to="/matriculas/aprobacion"
+                to="/matriculas"
                 onClick={onClose}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
                 style={{

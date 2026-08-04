@@ -101,7 +101,7 @@ export function ClaseAsistenciaCard({ clase, asistencias, asistentes, total, pct
     return (
       <div
         onClick={() => onClickVerDetalle?.(clase.id)}
-        className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/50 cursor-pointer"
+        className="flex items-center justify-between gap-4 px-5 py-4 transition-all duration-150 hover:shadow-sm hover:bg-blue-50/30 cursor-pointer"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClickVerDetalle?.(clase.id) }}
@@ -114,7 +114,7 @@ export function ClaseAsistenciaCard({ clase, asistencias, asistentes, total, pct
   return (
     <Link
       to={`/instructor/asistencia/${cursoId}/${clase.id}`}
-      className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/50 no-underline"
+      className="flex items-center justify-between gap-4 px-5 py-4 transition-all duration-150 hover:shadow-sm hover:bg-blue-50/30 no-underline"
     >
       {inner}
     </Link>

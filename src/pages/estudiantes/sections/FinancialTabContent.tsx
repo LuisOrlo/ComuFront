@@ -17,6 +17,8 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
   const navigate = useNavigate()
   const { isAdmin } = usePermission()
   const [imagenExpandida, setImagenExpandida] = useState<string | null>(null)
+  const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set())
+  const [showFullHistorial, setShowFullHistorial] = useState(false)
   if (loading) {
     return (
       <div className="text-center py-20">
@@ -189,38 +191,76 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
             Desglose por Módulo
           </h3>
-          {data.matriculas.filter(m => m.lineas_pago?.length > 0).map(matricula => (
+          {data.matriculas.filter(m => m.lineas_pago?.length > 0).map(matricula => {
+            const hasSaldo = matricula.lineas_pago.some(lp => lp.saldo_pendiente > 0)
+            const isOpen = expandedCursos.has(matricula.id)
+            const toggleCurso = () => setExpandedCursos(prev => {
+              const next = new Set(prev)
+              if (next.has(matricula.id)) next.delete(matricula.id)
+              else next.add(matricula.id)
+              return next
+            })
+
+            return (
             <div key={matricula.id} className="mb-4 rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className="flex items-center justify-between px-5 py-3 bg-gray-50/70 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <span className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>
-                  {matricula.curso.nombre}
-                  {matricula.curso.instancia ? ` — ${matricula.curso.instancia}` : ''}
-                </span>
-                {isAdmin && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
-                  <button onClick={() => {
-                    const params = new URLSearchParams({
-                      curso: matricula.curso.nombre,
-                      nombre: data?.estudiante?.nombre_completo || '',
-                      cedula: data?.estudiante?.cedula || '',
-                    })
-                    navigate(`/estudiantes/${estudianteId}/academico/registrar-pago/${matricula.id}?${params.toString()}`)
-                  }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                    <HugeiconsIcon icon={PaymentIcon} size={12} />
-                    Registrar pago
-                  </button>
-                )}
-              </div>
-              {matricula.lineas_pago.map((lp, idx) => (
-                <ModuleRow key={lp.id} linea={lp} isLast={idx === matricula.lineas_pago.length - 1} />
-              ))}
+              <button
+                onClick={toggleCurso}
+                className="w-full flex items-center justify-between px-5 py-3 bg-gray-50/70 text-left hover:bg-gray-100/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`text-xs transition-transform ${isOpen ? 'rotate-90' : ''} shrink-0`}>▶</span>
+                  <span className="text-sm font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>
+                    {matricula.curso.nombre}
+                    {matricula.curso.instancia ? ` — ${matricula.curso.instancia}` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {hasSaldo && !isOpen && (
+                    <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                      Pendiente
+                    </span>
+                  )}
+                  {!isOpen && (
+                    <span className="text-[10px] text-gray-400">
+                      {matricula.lineas_pago.length} módulo{matricula.lineas_pago.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </button>
+              {isOpen && (
+                <>
+                  {isAdmin && matricula.lineas_pago.some(lp => lp.estado !== 'pagado') && (
+                    <div className="px-5 py-2 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                      <button onClick={() => {
+                        const params = new URLSearchParams({
+                          curso: matricula.curso.nombre,
+                          nombre: data?.estudiante?.nombre_completo || '',
+                          cedula: data?.estudiante?.cedula || '',
+                        })
+                        navigate(`/estudiantes/${estudianteId}/academico/registrar-pago/${matricula.id}?${params.toString()}`)
+                      }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                        <HugeiconsIcon icon={PaymentIcon} size={12} />
+                        Registrar pago
+                      </button>
+                    </div>
+                  )}
+                  {matricula.lineas_pago.map((lp, idx) => (
+                    <ModuleRow key={lp.id} linea={lp} isLast={idx === matricula.lineas_pago.length - 1} />
+                  ))}
+                </>
+              )}
             </div>
-          ))}
+          )})}
         </div>
       )}
 
-      {data.transacciones.length > 0 && (
+      {data.transacciones.length > 0 && (() => {
+        const transaccionesMostradas = showFullHistorial
+          ? data.transacciones
+          : data.transacciones.slice(0, 10)
+        return (
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
             Historial de Pagos ({data.transacciones.length})
@@ -238,7 +278,7 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data.transacciones.map((t) => (
+                {transaccionesMostradas.map((t) => (
                   <tr key={t.id} className="hover:bg-gray-50/50">
                     <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
                       {new Date(t.fecha_pago).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })}
@@ -265,8 +305,17 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
               </tbody>
             </table>
           </div>
+          {data.transacciones.length > 10 && !showFullHistorial && (
+            <button
+              onClick={() => setShowFullHistorial(true)}
+              className="mt-3 text-xs font-bold hover:underline"
+              style={{ color: COLORS.ACCENT }}
+            >
+              Ver historial completo ({data.transacciones.length} pagos)
+            </button>
+          )}
         </div>
-      )}
+      )})()}
 
       {imagenExpandida && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImagenExpandida(null)}>

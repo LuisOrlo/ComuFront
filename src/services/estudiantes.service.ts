@@ -16,7 +16,6 @@ export interface Estudiante {
   saldo_pendiente: number
   ciudad?: { nombre: string; id?: string; pais?: string }
   perfil_estudiante?: {
-    fecha_nacimiento?: string
     notas_internas?: string
     primera_matricula?: string
     ultima_matricula?: string
@@ -294,7 +293,6 @@ export const estudiantesService = {
     correo?: string
     celular?: string
     ciudad_id?: number | string
-    fecha_nacimiento?: string
     notas_internas?: string
     ocupacion?: string
     direccion?: string
@@ -312,7 +310,6 @@ export const estudiantesService = {
     correo?: string
     celular?: string
     ciudad_id?: number | string
-    fecha_nacimiento?: string
     notas_internas?: string
     ocupacion?: string
     direccion?: string

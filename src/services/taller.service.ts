@@ -38,6 +38,7 @@ export interface HorarioTaller {
 export interface InscripcionTaller {
   id: string
   taller_id: string
+  persona_id?: string
   nombres: string
   apellidos: string
   cedula: string
@@ -47,7 +48,6 @@ export interface InscripcionTaller {
   ocupacion?: string
   direccion?: string
   estado_civil?: string
-  fecha_nacimiento?: string
   edad?: number
   fecha_inscripcion: string
   estado: string

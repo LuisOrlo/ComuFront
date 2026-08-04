@@ -10,7 +10,6 @@ export function StepIndicator({ subStep, selectedModalidad }: StepIndicatorProps
   const rawSteps = [
     { key: "modalidad", label: "Modalidad" },
     { key: "ciudad", label: "Ciudad" },
-    { key: "tipo", label: "Categoria" },
     { key: "lista", label: "Disponibles" },
   ]
 

@@ -54,7 +54,6 @@ import { AsistenciaRegistroPage } from "@/pages/instructor-portal/AsistenciaRegi
 import { NotasRegistroPage } from "@/pages/instructor-portal/NotasRegistroPage"
 import { ClasesModuloPage } from "@/pages/instructor-portal/ClasesModuloPage"
 import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorarioPage"
-import { MisEstudiantesPage } from "@/pages/instructor-portal/MisEstudiantesPage"
 import { DetalleEstudiantePage } from "@/pages/instructor-portal/detalle/DetalleEstudiantePage"
 import { InstructorTallerDetailPage } from "@/pages/instructor-portal/InstructorTallerDetailPage"
 import { FinancePagosPage, FinanceResumenWrapper } from "@/pages/finanzas/pagos/FinancePagosPage"
@@ -277,7 +276,6 @@ function AppLayout() {
             <Route path="/instructor/clases/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><ClasesModuloPage /></RoleGuard>} />
             <Route path="/instructor/asistencia/:cursoId/:claseId" element={<RoleGuard roles={["Administrador", "Instructor"]}><AsistenciaRegistroPage /></RoleGuard>} />
             <Route path="/instructor/notas/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><NotasRegistroPage /></RoleGuard>} />
-            <Route path="/instructor/estudiantes" element={<RoleGuard roles={["Administrador", "Instructor"]}><MisEstudiantesPage /></RoleGuard>} />
             <Route path="/instructor/estudiantes/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><DetalleEstudiantePage /></RoleGuard>} />
             <Route path="/instructor/horario" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorHorarioPage /></RoleGuard>} />
 

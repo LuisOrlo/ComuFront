@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -47,6 +48,7 @@ export function HistorialPage() {
 
   // Dropdown menus
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  const [menuCoords, setMenuCoords] = useState<{ top: number; right: number } | null>(null)
 
   // Pagination
   const [page, setPage] = useState(1)
@@ -558,50 +560,23 @@ export function HistorialPage() {
                                   </span>
 
                                   {/* 3-dot dropdown Action Menu */}
-                                  <div className="relative shrink-0">
+                                  <div className="shrink-0">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        setActiveMenuId(activeMenuId === t.id ? null : t.id)
+                                        if (activeMenuId === t.id) {
+                                          setActiveMenuId(null)
+                                          setMenuCoords(null)
+                                        } else {
+                                          const rect = e.currentTarget.getBoundingClientRect()
+                                          setMenuCoords({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+                                          setActiveMenuId(t.id)
+                                        }
                                       }}
                                       className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-700 dark:text-gray-500 transition-colors"
                                     >
                                       <HugeiconsIcon icon={MoreHorizontalIcon} size={15} />
                                     </button>
-                                    {activeMenuId === t.id && (
-                                      <>
-                                        <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null) }} />
-                                        <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-1 z-40 text-xs font-bold text-gray-700 dark:text-gray-200">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setActiveMenuId(null)
-                                              if (esEgreso(t)) {
-                                                navigate(`/finanzas/egresos/${t.id}`)
-                                              } else {
-                                                navigate(`/finanzas/pagos/historial/${t.id}`)
-                                              }
-                                            }}
-                                            className="w-full text-left px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                                          >
-                                            Ver Detalle
-                                          </button>
-                                          
-                                          {t.comprobante_url && !t.comprobante_purgado && (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                setActiveMenuId(null)
-                                                handleDeleteSingleComprobante(t, e)
-                                              }}
-                                              className="w-full text-left px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-red-500"
-                                            >
-                                              Eliminar Comprobante
-                                            </button>
-                                          )}
-                                        </div>
-                                      </>
-                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -630,6 +605,46 @@ export function HistorialPage() {
           </div>
         )}
       </motion.div>
+
+      {activeMenuId && menuCoords && createPortal(
+        <>
+          <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); setMenuCoords(null) }} />
+          <div className="fixed z-40 w-36 bg-white rounded-xl shadow-lg border py-1 text-xs font-bold text-gray-700"
+            style={{ top: menuCoords.top, right: menuCoords.right, borderColor: COLORS.BORDER_SUBTLE }}>
+            <button
+              onClick={() => {
+                const t = clientFiltered.find(x => x.id === activeMenuId)
+                setActiveMenuId(null); setMenuCoords(null)
+                if (t) {
+                  if (esEgreso(t)) navigate(`/finanzas/egresos/${t.id}`)
+                  else navigate(`/finanzas/pagos/historial/${t.id}`)
+                }
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-gray-50 transition-colors"
+            >
+              Ver Detalle
+            </button>
+            {(() => {
+              const t = clientFiltered.find(x => x.id === activeMenuId)
+              if (t?.comprobante_url && !t?.comprobante_purgado) {
+                return (
+                  <button
+                    onClick={(e) => {
+                      setActiveMenuId(null); setMenuCoords(null)
+                      if (t) handleDeleteSingleComprobante(t, e)
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-gray-50 transition-colors text-red-500"
+                  >
+                    Eliminar Comprobante
+                  </button>
+                )
+              }
+              return null
+            })()}
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   )
 }

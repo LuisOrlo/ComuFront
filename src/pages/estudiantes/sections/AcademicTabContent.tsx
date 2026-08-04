@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import type { AcademicProfile, AsistenciasResponse } from "@/services/estudiantes.service"
 import { estudiantesService } from "@/services/estudiantes.service"
+import { COLORS } from "@/lib/constants"
 
 interface AcademicTabContentProps {
   data: AcademicProfile | null
@@ -12,6 +13,7 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
   const [asistencias, setAsistencias] = useState<AsistenciasResponse | null>(null)
   const [asistenciasLoading, setAsistenciasLoading] = useState(false)
   const [expandedModulos, setExpandedModulos] = useState<Set<string>>(new Set())
+  const [selectedCursoId, setSelectedCursoId] = useState<string | "todos">("todos")
 
   useEffect(() => {
     if (!data?.estudiante?.id) return
@@ -124,10 +126,29 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
         </table>
       </div>
 
+      {!esSoloTalleres && data.matriculas.length > 0 && (
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 shrink-0">Ver detalle de:</span>
+          <select
+            value={selectedCursoId}
+            onChange={(e) => setSelectedCursoId(e.target.value)}
+            className="px-3 py-2 text-sm border rounded-lg outline-none bg-white cursor-pointer"
+            style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+          >
+            <option value="todos">Todos los cursos</option>
+            {data.matriculas.map(m => (
+              <option key={m.id} value={m.id}>{m.curso}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {!esSoloTalleres && <div className="border-t pt-8">
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-5">Calificaciones por Modulo</h3>
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-          {data.matriculas.flatMap((matricula) =>
+          {data.matriculas
+            .filter(m => selectedCursoId === "todos" || m.id === selectedCursoId)
+            .flatMap((matricula) =>
             matricula.notas.map((nota, idx) => (
               <div key={`${matricula.id}-${idx}`} className="flex items-center justify-between px-4 py-3 border-l-2 rounded-r-lg bg-gray-50/50"
                 style={{ borderLeftColor: nota.aprobado ? '#2563eb' : '#ef4444' }}>
@@ -159,7 +180,9 @@ export function AcademicTabContent({ data, loading }: AcademicTabContentProps) {
         {!asistenciasLoading && (!asistencias || asistencias.matriculas.length === 0) && (
           <p className="text-sm text-gray-400 py-6 text-center">Sin registros de asistencia.</p>
         )}
-        {!asistenciasLoading && asistencias?.matriculas.map((am) => {
+        {!asistenciasLoading && asistencias?.matriculas
+          .filter(am => selectedCursoId === "todos" || am.matricula_id === selectedCursoId)
+          .map((am) => {
           const matriculaData = data.matriculas.find(m => m.id === am.matricula_id)
           return (
             <div key={am.matricula_id} className="mb-6 last:mb-0">

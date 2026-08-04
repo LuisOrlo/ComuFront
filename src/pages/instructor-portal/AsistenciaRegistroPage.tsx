@@ -34,6 +34,7 @@ export function AsistenciaRegistroPage() {
   const [asistenciasLocal, setAsistenciasLocal] = useState<
     Record<string, AsistenciaLocal>
   >({})
+  const [claseObservaciones, setClaseObservaciones] = useState("")
 
   const loadData = async () => {
     try {
@@ -45,7 +46,10 @@ export function AsistenciaRegistroPage() {
 
       setCurso(cursoData)
       setEstudiantes(estudiantesData)
-      if (claseData) setClase(claseData)
+      if (claseData) {
+        setClase(claseData)
+        setClaseObservaciones(claseData.observaciones ?? "")
+      }
 
       const initialAsistencias: Record<string, AsistenciaLocal> = {}
       estudiantesData.forEach((e) => {
@@ -101,7 +105,7 @@ export function AsistenciaRegistroPage() {
         }),
       )
 
-      await instructorService.registrarAsistencia(claseId!, payload)
+      await instructorService.registrarAsistencia(claseId!, payload, claseObservaciones.trim() || undefined)
       toast.success("Asistencia guardada correctamente")
       navigate(`/instructor/cursos/${cursoId}?tab=attendance`)
     } catch {
@@ -391,6 +395,24 @@ export function AsistenciaRegistroPage() {
                 )
               })
             )}
+          </div>
+
+          <div className="mt-8">
+            <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: COLORS.TEXT_MUTED }}>
+              Observaciones de la clase
+            </label>
+            <textarea
+              value={claseObservaciones}
+              onChange={(e) => setClaseObservaciones(e.target.value)}
+              placeholder="Agregar observaciones para esta clase..."
+              maxLength={500}
+              rows={3}
+              className="w-full px-4 py-3 text-sm rounded-xl outline-none resize-none transition-all"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.CHARCOAL }}
+            />
+            <p className="text-[10px] mt-1 text-right" style={{ color: COLORS.TEXT_MUTED }}>
+              {claseObservaciones.length}/500
+            </p>
           </div>
 
           <div className="mt-12 flex justify-end gap-4">

@@ -27,22 +27,9 @@ interface EstudianteData {
   direccion: string
   ciudad: string
   estado_civil: string
-  fecha_nacimiento: string
   edad: string
 }
 
-function calcularEdad(fecha: string): string {
-  if (!fecha) return ""
-  const nacimiento = new Date(fecha)
-  if (isNaN(nacimiento.getTime())) return ""
-  const hoy = new Date()
-  let edad = hoy.getFullYear() - nacimiento.getFullYear()
-  const mesDiff = hoy.getMonth() - nacimiento.getMonth()
-  if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--
-  }
-  return edad >= 0 ? String(edad) : ""
-}
 
 const pasos = [
   { num: 1 as Paso, label: "Datos del Estudiante", icon: UserIcon },
@@ -72,7 +59,7 @@ export function NuevoEstudiantePage() {
   const [estudiante, setEstudiante] = useState<EstudianteData>({
     tipo_id: "cedula",
     nombres: "", apellidos: "", cedula: "", telefono: "", correo: "",
-    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", fecha_nacimiento: "", edad: "",
+    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", edad: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -232,9 +219,9 @@ export function NuevoEstudiantePage() {
       cedula: estudiante.tipo_id === "cedula" ? "Cédula" : "DNI",
       nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo",
       ocupacion: "Ocupación", direccion: "Dirección", ciudad: "Residencia",
-      estado_civil: "Estado Civil", fecha_nacimiento: "Fecha de Nacimiento",
+      estado_civil: "Estado Civil",
     }
-    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"].includes(campo) && !valor.trim()) {
+    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
     if (campo === "cedula") {
@@ -248,10 +235,10 @@ export function NuevoEstudiantePage() {
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
     if (campo === "correo" && valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "Correo inválido"
-    if (campo === "fecha_nacimiento" && valor) {
-      const edad = Number(calcularEdad(valor))
-      if (edad < 10) return "Debes tener al menos 10 años para inscribirte"
-      if (edad > 120) return "La fecha de nacimiento no es válida"
+    if (campo === "edad" && valor) {
+      const edadNum = Number(valor)
+      if (isNaN(edadNum) || edadNum < 10) return "Debes tener al menos 10 años"
+      if (edadNum > 120) return "La edad ingresada no es válida"
     }
     return null
   }
@@ -281,7 +268,7 @@ export function NuevoEstudiantePage() {
   }
 
   const validateStep1 = (): boolean => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "fecha_nacimiento"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"]
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach(f => {
@@ -343,7 +330,7 @@ export function NuevoEstudiantePage() {
           direccion: estudiante.direccion || undefined,
           ciudad: estudiante.ciudad || undefined,
           estado_civil: estudiante.estado_civil || undefined,
-          fecha_nacimiento: estudiante.fecha_nacimiento || undefined,
+          edad: estudiante.edad ? Number(estudiante.edad) : undefined,
           edad: estudiante.edad ? Number(estudiante.edad) : undefined,
           tipo_pago: "abono",
           monto_pagado: 0,
@@ -376,7 +363,7 @@ export function NuevoEstudiantePage() {
         formData.append("direccion", estudiante.direccion)
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
-        formData.append("fecha_nacimiento", estudiante.fecha_nacimiento)
+        formData.append("edad", estudiante.edad)
         formData.append("edad", estudiante.edad)
         formData.append("monto_solicitado", "0")
         if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
@@ -479,7 +466,7 @@ export function NuevoEstudiantePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 min-w-0">
             <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.ocupacion && errors.ocupacion && <p className="text-[11px] mt-1 text-red-500">{errors.ocupacion}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option><option value="otro">Otro</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
-            <div><label className="block text-xs font-medium mb-1.5">Fecha de Nacimiento</label><input type="date" value={estudiante.fecha_nacimiento} onChange={e => { const fn = e.target.value; updateEstudiante("fecha_nacimiento", fn); setEstudiante(prev => ({ ...prev, fecha_nacimiento: fn, edad: calcularEdad(fn) })) }} onBlur={() => blurEstudiante("fecha_nacimiento")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.fecha_nacimiento && errors.fecha_nacimiento ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.fecha_nacimiento && errors.fecha_nacimiento && <p className="text-[11px] mt-1 text-red-500">{errors.fecha_nacimiento}</p>}</div>
+            <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" min="10" max="120" value={estudiante.edad} onChange={e => updateEstudiante("edad", e.target.value)} onBlur={() => blurEstudiante("edad")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.edad && errors.edad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.edad && errors.edad && <p className="text-[11px] mt-1 text-red-500">{errors.edad}</p>}</div>
             <div>
   <label className="block text-xs font-medium mb-1.5">Edad</label>
   <input

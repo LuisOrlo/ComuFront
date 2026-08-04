@@ -169,7 +169,6 @@ export const instructorService = {
     celular?: string
     ciudad?: { nombre: string }
     perfil_estudiante?: {
-      fecha_nacimiento?: string
       ocupacion?: string
       direccion?: string
       estado_civil?: string

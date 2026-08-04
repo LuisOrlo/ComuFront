@@ -13,7 +13,6 @@ export interface ClienteExterno {
   ocupacion?: string
   estado_civil?: string
   edad?: number
-  fecha_nacimiento?: string
   observaciones?: string
   created_at?: string
 }

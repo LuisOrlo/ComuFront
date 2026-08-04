@@ -7,7 +7,7 @@ import {
   validarTelefono,
   validarCedula,
   validarEmail,
-  validarFechaNacimiento,
+  validarEdad,
 } from "./AprobacionUtils"
 
 export function Section({ title, icon, children }: { title: string; icon: any; children: React.ReactNode }) {
@@ -22,10 +22,13 @@ export function Section({ title, icon, children }: { title: string; icon: any; c
   )
 }
 
-export function SubCategory({ title, color, children }: { title: string; color: string; children: React.ReactNode }) {
+export function SubCategory({ title, color, children }: { title: string; color?: string; children: React.ReactNode }) {
   return (
-    <div className="p-3 rounded-xl space-y-2" style={{ backgroundColor: `color-mix(in srgb, ${color} 8%, transparent)`, borderLeft: `3px solid ${color}` }}>
-      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color }}>{title}</p>
+    <div className="p-3 rounded-xl space-y-2" style={{
+      backgroundColor: color ? `color-mix(in srgb, ${color} 8%, transparent)` : "transparent",
+      borderLeft: `3px solid ${color || COLORS.BORDER_SUBTLE}`,
+    }}>
+      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: color || COLORS.TEXT_MUTED }}>{title}</p>
       <div className="grid grid-cols-2 gap-2">
         {children}
       </div>
@@ -50,7 +53,7 @@ const VALIDATORS: Record<string, ((v: string) => string | null) | undefined> = {
   cedula: validarCedula,
   correo: validarEmail,
   email: validarEmail,
-  fecha_nacimiento: validarFechaNacimiento,
+  edad: validarEdad,
 }
 
 export function EF({ icon, label, field, data, editField, editVal, onEdit, onChange, onSave, onCancel, bold, saving, inputType, groupColor, validator }: {
@@ -63,20 +66,11 @@ export function EF({ icon, label, field, data, editField, editVal, onEdit, onCha
   const [error, setError] = useState<string | null>(null)
 
   const raw = data?.perfil_estudiante?.[field] ?? data?.[field]
-  const esFecha = field === "fecha_nacimiento" || inputType === "date"
-  const displayRaw = esFecha && typeof raw === "string" && raw.includes("T") ? raw.split("T")[0] : raw
+  const displayRaw = inputType === "date" && typeof raw === "string" && raw.includes("T") ? raw.split("T")[0] : raw
   const value = displayRaw ?? "—"
 
   const validar = (valor: string, inputTipo?: string): string | null => {
     if (validator) return validator(valor)
-    if (inputTipo === "date") {
-      const validator = VALIDATORS["fecha_nacimiento"]
-      return validator ? validator(valor) : null
-    }
-    if (field === "fecha_nacimiento") {
-      const validator = VALIDATORS["fecha_nacimiento"]
-      return validator ? validator(valor) : null
-    }
     if (inputTipo !== "text") {
       const validator = VALIDATORS[field]
       if (validator) return validator(valor)

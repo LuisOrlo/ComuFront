@@ -114,7 +114,7 @@ export function TodosTab() {
         stats={stats}
       />
 
-      <div className="min-h-[32px]">
+      <div className="sticky top-0 z-20 min-h-[32px]">
         <BulkActionsBar
           selectedCount={selectedArray.length}
           onClear={clearSelection}

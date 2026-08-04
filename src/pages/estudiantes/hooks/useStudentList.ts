@@ -62,7 +62,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       const response = await estudiantesService.getEstudiantes(params)
       setEstudiantes(response.datos)
       setMeta(response.meta ?? undefined)
-      if (response.stats) setStats(response.stats)
+      if (response.stats && paymentFilter === "todos" && !debouncedSearch) setStats(response.stats)
     } catch {
       toast.error("Error al cargar estudiantes")
     } finally {

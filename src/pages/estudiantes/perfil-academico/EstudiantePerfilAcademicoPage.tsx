@@ -135,7 +135,7 @@ export function EstudiantePerfilAcademicoPage() {
           correo: studentData?.correo || academicData?.estudiante.correo || '',
           celular: studentData?.celular,
           ciudad: studentData?.perfil_estudiante?.ciudad || studentData?.ciudad?.nombre,
-          fecha_nacimiento: studentData?.perfil_estudiante?.fecha_nacimiento,
+          edad: studentData?.perfil_estudiante?.edad,
         }}
         totalCursos={totalCursos}
         totalTalleres={totalTalleres}

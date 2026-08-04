@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useParams, Link } from "react-router"
+import { useParams, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -20,7 +20,6 @@ interface EstudiantePersonal {
   celular?: string
   ciudad?: { nombre: string } | string
   perfil_estudiante?: {
-    fecha_nacimiento?: string
     ocupacion?: string
     direccion?: string
     ciudad?: string
@@ -91,6 +90,7 @@ function DataRow({ label, value, large }: { label: string; value: string; large?
 
 export function DetalleEstudiantePage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [estudiante, setEstudiante] = useState<EstudiantePersonal | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -176,22 +176,19 @@ export function DetalleEstudiantePage() {
         <p className="text-sm font-medium mb-4" style={{ color: COLORS.CHARCOAL }}>
           Estudiante no encontrado
         </p>
-        <Link
-          to="/instructor/estudiantes"
+        <button
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
           style={{ color: COLORS.ACCENT }}
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
-          Volver a mis estudiantes
-        </Link>
+          Volver al curso
+      </button>
       </div>
     )
   }
 
   const perfil = estudiante.perfil_estudiante
-  const fechaNac = perfil?.fecha_nacimiento
-  ? new Date(perfil.fecha_nacimiento).toLocaleDateString("es-EC")
-  : "—";
   const edad = perfil?.edad != null ? `${perfil.edad} años` : "—"
 
   const ciudadMostrar = (() => {
@@ -210,14 +207,14 @@ export function DetalleEstudiantePage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <Link
-        to="/instructor/estudiantes"
+      <button
+        onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1.5 text-xs font-semibold mb-6 transition-opacity hover:opacity-70"
         style={{ color: COLORS.ACCENT }}
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
-        Volver a mis estudiantes
-      </Link>
+        Volver al curso
+      </button>
 
       <header className="flex items-center gap-4 mb-8">
         <div
@@ -248,7 +245,6 @@ export function DetalleEstudiantePage() {
             <DataRow label="Nombres" value={estudiante.nombres} />
             <DataRow label="Apellidos" value={estudiante.apellidos} />
             <DataRow label="Cedula" value={estudiante.cedula || "—"} />
-            <DataRow label="Fecha de Nacimiento" value={fechaNac} />
             <DataRow label="Edad" value={edad} large />
           </div>
         </div>

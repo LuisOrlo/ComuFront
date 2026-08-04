@@ -13,7 +13,6 @@ interface FieldErrors {
   celular?: string
   correo?: string
   ciudad?: string
-  fecha_nacimiento?: string
 }
 
 export function NuevoClientePage() {
@@ -32,7 +31,6 @@ export function NuevoClientePage() {
   const [direccion, setDireccion] = useState("")
   const [ocupacion, setOcupacion] = useState("")
   const [estadoCivil, setEstadoCivil] = useState("")
-  const [fechaNacimiento, setFechaNacimiento] = useState("")
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -50,7 +48,6 @@ export function NuevoClientePage() {
       setDireccion(c.direccion || "")
       setOcupacion(c.ocupacion || "")
       setEstadoCivil(c.estado_civil || "")
-      setFechaNacimiento(c.fecha_nacimiento || "")
     }).catch(() => {
       toast.error("Error al cargar datos del cliente")
       navigate("/clientes")
@@ -87,10 +84,6 @@ export function NuevoClientePage() {
         if (!value.trim()) return null
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Correo inválido"
         return null
-      case "fecha_nacimiento":
-        if (!value) return null
-        if (new Date(value) > new Date()) return "No puede ser futura"
-        return null
       default:
         return null
     }
@@ -102,7 +95,6 @@ export function NuevoClientePage() {
       nombres: setNombres, apellidos: setApellidos, cedula: setCedula,
       celular: setCelular, correo: setCorreo, ciudad: setCiudad,
       direccion: setDireccion, ocupacion: setOcupacion, estadoCivil: setEstadoCivil,
-      fecha_nacimiento: setFechaNacimiento,
     }
     setters[field]?.(val)
     if (touched[field]) {
@@ -115,18 +107,18 @@ export function NuevoClientePage() {
     setTouched(prev => ({ ...prev, [field]: true }))
     const val = {
       nombres, apellidos, cedula, celular, correo,
-      ciudad, direccion, ocupacion, estadoCivil, fecha_nacimiento: fechaNacimiento,
+        // no-op
     }[field]
     const err = validateField(field, val ?? "")
     setErrors(prev => ({ ...prev, [field]: err || undefined }))
   }
 
   const validateAll = (): boolean => {
-    const fields: (keyof FieldErrors)[] = ["nombres", "apellidos", "cedula", "celular", "correo", "fecha_nacimiento"]
+    const fields: (keyof FieldErrors)[] = ["nombres", "apellidos", "cedula", "celular", "correo"]
     const newErrors: FieldErrors = {}
     let valid = true
     for (const f of fields) {
-      const val = { nombres, apellidos, cedula, celular, correo, ciudad, direccion, ocupacion, estadoCivil, fecha_nacimiento: fechaNacimiento }[f] || ""
+      const val = { nombres, apellidos, cedula, celular, correo, ciudad, direccion, ocupacion, estadoCivil }[f] || ""
       const err = validateField(f, val)
       if (err) { newErrors[f] = err; valid = false }
     }
@@ -154,7 +146,6 @@ export function NuevoClientePage() {
         direccion: direccion.trim() || undefined,
         ocupacion: ocupacion.trim() || undefined,
         estado_civil: estadoCivil.trim() || undefined,
-        fecha_nacimiento: fechaNacimiento.trim() || undefined,
       }
 
       if (isEdit && id) {
@@ -291,14 +282,6 @@ export function NuevoClientePage() {
                 <option value="divorciado">Divorciado</option>
                 <option value="viudo">Viudo</option>
               </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Fecha de Nacimiento</label>
-              <input type="date" value={fechaNacimiento} onChange={e => updateField("fecha_nacimiento", e.target.value)} onBlur={() => blurField("fecha_nacimiento")}
-                className={inputCls("fecha_nacimiento")}
-                style={touched.fecha_nacimiento && errors.fecha_nacimiento ? undefined : { borderColor: COLORS.BORDER_SUBTLE }}
-                max={new Date().toISOString().split("T")[0]} />
-              {errMsg("fecha_nacimiento")}
             </div>
           </div>
 

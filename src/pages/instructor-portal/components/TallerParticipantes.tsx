@@ -2,6 +2,7 @@ import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon, Download04Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { Link } from "react-router"
 import type { Taller, InscripcionTaller } from "@/services/taller.service"
 import { tallerService } from "@/services/taller.service"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
@@ -74,6 +75,7 @@ export function TallerParticipantes({ taller, inscripciones, loading }: Props) {
                 <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Cédula</th>
                 <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Correo</th>
                 <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Teléfono</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -85,6 +87,15 @@ export function TallerParticipantes({ taller, inscripciones, loading }: Props) {
                   <td className="px-4 py-3" style={{ color: CHARCOAL }}>{ins.cedula}</td>
                   <td className="px-4 py-3" style={{ color: CHARCOAL }}>{ins.correo}</td>
                   <td className="px-4 py-3" style={{ color: CHARCOAL }}>{ins.telefono || "—"}</td>
+                  <td className="px-4 py-3 text-right">
+                    {ins.persona_id && (
+                      <Link to={`/instructor/estudiantes/${ins.persona_id}`}
+                        className="text-xs font-semibold hover:underline"
+                        style={{ color: COLORS.ACCENT }}>
+                        Ver perfil
+                      </Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

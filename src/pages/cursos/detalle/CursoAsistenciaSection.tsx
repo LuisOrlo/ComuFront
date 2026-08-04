@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -7,6 +8,7 @@ import {
   UserGroupIcon,
   InformationCircleIcon,
   SaveIcon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import {
@@ -14,6 +16,8 @@ import {
   type EstudianteCurso,
   type ClaseItem,
 } from "@/services/instructor.service"
+import { cursosService } from "@/services/cursos.service"
+import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 
 type ViewState = "overview" | "modules" | "classes" | "attendance"
@@ -49,6 +53,14 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   >({})
   const [claseObservaciones, setClaseObservaciones] = useState("")
   const [overviewEstudiantes, setOverviewEstudiantes] = useState<EstudianteCurso[]>([])
+
+  const [editClase, setEditClase] = useState<ClaseItem | null>(null)
+  const [editFecha, setEditFecha] = useState("")
+  const [editHoraInicio, setEditHoraInicio] = useState("")
+  const [editHoraFin, setEditHoraFin] = useState("")
+  const [editClaseSaving, setEditClaseSaving] = useState(false)
+
+  const { isAdmin } = usePermission()
 
   const overviewLoading = view === "overview" && overviewEstudiantes.length === 0
 
@@ -256,9 +268,9 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                   })}
                 </tbody>
               </table>
-            )}
-          </div>
+          )}
         </div>
+      </div>
       </div>
     )
   }
@@ -401,10 +413,13 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             </div>
           ) : (
             clases.map((clase) => (
-              <button
+              <div
                 key={clase.id}
                 onClick={() => handleClassClick(clase)}
                 className="w-full rounded-xl p-5 flex items-center justify-between hover:shadow-md transition-all group text-left"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClassClick(clase) }}
                 style={{
                   borderColor: COLORS.BORDER_SUBTLE,
                   borderWidth: 1,
@@ -475,7 +490,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                     {clase.asistencia_registrada ? "Ver" : "Registrar"}
                   </span>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>
@@ -547,6 +562,22 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                 <span>
                   {selectedClase.hora_inicio} - {selectedClase.hora_fin}
                 </span>
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditClase(selectedClase)
+                      setEditFecha(selectedClase.fecha_clase || "")
+                      setEditHoraInicio(selectedClase.hora_inicio || "")
+                      setEditHoraFin(selectedClase.hora_fin || "")
+                    }}
+                    className="ml-2 px-2.5 py-1 rounded-lg text-[11px] font-bold border hover:bg-gray-50 transition-colors"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}
+                  >
+                    <HugeiconsIcon icon={Edit01Icon} size={12} className="mr-1 inline" />
+                    Cambiar
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -704,7 +735,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                             }}
                           >
                             {status.label}
-                          </button>
+              </button>
                         ))}
                       </div>
                       <div className="flex justify-between px-2 mt-1">
@@ -794,6 +825,82 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           </div>
         </div>
       </div>
+
+      {editClase && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditClase(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl" onClick={e => e.stopPropagation()}
+            style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <h3 className="text-base font-bold mb-4" style={{ color: COLORS.CHARCOAL }}>Cambiar día y hora</h3>
+            <p className="text-xs mb-4" style={{ color: COLORS.TEXT_MUTED }}>
+              {new Date(editClase.fecha_clase).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: COLORS.TEXT_MUTED }}>Fecha</label>
+                <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border rounded-lg outline-none"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: COLORS.TEXT_MUTED }}>Hora inicio</label>
+                  <input type="time" value={editHoraInicio} onChange={e => setEditHoraInicio(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: COLORS.TEXT_MUTED }}>Hora fin</label>
+                  <input type="time" value={editHoraFin} onChange={e => setEditHoraFin(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }} />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditClase(null)} disabled={editClaseSaving}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50 disabled:opacity-50"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  if (!editFecha || !editHoraInicio || !editHoraFin) {
+                    toast.error("Completa todos los campos")
+                    return
+                  }
+                  if (editHoraInicio >= editHoraFin) {
+                    toast.error("La hora de fin debe ser después del inicio")
+                    return
+                  }
+                  setEditClaseSaving(true)
+                  try {
+                    await cursosService.updateClase(editClase.id, {
+                      fecha_clase: editFecha,
+                      hora_inicio: editHoraInicio,
+                      hora_fin: editHoraFin,
+                    })
+                    toast.success("Clase actualizada")
+                    setEditClase(null)
+                    try {
+                      const data = await instructorService.getClasesModulo(selectedModulo!.id)
+                      setClases(data)
+                    } catch { /* silent */ }
+                  } catch {
+                    toast.error("Error al actualizar la clase")
+                  } finally {
+                    setEditClaseSaving(false)
+                  }
+                }}
+                disabled={editClaseSaving}
+                className="flex-[2] py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                style={{ backgroundColor: COLORS.ACCENT }}>
+                {editClaseSaving ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

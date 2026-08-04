@@ -46,7 +46,6 @@ export interface SolicitudInscripcionDetallada extends SolicitudInscripcionResum
       direccion?: string
       estado_civil?: string
       edad?: number
-      fecha_nacimiento?: string
     } | null
   }
   participanteExterno?: {

@@ -162,7 +162,6 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
         items: [
           { icon: BookOpenIcon, label: "Mis Cursos", path: "/instructor/cursos" },
           { icon: AiFolderIcon, label: "Mis Talleres", path: "/instructor/talleres" },
-          { icon: UserGroupIcon, label: "Mis Estudiantes", path: "/instructor/estudiantes" },
           { icon: CalendarIcon, label: "Mi Horario", path: "/instructor/horario" },
         ],
       })
@@ -382,6 +381,9 @@ export function TopBar({
   bellRef: React.RefObject<HTMLButtonElement | null>
 }) {
   const { user } = useAuth()
+  const roles = user?.roles || []
+  const isAdmin = roles.includes("Administrador")
+  const isSecretaria = roles.includes("Secretaria")
   const roleLabel = user?.roles?.[0] || "Usuario"
   const userDisplayName = user?.persona
     ? `${user.persona.nombres || ""} ${user.persona.apellidos || ""}`.trim()
@@ -439,6 +441,7 @@ export function TopBar({
           <HugeiconsIcon icon={SearchIcon} size={18} />
         </button>
 
+        {(isAdmin || isSecretaria) && (
         <div className="relative">
           <button
             ref={bellRef}
@@ -469,6 +472,7 @@ export function TopBar({
             onCountChange={() => {}}
           />
         </div>
+        )}
 
           <div className="flex items-center gap-2.5 pl-2 ml-1 border-l" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div

@@ -323,9 +323,8 @@ export function AprobacionTallerPage() {
                       editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
                     <EF icon={SearchIcon} label="Cédula" field="cedula" data={ins} bold
                       editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
-                    <EF icon={Calendar03Icon} label="Fecha Nacimiento" field="fecha_nacimiento" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="date" groupColor={AZUL} />
-                    <InfoItem icon={Calendar03Icon} label="Edad" value={ins.edad ? `${ins.edad} años` : "—"} groupColor={AZUL} />
+                    <EF icon={Calendar03Icon} label="Edad" field="edad" data={ins}
+                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="number" groupColor={AZUL} />
                     <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={ins}
                       editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
                     <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}

@@ -149,14 +149,6 @@ function CursoCard({ curso }: { curso: CursoActivoConData }) {
           Ver curso
           <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
         </Link>
-        <Link
-          to={`/instructor/estudiantes`}
-          className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg transition-all duration-200 active:scale-[0.97]"
-          style={{ backgroundColor: "oklch(0.62 0.16 245 / 0.1)", color: "oklch(0.62 0.16 245)" }}
-        >
-          <HugeiconsIcon icon={UserGroupIcon} size={14} />
-          Estudiantes
-        </Link>
       </div>
     </div>
   )

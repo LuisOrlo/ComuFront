@@ -39,10 +39,10 @@ export function EstudiantesPage() {
   }, [loadCounts])
 
   const tabs: { id: Tab; label: string; icon: IconSvgElement }[] = [
-    { id: "todos", label: "Todos", icon: UserGroupIcon },
-    { id: "cursos", label: "Cursos", icon: GraduationCapIcon },
-    { id: "talleres", label: "Talleres", icon: BookOpenIcon },
-    { id: "ciudades", label: "Ciudades", icon: MapsLocation01Icon },
+    { id: "todos", label: "Por estudiante", icon: UserGroupIcon },
+    { id: "cursos", label: "Por curso", icon: GraduationCapIcon },
+    { id: "talleres", label: "Por taller", icon: BookOpenIcon },
+    { id: "ciudades", label: "Por ciudad", icon: MapsLocation01Icon },
   ]
 
   return (

@@ -20,7 +20,7 @@ export function OverviewTabContent({ academicData, financialData, academicLoadin
   const cursosActivos = matriculas.filter(m => m.estado === 'activo').length
   const cursosCompletados = matriculas.filter(m => m.estado === 'completado').length
   const resumen = financialData?.resumen
-  const servicios = (financialData?.cuentas ?? []).filter(c => c.origen === 'servicio')
+  const servicios = (financialData?.cuentas ?? []).filter(c => c.origen === 'servicio').sort((a, b) => (b.saldo_pendiente ?? 0) - (a.saldo_pendiente ?? 0))
   const serviciosEnDeuda = servicios.filter(s => s.saldo_pendiente > 0)
 
   const estadoClasses: Record<string, string> = {

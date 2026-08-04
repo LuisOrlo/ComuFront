@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, ArrowRight02Icon, Clock04Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
+import { Search01Icon, ArrowRight02Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import {
   useReactTable,
   getCoreRowModel,
@@ -20,6 +20,21 @@ const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
 const TEXT_MUTED = COLORS.TEXT_MUTED
 const ACCENT = COLORS.ACCENT
+
+const MODALIDAD_OPTIONS = [
+  { value: "", label: "Todas las modalidades" },
+  { value: "presencial", label: "Presencial" },
+  { value: "virtual", label: "Virtual" },
+]
+
+const ESTADO_OPTIONS = [
+  { value: "", label: "Todos los estados" },
+  { value: "pendiente", label: "Pendiente" },
+  { value: "confirmado", label: "Confirmado" },
+  { value: "en_progreso", label: "En progreso" },
+  { value: "completado", label: "Completado" },
+  { value: "cancelado", label: "Cancelado" },
+]
 
 export function TalleresTab() {
   const navigate = useNavigate()
@@ -217,40 +232,26 @@ export function TalleresTab() {
             }}
           />
         </div>
-      </div>
-
-      <div className="flex items-center gap-1 border-b mb-4" style={{ borderColor: BORDER }}>
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2 shrink-0">Modalidad:</span>
-        {[{ value: "", label: "Todos" }, { value: "presencial", label: "Presencial" }, { value: "virtual", label: "Virtual" }].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => { setModalidadFilter(opt.value); setPagination(p => ({ ...p, pageIndex: 0 })) }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-all"
-            style={{
-              borderColor: modalidadFilter === opt.value ? ACCENT : "transparent",
-              color: modalidadFilter === opt.value ? CHARCOAL : TEXT_MUTED,
-            }}
-          >
-            <HugeiconsIcon icon={Clock04Icon} size={13} />
-            {opt.label}
-          </button>
-        ))}
-        <span className="flex-1" />
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 mr-2 shrink-0">Estado:</span>
-        {[{ value: "", label: "Todos" }, { value: "pendiente", label: "Pendiente" }, { value: "confirmado", label: "Confirmado" }, { value: "en_progreso", label: "En progreso" }, { value: "completado", label: "Completado" }].map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => { setEstadoFilter(opt.value); setPagination(p => ({ ...p, pageIndex: 0 })) }}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-all"
-            style={{
-              borderColor: estadoFilter === opt.value ? ACCENT : "transparent",
-              color: estadoFilter === opt.value ? CHARCOAL : TEXT_MUTED,
-            }}
-          >
-            <HugeiconsIcon icon={Clock04Icon} size={13} />
-            {opt.label}
-          </button>
-        ))}
+        <select
+          value={modalidadFilter}
+          onChange={(e) => { setModalidadFilter(e.target.value); setPagination(p => ({ ...p, pageIndex: 0 })) }}
+          className="px-3 py-2 text-sm border rounded-lg outline-none bg-white cursor-pointer"
+          style={{ borderColor: BORDER, color: CHARCOAL }}
+        >
+          {MODALIDAD_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <select
+          value={estadoFilter}
+          onChange={(e) => { setEstadoFilter(e.target.value); setPagination(p => ({ ...p, pageIndex: 0 })) }}
+          className="px-3 py-2 text-sm border rounded-lg outline-none bg-white cursor-pointer"
+          style={{ borderColor: BORDER, color: CHARCOAL }}
+        >
+          {ESTADO_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? (

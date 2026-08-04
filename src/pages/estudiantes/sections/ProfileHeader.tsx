@@ -16,7 +16,6 @@ interface ProfileHeaderProps {
     correo: string
     celular?: string
     ciudad?: string
-    fecha_nacimiento?: string
   }
   totalCursos: number
   totalTalleres?: number
@@ -119,12 +118,6 @@ export function ProfileHeader({ estudiante, totalCursos, totalTalleres = 0, esta
                   <span className="text-sm flex items-center gap-1.5" style={{ color: COLORS.TEXT_MUTED }}>
                     <HugeiconsIcon icon={MapPinIcon} size={12} />
                     {estudiante.ciudad}
-                  </span>
-                )}
-                {estudiante.fecha_nacimiento && (
-                  <span className="text-sm flex items-center gap-1.5" style={{ color: COLORS.TEXT_MUTED }}>
-                    <HugeiconsIcon icon={CalendarIcon} size={12} />
-                    {estudiante.fecha_nacimiento}
                   </span>
                 )}
               </div>
