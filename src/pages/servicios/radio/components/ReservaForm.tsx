@@ -8,9 +8,9 @@ import { radioService, type TarifaRadio, type ReservaRadio } from "@/services/ra
 import { staffService } from "@/services/staff.service"
 import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
+import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 import { OperadorSelector } from "./OperadorSelector"
-import { useNavigate } from "react-router"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -29,7 +29,6 @@ export function ReservaForm({
   fechaPreseleccionada,
   horaPreseleccionada,
   onSaved,
-  nuevoCliente,
 }: {
   isOpen: boolean
   onClose: () => void
@@ -38,7 +37,6 @@ export function ReservaForm({
   fechaPreseleccionada?: string
   horaPreseleccionada?: string
   onSaved: () => void
-  nuevoCliente?: ClienteExterno
 }) {
   const [tarifaId, setTarifaId] = useState("")
   const [fecha, setFecha] = useState("")
@@ -56,7 +54,7 @@ export function ReservaForm({
   const [clientesDisponibles, setClientesDisponibles] = useState<ClienteOption[]>([])
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [searchingCliente, setSearchingCliente] = useState(false)
-  const navigate = useNavigate()
+  const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -146,15 +144,15 @@ export function ReservaForm({
     setClientesDisponibles([])
   }
 
-  useEffect(() => {
-
-    if (!nuevoCliente) return
-    setClienteId(nuevoCliente.id)
-    setClienteTipo("cliente_externo")
-    setClienteSearch(`${nuevoCliente.nombres} ${nuevoCliente.apellidos || ""}`.trim())
-    setShowClienteDropdown(false)
-
-  }, [nuevoCliente])
+  const handleNewClienteCreated = (nuevo: ClienteExterno) => {
+    selectCliente({
+      tipo: "cliente_externo",
+      id: nuevo.id,
+      nombres: nuevo.nombres,
+      apellidos: nuevo.apellidos || "",
+      cedula: nuevo.cedula,
+    })
+  }
 
   useEffect(() => {
 
@@ -453,16 +451,13 @@ export function ReservaForm({
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => navigate('/clientes/nuevo?returnTo=/servicios/radio')}
-                className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-[0.97] shrink-0"
-                style={{ backgroundColor: "oklch(0.55 0.18 160)", color: "white" }}
-                title="Registrar nuevo cliente"
-              >
-                <UserPlus size={16} strokeWidth={2.5} />
-                Nuevo
-              </button>
+              {!clienteId && (
+                <button type="button" onClick={() => setShowNuevoCliente(true)}
+                  className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
+                  <UserPlus size={14} />
+                  Registrar nuevo cliente externo
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -552,6 +547,12 @@ export function ReservaForm({
           </div>
         </div>
       </form>
+
+      <NuevoClienteModal
+        isOpen={showNuevoCliente}
+        onClose={() => setShowNuevoCliente(false)}
+        onCreated={handleNewClienteCreated}
+      />
 
     </div>
   )

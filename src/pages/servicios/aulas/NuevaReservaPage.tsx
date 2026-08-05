@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, useParams, useLocation } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -13,14 +13,14 @@ import {
   Clock01Icon,
   Money01Icon,
   AlertCircleIcon,
-  AddCircleIcon,
 } from "@hugeicons/core-free-icons"
 import { UserPlus, Loader2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { aulasService, type Aula } from "@/services/aulas.service"
-import { personasService, type Persona } from "@/services/personas.service"
+import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
+import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 
 interface ClienteOption {
@@ -46,40 +46,18 @@ export function NuevaReservaPage() {
   const [horaInicio, setHoraInicio] = useState(state?.hora_inicio || "08:00")
   const [horaFin, setHoraFin] = useState(state?.hora_fin || "10:00")
 
-  const [personas, setPersonas] = useState<Persona[]>([])
   const [selectedCliente, setSelectedCliente] = useState<ClienteOption | null>(null)
   const [clienteSearch, setClienteSearch] = useState("")
   const [clientesDisponibles, setClientesDisponibles] = useState<ClienteOption[]>([])
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [searchingCliente, setSearchingCliente] = useState(false)
+  const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
-
-  const [creandoCliente, setCreandoCliente] = useState(false)
-  const [nuevoClienteForm, setNuevoClienteForm] = useState({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
 
   const [saving, setSaving] = useState(false)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
-
-  const allOptions = useMemo(() => {
-    const q = clienteSearch.toLowerCase().trim()
-    const personaOpts: ClienteOption[] = personas
-      .filter(p => {
-        if (!q) return true
-        const name = `${p.nombres} ${p.apellidos}`.toLowerCase()
-        return name.includes(q) || (p.cedula && p.cedula.includes(q))
-      })
-      .map(p => ({
-        tipo: "persona" as const,
-        id: p.id,
-        nombres: p.nombres,
-        apellidos: p.apellidos || "",
-        cedula: p.cedula,
-        correo: p.correo,
-      }))
-    return [...personaOpts, ...clientesDisponibles]
-  }, [personas, clientesDisponibles, clienteSearch])
 
   useEffect(() => {
     if (!aulaId) { navigate("/servicios/aulas"); return }
@@ -90,27 +68,32 @@ export function NuevaReservaPage() {
   }, [aulaId, navigate])
 
   useEffect(() => {
-    personasService.getPersonas({ page: 1 })
-      .then(res => setPersonas(res.data))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
+    const q = clienteSearch.trim()
+    if (q.length < 2) {
+      setClientesDisponibles([])
+      setSearchingCliente(false)
+      return
+    }
     const timer = setTimeout(() => {
       setSearchingCliente(true)
-      clientesService.getClientes({ search: clienteSearch || undefined, per_page: 50 })
-        .then(res => {
-          const options: ClienteOption[] = (res.data as ClienteExterno[]).map(c => ({
-            tipo: "cliente_externo" as const,
-            id: c.id,
-            nombres: c.nombres,
-            apellidos: c.apellidos || "",
-            cedula: c.cedula,
-            correo: c.correo,
-          }))
-          setClientesDisponibles(options)
-        })
-        .catch(() => setClientesDisponibles([]))
+      Promise.allSettled([
+        personasService.getPersonas({ buscar: q }),
+        clientesService.getClientes({ search: q, per_page: 50 }),
+      ]).then(([personasRes, clientesRes]) => {
+        const results: ClienteOption[] = []
+        if (personasRes.status === "fulfilled") {
+          for (const p of personasRes.value.data) {
+            results.push({ tipo: "persona", id: p.id, nombres: p.nombres, apellidos: p.apellidos || "", cedula: p.cedula, correo: p.correo })
+          }
+        }
+        if (clientesRes.status === "fulfilled") {
+          for (const c of (clientesRes.value.data as ClienteExterno[])) {
+            if (results.some(r => r.tipo === "cliente_externo" && r.id === c.id)) continue
+            results.push({ tipo: "cliente_externo", id: c.id, nombres: c.nombres, apellidos: c.apellidos || "", cedula: c.cedula, correo: c.correo })
+          }
+        }
+        setClientesDisponibles(results)
+      }).catch(() => setClientesDisponibles([]))
         .finally(() => setSearchingCliente(false))
     }, 300)
     return () => clearTimeout(timer)
@@ -139,7 +122,6 @@ export function NuevaReservaPage() {
     setSelectedCliente(opt)
     setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
     setShowClienteDropdown(false)
-    setCreandoCliente(false)
     setErrors(prev => { const n = { ...prev }; delete n.cliente; return n })
   }
 
@@ -149,26 +131,15 @@ export function NuevaReservaPage() {
     setClientesDisponibles([])
   }
 
-  const handleCreateCliente = async () => {
-    if (!nuevoClienteForm.nombres.trim()) {
-      toast.error("El nombre es obligatorio")
-      return
-    }
-    try {
-      const nuevo = await clientesService.createCliente(nuevoClienteForm)
-      toast.success("Cliente externo registrado")
-      selectCliente({
-        tipo: "cliente_externo",
-        id: nuevo.id,
-        nombres: nuevo.nombres,
-        apellidos: nuevo.apellidos || "",
-        cedula: nuevo.cedula,
-        correo: nuevo.correo,
-      })
-      setNuevoClienteForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
-    } catch (err: unknown) {
-      toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al crear cliente")
-    }
+  const handleNewClienteCreated = (nuevo: ClienteExterno) => {
+    selectCliente({
+      tipo: "cliente_externo",
+      id: nuevo.id,
+      nombres: nuevo.nombres,
+      apellidos: nuevo.apellidos || "",
+      cedula: nuevo.cedula,
+      correo: nuevo.correo,
+    })
   }
 
   const validate = (): boolean => {
@@ -399,13 +370,13 @@ export function NuevaReservaPage() {
                             <div className="animate-spin size-3.5 border-2 border-violet-500 border-t-transparent rounded-full" />
                             Buscando...
                           </div>
-                        ) : allOptions.length === 0 ? (
+                        ) : clientesDisponibles.length === 0 ? (
                           <div className="p-5 text-center text-xs opacity-40">
-                            {clienteSearch.trim() ? "Sin resultados" : "Escribe para buscar..."}
+                            {clienteSearch.trim().length >= 2 ? "Sin resultados" : "Escribe al menos 2 caracteres para buscar..."}
                           </div>
                         ) : (
                           <div>
-                            {allOptions.map(opt => {
+                            {clientesDisponibles.map(opt => {
                               const sel = selectedCliente?.id === opt.id && selectedCliente?.tipo === opt.tipo
                               return (
                                 <button key={`${opt.tipo}-${opt.id}`} type="button"
@@ -463,66 +434,12 @@ export function NuevaReservaPage() {
                 )}
               </div>
 
-              {!creandoCliente && !selectedCliente && (
-                <button type="button" onClick={() => setCreandoCliente(true)}
+              {!selectedCliente && (
+                <button type="button" onClick={() => setShowNuevoCliente(true)}
                   className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
                   <UserPlus size={14} />
                   Registrar nuevo cliente externo
                 </button>
-              )}
-
-              {creandoCliente && (
-                <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold opacity-40 uppercase tracking-wider">Nuevo Cliente Externo</span>
-                    <button type="button" onClick={() => setCreandoCliente(false)}
-                      className="text-xs font-medium opacity-40 hover:opacity-100 transition-opacity">Cancelar</button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Nombres *</label>
-                      <input type="text" value={nuevoClienteForm.nombres}
-                        onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, nombres: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Apellidos</label>
-                      <input type="text" value={nuevoClienteForm.apellidos}
-                        onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, apellidos: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Cédula</label>
-                      <input type="text" value={nuevoClienteForm.cedula}
-                        onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, cedula: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Celular</label>
-                      <input type="text" value={nuevoClienteForm.celular}
-                        onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, celular: e.target.value })}
-                        className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold uppercase tracking-wider opacity-40">Correo</label>
-                    <input type="email" value={nuevoClienteForm.correo}
-                      onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, correo: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
-                      style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                  </div>
-                  <button type="button" onClick={handleCreateCliente}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold tracking-wide hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
-                    <HugeiconsIcon icon={AddCircleIcon} size={14} />
-                    Registrar Cliente
-                  </button>
-                </div>
               )}
             </div>
 
@@ -549,6 +466,12 @@ export function NuevaReservaPage() {
               </button>
             </div>
           </form>
+
+          <NuevoClienteModal
+            isOpen={showNuevoCliente}
+            onClose={() => setShowNuevoCliente(false)}
+            onCreated={handleNewClienteCreated}
+          />
         </div>
       </div>
     </div>

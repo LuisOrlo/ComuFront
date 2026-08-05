@@ -52,8 +52,9 @@ export const personasService = {
     buscar?: string
     ciudad_id?: number
     page?: number
+    per_page?: number
   }): Promise<PersonaPaginada> {
-    const params: Record<string, string | number> = { per_page: 15, page: filters?.page || 1 }
+    const params: Record<string, string | number> = { per_page: filters?.per_page || 15, page: filters?.page || 1 }
     if (filters?.tipo) params.tipo = filters.tipo
     if (filters?.buscar) params.buscar = filters.buscar
     if (filters?.ciudad_id) params.ciudad_id = filters.ciudad_id

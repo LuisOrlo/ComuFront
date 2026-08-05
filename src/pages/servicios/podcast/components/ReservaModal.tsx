@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Microphone, SearchIcon, AddCircleIcon, UserIcon, Tick02Icon,
+  Microphone, SearchIcon, UserIcon, Tick02Icon,
   Calendar03Icon, Clock01Icon, Money01Icon,
 } from "@hugeicons/core-free-icons"
 import { Users, X, UserPlus, Search } from "lucide-react"
@@ -11,6 +11,7 @@ import { COLORS } from "@/lib/constants"
 import { podcastService, type PaquetePodcast, type ReservaPodcast } from "@/services/podcast.service"
 import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
+import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 
 function fmtDate(d: Date) { return d.toISOString().split("T")[0] }
@@ -43,11 +44,11 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
   )
   const [selectedClienteId, setSelectedClienteId] = useState(editingReserva?.cliente_externo_id || "")
   const [selectedPersonaId, setSelectedPersonaId] = useState(editingReserva?.persona_id || "")
-  const [creandoCliente, setCreandoCliente] = useState(false)
-  const [nuevoClienteForm, setNuevoClienteForm] = useState({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
+  const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const [clienteSearch, setClienteSearch] = useState("")
   const [staffSearch, setStaffSearch] = useState("")
   const [personas, setPersonas] = useState<Persona[]>([])
+  const [loadingPersonas, setLoadingPersonas] = useState(false)
   const [clientes, setClientes] = useState<ClienteExterno[]>([])
   const [loadingClientes, setLoadingClientes] = useState(false)
   const [asignaciones, setAsignaciones] = useState<{ persona_id: string; rol: string; persona?: { nombres: string; apellidos: string } }[]>(
@@ -70,31 +71,43 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
   }
 
   useEffect(() => {
-    personasService.getPersonas({ page: 1 })
-      .then(res => setPersonas(res.data))
-      .catch(() => {})
     clientesService.getClientes({ per_page: 50 })
       .then(res => setClientes(res.data))
       .catch(() => {})
   }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => loadClientes(clienteSearch || undefined), clienteSearch ? 300 : 0)
+    const q = clienteSearch.trim()
+    if (q.length < 2) {
+      if (!q) setClientes([])
+      return
+    }
+    const timer = setTimeout(() => {
+      loadClientes(q)
+    }, 300)
     return () => clearTimeout(timer)
   }, [clienteSearch])
 
-  const handleCreateCliente = async () => {
-    try {
-      if (!nuevoClienteForm.nombres.trim()) { toast.error("El nombre es obligatorio"); return }
-      const nuevo = await clientesService.createCliente(nuevoClienteForm)
-      toast.success("Cliente registrado")
-      setClientes(prev => [nuevo, ...prev])
-      setSelectedClienteId(nuevo.id)
-      setCreandoCliente(false)
-      setNuevoClienteForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
-    } catch (_error: unknown) {
-      toast.error((_error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al crear cliente")
+  useEffect(() => {
+    const q = staffSearch.trim()
+    if (q.length < 2) {
+      setPersonas([])
+      setLoadingPersonas(false)
+      return
     }
+    const timer = setTimeout(() => {
+      setLoadingPersonas(true)
+      personasService.getPersonas({ buscar: q })
+        .then(res => setPersonas(res.data))
+        .catch(() => setPersonas([]))
+        .finally(() => setLoadingPersonas(false))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [staffSearch])
+
+  const handleNewClienteCreated = (nuevo: ClienteExterno) => {
+    setClientes(prev => [nuevo, ...prev])
+    setSelectedClienteId(nuevo.id)
   }
 
   const calcularPrecio = () => {
@@ -300,7 +313,7 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                       <button
                         key={key}
                         type="button"
-                        onClick={() => { setTipoResponsable(key); setCreandoCliente(false) }}
+                        onClick={() => setTipoResponsable(key)}
                         className={cn(
                           "px-3 py-1.5 rounded-[6px] text-[9px] font-bold uppercase tracking-wider transition-all",
                           tipoResponsable === key ? "bg-white text-charcoal shadow-sm" : "text-charcoal/40 hover:text-charcoal/60"
@@ -315,41 +328,23 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                   {tipoResponsable === "externo" ? (
                     <div className="space-y-3">
                       <div className="flex gap-2 p-1 bg-gray-100/60 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        {[
-                          { key: "select", label: "Buscar Existente", icon: Search },
-                          { key: "new", label: "Registrar Nuevo", icon: UserPlus },
-                        ].map(({ key, label, icon: Icon }) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => setCreandoCliente(key === "new")}
-                            className={cn(
-                              "flex-1 py-2.5 rounded-[10px] text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5",
-                              (key === "new") === creandoCliente ? "bg-emerald-600 text-white shadow-sm" : "bg-transparent text-charcoal/40 hover:bg-white/50"
-                            )}
-                          >
-                            <Icon size={13} />
-                            {label}
-                          </button>
-                        ))}
+                        <button
+                          type="button"
+                          className="flex-1 py-2.5 rounded-[10px] text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-sm"
+                        >
+                          <Search size={13} />
+                          Buscar Existente
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowNuevoCliente(true)}
+                          className="flex-1 py-2.5 rounded-[10px] text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 bg-transparent text-charcoal/40 hover:bg-white/50"
+                        >
+                          <UserPlus size={13} />
+                          Registrar Nuevo
+                        </button>
                       </div>
-                      {creandoCliente ? (
-                        <div className="space-y-2.5 p-4 bg-gray-50 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            <input type="text" value={nuevoClienteForm.nombres} onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, nombres: e.target.value })} placeholder="Nombres *" className="px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/15" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                            <input type="text" value={nuevoClienteForm.apellidos} onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, apellidos: e.target.value })} placeholder="Apellidos" className="px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/15" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                          </div>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            <input type="text" value={nuevoClienteForm.cedula} onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, cedula: e.target.value })} placeholder="Cédula" className="px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/15" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                            <input type="text" value={nuevoClienteForm.celular} onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, celular: e.target.value })} placeholder="Celular" className="px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/15" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                          </div>
-                          <input type="email" value={nuevoClienteForm.correo} onChange={e => setNuevoClienteForm({ ...nuevoClienteForm, correo: e.target.value })} placeholder="Correo electrónico" className="w-full px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500/15" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                          <button onClick={handleCreateCliente} className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
-                            <HugeiconsIcon icon={AddCircleIcon} size={14} /> Registrar Cliente
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-1.5">
+                      <div className="space-y-1.5">
                           <div className="relative">
                             <HugeiconsIcon icon={SearchIcon} size={13} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
                             <input type="text" value={clienteSearch} onChange={e => setClienteSearch(e.target.value)} placeholder="Buscar por nombre, cédula..." className="w-full pl-9 pr-4 py-3 rounded-xl border bg-gray-50/60 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/15 transition-all" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
@@ -358,7 +353,9 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                             {loadingClientes ? (
                               <div className="p-4 text-center text-xs opacity-40 animate-pulse">Buscando...</div>
                             ) : clientes.length === 0 ? (
-                              <div className="p-4 text-center text-xs opacity-40">No se encontraron clientes.</div>
+                              <div className="p-4 text-center text-xs opacity-40">
+                                {clienteSearch.trim().length >= 2 ? "No se encontraron clientes." : "Escribe al menos 2 caracteres para buscar..."}
+                              </div>
                             ) : (
                               clientes.map(c => {
                                 const sel = selectedClienteId === c.id
@@ -382,7 +379,6 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                             )}
                           </div>
                         </div>
-                      )}
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -391,11 +387,15 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                         <input type="text" value={staffSearch} onChange={e => setStaffSearch(e.target.value)} placeholder="Buscar personal o alumno..." className="w-full pl-9 pr-4 py-3 rounded-xl border bg-gray-50/60 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/15 transition-all" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
                       </div>
                       <div className="max-h-[150px] overflow-y-auto rounded-xl border bg-white divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        {personas.length === 0 ? (
-                          <div className="p-4 text-center text-xs opacity-40 animate-pulse">Cargando personal...</div>
+                        {loadingPersonas ? (
+                          <div className="p-4 text-center text-xs opacity-40 animate-pulse">Buscando...</div>
+                        ) : personas.length === 0 ? (
+                          <div className="p-4 text-center text-xs opacity-40">
+                            {staffSearch.trim().length >= 2 ? "Sin resultados" : "Escribe al menos 2 caracteres para buscar..."}
+                          </div>
                         ) : (
                           personas
-                            .filter(p => !staffSearch || `${p.nombres} ${p.apellidos}`.toLowerCase().includes(staffSearch.toLowerCase()))
+                            .filter(p => !asignaciones.some(a => a.persona_id === p.id))
                             .map(p => {
                               const sel = selectedPersonaId === p.id
                               return (
@@ -433,13 +433,12 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                   {asignaciones.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {asignaciones.map((a, i) => {
-                        const p = personas.find(pp => pp.id === a.persona_id)
                         return (
                           <div key={a.persona_id} className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-50 to-purple-50/60 border border-purple-200 text-xs shadow-sm">
                             <div className="size-6 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-[8px] font-bold text-white shrink-0">
-                              {p?.nombres?.[0]}{p?.apellidos?.[0]}
+                              {a.persona?.nombres?.[0]}{a.persona?.apellidos?.[0]}
                             </div>
-                            <span className="font-bold text-purple-800 text-[11px]">{p?.nombres} {p?.apellidos}</span>
+                            <span className="font-bold text-purple-800 text-[11px]">{a.persona?.nombres} {a.persona?.apellidos}</span>
                             <div className="h-4 w-px bg-purple-200" />
                             <input type="text" value={a.rol} onChange={e => { const n = [...asignaciones]; n[i] = { ...n[i], rol: e.target.value }; setAsignaciones(n) }} placeholder="Rol" className="w-20 bg-transparent text-[10px] font-medium text-purple-600 outline-none placeholder:text-purple-300" />
                             <button onClick={() => setAsignaciones(prev => prev.filter((_, idx) => idx !== i))} className="opacity-0 group-hover:opacity-100 size-6 flex items-center justify-center rounded-full hover:bg-red-100 transition-all"><X size={10} className="text-red-400" /></button>
@@ -510,6 +509,11 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
           </motion.div>
         </div>
       )}
+      <NuevoClienteModal
+        isOpen={showNuevoCliente}
+        onClose={() => setShowNuevoCliente(false)}
+        onCreated={handleNewClienteCreated}
+      />
     </AnimatePresence>
   )
 }

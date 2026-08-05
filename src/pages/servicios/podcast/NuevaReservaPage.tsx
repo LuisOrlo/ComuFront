@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useNavigate, useLocation, Link } from "react-router"
+import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -17,6 +17,7 @@ import {
 } from "@/services/podcast.service"
 import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
+import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 
 interface ClienteOption {
@@ -55,7 +56,6 @@ function SectionHeader({ icon, title, color = "violet" }: { icon: typeof ArrowLe
 
 export function NuevaReservaPage() {
   const navigate = useNavigate()
-  const location = useLocation()
 
   const [paqueteId, setPaqueteId] = useState("")
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0])
@@ -74,6 +74,7 @@ export function NuevaReservaPage() {
   const [clientesDisponibles, setClientesDisponibles] = useState<ClienteOption[]>([])
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [searchingCliente, setSearchingCliente] = useState(false)
+  const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -101,6 +102,12 @@ export function NuevaReservaPage() {
   }, [])
 
   useEffect(() => {
+    const q = clienteSearch.trim()
+    if (q.length < 2) {
+      setClientesDisponibles([])
+      setSearchingCliente(false)
+      return
+    }
     const timer = setTimeout(() => {
       if (abortRef.current) abortRef.current.abort()
       const controller = new AbortController()
@@ -136,20 +143,6 @@ export function NuevaReservaPage() {
   }, [clienteSearch])
 
   useEffect(() => {
-
-    const state = location.state as { nuevoCliente?: ClienteExterno } | null
-    if (state?.nuevoCliente && !clienteId) {
-      const c = state.nuevoCliente
-      setClienteId(c.id)
-      setClienteTipo("cliente_externo")
-      setSelectedCliente({ tipo: "cliente_externo", id: c.id, nombres: c.nombres, apellidos: c.apellidos || "", cedula: c.cedula })
-      setClienteSearch(`${c.nombres} ${c.apellidos || ""}`.trim())
-      window.history.replaceState({}, "")
-    }
-
-  }, [location.state, clienteId])
-
-  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (clienteRef.current && !clienteRef.current.contains(e.target as Node))
         setShowClienteDropdown(false)
@@ -173,6 +166,16 @@ export function NuevaReservaPage() {
     setSelectedCliente(null)
     setClienteSearch("")
     setClientesDisponibles([])
+  }
+
+  const handleNewClienteCreated = (nuevo: ClienteExterno) => {
+    selectCliente({
+      tipo: "cliente_externo",
+      id: nuevo.id,
+      nombres: nuevo.nombres,
+      apellidos: nuevo.apellidos || "",
+      cedula: nuevo.cedula,
+    })
   }
 
   const paqueteSeleccionado = useMemo(() => paquetes.find(p => p.id === paqueteId), [paqueteId, paquetes])
@@ -423,14 +426,15 @@ export function NuevaReservaPage() {
                       </button>
                     )}
                   </div>
-                  <Link
-                    to={`/clientes/nuevo?returnTo=${encodeURIComponent(location.pathname)}`}
-                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shrink-0 shadow-lg shadow-emerald-500/20"
-                    style={{ backgroundColor: "oklch(0.55 0.18 160)" }}>
-                    <UserPlus size={16} strokeWidth={2.5} />
-                    Nuevo
-                  </Link>
                 </div>
+
+                {!clienteId && (
+                  <button type="button" onClick={() => setShowNuevoCliente(true)}
+                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
+                    <UserPlus size={14} />
+                    Registrar nuevo cliente externo
+                  </button>
+                )}
 
                 <AnimatePresence>
                   {showClienteDropdown && (
@@ -448,7 +452,7 @@ export function NuevaReservaPage() {
                         </div>
                       ) : clientesDisponibles.length === 0 ? (
                         <div className="p-5 text-center text-xs opacity-40">
-                          {clienteSearch.trim() ? "Sin resultados para esta búsqueda" : "Escribe para buscar..."}
+                          {clienteSearch.trim().length >= 2 ? "Sin resultados para esta búsqueda" : "Escribe al menos 2 caracteres para buscar..."}
                         </div>
                       ) : (
                         <>
@@ -644,6 +648,12 @@ export function NuevaReservaPage() {
               </button>
             </div>
           </form>
+
+          <NuevoClienteModal
+            isOpen={showNuevoCliente}
+            onClose={() => setShowNuevoCliente(false)}
+            onCreated={handleNewClienteCreated}
+          />
         </div>
       </div>
     </div>

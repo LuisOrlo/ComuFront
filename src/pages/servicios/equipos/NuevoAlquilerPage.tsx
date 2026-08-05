@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useNavigate, useParams, useLocation, Link } from "react-router"
+import { useNavigate, useParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { equiposService, type Equipo } from "@/services/equipos.service"
 import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
+import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 
 interface ClienteOption {
@@ -31,7 +32,6 @@ const MAX_FOTO_SIZE = 2 * 1024 * 1024
 export function NuevoAlquilerPage() {
   const navigate = useNavigate()
   const { equipoId } = useParams<{ equipoId: string }>()
-  const location = useLocation()
 
   const [equipo, setEquipo] = useState<Equipo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -50,6 +50,7 @@ export function NuevoAlquilerPage() {
   const [clientesDisponibles, setClientesDisponibles] = useState<ClienteOption[]>([])
   const [showClienteDropdown, setShowClienteDropdown] = useState(false)
   const [searchingCliente, setSearchingCliente] = useState(false)
+  const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -103,20 +104,6 @@ export function NuevoAlquilerPage() {
   }, [clienteSearch])
 
   useEffect(() => {
-
-    const state = location.state as { nuevoCliente?: ClienteExterno } | null
-    if (state?.nuevoCliente && !clienteId) {
-      const c = state.nuevoCliente
-      setClienteId(c.id)
-      setClienteTipo("cliente_externo")
-      setSelectedCliente({ tipo: "cliente_externo", id: c.id, nombres: c.nombres, apellidos: c.apellidos || "", cedula: c.cedula })
-      setClienteSearch(`${c.nombres} ${c.apellidos || ""}`.trim())
-      window.history.replaceState({}, "")
-    }
-
-  }, [location.state, clienteId])
-
-  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (clienteRef.current && !clienteRef.current.contains(e.target as Node))
         setShowClienteDropdown(false)
@@ -140,6 +127,16 @@ export function NuevoAlquilerPage() {
     setSelectedCliente(null)
     setClienteSearch("")
     setClientesDisponibles([])
+  }
+
+  const handleNewClienteCreated = (nuevo: ClienteExterno) => {
+    selectCliente({
+      tipo: "cliente_externo",
+      id: nuevo.id,
+      nombres: nuevo.nombres,
+      apellidos: nuevo.apellidos || "",
+      cedula: nuevo.cedula,
+    })
   }
 
   const calcularDias = () => {
@@ -388,14 +385,15 @@ export function NuevoAlquilerPage() {
                       </button>
                     )}
                   </div>
-                  <Link
-                    to={`/clientes/nuevo?returnTo=${encodeURIComponent(location.pathname)}`}
-                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shrink-0 shadow-lg shadow-emerald-500/20"
-                    style={{ backgroundColor: "oklch(0.55 0.18 160)" }}>
-                    <UserPlus size={16} strokeWidth={2.5} />
-                    Nuevo
-                  </Link>
                 </div>
+
+                {!clienteId && (
+                  <button type="button" onClick={() => setShowNuevoCliente(true)}
+                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
+                    <UserPlus size={14} />
+                    Registrar nuevo cliente externo
+                  </button>
+                )}
 
                 <AnimatePresence>
                   {showClienteDropdown && (
@@ -547,6 +545,12 @@ export function NuevoAlquilerPage() {
               </button>
             </div>
           </form>
+
+          <NuevoClienteModal
+            isOpen={showNuevoCliente}
+            onClose={() => setShowNuevoCliente(false)}
+            onCreated={handleNewClienteCreated}
+          />
         </div>
       </div>
     </div>
