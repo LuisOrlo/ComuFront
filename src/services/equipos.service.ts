@@ -64,6 +64,11 @@ export const equiposService = {
     return data.data
   },
 
+  getAlquileresConMeta: async (params?: { equipo_id?: string; cedula?: string; page?: number; per_page?: number }) => {
+    const { data } = await api.get<{ data: AlquilerEquipo[]; meta: { current_page: number; last_page: number; per_page: number; total: number } }>("/academic/servicios/alquileres-equipos", { params })
+    return { data: data.data, meta: data.meta }
+  },
+
   getAlquiler: async (id: string) => {
     const { data } = await api.get<{ data: AlquilerEquipo }>(`/academic/servicios/alquileres-equipos/${id}`)
     return data.data

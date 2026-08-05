@@ -85,4 +85,9 @@ export const podcastService = {
     const { data } = await api.post<{ data: ReservaPodcast }>(`/academic/servicios/reservas-podcast/${id}/pago`)
     return data.data
   },
+
+  cambiarEstado: async (id: string, estado: string) => {
+    const { data } = await api.post<{ data: ReservaPodcast }>(`/academic/servicios/reservas-podcast/${id}/estado`, { estado })
+    return data.data
+  },
 }

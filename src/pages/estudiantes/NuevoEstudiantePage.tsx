@@ -331,7 +331,6 @@ export function NuevoEstudiantePage() {
           ciudad: estudiante.ciudad || undefined,
           estado_civil: estudiante.estado_civil || undefined,
           edad: estudiante.edad ? Number(estudiante.edad) : undefined,
-          edad: estudiante.edad ? Number(estudiante.edad) : undefined,
           tipo_pago: "abono",
           monto_pagado: 0,
           metodo_pago: metodoPago,

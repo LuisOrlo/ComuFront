@@ -46,6 +46,7 @@ export function RadioHistorialPage() {
   const [fechaHasta, setFechaHasta] = useState("")
   const [detalleReserva, setDetalleReserva] = useState<ReservaRadio | null>(null)
   const [detalleOpen, setDetalleOpen] = useState(false)
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
 
   const loadHistorial = useCallback(async () => {
     setLoading(true)
@@ -70,6 +71,16 @@ export function RadioHistorialPage() {
     if (r.persona) return `${r.persona.nombres} ${r.persona.apellidos}`
     if (r.cliente_externo) return r.cliente_externo.nombres || "—"
     return "—"
+  }
+
+  const handleCambiarEstado = async (id: string, nuevoEstado: string) => {
+    setSavingMap(prev => ({ ...prev, [id]: true }))
+    try {
+      await radioService.cambiarEstado(id, nuevoEstado)
+      toast.success(`Estado cambiado a ${ESTADO_LABELS[nuevoEstado] || nuevoEstado}`)
+      setReservas(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado as ReservaRadio["estado"] } : r))
+    } catch { toast.error("Error al cambiar estado") }
+    finally { setSavingMap(prev => ({ ...prev, [id]: false })) }
   }
 
   return (
@@ -162,15 +173,22 @@ export function RadioHistorialPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button onClick={() => { setDetalleReserva(r); setDetalleOpen(true) }}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors hover:bg-gray-50"
                           style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                           <HugeiconsIcon icon={Calendar03Icon} size={12} />Ver detalle
                         </button>
-                        <span className={cn("px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[r.estado] || "bg-gray-100")}>
-                          {ESTADO_LABELS[r.estado] || r.estado}
-                        </span>
+                        <select
+                          value={r.estado}
+                          onChange={e => handleCambiarEstado(r.id, e.target.value)}
+                          disabled={savingMap[r.id]}
+                          className={cn("px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-opacity", savingMap[r.id] ? "opacity-50" : "", ESTADO_COLORS[r.estado] || "bg-gray-100")}
+                        >
+                          {Object.entries(ESTADO_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

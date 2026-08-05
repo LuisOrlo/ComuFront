@@ -76,6 +76,7 @@ export interface CursoAbierto {
     descripcion: string
     categoria: "regular" | "taller" | "personalizado"
     color?: string
+    imagen?: string
     creditos: number
     horas_totales: number
     modulos_default: number

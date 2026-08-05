@@ -7,17 +7,34 @@ const EVENT_TYPES: Record<string, { label: string; color: string }> = {
   PODCAST: { label: "Podcast", color: "#ec4899" },
   STREAMING: { label: "Streaming", color: "#06b6d4" },
   ASESORIA: { label: "Asesoría", color: "#8b5cf6" },
+  RADIO: { label: "Radio", color: "#ef4444" },
 }
 
 export function AgendaLegend({
   activeTypes,
+  eventCount,
   onToggle,
+  onClearAll,
 }: {
   activeTypes: string[]
+  eventCount?: number
   onToggle: (tipo: string) => void
+  onClearAll: () => void
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <button
+        onClick={onClearAll}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all border"
+        style={{
+          backgroundColor: activeTypes.length === 0 ? COLORS.CHARCOAL + "18" : "transparent",
+          borderColor: activeTypes.length === 0 ? COLORS.CHARCOAL : COLORS.BORDER_SUBTLE,
+          color: activeTypes.length === 0 ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+          opacity: activeTypes.length === 0 ? 1 : 0.5,
+        }}
+      >
+        Todos
+      </button>
       {Object.entries(EVENT_TYPES).map(([tipo, info]) => {
         const isActive = activeTypes.length === 0 || activeTypes.includes(tipo)
         return (
@@ -40,6 +57,14 @@ export function AgendaLegend({
           </button>
         )
       })}
+      {eventCount !== undefined && (
+        <span
+          className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-1"
+          style={{ backgroundColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+        >
+          {eventCount} {eventCount === 1 ? "evento" : "eventos"}
+        </span>
+      )}
     </div>
   )
 }

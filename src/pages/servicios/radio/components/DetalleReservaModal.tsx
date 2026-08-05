@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import {
@@ -10,6 +11,8 @@ import {
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { radioService } from "@/services/radio.service"
+import { toast } from "sonner"
 
 const ESTADO_STYLES: Record<string, { label: string; bg: string; text: string }> = {
   reservado: { label: "Pendiente", bg: "#fef3c7", text: "#92400e" },
@@ -37,9 +40,27 @@ export function DetalleReservaModal({
   onClose: () => void
   reserva: ReservaRadio | null
 }) {
+  const [estadoLocal, setEstadoLocal] = useState(reserva?.estado || "reservado")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && reserva) setEstadoLocal(reserva.estado)
+  }, [isOpen, reserva])
+
   if (!isOpen || !reserva) return null
 
-  const estilo = ESTADO_STYLES[reserva.estado] || ESTADO_STYLES.reservado
+  const handleCambiarEstado = async (nuevoEstado: string) => {
+    if (nuevoEstado === estadoLocal) return
+    setSaving(true)
+    try {
+      await radioService.cambiarEstado(reserva.id, nuevoEstado)
+      setEstadoLocal(nuevoEstado)
+      toast.success(`Estado cambiado a ${ESTADO_STYLES[nuevoEstado]?.label || nuevoEstado}`)
+    } catch { toast.error("Error al cambiar estado") }
+    finally { setSaving(false) }
+  }
+
+  const estilo = ESTADO_STYLES[estadoLocal] || ESTADO_STYLES.reservado
 
   const fields: { icon: IconSvgElement; label: string; value: string }[] = [
     { icon: Calendar03Icon, label: "Fecha", value: formatDate(reserva.fecha_reserva) },
@@ -84,14 +105,17 @@ export function DetalleReservaModal({
         </div>
 
         <div className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <span
-              className="inline-flex px-2.5 py-0.5 rounded-md text-[10px] font-bold"
-              style={{ backgroundColor: estilo.bg, color: estilo.text }}
-            >
-              {estilo.label}
-            </span>
-          </div>
+          <select
+            value={estadoLocal}
+            onChange={e => handleCambiarEstado(e.target.value)}
+            disabled={saving}
+            className="mb-4 px-3 py-2 rounded-lg text-[10px] font-bold uppercase border outline-none cursor-pointer transition-opacity"
+            style={{ backgroundColor: estilo.bg, color: estilo.text, borderColor: "transparent", opacity: saving ? 0.5 : 1 }}
+          >
+            {Object.entries(ESTADO_STYLES).map(([val, s]) => (
+              <option key={val} value={val}>{s.label}</option>
+            ))}
+          </select>
 
           <div className="grid grid-cols-2 gap-3">
             {fields.map((field, i) => (

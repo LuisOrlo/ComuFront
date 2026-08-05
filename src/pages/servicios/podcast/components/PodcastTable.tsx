@@ -1,10 +1,12 @@
+import { useState } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
-import type { ReservaPodcast } from "@/services/podcast.service"
+import { podcastService, type ReservaPodcast } from "@/services/podcast.service"
+import { toast } from "sonner"
 
 const ESTADO_LABELS: Record<string, { label: string; color: string }> = {
   pendiente: { label: "Pendiente", color: "bg-amber-100 text-amber-700 border-amber-200" },
@@ -24,7 +26,19 @@ export function PodcastTable({ reservas, onEdit, onDelete, onRegistrarPago, onSe
   onRegistrarPago: (id: string) => void
   onSelect: (r: ReservaPodcast) => void
 }) {
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
   const today = fmtDate(new Date())
+
+  const handleCambiarEstado = async (e: React.MouseEvent | React.ChangeEvent<HTMLSelectElement>, id: string, nuevoEstado: string) => {
+    e.stopPropagation()
+    setSavingMap(prev => ({ ...prev, [id]: true }))
+    try {
+      await podcastService.cambiarEstado(id, nuevoEstado)
+      toast.success(`Estado cambiado a ${ESTADO_LABELS[nuevoEstado]?.label || nuevoEstado}`)
+    } catch { toast.error("Error al cambiar estado") }
+    finally { setSavingMap(prev => ({ ...prev, [id]: false })) }
+  }
+
   return (
     <motion.div key="table" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4">
       <div className="border rounded-[1.5rem] overflow-hidden shadow-sm bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -74,10 +88,17 @@ export function PodcastTable({ reservas, onEdit, onDelete, onRegistrarPago, onSe
                               ? "Asignado"
                               : "—"}
                       </td>
-                      <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_LABELS[r.estado]?.color || "bg-gray-100")}>
-                          {ESTADO_LABELS[r.estado]?.label || r.estado}
-                        </span>
+                      <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }} onClick={e => e.stopPropagation()}>
+                        <select
+                          value={r.estado}
+                          onChange={e => handleCambiarEstado(e, r.id, e.target.value)}
+                          disabled={savingMap[r.id]}
+                          className={cn("px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer", savingMap[r.id] ? "opacity-50" : "", ESTADO_LABELS[r.estado]?.color || "bg-gray-100")}
+                        >
+                          {Object.entries(ESTADO_LABELS).map(([val, s]) => (
+                            <option key={val} value={val}>{s.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="p-3 border-r" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                         {r.pago_registrado ? (

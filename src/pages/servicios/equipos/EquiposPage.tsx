@@ -8,7 +8,7 @@ import {
   InformationCircleIcon,
   Home02Icon,
 } from "@hugeicons/core-free-icons"
-import { Trash2, Plus } from "lucide-react"
+import { Trash2, Plus, ChevronDown } from "lucide-react"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { COLORS } from "@/lib/constants"
 import { cn, getStorageUrl } from "@/lib/utils"
@@ -28,6 +28,12 @@ const STATUS_LABELS: Record<string, string> = {
   mantenimiento: "En mantenimiento",
 }
 
+const STATUS_DOT: Record<string, string> = {
+  disponible: "bg-emerald-500",
+  alquilado: "bg-amber-500",
+  mantenimiento: "bg-red-500",
+}
+
 export function EquiposPage() {
   const navigate = useNavigate()
   const [equipos, setEquipos] = useState<Equipo[]>([])
@@ -35,6 +41,7 @@ export function EquiposPage() {
   const [search, setSearch] = useState("")
   const [filtroEstado, setFiltroEstado] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [estadoMenu, setEstadoMenu] = useState<string | null>(null)
 
   const loadEquipos = async () => {
     try {
@@ -76,6 +83,15 @@ export function EquiposPage() {
     navigate(`/servicios/equipos/nuevo-alquiler/${equipo.id}`)
   }
 
+  const handleCambiarEstado = async (equipo: Equipo, nuevoEstado: Equipo["estado"]) => {
+    if (nuevoEstado === equipo.estado) return
+    try {
+      await equiposService.updateEquipo(equipo.id, { estado: nuevoEstado })
+      toast.success(`Equipo ${STATUS_LABELS[nuevoEstado].toLowerCase()}`)
+      loadEquipos()
+    } catch { toast.error("Error al cambiar estado") }
+  }
+
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
       <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -94,12 +110,12 @@ export function EquiposPage() {
         </div>
       </header>
 
-      <div className="shrink-0 px-8 py-3 border-b bg-white/50 flex items-center gap-3 flex-wrap" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+      <div className="shrink-0 px-8 py-3 border-b bg-gray-100/70 flex items-center gap-3 flex-wrap" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar equipo..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar equipo..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-amber-500/20" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
         </div>
-        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="px-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="px-4 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <option value="">Todos los estados</option>
           <option value="disponible">Disponible</option>
           <option value="alquilado">Alquilado</option>
@@ -118,36 +134,67 @@ export function EquiposPage() {
             <p className="text-xs opacity-20 max-w-[280px]">Registra equipos para comenzar a gestionar alquileres.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
             {equipos.map((eq, i) => (
               <motion.div key={eq.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                className="bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all group" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                className="bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <div className="relative aspect-[16/10] bg-gray-100 rounded-t-2xl">
                   {eq.foto_url ? (
-                    <img src={getStorageUrl(eq.foto_url)} alt={eq.nombre} className="w-full h-full object-cover" />
+                    <img src={getStorageUrl(eq.foto_url)} alt={eq.nombre} className="w-full h-full object-cover rounded-t-2xl" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center"><HugeiconsIcon icon={Home02Icon} size={40} className="opacity-15" style={{ color: COLORS.CHARCOAL }} /></div>
+                    <div className="w-full h-full flex items-center justify-center rounded-t-2xl"><HugeiconsIcon icon={Home02Icon} size={40} className="opacity-15" style={{ color: COLORS.CHARCOAL }} /></div>
                   )}
-                  <span className={cn("absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", STATUS_COLORS[eq.estado] || "bg-gray-100")}>
-                    {STATUS_LABELS[eq.estado] || eq.estado}
-                    {eq.estado === "disponible" && <span className="ml-1.5 inline-block size-1.5 rounded-full bg-emerald-500" />}
-                  </span>
+                  <div className="absolute top-3 right-3">
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setEstadoMenu(estadoMenu === eq.id ? null : eq.id) }}
+                      className={cn("relative z-30 flex items-center justify-center gap-1 whitespace-nowrap min-w-[116px] px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border shadow-md outline-none", STATUS_COLORS[eq.estado] || "bg-gray-100")}
+                    >
+                      {STATUS_LABELS[eq.estado]}
+                      <ChevronDown size={10} strokeWidth={3} />
+                    </button>
+                    {estadoMenu === eq.id && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setEstadoMenu(null)} />
+                        <div className="absolute right-0 top-full mt-2 z-40 min-w-[150px] bg-white rounded-xl border shadow-xl p-1" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                          {Object.entries(STATUS_LABELS).map(([val, label]) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => { setEstadoMenu(null); handleCambiarEstado(eq, val as Equipo["estado"]) }}
+                              className={cn("flex items-center gap-2 w-full px-2.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-left", eq.estado === val ? "bg-gray-100" : "hover:bg-gray-50")}
+                            >
+                              <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT[val])} />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-4">
                   <div>
-                    <h3 className="text-sm font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>{eq.nombre}</h3>
-                    {eq.descripcion && <p className="text-[10px] opacity-40 mt-0.5 line-clamp-2">{eq.descripcion}</p>}
+                    <h3 className="text-base font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>{eq.nombre}</h3>
+                    {eq.descripcion && <p className="text-[11px] leading-relaxed opacity-40 mt-0.5 line-clamp-2">{eq.descripcion}</p>}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-black" style={{ color: COLORS.ACCENT }}>${eq.precio_diario}<span className="text-[10px] font-medium opacity-50">/día</span></span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="flex items-baseline gap-0.5 text-lg font-black" style={{ color: COLORS.ACCENT }}>${eq.precio_diario}<span className="text-[11px] font-medium opacity-50">/día</span></span>
+                    <div className="flex gap-1.5">
                       <button onClick={() => navigate(`/servicios/equipos/${eq.id}/editar`)} className="size-7 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10" title="Editar"><HugeiconsIcon icon={Edit01Icon} size={12} /></button>
                       <button onClick={() => setDeleteConfirm(eq.id)} className="size-7 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100" title="Eliminar"><Trash2 size={12} className="text-red-500" /></button>
                     </div>
                   </div>
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex gap-2">
                     <button onClick={() => openDetail(eq)} className="flex-1 py-2 rounded-xl text-[10px] font-bold border hover:bg-gray-50 transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE }}>Historial</button>
-                    <button onClick={() => openAlquiler(eq)} disabled={eq.estado !== "disponible"} className={cn("flex-1 py-2 rounded-xl text-[10px] font-bold text-white transition-all", eq.estado === "disponible" ? "bg-amber-500 hover:bg-amber-600" : "bg-gray-300 cursor-not-allowed")}>Alquilar</button>
+                    <button
+                      onClick={() => openAlquiler(eq)}
+                      disabled={eq.estado !== "disponible"}
+                      title={eq.estado === "disponible" ? "Alquilar equipo" : "Equipo no disponible para alquiler"}
+                      className={cn("flex-1 py-2 rounded-xl text-[10px] font-bold text-white transition-all", eq.estado === "disponible" ? "bg-amber-500 hover:bg-amber-600" : "bg-gray-300 cursor-not-allowed")}
+                    >
+                      {eq.estado === "disponible" ? "Alquilar" : "No disponible"}
+                    </button>
                   </div>
                 </div>
               </motion.div>

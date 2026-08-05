@@ -386,7 +386,7 @@ export function AprobacionSolicitudPage() {
               Esta solicitud ya fue procesada — Estado: <span className="font-bold capitalize">{adjacent.stale_estado?.replace(/_/g, " ") || "—"}</span>
             </span>
             {adjacent.first_id && (
-              <button onClick={() => navigateTo(adjacent.first_id)}
+              <button onClick={() => navigateTo(adjacent.first_id!)}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors hover:bg-amber-100"
                 style={{ borderColor: "oklch(0.85 0.12 80)", color: "oklch(0.5 0.1 70)" }}>
                 Ir a siguiente pendiente
@@ -439,10 +439,10 @@ export function AprobacionSolicitudPage() {
                   saveEditPago={saveEditPago} cancelEditPago={cancelEditPago} savingPagoEdit={savingPagoEdit}
                   comprobanteRef={comprobanteRef} handleUploadComprobante={handleUploadComprobante}
                   uploadingComprobante={uploadingComprobante} expandedComprobante={expandedComprobante}
-                  setExpandedComprobante={setExpandedComprobante} deleteArchivoModal={deleteArchivoModal}
+                  setExpandedComprobante={setExpandedComprobante}
                   setDeleteArchivoModal={setDeleteArchivoModal} deletingComprobante={deletingComprobante}
                   setExpandedImageUrl={setExpandedImageUrl} pagoRef={pagoRef} getCursoNombre={getCursoNombre}
-                  montoValido={montoValido} setMontoValido={setMontoValido}
+                  setMontoValido={setMontoValido}
                   setTotalPrecioModulos={setTotalPrecioModulos} handleApprove={handleApprove} setSelected={setSelected} />
               )}
               {activeTab === "documento" && (

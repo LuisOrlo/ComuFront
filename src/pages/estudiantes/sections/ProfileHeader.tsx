@@ -3,7 +3,7 @@ import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PencilEdit01Icon, Mail01Icon, SmartPhone01Icon,
-  SaveIcon, Cancel01Icon, CalendarIcon, MapPinIcon
+  SaveIcon, Cancel01Icon, MapPinIcon
 } from "@hugeicons/core-free-icons"
 import { FinancialStatusBadge } from "../components/FinancialStatusBadge"
 import { COLORS } from "@/lib/constants"

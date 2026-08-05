@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -7,7 +8,8 @@ import {
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
-import type { ReservaPodcast } from "@/services/podcast.service"
+import { podcastService, type ReservaPodcast } from "@/services/podcast.service"
+import { toast } from "sonner"
 
 const ESTADO_LABELS: Record<string, { label: string; color: string }> = {
   pendiente: { label: "Pendiente", color: "bg-amber-100 text-amber-700 border-amber-200" },
@@ -24,6 +26,26 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
   onClose: () => void
   reserva: ReservaPodcast | null
 }) {
+  const [estadoLocal, setEstadoLocal] = useState(reserva?.estado || "pendiente")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && reserva) setEstadoLocal(reserva.estado as typeof estadoLocal)
+  }, [isOpen, reserva])
+
+  const handleCambiarEstado = async (nuevoEstado: string) => {
+    if (nuevoEstado === estadoLocal) return
+    setSaving(true)
+    try {
+      await podcastService.cambiarEstado(reserva!.id, nuevoEstado)
+      setEstadoLocal(nuevoEstado as typeof estadoLocal)
+      toast.success(`Estado cambiado a ${ESTADO_LABELS[nuevoEstado]?.label || nuevoEstado}`)
+    } catch { toast.error("Error al cambiar estado") }
+    finally { setSaving(false) }
+  }
+
+  const estiloActual = ESTADO_LABELS[estadoLocal] || ESTADO_LABELS.pendiente
+
   return (
     <AnimatePresence>
       {isOpen && reserva && (
@@ -80,11 +102,16 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
               </div>
               <div className="p-4 rounded-2xl bg-gray-50 space-y-2">
                 <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Estado</p>
-                <div className="flex items-center gap-2">
-                  <span className={cn("inline-block px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border", ESTADO_LABELS[reserva.estado]?.color || "bg-gray-100")}>
-                    {ESTADO_LABELS[reserva.estado]?.label || reserva.estado}
-                  </span>
-                </div>
+                <select
+                  value={estadoLocal}
+                  onChange={e => handleCambiarEstado(e.target.value)}
+                  disabled={saving}
+                  className={cn("px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-opacity", saving ? "opacity-50" : "", estiloActual.color)}
+                >
+                  {Object.entries(ESTADO_LABELS).map(([val, s]) => (
+                    <option key={val} value={val}>{s.label}</option>
+                  ))}
+                </select>
               </div>
               {reserva.notas && (
                 <div className="p-4 rounded-2xl bg-gray-50 space-y-1">

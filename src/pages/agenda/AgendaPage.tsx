@@ -36,6 +36,7 @@ function toLocalDateStr(date: Date): string {
 export function AgendaPage() {
   const calendarRef = useRef<FullCalendar>(null)
   const [activeTypes, setActiveTypes] = useState<string[]>([])
+  const [eventCount, setEventCount] = useState(0)
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
   const [currentView, setCurrentView] = useState("dayGridMonth")
   const [currentTitle, setCurrentTitle] = useState("")
@@ -52,6 +53,10 @@ export function AgendaPage() {
     })
   }, [])
 
+  const handleClearAll = useCallback(() => {
+    setActiveTypes([])
+  }, [])
+
   const fetchEvents = useCallback(
     async ({ start, end }: { start: Date; end: Date }, successCallback: (events: object[]) => void, failureCallback: (error: Error) => void) => {
       setLoading(true)
@@ -63,6 +68,7 @@ export function AgendaPage() {
           params.tipos = activeTypes
         }
         const response = await agendaService.getEvents(params as Parameters<typeof agendaService.getEvents>[0])
+        setEventCount(response.meta.total)
         const fullCalendarEvents = response.data.map((event) => {
           const startDate = new Date(`${event.fecha}T${event.hora_inicio}`)
           const endDate = new Date(`${event.fecha}T${event.hora_fin}`)
@@ -72,9 +78,9 @@ export function AgendaPage() {
             start: startDate,
             end: endDate,
             allDay: false,
-            backgroundColor: event.color,
+            backgroundColor: "oklch(0.97 0 0)",
             borderColor: event.color,
-            textColor: "#ffffff",
+            textColor: COLORS.CHARCOAL,
             extendedProps: { ...event },
           }
         })
@@ -228,7 +234,7 @@ export function AgendaPage() {
         
         {/* FILTERS */}
         <div className="flex flex-wrap items-center gap-2">
-          <AgendaLegend activeTypes={activeTypes} onToggle={handleToggleType} />
+          <AgendaLegend activeTypes={activeTypes} eventCount={eventCount} onToggle={handleToggleType} onClearAll={handleClearAll} />
         </div>
       </header>
 
@@ -273,24 +279,28 @@ export function AgendaPage() {
             }
             .fc .fc-event {
               border-radius: 8px !important;
-              padding: 4px 6px !important;
+              padding: 4px 6px 4px 10px !important;
               font-size: 11px !important;
               font-weight: 600 !important;
               border: none !important;
+              border-left: 4px solid !important;
               cursor: pointer !important;
               box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+              color: ${COLORS.CHARCOAL} !important;
             }
             .fc .fc-event:hover {
-              opacity: 0.9;
+              background-color: oklch(0.94 0 0) !important;
               box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
             }
             .fc .fc-daygrid-event {
               border-radius: 6px !important;
-              padding: 2px 5px !important;
+              padding: 2px 5px 2px 10px !important;
               font-size: 10px !important;
               white-space: nowrap !important;
               overflow: hidden !important;
               text-overflow: ellipsis !important;
+              border-left: 4px solid !important;
+              color: ${COLORS.CHARCOAL} !important;
             }
             .fc .fc-day-today {
               background-color: ${COLORS.ACCENT}08 !important;

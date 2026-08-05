@@ -42,6 +42,7 @@ export function HistorialPodcastPage() {
   const [reservas, setReservas] = useState<ReservaPodcast[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState("todos")
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     podcastService.getReservas()
@@ -60,6 +61,16 @@ export function HistorialPodcastPage() {
     if (r.persona) return `${r.persona.nombres} ${r.persona.apellidos}`
     if (r.cliente_externo) return `${r.cliente_externo.nombres} ${r.cliente_externo.apellidos || ""}`
     return "—"
+  }
+
+  const handleCambiarEstado = async (id: string, nuevoEstado: string) => {
+    setSavingMap(prev => ({ ...prev, [id]: true }))
+    try {
+      await podcastService.cambiarEstado(id, nuevoEstado)
+      toast.success(`Estado cambiado a ${ESTADO_LABELS[nuevoEstado] || nuevoEstado}`)
+      setReservas(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado as ReservaPodcast["estado"] } : r))
+    } catch { toast.error("Error al cambiar estado") }
+    finally { setSavingMap(prev => ({ ...prev, [id]: false })) }
   }
 
   const stats = {
@@ -212,12 +223,16 @@ export function HistorialPodcastPage() {
                             </p>
                           </div>
                         </div>
-                        <span className={cn(
-                          "shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border",
-                          ESTADO_COLORS[r.estado] || "bg-gray-100"
-                        )}>
-                          {ESTADO_LABELS[r.estado] || r.estado}
-                        </span>
+                        <select
+                          value={r.estado}
+                          onChange={e => handleCambiarEstado(r.id, e.target.value)}
+                          disabled={savingMap[r.id]}
+                          className={cn("shrink-0 px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-opacity", savingMap[r.id] ? "opacity-50" : "", ESTADO_COLORS[r.estado] || "bg-gray-100")}
+                        >
+                          {Object.entries(ESTADO_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

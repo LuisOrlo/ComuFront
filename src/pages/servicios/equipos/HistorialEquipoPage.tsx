@@ -1,8 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate, useParams } from "react-router"
+import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
+  ArrowRight02Icon,
+  Search01Icon,
+  Cancel01Icon,
   Home02Icon,
   Calendar03Icon,
   UserIcon,
@@ -11,10 +15,13 @@ import {
   Alert02Icon,
   CheckmarkCircle04Icon,
   InformationCircleIcon,
+  Image01Icon,
 } from "@hugeicons/core-free-icons"
+import { X } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { equiposService, type Equipo, type AlquilerEquipo } from "@/services/equipos.service"
+import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { toast } from "sonner"
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -48,18 +55,43 @@ export function HistorialEquipoPage() {
   const [equipo, setEquipo] = useState<Equipo | null>(null)
   const [alquileres, setAlquileres] = useState<AlquilerEquipo[]>([])
   const [loading, setLoading] = useState(true)
+  const [zoomFoto, setZoomFoto] = useState<string | null>(null)
+
+  const [cedula, setCedula] = useState("")
+  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState({ total: 0, last_page: 1, current_page: 1, per_page: 5 })
+
+  const [devolverOpen, setDevolverOpen] = useState(false)
+  const [alquilerADevolver, setAlquilerADevolver] = useState<AlquilerEquipo | null>(null)
+  const [devolverForm, setDevolverForm] = useState({ observaciones: "" })
+  const [fotoRetornoFile, setFotoRetornoFile] = useState<File | null>(null)
+  const [fotoRetornoPreview, setFotoRetornoPreview] = useState<string | null>(null)
+
+  const loadData = useCallback(async () => {
+    if (!id) return
+    setLoading(true)
+    try {
+      const params: { equipo_id: string; page: number; per_page: number; cedula?: string } = {
+        equipo_id: id,
+        page,
+        per_page: 5,
+      }
+      if (cedula.trim()) params.cedula = cedula.trim()
+      const [eq, result] = await Promise.all([
+        equiposService.getEquipo(id),
+        equiposService.getAlquileresConMeta(params),
+      ])
+      setEquipo(eq)
+      setAlquileres(result.data)
+      setMeta(result.meta)
+    } catch { toast.error("Error al cargar historial") }
+    finally { setLoading(false) }
+  }, [id, page, cedula])
 
   useEffect(() => {
     if (!id) { navigate("/servicios/equipos"); return }
-
-    Promise.all([
-      equiposService.getEquipo(id),
-      equiposService.getAlquileres({ equipo_id: id }),
-    ])
-      .then(([eq, als]) => { setEquipo(eq); setAlquileres(als) })
-      .catch(() => toast.error("Error al cargar historial"))
-      .finally(() => setLoading(false))
-  }, [id, navigate])
+    loadData()
+  }, [id, navigate, loadData])
 
   const getResponsable = (a: AlquilerEquipo) => {
     if (a.persona) return `${a.persona.nombres} ${a.persona.apellidos}`
@@ -67,8 +99,46 @@ export function HistorialEquipoPage() {
     return "—"
   }
 
+  const openDevolverModal = (a: AlquilerEquipo) => {
+    setAlquilerADevolver(a)
+    setDevolverForm({ observaciones: "" })
+    setFotoRetornoFile(null)
+    setFotoRetornoPreview(null)
+    setDevolverOpen(true)
+  }
+
+  const handleEntregar = async (id: string) => {
+    try {
+      await equiposService.entregarEquipo(id)
+      toast.success("Equipo marcado como entregado")
+      loadData()
+    } catch { toast.error("Error al registrar entrega") }
+  }
+
+  const handleDevolver = async () => {
+    if (!alquilerADevolver) return
+    try {
+      const payload = fotoRetornoFile ? (() => {
+        const fd = new FormData()
+        fd.append("foto_retorno", fotoRetornoFile)
+        if (devolverForm.observaciones) fd.append("observaciones", devolverForm.observaciones)
+        return fd
+      })() : devolverForm
+      await equiposService.devolverEquipo(alquilerADevolver.id, payload)
+      toast.success("Equipo devuelto correctamente")
+      setDevolverOpen(false)
+      setAlquilerADevolver(null)
+      setFotoRetornoFile(null)
+      setFotoRetornoPreview(null)
+      loadData()
+    } catch { toast.error("Error al registrar devolución") }
+  }
+
+  const handleSearch = () => { setPage(1) }
+  const handleClearSearch = () => { setCedula(""); setPage(1) }
+
   const stats = {
-    total: alquileres.length,
+    total: meta.total,
     activos: alquileres.filter(a => a.estado === "activo").length,
     vencidos: alquileres.filter(a => a.estado === "vencido" || (a.estado === "activo" && new Date(a.fecha_devolucion_esperada) < new Date())).length,
     devueltos: alquileres.filter(a => a.estado === "devuelto").length,
@@ -168,6 +238,27 @@ export function HistorialEquipoPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-sm">
+              <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
+              <input
+                type="text"
+                value={cedula}
+                onChange={e => setCedula(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleSearch() }}
+                placeholder="Buscar por número de cédula..."
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20"
+                style={{ borderColor: COLORS.BORDER_SUBTLE }}
+              />
+              {cedula && (
+                <button onClick={handleClearSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-30 hover:opacity-100 transition-opacity">
+                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                </button>
+              )}
+            </div>
+            <button onClick={handleSearch} className="px-4 py-2.5 rounded-xl text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 shrink-0" style={{ backgroundColor: COLORS.ACCENT }}>Buscar</button>
+          </div>
+
           {alquileres.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
               <div className="size-20 rounded-2xl bg-gray-100 flex items-center justify-center">
@@ -177,6 +268,7 @@ export function HistorialEquipoPage() {
               <p className="text-xs opacity-20 max-w-[280px]">Este equipo aún no ha sido alquilado.</p>
             </div>
           ) : (
+            <>
             <div className="space-y-3">
               {alquileres.map(a => {
                 const isOverdue = (a.estado === "activo" || a.estado === "entregado") && new Date(a.fecha_devolucion_esperada) < new Date()
@@ -254,6 +346,23 @@ export function HistorialEquipoPage() {
                         </div>
                       </div>
 
+                      {(a.estado === "pendiente" || a.estado === "activo" || a.estado === "entregado" || a.estado === "vencido") && (
+                        <div className="flex gap-2 pt-1">
+                          {a.estado === "pendiente" && (
+                            <button onClick={() => handleEntregar(a.id)} className="flex-1 py-2 rounded-xl text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95" style={{ backgroundColor: COLORS.ACCENT }}>
+                              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} className="inline mr-1" />
+                              Marcar como Entregado
+                            </button>
+                          )}
+                          {(a.estado === "activo" || a.estado === "entregado" || a.estado === "vencido") && (
+                            <button onClick={() => openDevolverModal(a)} className="flex-1 py-2 rounded-xl text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95" style={{ backgroundColor: "#059669" }}>
+                              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} className="inline mr-1" />
+                              Registrar Devolución
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       {a.fecha_recepcion && (
                         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-green-50">
                           <div className="size-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
@@ -273,23 +382,31 @@ export function HistorialEquipoPage() {
                           a.foto_salida_url && a.foto_retorno_url ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"
                         )}>
                           {a.foto_salida_url && (
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1.5 flex items-center gap-1.5">
+                            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50/70">
+                              <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 flex items-center gap-1.5">
                                 <span className="size-1.5 rounded-full bg-amber-500" />
                                 Foto salida
                               </p>
-                              <img src={a.foto_salida_url} alt="Salida"
-                                className="w-full aspect-video object-cover rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                              <button type="button" onClick={() => setZoomFoto(a.foto_salida_url!)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-dashed text-[10px] font-bold bg-white hover:bg-gray-100 hover:border-amber-400/60 transition-all group"
+                                style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                <HugeiconsIcon icon={Image01Icon} size={13} className="opacity-40 group-hover:opacity-60 transition-opacity" />
+                                <span className="opacity-60 group-hover:opacity-80 transition-opacity">Ver foto de salida</span>
+                              </button>
                             </div>
                           )}
                           {a.foto_retorno_url && (
-                            <div>
-                              <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1.5 flex items-center gap-1.5">
+                            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50/70">
+                              <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 flex items-center gap-1.5">
                                 <span className="size-1.5 rounded-full bg-green-500" />
                                 Foto retorno
                               </p>
-                              <img src={a.foto_retorno_url} alt="Retorno"
-                                className="w-full aspect-video object-cover rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                              <button type="button" onClick={() => setZoomFoto(a.foto_retorno_url!)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-dashed text-[10px] font-bold bg-white hover:bg-gray-100 hover:border-green-400/60 transition-all group"
+                                style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                <HugeiconsIcon icon={Image01Icon} size={13} className="opacity-40 group-hover:opacity-60 transition-opacity" />
+                                <span className="opacity-60 group-hover:opacity-80 transition-opacity">Ver foto de retorno</span>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -309,9 +426,70 @@ export function HistorialEquipoPage() {
                 )
               })}
             </div>
+            {meta.last_page > 1 && (
+              <div className="flex items-center justify-between gap-4 pt-4">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
+                  <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
+                  Anterior
+                </button>
+                <span className="text-xs font-medium opacity-40">
+                  Página {meta.current_page} de {meta.last_page}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(meta.last_page, p + 1))}
+                  disabled={page >= meta.last_page}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
+                  Siguiente
+                  <HugeiconsIcon icon={ArrowRight02Icon} size={13} />
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {devolverOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDevolverOpen(false)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+              <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}><h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registrar Devolución</h2><button onClick={() => setDevolverOpen(false)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}><X size={18} /></button></div>
+              <div className="p-6 space-y-4">
+                <div className="space-y-1"><label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Foto retorno</label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none hover:bg-gray-100 transition-colors text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        {fotoRetornoFile ? fotoRetornoFile.name : "Seleccionar archivo"}
+                      </div>
+                      <input type="file" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) { setFotoRetornoFile(file); setFotoRetornoPreview(URL.createObjectURL(file)) } }} />
+                    </label>
+                    {fotoRetornoPreview && (
+                      <div className="size-14 rounded-xl overflow-hidden shrink-0 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <img src={fotoRetornoPreview} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1"><label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Observaciones</label><textarea value={devolverForm.observaciones} onChange={e => setDevolverForm({ ...devolverForm, observaciones: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none resize-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} /></div>
+              </div>
+              <div className="px-6 py-5 bg-gray-50 border-t flex justify-end gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <button onClick={() => setDevolverOpen(false)} className="px-6 py-3 rounded-xl border text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cancelar</button>
+                <button onClick={handleDevolver} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>Confirmar Devolución</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {zoomFoto && <ImageZoom url={zoomFoto} onClose={() => setZoomFoto(null)} />}
     </div>
   )
 }

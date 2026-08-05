@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Search01Icon, ArrowRight02Icon, ArrowUp01Icon, ArrowDown01Icon,
+  Search01Icon, ArrowRight02Icon, ArrowUp01Icon, ArrowDown01Icon, Clock04Icon,
 } from "@hugeicons/core-free-icons"
 import {
   useReactTable,

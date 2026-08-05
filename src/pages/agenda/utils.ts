@@ -7,6 +7,7 @@ const EVENT_TYPES: Record<string, { label: string; color: string }> = {
   PODCAST: { label: "Podcast", color: "#ec4899" },
   STREAMING: { label: "Streaming", color: "#06b6d4" },
   ASESORIA: { label: "Asesoría", color: "#8b5cf6" },
+  RADIO: { label: "Radio", color: "#ef4444" },
 }
 
 export const DAYS = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO']
@@ -19,6 +20,7 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   PODCAST: 'PODCAST',
   STREAMING: 'STREAMING',
   ASESORIA: 'ASESORÍA',
+  RADIO: 'RADIO',
 }
 
 export function formatDay(date: Date): string {

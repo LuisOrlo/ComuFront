@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon, CallIcon, Mail01Icon, Location01Icon, Calendar01Icon, Briefcase01Icon, IdIcon, HeartIcon } from "@hugeicons/core-free-icons"
+import { UserGroupIcon, CallIcon, Mail01Icon, Location01Icon, Briefcase01Icon, IdIcon, HeartIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { ClienteExterno } from "@/services/clientes.service"
 
