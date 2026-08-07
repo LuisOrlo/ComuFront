@@ -5,7 +5,7 @@ import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpenIcon, Add01Icon, Search01Icon,
-  ArrowRight01Icon, Edit01Icon, Delete01Icon,
+  ViewIcon, Edit01Icon, Delete01Icon,
   UserGroupIcon, CalendarIcon, CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -133,21 +133,21 @@ export function TalleresPage() {
       </div>
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 py-6 space-y-6">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: "Próximos", value: (stats as any).proximos ?? 0, icon: CalendarIcon, color: "oklch(0.55 0.18 72)" },
             { label: "Completados", value: (stats as any).completados ?? 0, icon: CheckmarkCircle01Icon, color: "oklch(0.45 0.12 140)" },
             { label: "Inscritos", value: stats.total_inscritos, icon: UserGroupIcon, color: "oklch(0.55 0.18 250)" },
             { label: "Total", value: (stats as any).total ?? 0, icon: BookOpenIcon, color: CHARCOAL },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border p-4" style={{ borderColor: BORDER }}>
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${s.color} 12%, transparent)` }}>
-                  <HugeiconsIcon icon={s.icon} size={18} style={{ color: s.color }} />
+            <div key={s.label} className="bg-white rounded-xl border p-3 sm:p-4" style={{ borderColor: BORDER }}>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="size-8 sm:size-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${s.color} 12%, transparent)` }}>
+                  <HugeiconsIcon icon={s.icon} size={16} className="sm:size-[18px]" style={{ color: s.color }} />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold" style={{ color: CHARCOAL }}>{s.value}</p>
-                  <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>{s.label}</p>
+                  <p className="text-lg sm:text-2xl font-bold" style={{ color: CHARCOAL }}>{s.value}</p>
+                  <p className="text-[10px] sm:text-[11px] font-medium" style={{ color: TEXT_MUTED }}>{s.label}</p>
                 </div>
               </div>
             </div>
@@ -218,8 +218,7 @@ export function TalleresPage() {
                 </thead>
                 <tbody>
                   {talleres.map(t => (
-                    <tr key={t.id} className="border-b hover:bg-gray-50/50 transition-colors cursor-pointer" style={{ borderColor: BORDER }}
-                      onClick={() => navigate(`/talleres/${t.id}`)}>
+                    <tr key={t.id} className="border-b hover:bg-gray-50/50 transition-colors" style={{ borderColor: BORDER }}>
                       <td className="px-5 py-3.5">
                         <div>
                           <p className="font-semibold" style={{ color: CHARCOAL }}>{t.nombre}</p>
@@ -272,7 +271,7 @@ export function TalleresPage() {
                           </button>)}
                           <button onClick={() => navigate(`/talleres/${t.id}`)}
                             className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: ACCENT }}>
-                            <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+                            <HugeiconsIcon icon={ViewIcon} size={14} />
                           </button>
                         </div>
                       </td>

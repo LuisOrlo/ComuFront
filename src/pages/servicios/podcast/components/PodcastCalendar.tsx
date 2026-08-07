@@ -6,6 +6,14 @@ import type { ReservaPodcast } from "@/services/podcast.service"
 function fmtDate(d: Date) { return d.toISOString().split("T")[0] }
 function fmtHora(h: string) { return h.substring(0, 5) }
 
+const ESTADO_CAL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  pendiente: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-600" },
+  confirmado: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-600" },
+  en_progreso: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-600" },
+  completado: { bg: "bg-green-50", border: "border-green-200", text: "text-green-600" },
+  cancelado: { bg: "bg-red-50", border: "border-red-200", text: "text-red-600" },
+}
+
 export function PodcastCalendar({ weekDays, horas, reservas, onSelect }: {
   weekDays: Date[]
   horas: number[]
@@ -16,7 +24,7 @@ export function PodcastCalendar({ weekDays, horas, reservas, onSelect }: {
   return (
     <motion.div key="sw" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4">
       <div className="border rounded-[1.5rem] overflow-hidden shadow-sm bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80 sticky top-0 z-10" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="p-2.5 text-center border-r flex items-center justify-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Hora</span>
           </div>
@@ -49,11 +57,12 @@ export function PodcastCalendar({ weekDays, horas, reservas, onSelect }: {
                         onClick={() => onSelect(r)}
                         className={cn(
                           "absolute inset-x-0.5 top-0 rounded-xl flex flex-col items-center justify-center gap-px hover:brightness-110 cursor-pointer border z-10",
-                          r.persona_id ? "bg-indigo-50 border-indigo-200" : "bg-emerald-50 border-emerald-200"
+                          (ESTADO_CAL_COLORS[r.estado] || ESTADO_CAL_COLORS.pendiente).bg,
+                          (ESTADO_CAL_COLORS[r.estado] || ESTADO_CAL_COLORS.pendiente).border
                         )}
                         style={{ height: `${Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0])) * 50 - 4}px` }}
                       >
-                        <span className={cn("text-[10px] font-bold text-center leading-tight", r.persona_id ? "text-indigo-600" : "text-emerald-600")}>
+                        <span className={cn("text-[10px] font-bold text-center leading-tight", (ESTADO_CAL_COLORS[r.estado] || ESTADO_CAL_COLORS.pendiente).text)}>
                           {fmtHora(r.hora_inicio)}–{fmtHora(r.hora_fin)}
                         </span>
                         <span className="text-[9px] font-semibold opacity-65 text-center leading-tight truncate max-w-full px-1">

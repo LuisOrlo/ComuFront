@@ -252,8 +252,26 @@ export function PagoDetallePage() {
             <DetailRow icon={Money02Icon} label="Método" value={data.metodo_pago} capitalize />
             <DetailRow icon={UserIcon} label="Estudiante" value={getNombreEstudiante()} />
             <DetailRow icon={UserIcon} label="Curso / Taller" value={getCursoNombre()} />
-            {getModuloNombre() && (
-              <DetailRow icon={UserIcon} label="Módulo" value={getModuloNombre()} />
+            {data.tiene_multiples_modulos && data.modulos?.length > 0 ? (
+              <div className="space-y-2">
+                <DetailRow icon={UserIcon} label="Módulos" value={`${data.modulos.length} módulos`} />
+                <div className="pl-9 space-y-1.5">
+                  {data.modulos.map((m: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between text-sm py-1 px-3 rounded-lg bg-gray-50">
+                      <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{m.modulo_nombre}</span>
+                      <span className="font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>${Number(m.monto).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between text-sm py-1 px-3 rounded-lg border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>Total</span>
+                    <span className="font-black" style={{ color: COLORS.ACCENT }}>${Number(data.monto || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              getModuloNombre() && (
+                <DetailRow icon={UserIcon} label="Módulo" value={getModuloNombre()} />
+              )
             )}
           </div>
 

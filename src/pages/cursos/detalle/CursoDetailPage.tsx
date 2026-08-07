@@ -171,10 +171,10 @@ export function CursoDetailPage() {
 
         <div className="max-w-[1100px] mx-auto px-6 py-6 space-y-6">
           {/* Tabs */}
-          <div className="flex gap-1 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="flex gap-1 border-b overflow-x-auto -mx-6 px-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {tabs.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+                className="flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-medium border-b-2 border-b-white transition-all shrink-0 whitespace-nowrap"
                 style={{
                   borderColor: tab === t.key ? COLORS.ACCENT : "transparent",
                   color: tab === t.key ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,

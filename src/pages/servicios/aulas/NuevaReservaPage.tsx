@@ -17,7 +17,7 @@ import {
 import { UserPlus, Loader2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
-import { aulasService, type Aula } from "@/services/aulas.service"
+import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
@@ -55,6 +55,9 @@ export function NuevaReservaPage() {
   const clienteRef = useRef<HTMLDivElement>(null)
 
   const [saving, setSaving] = useState(false)
+
+  const [conflicto, setConflicto] = useState<ReservaAula | null>(null)
+  const [verificandoConflicto, setVerificandoConflicto] = useState(false)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -107,6 +110,32 @@ export function NuevaReservaPage() {
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [])
+
+  useEffect(() => {
+    if (!aulaId || !fechaReserva || !horaInicio || !horaFin || horaFin <= horaInicio) {
+      setConflicto(null)
+      return
+    }
+    let active = true
+    const timer = setTimeout(async () => {
+      setVerificandoConflicto(true)
+      try {
+        const reservas = await aulasService.getReservas({ aula_id: aulaId, fecha_inicio: fechaReserva, fecha_fin: fechaReserva })
+        if (!active) return
+        const conflictoEncontrado = (Array.isArray(reservas) ? reservas : []).find(r =>
+          r.fecha_reserva === fechaReserva &&
+          r.estado !== "cancelado" &&
+          horaInicio < r.hora_fin && horaFin > r.hora_inicio
+        ) || null
+        setConflicto(conflictoEncontrado)
+      } catch {
+        if (active) setConflicto(null)
+      } finally {
+        if (active) setVerificandoConflicto(false)
+      }
+    }, 400)
+    return () => { active = false; clearTimeout(timer) }
+  }, [aulaId, fechaReserva, horaInicio, horaFin])
 
   const calcularPrecio = () => {
     if (!aula || !horaInicio || !horaFin) return 0
@@ -226,7 +255,7 @@ export function NuevaReservaPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-violet-50/20">
+    <div className="flex flex-col h-full bg-gray-50">
       <header className="shrink-0 border-b bg-white/90 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-5">
           <div className="flex items-center gap-4">
@@ -235,8 +264,8 @@ export function NuevaReservaPage() {
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="size-11 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
-                <HugeiconsIcon icon={MatrixIcon} size={20} className="text-white" />
+              <div className="size-11 rounded-2xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: "oklch(0.92 0.03 270)", color: "#7c3aed" }}>
+                <HugeiconsIcon icon={MatrixIcon} size={20} />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>
@@ -302,22 +331,43 @@ export function NuevaReservaPage() {
                 </div>
               </div>
 
+              {verificandoConflicto && (
+                <p className="flex items-center gap-2 text-xs opacity-40" style={{ color: COLORS.TEXT_MUTED }}>
+                  <div className="animate-spin size-3 border-2 border-gray-400 border-t-transparent rounded-full" />
+                  Verificando disponibilidad...
+                </p>
+              )}
+
+              {conflicto && !verificandoConflicto && (
+                <div className="flex items-start gap-3 p-4 rounded-xl border bg-red-50 border-red-200">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={16} style={{ color: "oklch(0.5 0.15 20)" }} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: "oklch(0.5 0.15 20)" }}>Conflicto de horario</p>
+                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.45 0.1 20)" }}>
+                      Ya existe una reserva en este horario: {conflicto.hora_inicio?.substring(0, 5)} – {conflicto.hora_fin?.substring(0, 5)}
+                      {conflicto.persona ? ` (${conflicto.persona.nombres} ${conflicto.persona.apellidos || ""}`.trim() + ")" :
+                       conflicto.cliente_externo ? ` (${conflicto.cliente_externo.nombres} ${conflicto.cliente_externo.apellidos || ""}`.trim() + ")" : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {precioTotal > 0 && (
-                <div className="flex items-center justify-between px-5 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-700 text-white">
+                <div className="flex items-center justify-between px-5 py-4 rounded-2xl border bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-xl bg-white/15 flex items-center justify-center">
-                      <HugeiconsIcon icon={Money01Icon} size={16} />
+                    <div className="size-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.03 270)" }}>
+                      <HugeiconsIcon icon={Money01Icon} size={16} style={{ color: "#7c3aed" }} />
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Precio estimado</p>
-                      <p className="text-sm font-medium opacity-90">
+                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Precio estimado</p>
+                      <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
                         ${Number(aula.precio_hora).toFixed(2)}/hora
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">Total</p>
-                    <p className="text-3xl font-black tracking-tighter">${precioTotal.toFixed(2)}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Total</p>
+                    <p className="text-3xl font-black tracking-tighter" style={{ color: COLORS.CHARCOAL }}>${precioTotal.toFixed(2)}</p>
                   </div>
                 </div>
               )}
@@ -371,8 +421,16 @@ export function NuevaReservaPage() {
                             Buscando...
                           </div>
                         ) : clientesDisponibles.length === 0 ? (
-                          <div className="p-5 text-center text-xs opacity-40">
-                            {clienteSearch.trim().length >= 2 ? "Sin resultados" : "Escribe al menos 2 caracteres para buscar..."}
+                          <div className="p-3">
+                            {clienteSearch.trim().length >= 2 ? (
+                              <button type="button" onClick={() => { setShowNuevoCliente(true); setShowClienteDropdown(false) }}
+                                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-xs font-bold text-emerald-600 transition-colors">
+                                <UserPlus size={14} />
+                                Registrar nuevo cliente "{clienteSearch.trim()}"
+                              </button>
+                            ) : (
+                              <p className="text-xs opacity-40 text-center py-2">Escribe al menos 2 caracteres para buscar...</p>
+                            )}
                           </div>
                         ) : (
                           <div>
@@ -407,6 +465,14 @@ export function NuevaReservaPage() {
                                 </button>
                               )
                             })}
+                            {clienteSearch.trim().length >= 2 && (
+                              <button type="button" onClick={() => { setShowNuevoCliente(true); setShowClienteDropdown(false) }}
+                                className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-emerald-600 hover:bg-emerald-50 transition-colors border-t"
+                                style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                                <UserPlus size={14} />
+                                Registrar nuevo cliente "{clienteSearch.trim()}"
+                              </button>
+                            )}
                           </div>
                         )}
                       </motion.div>
@@ -449,9 +515,10 @@ export function NuevaReservaPage() {
                 className="flex-1 py-3.5 rounded-xl text-sm font-bold border-2 border-gray-200 transition-all hover:bg-gray-50 active:scale-[0.98]">
                 Cancelar
               </button>
-              <button type="submit" disabled={saving}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2.5"
-                style={{ background: "linear-gradient(135deg, #7c3aed, #d946ef)" }}>
+              <button type="submit" disabled={saving || !!conflicto}
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] flex items-center justify-center gap-2.5"
+                style={{ backgroundColor: conflicto ? "#9ca3af" : "#7c3aed" }}
+                title={conflicto ? "Corrige el conflicto de horario antes de confirmar" : undefined}>
                 {saving ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />

@@ -94,7 +94,7 @@ export function AulasGestionPage() {
             <div className="space-y-0.5">
 
               <h1 className="text-2xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-                Gestión de Aulas
+                Controlar aulas
               </h1>
             </div>
           </div>

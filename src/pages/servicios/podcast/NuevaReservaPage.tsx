@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import {
   podcastService,
   type PaquetePodcast,
+  type ReservaPodcast,
 } from "@/services/podcast.service"
 import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
@@ -36,18 +37,11 @@ interface Asignacion {
   persona?: { nombres: string; apellidos: string }
 }
 
-function SectionHeader({ icon, title, color = "violet" }: { icon: typeof ArrowLeft01Icon; title: string; color?: string }) {
-  const colors: Record<string, { bg: string; icon: string }> = {
-    violet: { bg: "oklch(0.92 0.03 270)", icon: "#7c3aed" },
-    emerald: { bg: "oklch(0.92 0.04 160)", icon: "#059669" },
-    amber: { bg: "oklch(0.92 0.04 90)", icon: "#d97706" },
-    purple: { bg: "oklch(0.9 0.04 290)", icon: "#9333ea" },
-  }
-  const c = colors[color] || colors.violet
+function SectionHeader({ icon: Icon, title }: { icon: typeof ArrowLeft01Icon; title: string }) {
   return (
     <h2 className="text-xs font-bold flex items-center gap-2.5 mb-4 tracking-wide" style={{ color: COLORS.CHARCOAL }}>
-      <span className="size-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: c.bg, color: c.icon }}>
-        <HugeiconsIcon icon={icon} size={14} />
+      <span className="size-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.92 0.03 270)", color: "#7c3aed" }}>
+        <HugeiconsIcon icon={Icon} size={14} />
       </span>
       {title}
     </h2>
@@ -64,6 +58,9 @@ export function NuevaReservaPage() {
   const [titulo, setTitulo] = useState("")
   const [notas, setNotas] = useState("")
   const [saving, setSaving] = useState(false)
+  const [conflicto, setConflicto] = useState<ReservaPodcast | null>(null)
+  const [verificandoConflicto, setVerificandoConflicto] = useState(false)
+  const [showNotas, setShowNotas] = useState(false)
   const [paquetes, setPaquetes] = useState<PaquetePodcast[]>([])
   const [loadingPaquetes, setLoadingPaquetes] = useState(true)
 
@@ -150,6 +147,33 @@ export function NuevaReservaPage() {
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [])
+
+  useEffect(() => {
+    if (!fecha || !horaInicio || !horaFin || horaFin <= horaInicio) {
+      setConflicto(null)
+      return
+    }
+    let active = true
+    const timer = setTimeout(async () => {
+      setVerificandoConflicto(true)
+      try {
+        const data = await podcastService.getReservas({ fecha_inicio: fecha, fecha_fin: fecha })
+        if (!active) return
+        const reservas = Array.isArray(data) ? data : []
+        const conflictoEncontrado = reservas.find((r: ReservaPodcast) =>
+          r.fecha_reserva === fecha &&
+          r.estado !== "cancelado" &&
+          horaInicio < r.hora_fin && horaFin > r.hora_inicio
+        ) || null
+        setConflicto(conflictoEncontrado)
+      } catch {
+        if (active) setConflicto(null)
+      } finally {
+        if (active) setVerificandoConflicto(false)
+      }
+    }, 400)
+    return () => { active = false; clearTimeout(timer) }
+  }, [fecha, horaInicio, horaFin])
 
   const selectCliente = (opt: ClienteOption) => {
     setClienteId(opt.id)
@@ -271,7 +295,7 @@ export function NuevaReservaPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-violet-50/20">
+    <div className="flex flex-col h-full bg-gray-50">
       <header className="shrink-0 border-b bg-white/90 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-4xl mx-auto px-6 lg:px-8 py-5">
           <div className="flex items-center gap-4">
@@ -280,8 +304,8 @@ export function NuevaReservaPage() {
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="size-11 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
-                <HugeiconsIcon icon={Microphone} size={20} className="text-white" />
+              <div className="size-11 rounded-2xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: "oklch(0.92 0.03 270)", color: "#7c3aed" }}>
+                <HugeiconsIcon icon={Microphone} size={20} />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>
@@ -301,7 +325,7 @@ export function NuevaReservaPage() {
           <form onSubmit={handleSubmit} className="space-y-7">
             {/* Sección: Paquete y Horario */}
             <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={Microphone} title="Paquete y Horario" color="violet" />
+              <SectionHeader icon={Microphone} title="Paquete y Horario" />
 
               <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
@@ -362,24 +386,42 @@ export function NuevaReservaPage() {
                 </div>
               </div>
 
+              {verificandoConflicto && (
+                <p className="flex items-center gap-2 text-xs opacity-40">
+                  <div className="animate-spin size-3 border-2 border-gray-400 border-t-transparent rounded-full" />
+                  Verificando disponibilidad...
+                </p>
+              )}
+
+              {conflicto && !verificandoConflicto && (
+                <div className="flex items-start gap-3 p-4 rounded-xl border bg-red-50 border-red-200">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={16} style={{ color: "oklch(0.5 0.15 20)" }} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: "oklch(0.5 0.15 20)" }}>Conflicto de horario</p>
+                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.45 0.1 20)" }}>
+                      Ya existe una reserva en este horario: {conflicto.hora_inicio?.substring(0, 5)} – {conflicto.hora_fin?.substring(0, 5)}
+                      {conflicto.titulo ? ` (${conflicto.titulo})` : conflicto.paquete?.nombre ? ` (${conflicto.paquete.nombre})` : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {paqueteSeleccionado && precioTotal > 0 && (
-                <div className="flex items-center justify-between px-5 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-700 text-white">
+                <div className="flex items-center justify-between px-5 py-4 rounded-2xl border bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-xl bg-white/15 flex items-center justify-center">
-                      <HugeiconsIcon icon={Money01Icon} size={16} />
+                    <div className="size-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.03 270)" }}>
+                      <HugeiconsIcon icon={Money01Icon} size={16} style={{ color: "#7c3aed" }} />
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Precio estimado</p>
-                      <p className="text-sm font-medium opacity-90 flex items-center gap-1.5">
-                        <span className="truncate max-w-[180px]">{paqueteSeleccionado.nombre}</span>
-                        <span className="text-white/40">•</span>
-                        <span className="shrink-0">${paqueteSeleccionado.precio_por_hora.toFixed(2)}/hr</span>
+                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Precio estimado</p>
+                      <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
+                        {paqueteSeleccionado.nombre} · ${paqueteSeleccionado.precio_por_hora.toFixed(2)}/hr
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">{horas.toFixed(1)} hrs</p>
-                    <p className="text-3xl font-black tracking-tighter">${precioTotal.toFixed(2)}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">{horas.toFixed(1)} hrs</p>
+                    <p className="text-3xl font-black tracking-tighter" style={{ color: COLORS.CHARCOAL }}>${precioTotal.toFixed(2)}</p>
                   </div>
                 </div>
               )}
@@ -387,11 +429,11 @@ export function NuevaReservaPage() {
 
             {/* Sección: Título */}
             <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={Microphone} title="Título del episodio" color="amber" />
+              <SectionHeader icon={Microphone} title="Título del episodio" />
 
               <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                  Título
+                  Título <span className="opacity-40 ml-0.5 font-medium">(opcional)</span>
                 </label>
                 <input type="text" value={titulo}
                   onChange={e => setTitulo(e.target.value)}
@@ -402,7 +444,7 @@ export function NuevaReservaPage() {
 
             {/* Sección: Cliente */}
             <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={UserIcon} title="Cliente" color="emerald" />
+              <SectionHeader icon={UserIcon} title="Cliente" />
 
               <div className="relative" ref={clienteRef}>
                 <div className="flex gap-2.5">
@@ -551,7 +593,7 @@ export function NuevaReservaPage() {
 
             {/* Sección: Personal asignado */}
             <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={UserGroupIcon} title="Personal a cargo" color="purple" />
+              <SectionHeader icon={UserGroupIcon} title="Personal a cargo" />
 
               {asignaciones.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -617,13 +659,24 @@ export function NuevaReservaPage() {
             </div>
 
             {/* Sección: Notas */}
-            <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={Note03Icon} title="Notas adicionales" color="violet" />
-
-              <textarea value={notas} onChange={e => setNotas(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white resize-none border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
-                rows={2} placeholder="Notas adicionales sobre la reserva..." />
-            </div>
+            {showNotas ? (
+              <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <SectionHeader icon={Note03Icon} title="Notas adicionales" />
+                <textarea value={notas} onChange={e => setNotas(e.target.value)}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white resize-none border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
+                  rows={2} placeholder="Notas adicionales sobre la reserva..." />
+                <button type="button" onClick={() => { setShowNotas(false); setNotas("") }}
+                  className="text-xs font-medium opacity-40 hover:opacity-70 transition-opacity" style={{ color: COLORS.TEXT_MUTED }}>
+                  – Quitar notas
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowNotas(true)}
+                className="w-full py-2.5 rounded-xl border border-dashed text-xs font-semibold transition-all hover:bg-violet-50/30"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
+                + Agregar notas
+              </button>
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-3 pt-2 pb-4">
@@ -631,9 +684,10 @@ export function NuevaReservaPage() {
                 className="flex-1 py-3.5 rounded-xl text-sm font-bold border-2 border-gray-200 transition-all hover:bg-gray-50 active:scale-[0.98]">
                 Cancelar
               </button>
-              <button type="submit" disabled={saving}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2.5"
-                style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>
+              <button type="submit" disabled={saving || !!conflicto}
+                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] flex items-center justify-center gap-2.5"
+                style={{ backgroundColor: conflicto ? "#9ca3af" : "#7c3aed" }}
+                title={conflicto ? "Corrige el conflicto de horario antes de confirmar" : undefined}>
                 {saving ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />

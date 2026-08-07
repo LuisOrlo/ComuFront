@@ -85,6 +85,10 @@ export function AprobacionSolicitudPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
 
+  const [editingLineaId, setEditingLineaId] = useState<string | null>(null)
+  const [editingLineaVal, setEditingLineaVal] = useState("")
+  const [savingLineaEdit, setSavingLineaEdit] = useState(false)
+
   const fetchDetail = useCallback(async (targetId?: string) => {
     const fetchId = targetId || id
     if (!fetchId) return
@@ -283,11 +287,14 @@ export function AprobacionSolicitudPage() {
       const payload: Record<string, unknown> = { pagos, metodo_pago: metodoPago }
       if (inscripcion && inscripcion.total > 0) { payload.precio_inscripcion = inscripcion.total; payload.inscripcion_cubierta = inscripcion.cubierto }
       await cursosService.aprobarSolicitudInscripcion(id, payload)
-      toast.success(inscripcion && inscripcion.total > 0 ? "Matrícula aprobada. El cargo de inscripción queda pendiente de pago." : "Matrícula aprobada y pago registrado")
-      advanceOrReturn()
+      setSelected((prev: any) => prev ? { ...prev, estado: { valor: "matricula_creada", descripcion: "Matrícula creada" } } : prev)
+      setActionLoading(false)
+      toast.success("Matrícula aprobada exitosamente")
+      setTimeout(() => advanceOrReturn(), 0)
     } catch (err) {
+      setActionLoading(false)
       toast.error((err as any)?.response?.data?.mensaje || "Error al aprobar")
-    } finally { setActionLoading(false) }
+    }
   }
 
   const handleReject = async (motivo: string) => {
@@ -300,6 +307,26 @@ export function AprobacionSolicitudPage() {
     } catch (err) {
       toast.error((err as any)?.response?.data?.mensaje || "Error al rechazar")
     } finally { setActionLoading(false) }
+  }
+
+  const startEditLinea = (lineaId: string, value: string) => {
+    setEditingLineaId(lineaId)
+    setEditingLineaVal(value)
+  }
+  const cancelEditLinea = () => { setEditingLineaId(null); setEditingLineaVal("") }
+
+  const saveEditLinea = async () => {
+    if (!id || !editingLineaId) return
+    setSavingLineaEdit(true)
+    try {
+      await cursosService.actualizarLineasPago(id, [{ id: editingLineaId, monto_abonado: parseFloat(editingLineaVal) || 0 }])
+      toast.success("Monto actualizado correctamente")
+      setEditingLineaId(null)
+      setEditingLineaVal("")
+      fetchDetail(id)
+    } catch (err) {
+      toast.error((err as any)?.response?.data?.mensaje || "Error al actualizar monto")
+    } finally { setSavingLineaEdit(false) }
   }
 
   if (loading) {
@@ -443,7 +470,10 @@ export function AprobacionSolicitudPage() {
                   setDeleteArchivoModal={setDeleteArchivoModal} deletingComprobante={deletingComprobante}
                   setExpandedImageUrl={setExpandedImageUrl} pagoRef={pagoRef} getCursoNombre={getCursoNombre}
                   setMontoValido={setMontoValido}
-                  setTotalPrecioModulos={setTotalPrecioModulos} handleApprove={handleApprove} setSelected={setSelected} />
+                  setTotalPrecioModulos={setTotalPrecioModulos} handleApprove={handleApprove} setSelected={setSelected}
+                  editingLineaId={editingLineaId} editingLineaVal={editingLineaVal}
+                  startEditLinea={startEditLinea} setEditLineaVal={setEditingLineaVal}
+                  saveEditLinea={saveEditLinea} cancelEditLinea={cancelEditLinea} savingLineaEdit={savingLineaEdit} />
               )}
               {activeTab === "documento" && (
                 <SolicitudDocumentoTab selected={selected} cedulaRef={cedulaRef}

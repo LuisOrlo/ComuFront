@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PaymentIcon, CalendarIcon, Upload05Icon, Image01Icon } from "@hugeicons/core-free-icons"
+import { PaymentIcon, CalendarIcon, Upload05Icon, Image01Icon, PencilEdit01Icon, CheckmarkCircle02Icon, CancelCircleIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { Section, SubCategory, EF } from "../../AprobacionHelpers"
@@ -31,6 +31,13 @@ interface SolicitudPagoTabProps {
   setTotalPrecioModulos: (val: number) => void
   handleApprove: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
   setSelected: (updater: (prev: any) => any) => void
+  editingLineaId: string | null
+  editingLineaVal: string
+  startEditLinea: (lineaId: string, value: string) => void
+  setEditLineaVal: (val: string) => void
+  saveEditLinea: () => void
+  cancelEditLinea: () => void
+  savingLineaEdit: boolean
 }
 
 export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
@@ -38,7 +45,9 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
     saveEditPago, cancelEditPago, savingPagoEdit, comprobanteRef, handleUploadComprobante, uploadingComprobante,
     expandedComprobante, setExpandedComprobante, setDeleteArchivoModal,
     deletingComprobante, setExpandedImageUrl, pagoRef, getCursoNombre,
-    setMontoValido, setTotalPrecioModulos, handleApprove, setSelected } = props
+    setMontoValido, setTotalPrecioModulos, handleApprove, setSelected,
+    editingLineaId, editingLineaVal, startEditLinea, setEditLineaVal,
+    saveEditLinea, cancelEditLinea, savingLineaEdit } = props
 
   return (
     <Section title="Pago" icon={PaymentIcon}>
@@ -132,7 +141,6 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
               cursoAbiertoId={selected.curso.id}
               cursoNombre={getCursoNombre()}
               metodoPagoInicial={selected.pago?.comprobante?.tipo || "efectivo"}
-              montoSolicitado={Number(selected.pago?.monto_solicitado) || 0}
               onMontoValidoChange={setMontoValido}
               onTotalPrecioChange={setTotalPrecioModulos}
               onSubmit={(pagos, metodoPago, inscripcion) => handleApprove(pagos, metodoPago, inscripcion)}
@@ -141,44 +149,152 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
         )}
 
         {(selected?.lineas_pago?.modulos?.length > 0 || selected?.lineas_pago?.inscripcion) && (
-          <div className="p-4 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
+          <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pagos</span>
               <span className="text-xs font-bold" style={{ color: COLORS.ACCENT }}>
                 {selected.lineas_pago.modulos_pagados}/{selected.lineas_pago.modulos_count} módulos pagados
               </span>
             </div>
-            {selected.lineas_pago.modulos.map((lp: any, i: number) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <span style={{ color: COLORS.CHARCOAL }}>{lp.modulo_nombre}</span>
-                <div className="flex items-center gap-3">
-                  <span className="opacity-50 text-sm">${lp.monto_ajustado.toLocaleString()}</span>
-                  <span className="font-medium text-sm" style={{ color: lp.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
-                    ${lp.monto_abonado.toLocaleString()}
+
+            <div className="grid grid-cols-[1fr_90px_90px_80px_75px] gap-2 text-[10px] font-bold uppercase tracking-wider pb-1 border-b" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
+              <span>Módulo</span>
+              <span className="text-right">Precio</span>
+              <span className="text-right">Pagado</span>
+              <span className="text-right">Saldo</span>
+              <span className="text-right">Estado</span>
+            </div>
+
+            {selected.lineas_pago.modulos.map((lp: any, i: number) => {
+              const isEditing = editingLineaId === lp.id
+              const saldo = (lp.monto_ajustado || 0) - (lp.monto_abonado || 0)
+              return (
+                <div key={i} className="grid grid-cols-[1fr_90px_90px_80px_75px] gap-2 items-center text-sm py-1">
+                  <span className="truncate font-medium" style={{ color: COLORS.CHARCOAL }}>{lp.modulo_nombre}</span>
+                  <span className="text-right" style={{ color: COLORS.CHARCOAL }}>${lp.monto_ajustado.toLocaleString()}</span>
+
+                  {isEditing ? (
+                    <div className="flex items-center gap-1 justify-end">
+                      <input
+                        type="number" min="0" step="0.01"
+                        max={lp.monto_ajustado}
+                        value={editingLineaVal}
+                        onChange={e => setEditLineaVal(e.target.value)}
+                        onWheel={e => (e.target as HTMLElement).blur()}
+                        className="w-[70px] px-1.5 py-0.5 border rounded-md text-xs font-mono outline-none focus:border-blue-500 bg-white text-right"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                      />
+                      <button onClick={saveEditLinea} disabled={savingLineaEdit}
+                        className="size-5 flex items-center justify-center rounded hover:bg-green-50 transition-colors disabled:opacity-50"
+                        style={{ color: "oklch(0.55 0.15 150)" }}>
+                        <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
+                      </button>
+                      <button onClick={cancelEditLinea} disabled={savingLineaEdit}
+                        className="size-5 flex items-center justify-center rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                        style={{ color: "oklch(0.5 0.15 20)" }}>
+                        <HugeiconsIcon icon={CancelCircleIcon} size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-0.5 justify-end">
+                      <span className="text-right font-medium" style={{ color: lp.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
+                        ${lp.monto_abonado.toLocaleString()}
+                      </span>
+                      {yaProcesada && (
+                        <button
+                          onClick={() => startEditLinea(lp.id, String(lp.monto_abonado))}
+                          className="size-5 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
+                          style={{ color: COLORS.TEXT_MUTED }}
+                          title="Editar monto pagado">
+                          <HugeiconsIcon icon={PencilEdit01Icon} size={11} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <span className="text-right font-medium" style={{ color: saldo > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
+                    ${saldo.toLocaleString()}
                   </span>
-                  <span className={cn("text-[10px] font-bold uppercase px-1 py-0.5 rounded-full",
-                    lp.estado === "pagado" ? "bg-green-100 text-green-700" :
-                    lp.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                  )}>{lp.estado === "pagado" ? "Pagado" : lp.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
+
+                  <div className="flex justify-end">
+                    <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
+                      lp.estado === "pagado" ? "bg-green-100 text-green-700" :
+                      lp.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                    )}>{lp.estado === "pagado" ? "Pagado" : lp.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {selected.lineas_pago.inscripcion && (
-              <div className="flex items-center justify-between text-sm border-t pt-2 mt-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <span style={{ color: COLORS.CHARCOAL }}>Inscripción / Matrícula</span>
-                <div className="flex items-center gap-3">
-                  <span className="opacity-50 text-sm">${selected.lineas_pago.inscripcion.monto_ajustado.toLocaleString()}</span>
-                  <span className="font-medium text-sm" style={{ color: selected.lineas_pago.inscripcion.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
-                    ${selected.lineas_pago.inscripcion.monto_abonado.toLocaleString()}
-                  </span>
-                  <span className={cn("text-[10px] font-bold uppercase px-1 py-0.5 rounded-full",
-                    selected.lineas_pago.inscripcion.estado === "pagado" ? "bg-green-100 text-green-700" :
-                    selected.lineas_pago.inscripcion.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                  )}>{selected.lineas_pago.inscripcion.estado === "pagado" ? "Pagado" : selected.lineas_pago.inscripcion.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
+              )
+            })}
+
+            {selected.lineas_pago.inscripcion && (() => {
+              const ins = selected.lineas_pago.inscripcion
+              const isEditing = editingLineaId === ins.id
+              const saldoIns = (ins.monto_ajustado || 0) - (ins.monto_abonado || 0)
+              return (
+                <div className="border-t pt-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  {isEditing && (
+                    <div className="grid grid-cols-[1fr_90px_90px_80px_75px] gap-2 items-center text-sm py-1">
+                      <span className="truncate font-medium" style={{ color: COLORS.CHARCOAL }}>Inscripción</span>
+                      <span className="text-right" style={{ color: COLORS.CHARCOAL }}>${ins.monto_ajustado.toLocaleString()}</span>
+                      <div className="flex items-center gap-1 justify-end">
+                        <input
+                          type="number" min="0" step="0.01"
+                          max={ins.monto_ajustado}
+                          value={editingLineaVal}
+                          onChange={e => setEditLineaVal(e.target.value)}
+                          onWheel={e => (e.target as HTMLElement).blur()}
+                          className="w-[70px] px-1.5 py-0.5 border rounded-md text-xs font-mono outline-none focus:border-blue-500 bg-white text-right"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                        />
+                        <button onClick={saveEditLinea} disabled={savingLineaEdit}
+                          className="size-5 flex items-center justify-center rounded hover:bg-green-50 transition-colors disabled:opacity-50"
+                          style={{ color: "oklch(0.55 0.15 150)" }}>
+                          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={12} />
+                        </button>
+                        <button onClick={cancelEditLinea} disabled={savingLineaEdit}
+                          className="size-5 flex items-center justify-center rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                          style={{ color: "oklch(0.5 0.15 20)" }}>
+                          <HugeiconsIcon icon={CancelCircleIcon} size={12} />
+                        </button>
+                      </div>
+                      <span />
+                      <span />
+                    </div>
+                  )}
+                  {!isEditing && (
+                    <div className="grid grid-cols-[1fr_90px_90px_80px_75px] gap-2 items-center text-sm py-1">
+                      <span className="truncate font-medium" style={{ color: COLORS.CHARCOAL }}>Inscripción</span>
+                      <span className="text-right" style={{ color: COLORS.CHARCOAL }}>${ins.monto_ajustado.toLocaleString()}</span>
+                      <div className="flex items-center gap-0.5 justify-end">
+                        <span className="text-right font-medium" style={{ color: ins.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
+                          ${ins.monto_abonado.toLocaleString()}
+                        </span>
+                        {yaProcesada && (
+                          <button
+                            onClick={() => startEditLinea(ins.id, String(ins.monto_abonado))}
+                            className="size-5 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
+                            style={{ color: COLORS.TEXT_MUTED }}
+                            title="Editar monto pagado">
+                            <HugeiconsIcon icon={PencilEdit01Icon} size={11} />
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-right font-medium" style={{ color: saldoIns > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
+                        {saldoIns > 0 ? `$${saldoIns.toLocaleString()}` : "—"}
+                      </span>
+                      <div className="flex justify-end">
+                        <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
+                          ins.estado === "pagado" ? "bg-green-100 text-green-700" :
+                          ins.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                        )}>{ins.estado === "pagado" ? "Pagado" : ins.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-            <div className="border-t pt-2 mt-2 flex justify-between text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              )
+            })()}
+
+            <div className="border-t pt-2 flex justify-between text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <span style={{ color: COLORS.CHARCOAL }}>Total abonado</span>
               <span style={{ color: "oklch(0.55 0.15 150)" }}>
                 ${selected.lineas_pago.total_abonado.toLocaleString()} de ${selected.lineas_pago.total_esperado.toLocaleString()}

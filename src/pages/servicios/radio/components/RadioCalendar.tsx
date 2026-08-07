@@ -35,7 +35,7 @@ export function RadioCalendar({
     <motion.div key="calendar" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4">
       <div className="border rounded-[1.5rem] overflow-hidden shadow-sm bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         {/* Header */}
-        <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80 sticky top-0 z-10" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <div className="p-2.5 text-center border-r flex items-center justify-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Hora</span>
           </div>

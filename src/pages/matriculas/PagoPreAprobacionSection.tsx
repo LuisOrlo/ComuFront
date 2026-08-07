@@ -12,8 +12,6 @@ interface PagoPreAprobacionSectionProps {
   cursoAbiertoId: string
   cursoNombre: string
   metodoPagoInicial?: string
-  montoSolicitado?: number
-  onMontoModulo1Change?: (valido: boolean) => void
   onMontoValidoChange?: (valido: boolean) => void
   onTotalPrecioChange?: (total: number) => void
   onSubmit: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
@@ -21,22 +19,20 @@ interface PagoPreAprobacionSectionProps {
 
 export type PagoPreAprobacionRef = {
   submit: () => void
-  tieneMontoModulo1: boolean
   totalPrecio: number
   montoValido: boolean
 }
 
 export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSection({
-  cursoAbiertoId, metodoPagoInicial, montoSolicitado, onMontoModulo1Change, onMontoValidoChange, onTotalPrecioChange, onSubmit,
+  cursoAbiertoId, metodoPagoInicial, onMontoValidoChange, onTotalPrecioChange, onSubmit,
 }: PagoPreAprobacionSectionProps, ref) {
   const [montos, setMontos] = useState<Record<string, string>>({})
-  const [montoTotalInput, setMontoTotalInput] = useState("")
   const [modulos, setModulos] = useState<any[]>([])
   const [modulosCargados, setModulosCargados] = useState(false)
   const [ajustes, setAjustes] = useState<Record<string, { expandido: boolean; nuevoPrecio: string; motivo: string }>>({})
   const [incluirInscripcion, setIncluirInscripcion] = useState(false)
   const [precioInscripcionManual, setPrecioInscripcionManual] = useState("")
-  const [montoInvalido, setMontoInvalido] = useState(false)
+  const [pagoInscripcion, setPagoInscripcion] = useState("")
 
   useEffect(() => {
     const load = async () => {
@@ -68,32 +64,6 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     return [...modulos].sort((a, b) => (a.numero_orden ?? 0) - (b.numero_orden ?? 0))
   }, [modulos])
 
-  const montoModulo1 = sorted.length > 0 ? parseFloat(montos[sorted[0]?.id] || "0") : 0
-
-  useEffect(() => {
-    onMontoModulo1Change?.(montoModulo1 > 0)
-  }, [montoModulo1, onMontoModulo1Change])
-
-  useEffect(() => {
-    if (modulosCargados && sorted.length > 0 && montoSolicitado && montoSolicitado > 0) {
-      handleMontoChange(sorted[0].id, String(montoSolicitado))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [montoSolicitado, modulosCargados])
-
-  const totalARegistrar = useMemo(() => {
-    return sorted.reduce((sum: number, m: any) => m ? sum + parseFloat(montos[m.id] || "0") : sum, 0)
-  }, [sorted, montos])
-
-  const modulosCubiertos = useMemo(() => {
-    return sorted.filter((m: any) => {
-      if (!m) return false
-      const monto = parseFloat(montos[m.id] || "0")
-      const precio = getPrecioEfectivo(m)
-      return monto >= precio
-    }).length
-  }, [sorted, montos, getPrecioEfectivo])
-
   const totalPrecio = useMemo(() => {
     return sorted.reduce((sum: number, m: any) => m ? sum + getPrecioEfectivo(m) : sum, 0)
   }, [sorted, getPrecioEfectivo])
@@ -109,91 +79,48 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     [incluirInscripcion, precioInscripcionManual]
   )
 
-  const totalAPagar = useMemo(() => totalPrecio + inscripcionVal, [totalPrecio, inscripcionVal])
-
-  const totalIngresado = useMemo(() => parseFloat(montoTotalInput) || 0, [montoTotalInput])
-
   const inscripcionCubierta = useMemo(
-    () => Math.min(inscripcionVal, Math.max(0, totalIngresado - totalPrecio)),
-    [inscripcionVal, totalIngresado, totalPrecio]
+    () => Math.min(inscripcionVal, parseFloat(pagoInscripcion) || 0),
+    [inscripcionVal, pagoInscripcion]
   )
 
-  const montoValido = !montoInvalido && totalIngresado > 0 && totalIngresado <= totalAPagar
+  const totalARegistrar = useMemo(() => {
+    return sorted.reduce((sum: number, m: any) => m ? sum + parseFloat(montos[m.id] || "0") : sum, 0)
+  }, [sorted, montos])
 
-  useEffect(() => {
-    if (montoInvalido && totalIngresado > 0 && totalIngresado <= totalAPagar) {
-      setMontoInvalido(false)
-    }
-  }, [montoInvalido, totalIngresado, totalAPagar])
+  const modulosCubiertos = useMemo(() => {
+    return sorted.filter((m: any) => {
+      if (!m) return false
+      const monto = parseFloat(montos[m.id] || "0")
+      const precio = getPrecioEfectivo(m)
+      return monto >= precio
+    }).length
+  }, [sorted, montos, getPrecioEfectivo])
+
+  const totalIngresado = totalARegistrar + inscripcionCubierta
+
+  const montoValido = totalARegistrar > 0 || (inscripcionVal > 0 && inscripcionCubierta > 0)
 
   useEffect(() => {
     onMontoValidoChange?.(montoValido)
   }, [montoValido, onMontoValidoChange])
 
   const handleMontoChange = useCallback((moduloId: string, valor: string) => {
-    const nuevoMonto = parseFloat(valor) || 0
     const moduloActual = modulos.find((m: any) => m.id === moduloId)
     if (!moduloActual) return
     const precio = getPrecioEfectivo(moduloActual)
-    const excedente = Math.round(Math.max(0, nuevoMonto - precio) * 100) / 100
-    const idx = sorted.findIndex((m: any) => m.id === moduloId)
-
-    const simulated = { ...montos }
-    let resto = 0
-
-    if (excedente > 0) {
-      simulated[moduloId] = String(precio)
-      resto = excedente
-      for (let i = idx + 1; i < sorted.length && resto > 0; i++) {
-        const sig = sorted[i]
-        const sigPrecio = getPrecioEfectivo(sig)
-        const aplicado = Math.round(Math.min(resto, sigPrecio) * 100) / 100
-        simulated[sig.id] = String(aplicado)
-        resto = Math.round((resto - aplicado) * 100) / 100
-      }
-      if (resto > inscripcionVal) {
-        setMontoInvalido(true)
-        toast.error(`El monto excede el total a pagar ($${totalAPagar.toLocaleString()}). Ajusta los montos.`)
-        return
-      }
-    } else {
-      simulated[moduloId] = valor
-      for (let i = idx + 1; i < sorted.length; i++) {
-        delete simulated[sorted[i].id]
-      }
-    }
-
-    setMontoInvalido(false)
-    setMontos(simulated)
-    const suma = Object.values(simulated).reduce((acc: number, v: any) => acc + (parseFloat(v) || 0), 0)
-    const restoInscripcion = Math.max(0, Math.min(resto, inscripcionVal))
-    const totalRegistrado = suma + restoInscripcion
-    setMontoTotalInput(totalRegistrado > 0 ? String(Math.round(totalRegistrado * 100) / 100) : "")
-  }, [modulos, sorted, montos, getPrecioEfectivo, totalAPagar, inscripcionVal])
-
-  const handleTotalChange = useCallback((valor: string) => {
-    setMontoTotalInput(valor)
-    const total = parseFloat(valor) || 0
-    if (total <= 0 || sorted.length === 0) return
-    const totalPrecios = sorted.reduce((sum, m) => sum + getPrecioEfectivo(m), 0)
-    if (total > totalAPagar) {
-      setMontoInvalido(true)
-      toast.error(`El monto total ($${total.toLocaleString()}) supera el total a pagar (módulos $${totalPrecios.toLocaleString()} + inscripción $${inscripcionVal.toLocaleString()} = $${totalAPagar.toLocaleString()})`)
+    const nuevoMonto = parseFloat(valor) || 0
+    if (nuevoMonto < 0) {
+      setMontos(prev => ({ ...prev, [moduloId]: "0" }))
       return
     }
-    setMontoInvalido(false)
-    setMontos({})
-    let resto = total
-    const nuevosMontos: Record<string, string> = {}
-    for (const m of sorted) {
-      const precio = getPrecioEfectivo(m)
-      const aplicar = Math.round(Math.min(resto, precio) * 100) / 100
-      if (aplicar > 0) nuevosMontos[m.id] = String(aplicar)
-      resto = Math.round((resto - aplicar) * 100) / 100
-      if (resto <= 0) break
+    if (nuevoMonto > precio) {
+      setMontos(prev => ({ ...prev, [moduloId]: String(precio) }))
+      toast.warning(`El monto no puede exceder el precio del módulo ($${precio.toLocaleString()}). Se ajustó al máximo.`)
+      return
     }
-    setMontos(nuevosMontos)
-  }, [sorted, getPrecioEfectivo, totalAPagar, inscripcionVal])
+    setMontos(prev => ({ ...prev, [moduloId]: valor }))
+  }, [modulos, getPrecioEfectivo])
 
   const toggleAjuste = (moduloId: string) => {
     setAjustes(prev => {
@@ -217,13 +144,19 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       if (!a) return prev
       return { ...prev, [moduloId]: { ...a, expandido: false } }
     })
+    setMontos(prev => {
+      const mod = modulos.find((m: any) => m.id === moduloId)
+      const a = ajustes[moduloId]
+      const nuevoPrecio = a ? parseFloat(a.nuevoPrecio || "0") : getPrecioEfectivo(mod)
+      const montoActual = parseFloat(prev[moduloId] || "0")
+      if (montoActual > nuevoPrecio && nuevoPrecio > 0) {
+        return { ...prev, [moduloId]: String(nuevoPrecio) }
+      }
+      return prev
+    })
   }
 
   const handleSubmit = useCallback(() => {
-    if (totalARegistrar > totalAPagar) {
-      toast.error(`El total a registrar ($${totalARegistrar.toLocaleString()}) supera el total a pagar ($${totalAPagar.toLocaleString()}). Ajusta los montos.`)
-      return
-    }
     const pagos = modulos
       .filter((m: any) => {
         const monto = parseFloat(montos[m.id] || "0")
@@ -244,20 +177,17 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       })
 
     if (inscripcionVal > 0) {
-      const excedente = Math.max(0, totalIngresado - totalPrecio)
-      const cubierta = Math.min(inscripcionVal, excedente)
-      onSubmit(pagos, metodoPagoInicial || "efectivo", { total: inscripcionVal, cubierto: cubierta })
+      onSubmit(pagos, metodoPagoInicial || "efectivo", { total: inscripcionVal, cubierto: inscripcionCubierta })
     } else {
       onSubmit(pagos, metodoPagoInicial || "efectivo")
     }
-  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, totalARegistrar, totalAPagar, totalIngresado, totalPrecio, inscripcionVal])
+  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, inscripcionVal, inscripcionCubierta])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
-    tieneMontoModulo1: montoModulo1 > 0,
     totalPrecio,
     montoValido,
-  }), [handleSubmit, montoModulo1, totalPrecio, montoValido])
+  }), [handleSubmit, totalPrecio, montoValido])
 
   if (!modulosCargados) {
     return (
@@ -277,31 +207,6 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   return (
     <div className="pt-4 space-y-3">
-      <div className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-        <div className="flex-1">
-          <p className="text-xs mb-1" style={{ color: COLORS.TEXT_MUTED }}>O ingresa el monto total del comprobante para distribuirlo automáticamente:</p>
-          <div className="relative max-w-[260px]">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-            <input type="number" min="0" step="0.01" placeholder="0.00"
-              value={montoTotalInput}
-              onChange={e => handleTotalChange(e.target.value)}
-              onWheel={e => (e.target as HTMLElement).blur()}
-              className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Total distribuido</p>
-          <p className="text-sm font-black mt-0.5" style={{ color: totalARegistrar > 0 ? "oklch(0.55 0.15 150)" : COLORS.CHARCOAL }}>
-            ${totalARegistrar.toLocaleString()}
-          </p>
-          {inscripcionCubierta > 0 && (
-            <p className="text-[10px] font-semibold mt-1" style={{ color: "oklch(0.55 0.15 150)" }}>
-              + ${inscripcionCubierta.toLocaleString()} cubren la inscripción
-            </p>
-          )}
-        </div>
-      </div>
       <div className="grid grid-cols-2 gap-3">
       {sorted.map((modulo: any, idx: number) => {
         if (!modulo) return null
@@ -312,15 +217,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         const pagado = monto > 0 && monto >= precioEfectivo
         const abonado = monto > 0 && monto < precioEfectivo
 
-        const tieneExcedente = pagado && sorted.length > idx + 1 && sorted.slice(idx + 1).some((m: any) => parseFloat(montos[m.id] || "0") > 0)
-
         let lineaEstado = ""
         if (pagado) {
-          if (tieneExcedente) {
-            lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo · excedente aplicado a módulos siguientes"
-          } else {
-            lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo"
-          }
+          lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo"
         } else if (abonado) {
           const saldo = Math.max(0, precioEfectivo - monto)
           lineaEstado = "Abono · Saldo pendiente: $" + saldo.toLocaleString()
@@ -412,6 +311,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           if (incluirInscripcion) {
             setIncluirInscripcion(false)
             setPrecioInscripcionManual("")
+            setPagoInscripcion("")
           } else {
             setIncluirInscripcion(true)
           }
@@ -426,29 +326,85 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       </button>
 
       {incluirInscripcion && (
-        <div className="p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.ACCENT }}>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
+        <div className="p-4 rounded-xl border space-y-3 bg-white" style={{ borderColor: COLORS.ACCENT }}>
+          <div className="flex items-center justify-between">
+            <div>
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
-                Precio de inscripción (opcional)
+                Inscripción / Matrícula
               </span>
-              
+              <p className="text-sm font-bold mt-0.5" style={{ color: COLORS.CHARCOAL }}>
+                Cargo de inscripción
+              </p>
             </div>
-            <div className="relative w-36">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={precioInscripcionManual}
-                onChange={e => setPrecioInscripcionManual(e.target.value)}
-                onWheel={e => (e.target as HTMLElement).blur()}
-                placeholder="0.00"
-                className="w-full pl-8 pr-4 py-2 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
-              />
+            <div className="text-right">
+              <span className="text-sm font-black" style={{ color: "oklch(0.65 0.15 75)" }}>
+                ${parseFloat(precioInscripcionManual || "0").toLocaleString()}
+              </span>
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Precio de inscripción
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={precioInscripcionManual}
+                  onChange={e => {
+                    setPrecioInscripcionManual(e.target.value)
+                    const pago = parseFloat(pagoInscripcion) || 0
+                    const nuevoPrecio = parseFloat(e.target.value) || 0
+                    if (pago > nuevoPrecio) setPagoInscripcion(e.target.value)
+                  }}
+                  onWheel={e => (e.target as HTMLElement).blur()}
+                  placeholder="0.00"
+                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Monto a pagar
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                <input
+                  type="number" min="0" step="0.01"
+                  max={precioInscripcionManual || "0"}
+                  value={pagoInscripcion}
+                  onChange={e => {
+                    const maxVal = parseFloat(precioInscripcionManual) || 0
+                    const val = parseFloat(e.target.value) || 0
+                    if (val > maxVal) {
+                      setPagoInscripcion(String(maxVal))
+                      toast.warning(`El pago no puede exceder el precio de inscripción ($${maxVal.toLocaleString()})`)
+                    } else {
+                      setPagoInscripcion(e.target.value)
+                    }
+                  }}
+                  onWheel={e => (e.target as HTMLElement).blur()}
+                  placeholder="0.00"
+                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 bg-white"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {parseFloat(pagoInscripcion || "0") > 0 && (
+            <div className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: "oklch(0.55 0.15 240 / 0.08)" }}>
+              <span className="text-xs font-semibold" style={{ color: "oklch(0.55 0.15 240)" }}>
+                {inscripcionCubierta >= inscripcionVal ? "Inscripción cubierta completa" : "Pago parcial de inscripción"}
+              </span>
+              <span className="text-xs font-bold" style={{ color: "oklch(0.55 0.15 240)" }}>
+                ${inscripcionCubierta.toLocaleString()} de ${inscripcionVal.toLocaleString()}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -458,30 +414,36 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${totalPrecio.toLocaleString()}</span>
         </div>
         {incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 && (
-          <div className="flex items-center justify-between text-xs">
-            <span style={{ color: COLORS.TEXT_MUTED }}>Inscripción</span>
-            <span className="font-semibold" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString()}</span>
-          </div>
+          <>
+            <div className="flex items-center justify-between text-xs">
+              <span style={{ color: COLORS.TEXT_MUTED }}>Inscripción</span>
+              <span className="font-semibold" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs pt-1" style={{ borderTopWidth: 1, borderTopColor: COLORS.BORDER_SUBTLE }}>
+              <span style={{ color: COLORS.TEXT_MUTED }}>Total a pagar</span>
+              <span className="font-semibold" style={{ color: COLORS.ACCENT }}>${(totalPrecio + parseFloat(precioInscripcionManual || "0")).toLocaleString()}</span>
+            </div>
+          </>
         )}
-        {incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 && (
-          <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <span style={{ color: COLORS.TEXT_MUTED }}>Total a pagar</span>
-            <span className="font-semibold" style={{ color: COLORS.ACCENT }}>${(totalPrecio + parseFloat(precioInscripcionManual)).toLocaleString()}</span>
+        {inscripcionCubierta > 0 && (
+          <div className="flex items-center justify-between text-xs pt-1">
+            <span style={{ color: COLORS.TEXT_MUTED }}>Pago de inscripción</span>
+            <span className="font-semibold" style={{ color: "oklch(0.55 0.15 150)" }}>
+              ${inscripcionCubierta.toLocaleString()} de ${inscripcionVal.toLocaleString()}
+            </span>
           </div>
         )}
         <div className="flex items-center justify-between text-xs pt-1" style={{ borderTopColor: COLORS.BORDER_SUBTLE, borderTopWidth: incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 ? 0 : 1 }}>
-          <span style={{ color: COLORS.TEXT_MUTED }}>Valor pagado</span>
-          <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>
+          <span style={{ color: COLORS.TEXT_MUTED }}>Total ingresado</span>
+          <span className="font-semibold" style={{ color: "oklch(0.55 0.15 150)" }}>
             ${totalIngresado.toLocaleString()}{" "}
-            <span className="font-normal opacity-50">({modulosCubiertos}/{sorted.length} módulos)</span>
+            <span className="font-normal opacity-50">
+              ({incluirInscripcion && inscripcionCubierta > 0
+                ? `${modulosCubiertos}/${sorted.length} módulos + inscripción`
+                : `${modulosCubiertos}/${sorted.length} módulos`})
+            </span>
           </span>
         </div>
-        {(montoSolicitado ?? 0) > 0 && (
-          <div className="flex items-center justify-between text-xs pt-0.5">
-            <span style={{ color: COLORS.TEXT_MUTED }}>Declarado</span>
-            <span className="font-semibold" style={{ color: COLORS.TEXT_MUTED }}>${(montoSolicitado ?? 0).toLocaleString()}</span>
-          </div>
-        )}
       </div>
     </div>
   )

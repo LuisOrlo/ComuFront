@@ -5,27 +5,17 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
   Clock04Icon,
-  Calendar02Icon,
-  Money02Icon,
+  ArrowDown01Icon,
   UserIcon,
   LibraryIcon,
-  Home02Icon,
-  Mail01Icon,
-  CallIcon,
-  IdentificationIcon,
-  PackageIcon,
-  InformationCircleIcon,
   CheckmarkCircle04Icon,
-  MapsLocation01Icon,
+  Search01Icon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
-import { X } from "lucide-react"
-import type { IconSvgElement } from "@hugeicons/react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { toast } from "sonner"
-
-type FiltroTiempo = "todos" | "recientes" | "antiguos"
 
 const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   reservado: { bg: "bg-blue-50", color: "text-blue-700", label: "Reservado" },
@@ -40,8 +30,11 @@ export function HistorialAulasPage() {
   const [reservas, setReservas] = useState<ReservaAula[]>([])
   const [aulas, setAulas] = useState<Aula[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState<FiltroTiempo>("todos")
-  const [detalleReserva, setDetalleReserva] = useState<ReservaAula | null>(null)
+  const [search, setSearch] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+  const [estadoFilter, setEstadoFilter] = useState("todos")
+  const [tipoFilter, setTipoFilter] = useState("todos")
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -59,60 +52,74 @@ export function HistorialAulasPage() {
     }
   }, [])
 
+  useEffect(() => { loadData() }, [loadData])
+
   useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
-    loadData()
-  }, [loadData])
-
-  const hace30Dias = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() - 30)
-    return d
-  }, [])
-
-  const filtradas = useMemo(() => {
-    switch (filtro) {
-      case "recientes":
-        return reservas.filter(r => new Date(r.fecha_reserva) >= hace30Dias)
-      case "antiguos":
-        return reservas.filter(r => new Date(r.fecha_reserva) < hace30Dias)
-      default:
-        return reservas
-    }
-  }, [reservas, filtro, hace30Dias])
-
-  const sorted = useMemo(() => [...filtradas].sort((a, b) =>
-    new Date(b.fecha_reserva).getTime() - new Date(a.fecha_reserva).getTime()
-  ), [filtradas])
-
-  const getAulaNombre = (aulaId: string) => {
+  const getAulaNombre = useCallback((aulaId: string) => {
     const a = aulas.find(x => x.id === aulaId)
     return a?.nombre || "—"
-  }
+  }, [aulas])
 
-  const getClienteNombre = (r: ReservaAula) => {
+  const getClienteNombre = useCallback((r: ReservaAula) => {
     if (r.persona) return `${r.persona.nombres || ""} ${r.persona.apellidos || ""}`.trim()
     if (r.cliente_externo) return `${r.cliente_externo.nombres || ""} ${r.cliente_externo.apellidos || ""}`.trim()
     return "—"
+  }, [])
+
+  const filtered = useMemo(() => {
+    let list = reservas
+
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(r => {
+        const nombre = getClienteNombre(r).toLowerCase()
+        const aula = getAulaNombre(r.aula_id).toLowerCase()
+        return nombre.includes(q) || aula.includes(q)
+      })
+    }
+
+    if (estadoFilter !== "todos") {
+      list = list.filter(r => r.estado === estadoFilter)
+    }
+
+    if (tipoFilter !== "todos") {
+      if (tipoFilter === "interno") list = list.filter(r => r.persona_id)
+      else if (tipoFilter === "externo") list = list.filter(r => !r.persona_id)
+    }
+
+    return list.sort((a, b) =>
+      new Date(b.fecha_reserva).getTime() - new Date(a.fecha_reserva).getTime()
+    )
+  }, [reservas, search, estadoFilter, tipoFilter, getAulaNombre, getClienteNombre])
+
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, ReservaAula[]> = {}
+    filtered.forEach(r => {
+      const dateKey = new Date(r.fecha_reserva + "T00:00:00").toLocaleDateString("es-ES", {
+        year: "numeric", month: "long", day: "numeric", timeZone: "UTC",
+      })
+      if (!groups[dateKey]) groups[dateKey] = []
+      groups[dateKey].push(r)
+    })
+    return Object.entries(groups)
+  }, [filtered])
+
+  useEffect(() => {
+    if (Object.keys(expandedGroups).length === 0 && groupedByDate.length > 0) {
+      setExpandedGroups({ [groupedByDate[0][0]]: true })
+    }
+  }, [groupedByDate, expandedGroups])
+
+  const getGroupTotal = (items: ReservaAula[]) => {
+    return items.reduce((sum, r) => sum + Number(r.precio_total || 0), 0)
   }
 
-  const getClienteInfo = (r: ReservaAula) => {
-    if (r.persona) return {
-      nombres: `${r.persona.nombres || ""} ${r.persona.apellidos || ""}`.trim(),
-      correo: r.persona.correo,
-      celular: r.persona.celular,
-      tipo: "Interno (Staff)",
-      cedula: "",
-    }
-    if (r.cliente_externo) return {
-      nombres: `${r.cliente_externo.nombres || ""} ${r.cliente_externo.apellidos || ""}`.trim(),
-      correo: r.cliente_externo.correo,
-      celular: r.cliente_externo.celular,
-      tipo: "Externo (Cliente)",
-      cedula: r.cliente_externo.cedula || "",
-    }
-    return { nombres: "—", correo: "", celular: "", tipo: "—", cedula: "" }
+  const toggleGroup = (date: string) => {
+    setExpandedGroups(prev => ({ ...prev, [date]: !prev[date] }))
   }
 
   const handlePago = (r: ReservaAula) => {
@@ -147,159 +154,153 @@ export function HistorialAulasPage() {
         Volver a Aulas
       </button>
 
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-        <div>
-          <h2 className="text-xl font-black" style={{ color: COLORS.CHARCOAL }}>Historial de Alquileres</h2>
-          <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>{sorted.length} reserva{sorted.length !== 1 ? "s" : ""}</p>
-        </div>
-
-        <div className="flex gap-1 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          {([
-            { key: "todos" as const, label: "Todos", icon: PackageIcon },
-            { key: "recientes" as const, label: "Recientes", icon: Clock04Icon },
-            { key: "antiguos" as const, label: "Antiguos", icon: Calendar02Icon },
-          ]).map(t => (
-            <button key={t.key} onClick={() => setFiltro(t.key)}
-              className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
-              style={{
-                borderColor: filtro === t.key ? COLORS.ACCENT : "transparent",
-                color: filtro === t.key ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
-              }}>
-              <HugeiconsIcon icon={t.icon} size={14} />
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
-              <thead>
-                <tr style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-                  <th className="px-2 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 w-[36px] text-center" style={{ color: COLORS.CHARCOAL }}>#</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Fecha</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Aula</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cliente</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Horario</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-center" style={{ color: COLORS.CHARCOAL }}>Estado</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40 text-right" style={{ color: COLORS.CHARCOAL }}>Precio</th>
-                  <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                {sorted.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-12 text-center opacity-40 text-sm" style={{ color: COLORS.CHARCOAL }}>No hay reservas</td>
-                  </tr>
-                ) : (
-                  sorted.map((r, idx) => {
-                    const estado = ESTADO_STYLES[r.estado] || ESTADO_STYLES.reservado
-                    const clienteNombre = getClienteNombre(r)
-                    const aulaNombre = getAulaNombre(r.aula_id)
-                    return (
-                      <tr key={r.id} className="transition-colors" style={{ backgroundColor: idx % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}>
-                        <td className="px-2 py-3 text-center text-xs opacity-40" style={{ color: COLORS.CHARCOAL }}>{idx + 1}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: COLORS.CHARCOAL }}>
-                          {new Date(r.fecha_reserva).toLocaleDateString("es-ES")}
-                        </td>
-                        <td className="px-4 py-3 text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>{aulaNombre}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: COLORS.CHARCOAL }}>{clienteNombre}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: COLORS.CHARCOAL }}>
-                          {r.hora_inicio?.substring(0, 5)} — {r.hora_fin?.substring(0, 5)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={cn("inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold uppercase", estado.bg, estado.color)}>
-                            {estado.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>
-                          ${r.precio_total?.toLocaleString() || "0"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => setDetalleReserva(r)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors hover:bg-gray-50"
-                              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
-                              <HugeiconsIcon icon={InformationCircleIcon} size={12} />
-                              Ver detalle
-                            </button>
-                            <button onClick={() => handlePago(r)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
-                              style={{ backgroundColor: COLORS.ACCENT }}>
-                              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                              Registrar pago
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="p-6 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <h2 className="text-lg font-black flex items-center gap-3" style={{ color: COLORS.CHARCOAL }}>
+              <HugeiconsIcon icon={Clock04Icon} size={22} style={{ color: COLORS.ACCENT }} />
+              Historial de Alquileres
+              {filtered.length > 0 && <span className="text-xs font-extrabold opacity-45 bg-gray-100 px-2 py-0.5 rounded-full">({filtered.length})</span>}
+            </h2>
+            <div className="relative w-56">
+              <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                placeholder="Buscar cliente o aula..."
+                className="w-full pl-9 pr-9 py-2 rounded-xl border bg-gray-50/60 text-xs font-semibold outline-none focus:ring-2 focus:ring-violet-500/10"
+                style={{ borderColor: COLORS.BORDER_SUBTLE }}
+              />
+              {searchInput && (
+                <button onClick={() => { setSearchInput(""); setSearch("") }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 opacity-35 hover:opacity-100">
+                  <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </motion.div>
 
-      <AnimatePresence>
-        {detalleReserva && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDetalleReserva(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
-              className="relative bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
-              <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <h3 className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>Detalle de Reserva</h3>
-                <button onClick={() => setDetalleReserva(null)} className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="p-6 space-y-5">
-                {(() => {
-                  const aula = aulas.find(a => a.id === detalleReserva.aula_id)
-                  const cliente = getClienteInfo(detalleReserva)
-                  const estado = ESTADO_STYLES[detalleReserva.estado] || ESTADO_STYLES.reservado
-                  return (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <InfoDetail icon={Home02Icon} label="Aula" value={aula?.nombre || "—"} />
-                        <InfoDetail icon={UserIcon} label="Capacidad" value={aula ? `${aula.capacidad} personas` : "—"} />
-                        <InfoDetail icon={Calendar02Icon} label="Fecha" value={new Date(detalleReserva.fecha_reserva).toLocaleDateString("es-ES")} />
-                        <InfoDetail icon={Clock04Icon} label="Horario" value={`${detalleReserva.hora_inicio?.substring(0, 5)} — ${detalleReserva.hora_fin?.substring(0, 5)}`} />
-                        <InfoDetail icon={Money02Icon} label="Precio/hora" value={`$${aula?.precio_hora?.toLocaleString() || "0"}`} />
-                        <InfoDetail icon={Money02Icon} label="Total" value={`$${detalleReserva.precio_total?.toLocaleString() || "0"}`} />
-                      </div>
+        <div className="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-3 bg-gray-50/[0.15]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl border bg-white text-xs font-bold outline-none cursor-pointer"
+              style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <option value="todos">Todos los estados</option>
+              {Object.entries(ESTADO_STYLES).map(([k, v]) => (
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+            <select value={tipoFilter} onChange={e => setTipoFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl border bg-white text-xs font-bold outline-none cursor-pointer"
+              style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <option value="todos">Todos los tipos</option>
+              <option value="interno">Interno</option>
+              <option value="externo">Externo</option>
+            </select>
+          </div>
+        </div>
 
-                      <div className="border-t pt-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <h4 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: COLORS.TEXT_MUTED }}>Cliente</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <InfoDetail icon={UserIcon} label="Nombre" value={cliente.nombres} />
-                          <InfoDetail icon={IdentificationIcon} label="Cédula" value={cliente.cedula || "—"} />
-                          <InfoDetail icon={Mail01Icon} label="Correo" value={cliente.correo || "—"} />
-                          <InfoDetail icon={CallIcon} label="Celular" value={cliente.celular || "—"} />
-                          <InfoDetail icon={LibraryIcon} label="Tipo" value={cliente.tipo} />
-                          <InfoDetail icon={MapsLocation01Icon} label="Estado" value={estado.label} />
+        {filtered.length === 0 ? (
+          <div className="p-20 text-center">
+            <p className="font-bold text-sm opacity-35" style={{ color: COLORS.CHARCOAL }}>
+              {search ? `Sin resultados para "${search}"` : "No hay reservas registradas"}
+            </p>
+            <p className="text-xs mt-1 opacity-25">Prueba modificando los filtros</p>
+          </div>
+        ) : (
+          <div className="p-6 space-y-4">
+            {groupedByDate.map(([date, items]) => {
+              const isOpen = !!expandedGroups[date]
+              const dayTotal = getGroupTotal(items)
+
+              return (
+                <div key={date} className="border rounded-2xl bg-white overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <div
+                    onClick={() => toggleGroup(date)}
+                    className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-black/[0.01] transition-colors select-none"
+                  >
+                    <div className="flex items-center gap-3">
+                      <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
+                        <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="opacity-40" />
+                      </motion.div>
+                      <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider" style={{ color: COLORS.CHARCOAL }}>
+                        {date}
+                      </h3>
+                      <span className="text-[10px] sm:text-xs opacity-40 font-bold">
+                        ({items.length} reserva{items.length !== 1 ? "s" : ""})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 font-bold text-xs sm:text-sm shrink-0">
+                      <span style={{ color: "oklch(0.55 0.15 150)" }}>
+                        Total: ${dayTotal.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: "auto" }}
+                        exit={{ height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="divide-y border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                          {items.map((r) => {
+                            const estado = ESTADO_STYLES[r.estado] || ESTADO_STYLES.reservado
+                            const clienteNombre = getClienteNombre(r)
+                            const aulaNombre = getAulaNombre(r.aula_id)
+                            return (
+                              <div key={r.id} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/50 transition-colors">
+                                <div className={cn(
+                                  "size-9 rounded-xl flex items-center justify-center shrink-0",
+                                  r.persona_id ? "bg-indigo-100" : "bg-emerald-100"
+                                )}>
+                                  <HugeiconsIcon icon={r.persona_id ? UserIcon : LibraryIcon} size={14}
+                                    className={r.persona_id ? "text-indigo-600" : "text-emerald-600"} />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-extrabold truncate" style={{ color: COLORS.CHARCOAL }}>
+                                    {clienteNombre}
+                                  </p>
+                                  <p className="text-[10px] opacity-45 font-bold truncate">
+                                    {aulaNombre}
+                                    {" · "}
+                                    {r.hora_inicio?.substring(0, 5)} – {r.hora_fin?.substring(0, 5)}
+                                  </p>
+                                </div>
+
+                                <span className={cn("inline-flex px-2 py-0.5 rounded-md text-[9px] font-bold uppercase shrink-0", estado.bg, estado.color)}>
+                                  {estado.label}
+                                </span>
+
+                                <span className="text-xs font-bold w-20 text-right shrink-0" style={{ color: COLORS.CHARCOAL }}>
+                                  ${Number(r.precio_total).toLocaleString()}
+                                </span>
+
+                                <button onClick={() => handlePago(r)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 shrink-0"
+                                  style={{ backgroundColor: COLORS.ACCENT }}>
+                                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                  Registrar pago
+                                </button>
+                              </div>
+                            )
+                          })}
                         </div>
-                      </div>
-                    </>
-                  )
-                })()}
-              </div>
-            </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
           </div>
         )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function InfoDetail({ icon: Icon, label, value }: { icon: IconSvgElement; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <HugeiconsIcon icon={Icon} size={14} style={{ color: COLORS.TEXT_MUTED }} className="mt-0.5 shrink-0" />
-      <div>
-        <p className="text-[9px] font-bold uppercase opacity-40" style={{ color: COLORS.CHARCOAL }}>{label}</p>
-        <p className="text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>{value}</p>
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, Delete01Icon, MapPinIcon, Cancel01Icon, CheckmarkCircle01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService, type HorarioTaller } from "@/services/taller.service"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
@@ -13,6 +13,43 @@ const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
 const TEXT_MUTED = COLORS.TEXT_MUTED
 const BORDER = COLORS.BORDER_SUBTLE
+
+const ECUADOR_CIUDADES = [
+  { nombre: "Quito", provincia: "Pichincha", region: "Sierra" },
+  { nombre: "Guayaquil", provincia: "Guayas", region: "Costa" },
+  { nombre: "Cuenca", provincia: "Azuay", region: "Sierra" },
+  { nombre: "Ambato", provincia: "Tungurahua", region: "Sierra" },
+  { nombre: "Santo Domingo", provincia: "Santo Domingo de los Tsáchilas", region: "Tropical" },
+  { nombre: "Manta", provincia: "Manabí", region: "Costa" },
+  { nombre: "Portoviejo", provincia: "Manabí", region: "Costa" },
+  { nombre: "Loja", provincia: "Loja", region: "Sierra" },
+  { nombre: "Riobamba", provincia: "Chimborazo", region: "Sierra" },
+  { nombre: "Machala", provincia: "El Oro", region: "Costa" },
+  { nombre: "Durán", provincia: "Guayas", region: "Costa" },
+  { nombre: "Ibarra", provincia: "Imbabura", region: "Sierra" },
+  { nombre: "Babahoyo", provincia: "Los Ríos", region: "Costa" },
+  { nombre: "Tulcán", provincia: "Carchi", region: "Sierra" },
+  { nombre: "Latacunga", provincia: "Cotopaxi", region: "Sierra" },
+  { nombre: "Guaranda", provincia: "Bolívar", region: "Sierra" },
+  { nombre: "Azogues", provincia: "Cañar", region: "Sierra" },
+  { nombre: "Tena", provincia: "Napo", region: "Amazonía" },
+  { nombre: "Puyo", provincia: "Pastaza", region: "Amazonía" },
+  { nombre: "Zamora", provincia: "Zamora Chinchipe", region: "Amazonía" },
+  { nombre: "Macas", provincia: "Morona Santiago", region: "Amazonía" },
+  { nombre: "Nueva Loja", provincia: "Sucumbíos", region: "Amazonía" },
+  { nombre: "Francisco de Orellana", provincia: "Orellana", region: "Amazonía" },
+  { nombre: "Puerto Baquerizo Moreno", provincia: "Galápagos", region: "Insular" },
+]
+
+const REGIONES = ["Sierra", "Costa", "Amazonía", "Insular"] as const
+type Region = typeof REGIONES[number]
+
+const regionColors: Record<Region, string> = {
+  Sierra: "oklch(0.65 0.15 250)",
+  Costa: "oklch(0.65 0.18 145)",
+  Amazonía: "oklch(0.60 0.18 145)",
+  Insular: "oklch(0.65 0.15 50)",
+}
 
 const DIAS = [
   { num: 1, label: "Lun" },
@@ -82,6 +119,10 @@ export function TallerFormPage() {
   const [horarios, setHorarios] = useState<HorarioForm[]>([])
   const [diasSeleccionados, setDiasSeleccionados] = useState<number[]>([])
   const [ciudades, setCiudades] = useState<Ciudad[]>([])
+  const [showCiudadModal, setShowCiudadModal] = useState(false)
+  const [ciudadModalRegion, setCiudadModalRegion] = useState<Region | null>(null)
+  const [ciudadModalSeleccionada, setCiudadModalSeleccionada] = useState<string | null>(null)
+  const [savingCiudad, setSavingCiudad] = useState(false)
 
   useEffect(() => {
     if (!isEdit) return
@@ -188,6 +229,24 @@ export function TallerFormPage() {
     return true
   }
 
+  const handleCrearCiudad = async (nombre: string) => {
+    if (!nombre.trim()) return
+    setSavingCiudad(true)
+    try {
+      const nueva = await ciudadesService.crearCiudad(nombre.trim())
+      toast.success(`Ciudad "${nombre}" creada`)
+      const ciudadesActualizadas = await ciudadesService.getCiudadesTodas()
+      setCiudades(ciudadesActualizadas)
+      setForm(f => ({ ...f, ciudad_id: nueva.id }))
+      setShowCiudadModal(false)
+      setCiudadModalSeleccionada(null)
+      setCiudadModalRegion(null)
+    } catch (err) {
+      const axiosErr = err as { response?: { data?: { errors?: Record<string, string[]>; message?: string; mensaje?: string } } }
+      toast.error(axiosErr.response?.data?.message || axiosErr.response?.data?.mensaje || "Error al crear la ciudad")
+    } finally { setSavingCiudad(false) }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
@@ -250,7 +309,7 @@ export function TallerFormPage() {
 
       <main className="flex-1 max-w-[800px] mx-auto w-full px-6 py-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-xl border p-6 space-y-5" style={{ borderColor: BORDER }}>
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1.5" style={{ color: CHARCOAL }}>Nombre del Taller</label>
               <input type="text" value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} required
@@ -330,14 +389,27 @@ export function TallerFormPage() {
                 Ciudad
                 {form.modalidad === "virtual" && <span className="text-xs ml-1" style={{ color: TEXT_MUTED }}>— No aplica</span>}
               </label>
-              <select value={form.ciudad_id}
-                onChange={e => setForm(f => ({ ...f, ciudad_id: e.target.value ? parseInt(e.target.value, 10) : 0 }))}
-                disabled={form.modalidad === "virtual"}
-                className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none"
-                style={{ borderColor: BORDER, opacity: form.modalidad === "virtual" ? 0.5 : 1 }}>
-                <option value="">Seleccionar ciudad...</option>
-                {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
+              <div className="flex gap-2">
+                <select value={form.ciudad_id}
+                  onChange={e => setForm(f => ({ ...f, ciudad_id: e.target.value ? parseInt(e.target.value, 10) : 0 }))}
+                  disabled={form.modalidad === "virtual"}
+                  className="flex-1 px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none"
+                  style={{ borderColor: BORDER, opacity: form.modalidad === "virtual" ? 0.5 : 1 }}>
+                  <option value="">Seleccionar ciudad...</option>
+                  {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+                {form.modalidad !== "virtual" && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowCiudadModal(true); setCiudadModalSeleccionada(null); setCiudadModalRegion(null) }}
+                    className="px-3 py-2.5 rounded-lg border text-xs font-semibold hover:bg-gray-50 transition-colors shrink-0"
+                    style={{ borderColor: BORDER, color: ACCENT }}
+                    title="Registrar nueva ciudad"
+                  >
+                    + Nueva
+                  </button>
+                )}
+              </div>
             </div>
 
             <div>
@@ -457,6 +529,91 @@ export function TallerFormPage() {
           </div>
         </form>
       </main>
+
+      {showCiudadModal && (() => {
+        const ciudadesRegistradas = new Set(ciudades.map(c => c.nombre))
+        const disponibles = ECUADOR_CIUDADES.filter(c => !ciudadesRegistradas.has(c.nombre))
+        const filtradas = ciudadModalRegion ? disponibles.filter(c => c.region === ciudadModalRegion) : disponibles
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "oklch(0 0 0 / 0.4)" }}
+            onClick={() => setShowCiudadModal(false)}>
+            <div className="bg-white rounded-2xl border w-full max-w-lg max-h-[80vh] overflow-hidden shadow-xl"
+              style={{ borderColor: BORDER }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: BORDER }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="size-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 12%, transparent)` }}>
+                    <HugeiconsIcon icon={MapPinIcon} size={16} style={{ color: ACCENT }} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold" style={{ color: CHARCOAL }}>Registrar nueva ciudad</h3>
+                    <p className="text-xs" style={{ color: TEXT_MUTED }}>Selecciona una ciudad del listado</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowCiudadModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: TEXT_MUTED }}>
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(80vh-130px)]">
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  <button type="button" onClick={() => setCiudadModalRegion(null)}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border"
+                    style={{ borderColor: !ciudadModalRegion ? ACCENT : BORDER, backgroundColor: !ciudadModalRegion ? `color-mix(in srgb, ${ACCENT} 10%, white)` : "transparent", color: !ciudadModalRegion ? ACCENT : TEXT_MUTED }}>
+                    Todas
+                  </button>
+                  {REGIONES.map(region => (
+                    <button key={region} type="button" onClick={() => setCiudadModalRegion(region)}
+                      className="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all border"
+                      style={{ borderColor: ciudadModalRegion === region ? ACCENT : BORDER, backgroundColor: ciudadModalRegion === region ? `color-mix(in srgb, ${ACCENT} 10%, white)` : "transparent", color: ciudadModalRegion === region ? ACCENT : TEXT_MUTED }}>
+                      {region}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[220px] overflow-y-auto">
+                  {filtradas.map(ciudad => (
+                    <button
+                      key={ciudad.nombre}
+                      type="button"
+                      onClick={() => setCiudadModalSeleccionada(ciudad.nombre)}
+                      className="relative flex flex-col items-start gap-1 px-3 py-2.5 rounded-xl border-2 text-left transition-all"
+                      style={{ borderColor: ciudadModalSeleccionada === ciudad.nombre ? ACCENT : BORDER, backgroundColor: ciudadModalSeleccionada === ciudad.nombre ? `color-mix(in srgb, ${ACCENT} 8%, white)` : "white" }}>
+                      <span className="text-xs font-medium" style={{ color: CHARCOAL }}>{ciudad.nombre}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: `color-mix(in srgb, ${regionColors[ciudad.region as Region] || "oklch(0.6 0.1 200)"} 15%, transparent)`, color: regionColors[ciudad.region as Region] || "oklch(0.6 0.1 200)" }}>{ciudad.region}</span>
+                      {ciudadModalSeleccionada === ciudad.nombre && (
+                        <div className="absolute -top-1 -right-1 size-3.5 rounded-full flex items-center justify-center" style={{ backgroundColor: ACCENT }}>
+                          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={8} className="text-white" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                  {filtradas.length === 0 && (
+                    <p className="col-span-full text-xs py-4 text-center" style={{ color: TEXT_MUTED }}>No hay ciudades disponibles en esta región</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: BORDER }}>
+                <button type="button" onClick={() => setShowCiudadModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-medium transition-colors hover:bg-gray-100"
+                  style={{ color: TEXT_MUTED }}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => ciudadModalSeleccionada && handleCrearCiudad(ciudadModalSeleccionada)}
+                  disabled={savingCiudad || !ciudadModalSeleccionada}
+                  className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-50"
+                  style={{ backgroundColor: ACCENT }}>
+                  {savingCiudad ? "Registrando..." : "Registrar ciudad"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

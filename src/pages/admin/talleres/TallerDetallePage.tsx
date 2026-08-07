@@ -328,10 +328,10 @@ export function TallerDetallePage() {
 
       <div className="bg-white border-b" style={{ borderColor: BORDER }}>
         <div className="max-w-[1000px] mx-auto px-6">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto">
             {tabs.map(t => (
               <button key={t.key} onClick={() => setTab(t.key)}
-                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+                className="flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-medium border-b-2 transition-all shrink-0 whitespace-nowrap"
                 style={{
                   borderColor: tab === t.key ? ACCENT : "transparent",
                   color: tab === t.key ? CHARCOAL : TEXT_MUTED,

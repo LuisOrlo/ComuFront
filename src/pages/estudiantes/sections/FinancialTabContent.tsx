@@ -46,7 +46,7 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
     total_general: data.resumen.total_general > 0
       ? data.resumen.total_general
       : data.matriculas?.reduce((sum, m) =>
-          sum + (m.lineas_pago?.reduce((s, lp) => s + (lp.monto_ajustado ?? 0), 0) ?? 0), 0) ?? 0,
+          sum + (m.lineas_pago?.reduce((s, lp) => s + (lp.monto_original ?? 0), 0) ?? 0), 0) ?? 0,
     total_pagado: data.resumen.total_pagado > 0
       ? data.resumen.total_pagado
       : data.matriculas?.reduce((sum, m) =>
@@ -344,7 +344,7 @@ function ModuleRow({ linea, isLast }: { linea: LineaPagoModulo; isLast: boolean 
     pagado: { bg: 'rgba(16,185,129,0.08)', color: '#059669' },
   }
   const s = estadoStyle[linea.estado] || estadoStyle.pendiente
-  const pct = linea.monto_ajustado > 0 ? Math.round((linea.monto_abonado / linea.monto_ajustado) * 100) : 0
+  const pct = linea.monto_original > 0 ? Math.round((linea.monto_abonado / linea.monto_original) * 100) : 0
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const esInscripcion = (linea as any).tipo === 'inscripcion'
   const nombre = esInscripcion
@@ -360,7 +360,7 @@ function ModuleRow({ linea, isLast }: { linea: LineaPagoModulo; isLast: boolean 
           </span>
         <div className="flex items-center gap-3 mt-1">
           <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
-            Total: <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${linea.monto_ajustado.toFixed(2)}</span>
+            Total: <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${linea.monto_original.toFixed(2)}</span>
           </span>
           <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
             Abonado: <span className="font-semibold" style={{ color: '#059669' }}>${linea.monto_abonado.toFixed(2)}</span>

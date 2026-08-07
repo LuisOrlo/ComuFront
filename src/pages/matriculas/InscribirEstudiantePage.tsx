@@ -257,7 +257,6 @@ export function InscribirEstudiantePage() {
               cursoAbiertoId={selectedCurso}
               cursoNombre={selectedCursoData.nombre_instancia || selectedCursoData.catalogo?.nombre || "Curso"}
               metodoPagoInicial="transferencia"
-              onMontoModulo1Change={() => {}}
               onSubmit={(pagos, metodoPago) => handleApproveWithPayment(pagos, metodoPago)}
             />
           </div>

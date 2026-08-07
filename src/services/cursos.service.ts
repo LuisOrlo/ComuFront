@@ -758,6 +758,11 @@ export const cursosService = {
     return response.data
   },
 
+  async actualizarLineasPago(id: string, lineas: { id: string; monto_abonado: number }[]): Promise<Record<string, unknown>> {
+    const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-lineas-pago`, { lineas })
+    return response.data
+  },
+
   async actualizarCurso(id: string, datos: { curso_abierto_id: string }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-curso`, datos)
     return response.data

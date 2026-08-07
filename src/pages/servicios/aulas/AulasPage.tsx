@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -17,6 +17,7 @@ import {
   CallIcon,
   IdentificationIcon,
   PackageIcon,
+  Search01Icon,
 } from "@hugeicons/core-free-icons"
 import { X, Plus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -87,6 +88,11 @@ export function AulasPage() {
   const [detalleReserva, setDetalleReserva] = useState<ReservaAula | null>(null)
   const [detalleOpen, setDetalleOpen] = useState(false)
 
+  const [aulaSearch, setAulaSearch] = useState("")
+  const [showMoreAulas, setShowMoreAulas] = useState(false)
+  const [aulaWeekRef, setAulaWeekRef] = useState(() => new Date())
+  const moreAulasRef = useRef<HTMLDivElement>(null)
+
   const { monday: genMonday, sunday: genSunday } = useMemo(() => getWeekRange(fechaRef), [fechaRef])
   const genWeekDays = useMemo(() => getWeekDays(genMonday), [genMonday])
 
@@ -135,6 +141,25 @@ export function AulasPage() {
 
   const colorForAula = (aulaId: string) => AULA_PALETTE[aulas.findIndex(a => a.id === aulaId) % AULA_PALETTE.length]
 
+  const MAX_VISIBLE_AULAS = 7
+  const filteredAulas = useMemo(() => {
+    if (!aulaSearch.trim()) return aulas
+    const q = aulaSearch.toLowerCase()
+    return aulas.filter(a => a.nombre.toLowerCase().includes(q))
+  }, [aulas, aulaSearch])
+
+  const visibleAulas = filteredAulas.slice(0, MAX_VISIBLE_AULAS)
+  const hiddenAulas = filteredAulas.slice(MAX_VISIBLE_AULAS)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (moreAulasRef.current && !moreAulasRef.current.contains(e.target as Node))
+        setShowMoreAulas(false)
+    }
+    if (showMoreAulas) document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [showMoreAulas])
+
   const getReservasSlot = (dateStr: string, hour: number, aulaId?: string) => {
     return reservasGenerales.filter(r => {
       if (r.fecha_reserva !== dateStr) return false
@@ -150,6 +175,7 @@ export function AulasPage() {
 
   const handleSelectAula = (aula: Aula) => {
     setSelectedAula(aula)
+    setAulaWeekRef(new Date())
     loadReservas(aula.id)
   }
 
@@ -180,29 +206,43 @@ export function AulasPage() {
             style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.95 0 0)" }}
           >
             <HugeiconsIcon icon={PackageIcon} size={14} />
-            Gestionar Aulas
+            Revisa tus aulas
           </Link>
         </div>
       </header>
 
       <div className="flex-1 flex flex-col p-6 lg:p-8 gap-6">
-        {/* Aula selector tabs */}
+        {/* Aula selector: buscador + chips */}
         <section className="shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          <div className="flex items-center gap-3">
+            <div className="relative w-[200px] shrink-0">
+              <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
+              <input
+                type="text"
+                value={aulaSearch}
+                onChange={e => setAulaSearch(e.target.value)}
+                placeholder="Buscar aula..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-violet-500/10"
+                style={{ borderColor: COLORS.BORDER_SUBTLE }}
+              />
+            </div>
+
             {loading ? (
               <div className="flex items-center gap-2">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="h-9 w-28 rounded-xl bg-white border animate-pulse" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
                 ))}
               </div>
-            ) : aulas.length === 0 ? (
+            ) : filteredAulas.length === 0 ? (
               <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border-2 border-dashed" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <HugeiconsIcon icon={InformationCircleIcon} size={16} className="opacity-30" />
-                <span className="text-xs font-bold opacity-30">No hay aulas configuradas</span>
+                <span className="text-xs font-bold opacity-30">
+                  {aulaSearch ? "Sin resultados" : "No hay aulas configuradas"}
+                </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                {aulas.map((aula, i) => {
+              <div className="flex items-center gap-1.5 overflow-x-auto flex-nowrap min-w-0 pb-1 scrollbar-thin">
+                {visibleAulas.map((aula, i) => {
                   const isSelected = selectedAula?.id === aula.id
                   const now = new Date()
                   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
@@ -218,30 +258,58 @@ export function AulasPage() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04, type: "spring", stiffness: 400, damping: 30 }}
-                      onClick={() => handleSelectAula(aula)}
+                      onClick={() => { handleSelectAula(aula); setShowMoreAulas(false) }}
                       className={cn(
-                        "relative flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap active:scale-[0.97]",
+                        "relative flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap active:scale-[0.97] shrink-0",
                         isSelected
-                          ? "bg-white shadow-sm border-2"
+                          ? "text-white shadow-sm"
                           : "bg-white/50 hover:bg-white border-2 border-transparent hover:border-black/10"
                       )}
                       style={{
-                        borderColor: isSelected ? COLORS.ACCENT : undefined,
-                        color: COLORS.CHARCOAL,
+                        backgroundColor: isSelected ? "#7c3aed" : undefined,
+                        color: isSelected ? "white" : COLORS.CHARCOAL,
                       }}
                     >
-                      {isSelected && (
-                        <motion.div
-                          layoutId="active-aula-tab"
-                          className="absolute inset-0 rounded-xl"
-                          style={{ backgroundColor: `${COLORS.ACCENT}08` }}
-                        />
-                      )}
                       <span className="relative z-10">{aula.nombre}</span>
-                      <div className={cn("relative z-10 size-2 rounded-full shrink-0", occupied ? "bg-red-500" : "bg-emerald-500")} />
+                      <div className={cn("relative z-10 size-2 rounded-full shrink-0", occupied ? "bg-red-400" : "bg-emerald-400", isSelected && "ring-1 ring-white/50")} />
                     </motion.button>
                   )
                 })}
+
+                {hiddenAulas.length > 0 && (
+                  <div className="relative shrink-0" ref={moreAulasRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreAulas(!showMoreAulas)}
+                      className="px-3 py-2 rounded-xl text-xs font-bold bg-white border hover:bg-gray-50 transition-colors shrink-0"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                    >
+                      +{hiddenAulas.length} más
+                    </button>
+                    {showMoreAulas && (
+                      <div className="absolute top-full mt-1 left-0 z-50 bg-white border rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto min-w-[140px]"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        {hiddenAulas.map(aula => {
+                          const isSelected = selectedAula?.id === aula.id
+                          return (
+                            <button
+                              key={aula.id}
+                              type="button"
+                              onClick={() => { handleSelectAula(aula); setShowMoreAulas(false) }}
+                              className={cn(
+                                "w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 transition-colors flex items-center gap-2",
+                                isSelected && "bg-violet-50"
+                              )}
+                            >
+                              <span>{aula.nombre}</span>
+                              {isSelected && <span className="ml-auto text-violet-600 font-bold">✓</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -317,10 +385,21 @@ export function AulasPage() {
                     <HugeiconsIcon icon={ArrowRight02Icon} size={14} className="opacity-50" />
                   </button>
                 </div>
-                <div className="hidden sm:flex items-center gap-2 text-[10px]">
-                  {aulas.slice(0, 5).map((a, i) => (
-                    <div key={a.id} className="flex items-center gap-1"><div className={cn("size-2 rounded-sm", AULA_PALETTE[i % 8].dot)} /><span className="opacity-40 truncate max-w-[60px]">{a.nombre}</span></div>
+                {vistaSub !== "diaria" && (
+                  <button onClick={() => setFechaRef(new Date())}
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold border hover:bg-gray-50 transition-colors"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                    Hoy
+                  </button>
+                )}
+                <div className="hidden sm:flex items-center gap-3 text-[10px] ml-2">
+                  {aulas.slice(0, 12).map((a, i) => (
+                    <div key={a.id} className="flex items-center gap-1 shrink-0">
+                      <div className={cn("size-2 rounded-sm", AULA_PALETTE[i % 8].dot)} />
+                      <span className="opacity-40 truncate max-w-[70px]">{a.nombre}</span>
+                    </div>
                   ))}
+                  {aulas.length > 12 && <span className="opacity-30 text-[9px]">+{aulas.length - 12} más</span>}
                 </div>
               </div>
             )}
@@ -334,6 +413,8 @@ export function AulasPage() {
                     key="aula-cal"
                     aula={selectedAula}
                     reservas={reservas}
+                    fechaRef={aulaWeekRef}
+                    onWeekChange={setAulaWeekRef}
                     onSelect={(r) => { setDetalleReserva(r); setDetalleOpen(true) }}
                     onSlotClick={(dateStr, hour) => {
                       navigate(`/servicios/aulas/nueva-reserva/${selectedAula.id}`, {
@@ -456,16 +537,22 @@ export function AulasPage() {
   )
 }
 
-function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva, onSelect }: { aula: Aula; reservas: ReservaAula[]; onSlotClick: (dateStr: string, hour: number) => void; onCrearReserva: () => void; onSelect?: (r: ReservaAula) => void }) {
+function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva, onSelect, fechaRef, onWeekChange }: {
+  aula: Aula; reservas: ReservaAula[]; onSlotClick: (dateStr: string, hour: number) => void; onCrearReserva: () => void; onSelect?: (r: ReservaAula) => void
+  fechaRef: Date; onWeekChange: (d: Date) => void
+}) {
   const today = new Date()
+  const { monday, sunday } = useMemo(() => getWeekRange(fechaRef), [fechaRef])
   const days: Date[] = []
   for (let i = 0; i < 7; i++) {
-    const d = new Date(today)
-    const dow = today.getDay()
-    d.setDate(today.getDate() - dow + (dow === 0 ? -6 : 1) + i)
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
     days.push(d)
   }
   const hours = Array.from({ length: 14 }, (_, i) => i + 7)
+
+  const weekLabel = `${monday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} – ${sunday.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}`
+  const isCurrentWeek = today >= monday && today <= sunday
 
   return (
     <motion.div key="cal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 h-full flex flex-col">
@@ -473,13 +560,33 @@ function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva, onSelect }:
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Cronograma: {aula.nombre}</h2>
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider bg-blue-100 text-blue-700">Semana actual</span>
+            {isCurrentWeek && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider bg-blue-100 text-blue-700">Semana actual</span>}
           </div>
           <p className="text-xs font-medium opacity-50 mt-0.5">Selecciona horario vacío para crear reserva</p>
         </div>
-        <button onClick={onCrearReserva} className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg shadow-blue-600/20 hover:opacity-90 active:scale-[0.97]">
-          <HugeiconsIcon icon={Calendar03Icon} size={16} /> Crear Reserva
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() - 7); onWeekChange(d) }}
+              className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+              <HugeiconsIcon icon={ArrowLeft02Icon} size={14} className="opacity-50" />
+            </button>
+            <span className="text-xs font-bold opacity-50 min-w-[180px] text-center">{weekLabel}</span>
+            <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() + 7); onWeekChange(d) }}
+              className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+              <HugeiconsIcon icon={ArrowRight02Icon} size={14} className="opacity-50" />
+            </button>
+          </div>
+          {!isCurrentWeek && (
+            <button onClick={() => onWeekChange(new Date())}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-bold border hover:bg-gray-50 transition-colors"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+              Hoy
+            </button>
+          )}
+          <button onClick={onCrearReserva} className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg shadow-blue-600/20 hover:opacity-90 active:scale-[0.97]">
+            <HugeiconsIcon icon={Calendar03Icon} size={16} /> Crear Reserva
+          </button>
+        </div>
       </div>
       <div className="flex-1 min-h-0 border rounded-[1.5rem] overflow-hidden shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -529,6 +636,25 @@ function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva, onSelect }:
               })}
             </div>
           ))}
+        </div>
+      </div>
+      {/* Leyenda de colores */}
+      <div className="flex items-center gap-4 mt-3 text-[10px] font-medium opacity-50">
+        <div className="flex items-center gap-1.5">
+          <div className="size-2.5 rounded border border-dashed border-gray-300 bg-white" />
+          <span>Disponible</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="size-2.5 rounded bg-indigo-500" />
+          <span>Interno</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="size-2.5 rounded bg-emerald-500" />
+          <span>Externo</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="size-2.5 rounded bg-gray-300" />
+          <span>Pasado</span>
         </div>
       </div>
     </motion.div>
