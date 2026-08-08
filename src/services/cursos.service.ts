@@ -161,6 +161,7 @@ export interface CursoFilters {
   estado?: string
   search?: string
   per_page?: number
+  dias_desde_inicio?: number
 }
 
 // ============================================================================
@@ -385,6 +386,9 @@ export const cursosService = {
     }
     if (filters?.catalogo_curso_id) {
       params.catalogo_curso_id = filters.catalogo_curso_id
+    }
+    if (filters?.dias_desde_inicio) {
+      params.dias_desde_inicio = filters.dias_desde_inicio
     }
 
     const response = await api.get<{ data: CursoAbierto[]; meta: { current_page: number; last_page: number; per_page: number; total: number } }>(
@@ -760,6 +764,14 @@ export const cursosService = {
 
   async actualizarLineasPago(id: string, lineas: { id: string; monto_abonado: number }[]): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-lineas-pago`, { lineas })
+    return response.data
+  },
+
+  async reconciliarCurso(id: string, datos: {
+    curso_abierto_id: string
+    lineas: { modulo_id: string | null; tipo: string; monto_abonado: number; monto_ajustado: number }[]
+  }): Promise<Record<string, unknown>> {
+    const response = await api.post(`/academic/solicitudes-inscripcion/${id}/reconciliar-curso`, datos)
     return response.data
   },
 

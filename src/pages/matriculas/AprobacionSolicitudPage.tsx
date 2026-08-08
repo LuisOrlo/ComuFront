@@ -18,6 +18,7 @@ import { SolicitudEstudianteTab } from "./components/solicitudes/SolicitudEstudi
 import { SolicitudCursoTab } from "./components/solicitudes/SolicitudCursoTab"
 import { SolicitudPagoTab } from "./components/solicitudes/SolicitudPagoTab"
 import { SolicitudDocumentoTab } from "./components/solicitudes/SolicitudDocumentoTab"
+import { ModalReconciliacionCurso } from "./components/ModalReconciliacionCurso"
 import { toast } from "sonner"
 import axios from "axios"
 
@@ -85,9 +86,48 @@ export function AprobacionSolicitudPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [confirmReject, setConfirmReject] = useState(false)
 
-  const [editingLineaId, setEditingLineaId] = useState<string | null>(null)
-  const [editingLineaVal, setEditingLineaVal] = useState("")
-  const [savingLineaEdit, setSavingLineaEdit] = useState(false)
+  const [editandoMontos, setEditandoMontos] = useState(false)
+  const [editMontosValues, setEditMontosValues] = useState<Record<string, string>>({})
+  const [savingMontos, setSavingMontos] = useState(false)
+
+  const [modalReconciliacionOpen, setModalReconciliacionOpen] = useState(false)
+  const [cursoIdPropuesto, setCursoIdPropuesto] = useState<string | null>(null)
+  const [reconciliando, setReconciliando] = useState(false)
+  const [nuevosModulos, setNuevosModulos] = useState<any[]>([])
+  const [nuevoCursoNombre, setNuevoCursoNombre] = useState("")
+  const montoInscripcion =
+    Number(selected?.lineas_pago?.inscripcion?.monto_ajustado) || 0
+
+  useEffect(() => {
+    if (!modalReconciliacionOpen || !cursoIdPropuesto) return
+    const loadModulos = async () => {
+      try {
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL}/academic/cursos-abiertos/${cursoIdPropuesto}/modulos`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` } }
+        )
+        const rawModulos = (res.data?.data || []) as any[]
+        const precioInscripcion = Number(res.data?.precio_inscripcion)
+          || montoInscripcion
+          || 0
+        if (precioInscripcion > 0) {
+          rawModulos.push({
+            id: null,
+            nombre_modulo: "Inscripci\u00f3n / Matr\u00edcula",
+            tipo: "inscripcion",
+            precio_base: precioInscripcion,
+          })
+        }
+        setNuevosModulos(rawModulos)
+        const selCurso = cursosAbiertosList.find((c: any) => c.id === cursoIdPropuesto)
+        setNuevoCursoNombre(selCurso?.nombre_instancia || selCurso?.catalogo?.nombre || "Nuevo curso")
+      } catch {
+        toast.error("Error al cargar módulos del nuevo curso")
+        setModalReconciliacionOpen(false)
+      }
+    }
+    loadModulos()
+  }, [modalReconciliacionOpen, cursoIdPropuesto, cursosAbiertosList, montoInscripcion])
 
   const fetchDetail = useCallback(async (targetId?: string) => {
     const fetchId = targetId || id
@@ -121,6 +161,7 @@ export function AprobacionSolicitudPage() {
       ])
       setSelected(detalle)
       setAdjacent(data)
+      setActiveTab("resumen")
       window.history.replaceState(null, "", `/matriculas/aprobacion/solicitud/${targetId}${searchStr}`)
     } catch {
       toast.error("Error al cargar solicitud")
@@ -131,7 +172,7 @@ export function AprobacionSolicitudPage() {
 
   const loadCursosAbiertos = useCallback(async () => {
     try {
-      const res = await cursosService.getCursos({ per_page: 100 }, 1)
+      const res = await cursosService.getCursos({ per_page: 100, dias_desde_inicio: 7 }, 1)
       setCursosAbiertosList((res as any).data || [])
     } catch { /* silent */ }
   }, [])
@@ -140,7 +181,7 @@ export function AprobacionSolicitudPage() {
 
   const filteredCursosAbiertos = useMemo(() => {
     if (!searchCursoQuery.trim()) return cursosAbiertosList
-    const query = searchCursoQuery.toLowerCase()
+    const query = searchCursoQuery.toLowerCase().trim()
     return cursosAbiertosList.filter((c: any) => (c.nombre || c.id || "").toLowerCase().includes(query))
   }, [cursosAbiertosList, searchCursoQuery])
 
@@ -183,6 +224,12 @@ export function AprobacionSolicitudPage() {
 
   const saveCursoEdit = async () => {
     if (!id || !editCursoField) return
+    const yaAprobada = selected?.estado?.valor === "matricula_creada"
+    if (yaAprobada) {
+      setCursoIdPropuesto(editCursoVal)
+      setModalReconciliacionOpen(true)
+      return
+    }
     setSavingCursoEdit(true)
     try {
       await cursosService.actualizarCurso(id, { curso_abierto_id: editCursoVal })
@@ -195,6 +242,21 @@ export function AprobacionSolicitudPage() {
     } catch (err) {
       toast.error((err as any)?.response?.data?.mensaje || "Error al guardar curso")
     } finally { setSavingCursoEdit(false) }
+  }
+
+  const handleReconciliarCurso = async (lineas: { modulo_id: string | null; tipo: string; monto_abonado: number; monto_ajustado: number }[]) => {
+    if (!id || !cursoIdPropuesto) return
+    setReconciliando(true)
+    try {
+      await cursosService.reconciliarCurso(id, { curso_abierto_id: cursoIdPropuesto, lineas })
+      toast.success("Curso actualizado y pagos reconciliados correctamente")
+      setModalReconciliacionOpen(false)
+      setCursoIdPropuesto(null)
+      setEditCursoField(null); setEditCursoVal("")
+      fetchDetail()
+    } catch (err) {
+      toast.error((err as any)?.response?.data?.mensaje || "Error al reconciliar curso")
+    } finally { setReconciliando(false) }
   }
 
   const startEditPago = (field: string, value: string) => {
@@ -309,24 +371,56 @@ export function AprobacionSolicitudPage() {
     } finally { setActionLoading(false) }
   }
 
-  const startEditLinea = (lineaId: string, value: string) => {
-    setEditingLineaId(lineaId)
-    setEditingLineaVal(value)
+  const startEditMontos = () => {
+    const values: Record<string, string> = {}
+    selected.lineas_pago?.modulos?.forEach((lp: any) => {
+      values[lp.id] = String(lp.monto_abonado)
+    })
+    if (selected.lineas_pago?.inscripcion) {
+      values[selected.lineas_pago.inscripcion.id] = String(selected.lineas_pago.inscripcion.monto_abonado)
+    }
+    setEditMontosValues(values)
+    setEditandoMontos(true)
   }
-  const cancelEditLinea = () => { setEditingLineaId(null); setEditingLineaVal("") }
 
-  const saveEditLinea = async () => {
-    if (!id || !editingLineaId) return
-    setSavingLineaEdit(true)
+  const cancelEditMontos = () => {
+    setEditMontosValues({})
+    setEditandoMontos(false)
+  }
+
+  const editMontoChange = (lineaId: string, val: string) => {
+    setEditMontosValues(prev => ({ ...prev, [lineaId]: val }))
+  }
+
+  const saveEditMontos = async () => {
+    if (!id) return
+    setSavingMontos(true)
     try {
-      await cursosService.actualizarLineasPago(id, [{ id: editingLineaId, monto_abonado: parseFloat(editingLineaVal) || 0 }])
-      toast.success("Monto actualizado correctamente")
-      setEditingLineaId(null)
-      setEditingLineaVal("")
+      const originalValues: Record<string, number> = {}
+      selected.lineas_pago?.modulos?.forEach((lp: any) => {
+        originalValues[lp.id] = lp.monto_abonado
+      })
+      if (selected.lineas_pago?.inscripcion) {
+        originalValues[selected.lineas_pago.inscripcion.id] = selected.lineas_pago.inscripcion.monto_abonado
+      }
+
+      const changedLines = Object.entries(editMontosValues)
+        .filter(([lineaId, val]) => parseFloat(val) !== originalValues[lineaId])
+        .map(([lineaId, val]) => ({ id: lineaId, monto_abonado: parseFloat(val) || 0 }))
+
+      if (changedLines.length === 0) {
+        toast.info("No hay cambios que guardar")
+        cancelEditMontos()
+        return
+      }
+
+      await cursosService.actualizarLineasPago(id, changedLines)
+      toast.success(`${changedLines.length} monto${changedLines.length > 1 ? "s" : ""} actualizado${changedLines.length > 1 ? "s" : ""} correctamente`)
+      cancelEditMontos()
       fetchDetail(id)
     } catch (err) {
-      toast.error((err as any)?.response?.data?.mensaje || "Error al actualizar monto")
-    } finally { setSavingLineaEdit(false) }
+      toast.error((err as any)?.response?.data?.mensaje || "Error al actualizar montos")
+    } finally { setSavingMontos(false) }
   }
 
   if (loading) {
@@ -425,12 +519,12 @@ export function AprobacionSolicitudPage() {
 
       <div className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-[900px] mx-auto px-6">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
+                className="flex items-center gap-2 px-3 sm:px-4 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap shrink-0"
                 style={{ borderColor: activeTab === tab.id ? COLORS.ACCENT : "transparent", color: activeTab === tab.id ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
-                <HugeiconsIcon icon={tab.icon} size={14} />{tab.label}
+                <HugeiconsIcon icon={tab.icon} size={14} /><span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -457,7 +551,8 @@ export function AprobacionSolicitudPage() {
                   setEditCursoField={setEditCursoField} setEditCursoVal={setEditCursoVal}
                   saveCursoEdit={saveCursoEdit} savingCursoEdit={savingCursoEdit} loadCursosAbiertos={loadCursosAbiertos}
                   cursoCatalogo={cursoCatalogo} cursoModalidad={cursoModalidad} cursoDocente={cursoDocente}
-                  cursoCiudad={cursoCiudad} cursoHorario={cursoHorario} cursoInicio={cursoInicio} cursoFin={cursoFin} cursoPrecio={cursoPrecio} />
+                  cursoCiudad={cursoCiudad} cursoHorario={cursoHorario} cursoInicio={cursoInicio} cursoFin={cursoFin} cursoPrecio={cursoPrecio}
+                  yaProcesada={yaProcesada} totalAbonado={selected?.lineas_pago?.total_abonado || 0} />
               )}
               {activeTab === "pago" && (
                 <SolicitudPagoTab selected={selected} yaProcesada={yaProcesada}
@@ -471,9 +566,10 @@ export function AprobacionSolicitudPage() {
                   setExpandedImageUrl={setExpandedImageUrl} pagoRef={pagoRef} getCursoNombre={getCursoNombre}
                   setMontoValido={setMontoValido}
                   setTotalPrecioModulos={setTotalPrecioModulos} handleApprove={handleApprove} setSelected={setSelected}
-                  editingLineaId={editingLineaId} editingLineaVal={editingLineaVal}
-                  startEditLinea={startEditLinea} setEditLineaVal={setEditingLineaVal}
-                  saveEditLinea={saveEditLinea} cancelEditLinea={cancelEditLinea} savingLineaEdit={savingLineaEdit} />
+                  editandoMontos={editandoMontos} editMontosValues={editMontosValues}
+                  onStartEditMontos={startEditMontos} onCancelMontos={cancelEditMontos}
+                  onEditMontoChange={editMontoChange} onSaveMontos={saveEditMontos}
+                  savingMontos={savingMontos} />
               )}
               {activeTab === "documento" && (
                 <SolicitudDocumentoTab selected={selected} cedulaRef={cedulaRef}
@@ -511,6 +607,23 @@ export function AprobacionSolicitudPage() {
         icon="danger" onConfirm={() => deleteArchivoModal?.type === "comprobante" ? handleDeleteComprobante() : handleDeleteCedula()}
         onCancel={() => setDeleteArchivoModal(null)} />
       {expandedImageUrl && <ImageZoom url={expandedImageUrl} onClose={() => setExpandedImageUrl(null)} />}
+      <ModalReconciliacionCurso isOpen={modalReconciliacionOpen}
+        oldCursoNombre={getCursoNombre()}
+        newCursoNombre={nuevoCursoNombre}
+        modulosNuevoCurso={nuevosModulos.map((m: any) => ({
+          id: m.id || null,
+          nombre: m.nombre_modulo || m.nombre || `Módulo ${m.orden || "—"}`,
+          tipo: m.tipo || "modulo",
+          monto_ajustado: Number(m.monto_ajustado || m.precio_base || 0),
+        }))}
+        totalAbonadoActual={selected?.lineas_pago?.total_abonado || 0}
+        oldMontosAbonados={[
+          ...(selected?.lineas_pago?.modulos || []).map((m: any) => m.monto_abonado || 0),
+          ...(selected?.lineas_pago?.inscripcion ? [selected.lineas_pago.inscripcion.monto_abonado || 0] : []),
+        ]}
+        onConfirm={handleReconciliarCurso}
+        onCancel={() => { setModalReconciliacionOpen(false); setCursoIdPropuesto(null) }}
+        loading={reconciliando} />
     </div>
   )
 }

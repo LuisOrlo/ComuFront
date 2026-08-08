@@ -157,7 +157,7 @@ export function NuevaReservaPage() {
     const timer = setTimeout(async () => {
       setVerificandoConflicto(true)
       try {
-        const data = await podcastService.getReservas({ fecha_inicio: fecha, fecha_fin: fecha })
+        const data = await podcastService.getReservas({ fecha })
         if (!active) return
         const reservas = Array.isArray(data) ? data : []
         const conflictoEncontrado = reservas.find((r: ReservaPodcast) =>

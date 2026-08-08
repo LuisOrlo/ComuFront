@@ -30,6 +30,7 @@ export function PagoDetallePage() {
   const [modalImage, setModalImage] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [modulosExpandidos, setModulosExpandidos] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -210,88 +211,123 @@ export function PagoDetallePage() {
         className="max-w-4xl space-y-6"
       >
         <div
-          className="rounded-2xl border bg-white p-8 flex items-center gap-4"
+          className="rounded-2xl border bg-white p-8 flex items-center justify-between"
           style={{ borderColor: COLORS.BORDER_SUBTLE }}
         >
-          <div
-            className="size-12 rounded-xl flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${estadoColor(data.estado_verificacion)}20` }}
-          >
-            <HugeiconsIcon
-              icon={estadoIcon(data.estado_verificacion)}
-              size={24}
-              style={{ color: estadoColor(data.estado_verificacion) }}
-            />
-          </div>
-          <div>
-            <p className="text-3xl font-black" style={{ color: COLORS.CHARCOAL }}>
-              ${Number(data.monto || 0).toLocaleString()}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm font-bold capitalize" style={{ color: COLORS.CHARCOAL }}>
-                {data.metodo_pago}
-              </span>
-              <span className="size-1 rounded-full bg-current opacity-30" />
-              <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full", badgeEstado(data.estado_verificacion))}>
-                {data.estado_verificacion}
-              </span>
+          <div className="flex items-center gap-4">
+            <div
+              className="size-12 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${estadoColor(data.estado_verificacion)}20` }}
+            >
+              <HugeiconsIcon
+                icon={estadoIcon(data.estado_verificacion)}
+                size={24}
+                style={{ color: estadoColor(data.estado_verificacion) }}
+              />
             </div>
+            <div>
+              <p className="text-3xl font-black" style={{ color: COLORS.CHARCOAL }}>
+                ${Number(data.monto || 0).toLocaleString()}
+              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm font-bold capitalize" style={{ color: COLORS.CHARCOAL }}>
+                  {data.metodo_pago}
+                </span>
+                <span className="size-1 rounded-full bg-current opacity-30" />
+                <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full", badgeEstado(data.estado_verificacion))}>
+                  {data.estado_verificacion}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right shrink-0 ml-6">
+            {registradoPor === verificadoPor ? (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
+                  Registrado y verificado por
+                </p>
+                <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{registradoPor}</p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
+                    Registrado por
+                  </p>
+                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{registradoPor}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
+                    Verificado por
+                  </p>
+                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
+                    {data.estado_verificacion === "pendiente" ? "Pendiente" : verificadoPor}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div
-            className="rounded-2xl border bg-white p-6 space-y-4"
-            style={{ borderColor: COLORS.BORDER_SUBTLE }}
-          >
-            <h3 className="text-sm font-black uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>
-              Información General
-            </h3>
+        <div
+          className="rounded-2xl border bg-white p-6 space-y-4"
+          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+        >
+          <h3 className="text-sm font-black uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>
+            Información General
+          </h3>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DetailRow icon={Calendar02Icon} label="Fecha de Pago" value={new Date(data.fecha_pago || data.created_at).toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })} />
             <DetailRow icon={Money02Icon} label="Método" value={data.metodo_pago} capitalize />
             <DetailRow icon={UserIcon} label="Estudiante" value={getNombreEstudiante()} />
             <DetailRow icon={UserIcon} label="Curso / Taller" value={getCursoNombre()} />
-            {data.tiene_multiples_modulos && data.modulos?.length > 0 ? (
-              <div className="space-y-2">
-                <DetailRow icon={UserIcon} label="Módulos" value={`${data.modulos.length} módulos`} />
-                <div className="pl-9 space-y-1.5">
-                  {data.modulos.map((m: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between text-sm py-1 px-3 rounded-lg bg-gray-50">
-                      <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{m.modulo_nombre}</span>
-                      <span className="font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>${Number(m.monto).toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between text-sm py-1 px-3 rounded-lg border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>Total</span>
-                    <span className="font-black" style={{ color: COLORS.ACCENT }}>${Number(data.monto || 0).toLocaleString()}</span>
+          </div>
+
+          {data.tiene_multiples_modulos && data.modulos?.length > 0 && (
+            <div className="space-y-2 pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>Módulos</p>
+              <div className="pl-9 space-y-1.5">
+                {(modulosExpandidos ? data.modulos : data.modulos.slice(0, 5)).map((m: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-sm py-1 px-3 rounded-lg bg-gray-50">
+                    <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{m.modulo_nombre}</span>
+                    <span className="font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>${Number(m.monto).toLocaleString()}</span>
                   </div>
+                ))}
+                {data.modulos.length > 5 && !modulosExpandidos && (
+                  <button
+                    onClick={() => setModulosExpandidos(true)}
+                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline transition-colors px-3"
+                  >
+                    Ver todos los módulos ({data.modulos.length - 5} más)
+                  </button>
+                )}
+                {modulosExpandidos && data.modulos.length > 5 && (
+                  <button
+                    onClick={() => setModulosExpandidos(false)}
+                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline transition-colors px-3"
+                  >
+                    Ocultar módulos
+                  </button>
+                )}
+                <div className="flex items-center justify-between text-sm py-1 px-3 rounded-lg border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>Total</span>
+                  <span className="font-black" style={{ color: COLORS.ACCENT }}>${Number(data.monto || 0).toLocaleString()}</span>
                 </div>
               </div>
-            ) : (
-              getModuloNombre() && (
-                <DetailRow icon={UserIcon} label="Módulo" value={getModuloNombre()} />
-              )
-            )}
-          </div>
+            </div>
+          )}
 
-          <div
-            className="rounded-2xl border bg-white p-6 space-y-4"
-            style={{ borderColor: COLORS.BORDER_SUBTLE }}
-          >
-            <h3 className="text-sm font-black uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>
-              Registro y Verificación
-            </h3>
+          {!data.tiene_multiples_modulos && getModuloNombre() && (
+            <DetailRow icon={UserIcon} label="Módulo" value={getModuloNombre()} />
+          )}
 
-            <DetailRow icon={UserIcon} label="Registrado por" value={registradoPor} />
-            <DetailRow icon={UserIcon} label="Verificado por" value={data.estado_verificacion === "pendiente" ? "Pendiente" : verificadoPor} />
-            {data.observaciones && (
-              <DetailRow icon={Note01Icon} label="Observaciones" value={data.observaciones} />
-            )}
-            {data.motivo_rechazo && (
-              <DetailRow icon={Cancel01Icon} label="Motivo de Rechazo" value={data.motivo_rechazo} error />
-            )}
-          </div>
+          {data.observaciones && (
+            <DetailRow icon={Note01Icon} label="Observaciones" value={data.observaciones} />
+          )}
+          {data.motivo_rechazo && (
+            <DetailRow icon={Cancel01Icon} label="Motivo de Rechazo" value={data.motivo_rechazo} error />
+          )}
         </div>
 
         {data.comprobante_purgado ? (
@@ -344,15 +380,21 @@ export function PagoDetallePage() {
               </div>
             </div>
             <div
-              className="rounded-xl border overflow-hidden cursor-pointer"
+              className="rounded-xl border overflow-hidden cursor-pointer relative group"
               style={{ borderColor: COLORS.BORDER_SUBTLE }}
               onClick={() => setModalImage(getStorageUrl(data.comprobante_url))}
             >
               <img
                 src={getStorageUrl(data.comprobante_url)}
                 alt="Comprobante de pago"
-                className="w-full max-h-[400px] object-contain bg-gray-50 hover:opacity-90 transition-opacity"
+                className="w-full max-h-[400px] object-contain bg-gray-50 group-hover:opacity-80 transition-opacity"
               />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+                <span className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-white/90 shadow-lg" style={{ color: COLORS.CHARCOAL }}>
+                  <HugeiconsIcon icon={ImageIcon} size={14} />
+                  Ver completo
+                </span>
+              </div>
             </div>
           </div>
         ) : null}

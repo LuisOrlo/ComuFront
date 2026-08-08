@@ -131,9 +131,23 @@ export function RegistrarPagoPage() {
   const totalPendiente = totalAdeudado - totalAbonado
   const montoPagoNum = parseFloat(montoPago || "0")
 
+  const cuentaAfectadas = (() => {
+    let count = 0
+    let resto = montoPagoNum
+    for (const lp of sorted) {
+      const saldo = lp.monto_ajustado - lp.monto_abonado
+      if (saldo > 0 && resto > 0) { count++; resto -= Math.min(resto, saldo) }
+    }
+    return count
+  })()
+
+  const handlePagarTodo = () => {
+    setMontoPago(String(totalPendiente))
+  }
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
+    <div className="min-h-[100dvh] md:min-h-0 md:p-6">
+      <div className="px-4 py-3 md:p-0 mb-3 md:mb-6">
         <Link
           to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
@@ -143,219 +157,251 @@ export function RegistrarPagoPage() {
         </Link>
       </div>
 
-      <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-        <div className="px-8 py-6 border-b bg-gray-50/50">
-          <h2 className="text-xl font-black text-gray-900">Registrar pago</h2>
-          <p className="text-sm text-gray-500 mt-1">{cursoNombre || "Curso"}</p>
-        </div>
-
-        <div className="p-8 space-y-6">
-          <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Estudiante</span>
-              <p className="text-sm font-bold text-gray-900 mt-0.5">{estudianteNombre || "—"}</p>
-              {estudianteCedula && <p className="text-xs text-gray-500">{estudianteCedula}</p>}
+      <div className="mx-auto px-4 md:px-0">
+        <div className="bg-white border rounded-2xl overflow-hidden shadow-sm md:border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="px-6 py-5 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-lg md:text-xl font-black text-gray-900">Registrar pago</h2>
+                <p className="text-sm text-gray-500 mt-0.5 md:mt-1">{cursoNombre || "Curso"}</p>
+                <div className="flex items-center gap-2 mt-1 md:hidden text-xs text-gray-500">
+                  <span>{estudianteNombre || "—"}</span>
+                  {estudianteCedula && <span className="opacity-60">{estudianteCedula}</span>}
+                </div>
+              </div>
+              <div className="flex gap-4 text-center md:shrink-0">
+                <div className="hidden md:block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total</span>
+                  <p className="text-lg font-black text-gray-900">${totalAdeudado.toLocaleString()}</p>
+                </div>
+                <div className="hidden md:block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Pagado</span>
+                  <p className="text-lg font-black text-emerald-600">${totalAbonado.toLocaleString()}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Pendiente</span>
+                  <p className={`text-lg font-black ${totalPendiente > 0 ? "text-red-500" : "text-gray-500"}`}>
+                    ${totalPendiente.toLocaleString()}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Curso</span>
-              <p className="text-sm font-bold text-gray-900 mt-0.5">{cursoNombre || "—"}</p>
-              <p className="text-xs text-gray-500">{sorted.length} módulo{sorted.length !== 1 ? "s" : ""}</p>
+            <div className="grid grid-cols-3 gap-3 mt-3 md:hidden">
+              <div className="text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total</span>
+                <p className="text-base font-black text-gray-900">${totalAdeudado.toLocaleString()}</p>
+              </div>
+              <div className="text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Pagado</span>
+                <p className="text-base font-black text-emerald-600">${totalAbonado.toLocaleString()}</p>
+              </div>
+              <div className="text-center">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Pendiente</span>
+                <p className={`text-base font-black ${totalPendiente > 0 ? "text-red-500" : "text-gray-500"}`}>
+                  ${totalPendiente.toLocaleString()}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 p-5 rounded-2xl border border-gray-200 bg-white">
-            <div className="text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total</span>
-              <p className="text-2xl font-black text-gray-900 mt-1">${totalAdeudado.toLocaleString()}</p>
+          <div className="p-5 md:p-6 space-y-5">
+            <div className="grid grid-cols-2 gap-3 p-3 md:p-4 rounded-xl bg-gray-50 border border-gray-100">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Estudiante</span>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{estudianteNombre || "—"}</p>
+                {estudianteCedula && <p className="text-xs text-gray-500">{estudianteCedula}</p>}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Curso</span>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{cursoNombre || "—"}</p>
+                <p className="text-xs text-gray-500">{sorted.length} módulo{sorted.length !== 1 ? "s" : ""}</p>
+              </div>
             </div>
-            <div className="text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Pagado</span>
-              <p className="text-2xl font-black text-emerald-600 mt-1">${totalAbonado.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Pendiente</span>
-              <p className={`text-2xl font-black mt-1 ${totalPendiente > 0 ? "text-red-500" : "text-gray-500"}`}>
-                ${totalPendiente.toLocaleString()}
-              </p>
-            </div>
-          </div>
 
-          {loadingLineas ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="size-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-              <span className="ml-3 text-sm text-gray-500">Cargando módulos...</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-1">Módulos</span>
-              {sorted.map((linea) => {
-                const pagado = linea.monto_abonado >= linea.monto_ajustado
-                const esInscripcion = linea.tipo === "inscripcion"
-                return (
-                  <div
-                    key={linea.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white"
+            <div className="md:grid md:grid-cols-[1.2fr_1fr] gap-6 space-y-5 md:space-y-0">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Distribuir por módulo</span>
+                  {totalPendiente > 0 && (
+                    <button onClick={handlePagarTodo}
+                      className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline transition-colors">
+                      Pagar todo: ${totalPendiente.toLocaleString()}
+                    </button>
+                  )}
+                </div>
+
+                {loadingLineas ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="size-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    <span className="ml-3 text-sm text-gray-500">Cargando módulos...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {sorted.map((linea) => {
+                      const pagado = linea.monto_abonado >= linea.monto_ajustado
+                      const esInscripcion = linea.tipo === "inscripcion"
+                      const saldo = linea.monto_ajustado - linea.monto_abonado
+                      return (
+                        <div key={linea.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white min-h-[52px] md:min-h-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className="size-7 md:size-8 shrink-0 rounded-lg flex items-center justify-center text-[10px] md:text-xs font-black text-white"
+                              style={{ backgroundColor: pagado ? "#10b981" : COLORS.ACCENT }}
+                            >
+                              {esInscripcion ? "Insc" : (linea.numero_orden ?? "—")}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs md:text-sm font-semibold text-gray-800 truncate">
+                                {esInscripcion ? "Inscripción / Matrícula" : (linea.nombre_modulo || "")}
+                              </p>
+                              <p className="text-[10px] md:text-[11px] text-gray-400">
+                                ${linea.monto_ajustado.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="shrink-0 ml-2">
+                            {pagado ? (
+                              <span className="text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 uppercase">
+                                Pagado
+                              </span>
+                            ) : linea.monto_abonado > 0 ? (
+                              <div className="text-right">
+                                <span className="text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-100 text-amber-700 uppercase">
+                                  Abonado
+                                </span>
+                                <p className="text-[9px] text-red-500 font-bold mt-0.5">${saldo.toLocaleString()}</p>
+                              </div>
+                            ) : (
+                              <div className="text-right">
+                                <span className="text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-500 uppercase">
+                                  Pendiente
+                                </span>
+                                <p className="text-[9px] text-red-500 font-bold mt-0.5">${saldo.toLocaleString()}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <div className="p-4 rounded-xl border-2 border-blue-100 bg-blue-50/40 space-y-2">
+                  <label className="text-xs font-bold text-blue-600 uppercase tracking-wider">Monto a pagar</label>
+                  <div className="relative">
+                    <span className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-base md:text-lg">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      max={totalPendiente}
+                      placeholder={`0.00 (máx $${totalPendiente.toLocaleString()})`}
+                      value={montoPago}
+                      onChange={e => setMontoPago(e.target.value)}
+                      className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-3 md:py-3.5 min-h-[44px] border-2 border-blue-200 rounded-xl md:rounded-2xl text-base md:text-lg font-black font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white"
+                    />
+                  </div>
+                  {montoPagoNum > totalPendiente && (
+                    <p className="text-xs text-red-500 font-medium">El monto excede el saldo pendiente (${totalPendiente.toLocaleString()})</p>
+                  )}
+                  {montoPagoNum > 0 && montoPagoNum <= totalPendiente && (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      Se aplicará a {cuentaAfectadas} módulo(s)
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
+                    Método de pago
+                  </label>
+                  <select
+                    value={metodoPago}
+                    onChange={e => setMetodoPago(e.target.value)}
+                    className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-xl md:rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="size-8 shrink-0 rounded-lg flex items-center justify-center text-xs font-black text-white"
-                        style={{ backgroundColor: pagado ? "#10b981" : COLORS.ACCENT }}
-                      >
-                        {esInscripcion ? "Insc" : (linea.numero_orden ?? "—")}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">
-                          {esInscripcion ? "Inscripción / Matrícula" : (linea.nombre_modulo || "")}
-                        </p>
-                        <p className="text-[11px] text-gray-400">
-                          ${linea.monto_ajustado.toLocaleString()}
-                        </p>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="deposito">Depósito</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
+                    Comprobante de pago
+                  </label>
+                  {comprobantePreview ? (
+                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                      <img
+                        src={comprobantePreview}
+                        alt="Comprobante"
+                        className="w-full max-h-[280px] object-contain bg-gray-50"
+                      />
+                      <div className="flex items-center justify-between px-4 py-2.5 border-t bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <span className="text-xs text-gray-500 truncate max-w-[200px]">{comprobanteFile?.name}</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                          >
+                            Cambiar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setComprobanteFile(null); setComprobantePreview(null) }}
+                            className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
+                          >
+                            Quitar
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <span
-                      className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase ${
-                        pagado
-                          ? "bg-emerald-100 text-emerald-700"
-                          : linea.monto_abonado > 0
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-gray-100 text-gray-500"
-                      }`}
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-3 p-4 min-h-[44px] border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
                     >
-                      {pagado
-                        ? "Pagado"
-                        : linea.monto_abonado > 0
-                          ? `Abonado $${(linea.monto_ajustado - linea.monto_abonado).toLocaleString()}`
-                          : `Pendiente $${linea.monto_ajustado.toLocaleString()}`}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="p-5 rounded-2xl border-2 border-blue-100 bg-blue-50/40 space-y-3">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Monto a pagar</span>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">$</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                max={totalPendiente}
-                placeholder={`0.00 (máx $${totalPendiente.toLocaleString()})`}
-                value={montoPago}
-                onChange={e => setMontoPago(e.target.value)}
-                className="w-full pl-10 pr-4 py-4 border-2 border-blue-200 rounded-2xl text-xl font-black font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white"
-              />
-            </div>
-            {montoPagoNum > totalPendiente && (
-              <p className="text-xs text-red-500 font-medium">
-                El monto excede el saldo pendiente (${totalPendiente.toLocaleString()})
-              </p>
-            )}
-            {montoPagoNum > 0 && montoPagoNum <= totalPendiente && (
-              <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
-                <span>Se aplicará a{" "}
-                  {(() => {
-                    let count = 0
-                    let resto = montoPagoNum
-                    for (const lp of sorted) {
-                      const saldo = lp.monto_ajustado - lp.monto_abonado
-                      if (saldo > 0 && resto > 0) {
-                        count++
-                        resto -= Math.min(resto, saldo)
-                      }
-                    }
-                    return count
-                  })()}{" "}
-                  módulo(s)
-                </span>
+                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                      <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                        <HugeiconsIcon icon={UploadIcon} size={20} className="text-gray-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
+                        <p className="text-xs text-gray-400">Máximo 5MB, JPG o PNG</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
-              Método de pago
-            </label>
-            <select
-              value={metodoPago}
-              onChange={e => setMetodoPago(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
-            >
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="deposito">Depósito</option>
-              <option value="tarjeta">Tarjeta</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
-              Comprobante de pago
-            </label>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-4 p-4 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              {comprobantePreview ? (
-                <>
-                  <img src={comprobantePreview} alt="Comprobante" className="size-14 rounded-xl object-cover border" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-700 truncate">{comprobanteFile?.name}</p>
-                    <p className="text-xs text-gray-400">Toca para cambiar archivo</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setComprobanteFile(null); setComprobantePreview(null) }}
-                    className="text-xs font-bold text-red-400 hover:text-red-600"
-                  >
-                    Eliminar
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="size-14 rounded-xl bg-gray-100 flex items-center justify-center">
-                    <HugeiconsIcon icon={UploadIcon} size={22} className="text-gray-400" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
-                    <p className="text-xs text-gray-400">Máximo 5MB, formato JPG o PNG</p>
-                  </div>
-                </>
-              )}
             </div>
-          </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Link
-              to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
-              className="px-6 py-3 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              Cancelar
-            </Link>
-            <button
-              type="button"
-              onClick={handleRegistrar}
-              disabled={saving || montoPagoNum <= 0}
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: COLORS.ACCENT }}
-            >
-              <HugeiconsIcon icon={Coins02Icon} size={16} />
-              {saving
-                ? "Registrando..."
-                : montoPagoNum > 0
-                  ? `Pagar $${montoPagoNum.toLocaleString()}`
-                  : "Registrar pago"}
-            </button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <Link
+                to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
+                className="flex items-center justify-center px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Cancelar
+              </Link>
+              <button
+                type="button"
+                onClick={handleRegistrar}
+                disabled={saving || montoPagoNum <= 0}
+                className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                <HugeiconsIcon icon={Coins02Icon} size={16} />
+                {saving
+                  ? "Registrando..."
+                  : montoPagoNum > 0
+                    ? `Pagar $${montoPagoNum.toLocaleString()}`
+                    : "Registrar pago"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

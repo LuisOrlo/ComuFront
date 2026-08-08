@@ -1,24 +1,48 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useNavigate, useParams } from "react-router"
 import { usePermission } from "@/hooks/usePermission"
-import { FileAttachmentIcon, PaymentIcon } from "@hugeicons/core-free-icons"
+import { FileAttachmentIcon, PaymentIcon, PencilEdit01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { getStorageUrl } from "@/lib/utils"
 import type { FinancialProfile, LineaPagoModulo } from "@/services/estudiantes.service"
+import { financeService } from "@/services/finance.service"
+import { toast } from "sonner"
 
 interface FinancialTabContentProps {
   data: FinancialProfile | null
   loading: boolean
+  onRefresh: () => void
 }
 
-export function FinancialTabContent({ data, loading }: FinancialTabContentProps) {
+export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabContentProps) {
   const { id: estudianteId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { isAdmin } = usePermission()
   const [imagenExpandida, setImagenExpandida] = useState<string | null>(null)
   const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set())
   const [showFullHistorial, setShowFullHistorial] = useState(false)
+  const [editModal, setEditModal] = useState<{ id: string; monto: number; metodo: string } | null>(null)
+  const [editMonto, setEditMonto] = useState("")
+  const [editMetodo, setEditMetodo] = useState("")
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editModal) return
+    const monto = parseFloat(editMonto)
+    if (!monto || monto <= 0) { toast.error("Ingresa un monto vlido"); return }
+    setSavingEdit(true)
+    try {
+      await financeService.updateTransaccion(editModal.id, { monto, metodo_pago: editMetodo })
+      toast.success("Pago actualizado correctamente")
+      setEditModal(null)
+      onRefresh()
+    } catch (err) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      toast.error((err as any)?.response?.data?.mensaje || "Error al actualizar")
+    } finally { setSavingEdit(false) }
+  }, [editModal, editMonto, editMetodo, onRefresh])
+
   if (loading) {
     return (
       <div className="text-center py-20">
@@ -269,24 +293,25 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b">
-                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase">Fecha</th>
+                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-24">Fecha</th>
                   <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase">Concepto</th>
-                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-right">Monto</th>
-                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase">Metodo</th>
-                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase">Comp.</th>
-                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-center">Verif.</th>
+                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-right w-20">Monto</th>
+                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-24">Mtodo</th>
+                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-14">Comp.</th>
+                  <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-center w-20">Verif.</th>
+                  {isAdmin && <th className="px-5 py-3 w-16"></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {transaccionesMostradas.map((t) => (
                   <tr key={t.id} className="hover:bg-gray-50/50">
                     <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
-                      {new Date(t.fecha_pago).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      {new Date(t.fecha_pago + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}
                     </td>
-                    <td className="px-5 py-3 font-medium text-gray-700 text-xs max-w-48 truncate">{t.concepto}</td>
-                    <td className="px-5 py-3 text-right font-mono font-bold text-emerald-600">${t.monto.toLocaleString()}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{metodoLabels[t.metodo_pago] || t.metodo_pago}</td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3 font-medium text-gray-700 text-xs truncate">{t.concepto}</td>
+                    <td className="px-5 py-3 text-right font-mono font-bold text-emerald-600 text-xs whitespace-nowrap">${t.monto.toLocaleString()}</td>
+                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{metodoLabels[t.metodo_pago] || t.metodo_pago}</td>
+                    <td className="px-5 py-3 whitespace-nowrap">
                       {t.comprobante_url ? (
                          <button onClick={() => setImagenExpandida(getStorageUrl(t.comprobante_url))}
                           className="inline-flex items-center gap-1 text-[10px] font-bold hover:underline"
@@ -295,11 +320,27 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
                         </button>
                       ) : <span className="text-gray-300 text-xs">—</span>}
                     </td>
-                    <td className="px-5 py-3 text-center">
+                    <td className="px-5 py-3 text-center whitespace-nowrap">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${verifClasses[t.estado_verificacion] || 'bg-gray-100 text-gray-600'}`}>
                         {t.estado_verificacion}
                       </span>
                     </td>
+                    {isAdmin && (
+                      <td className="px-5 py-3 whitespace-nowrap">
+                        {t.estado_verificacion === 'aprobado' && (
+                          <button onClick={() => {
+                            setEditModal({ id: t.id, monto: t.monto, metodo: t.metodo_pago })
+                            setEditMonto(String(t.monto))
+                            setEditMetodo(t.metodo_pago)
+                          }}
+                            className="inline-flex items-center gap-1 text-[10px] font-medium hover:underline transition-colors"
+                            style={{ color: COLORS.TEXT_MUTED }}>
+                            <HugeiconsIcon icon={PencilEdit01Icon} size={12} />
+                            Editar
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -316,6 +357,54 @@ export function FinancialTabContent({ data, loading }: FinancialTabContentProps)
           )}
         </div>
       )})()}
+
+      {editModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setEditModal(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 z-10 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="px-6 py-4 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <h3 className="text-sm font-black text-gray-900">Editar pago</h3>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Monto</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">$</span>
+                  <input type="number" min="0.01" step="0.01" value={editMonto}
+                    onChange={e => setEditMonto(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/10"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Mtodo</label>
+                <select value={editMetodo} onChange={e => setEditMetodo(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="deposito">Depsito</option>
+                  <option value="tarjeta">Tarjeta</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <button onClick={() => setEditModal(null)} disabled={savingEdit}
+                className="px-4 py-2 rounded-lg text-xs font-semibold border transition-colors hover:bg-gray-100 disabled:opacity-50"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
+                Cancelar
+              </button>
+              <button onClick={handleSaveEdit} disabled={savingEdit}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: COLORS.ACCENT }}>
+                <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
+                {savingEdit ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {imagenExpandida && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImagenExpandida(null)}>

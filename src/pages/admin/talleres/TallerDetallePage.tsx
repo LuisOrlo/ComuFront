@@ -52,6 +52,8 @@ export function TallerDetallePage() {
   const [cargandoDetalleAsistencia, setCargandoDetalleAsistencia] = useState(false)
   const [editandoSesionId, setEditandoSesionId] = useState<string | null>(null)
   const [editsLocal, setEditsLocal] = useState<Record<string, { estado: string; observaciones: string }>>({})
+  const [showDeleteTallerConfirm, setShowDeleteTallerConfirm] = useState(false)
+  const [deletingTaller, setDeletingTaller] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -159,6 +161,20 @@ export function TallerDetallePage() {
       setRefreshKey(k => k + 1)
     } catch { toast.error("Error al eliminar inscripción") }
     finally { setDeleting(false) }
+  }
+
+  const handleDeleteTaller = async () => {
+    if (!id) return
+    setDeletingTaller(true)
+    try {
+      await tallerService.eliminar(id)
+      toast.success("Taller eliminado")
+      navigate("/talleres")
+    } catch {
+      toast.error("Error al eliminar taller")
+    } finally {
+      setDeletingTaller(false)
+    }
   }
 
   const iniciarEdicionAsistencia = (sesionId: string) => {
@@ -317,10 +333,19 @@ export function TallerDetallePage() {
                 }}>
                 {taller.estado}
               </span>
-              {isAdmin && (<button onClick={() => navigate(`/talleres/${id}/editar`)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: TEXT_MUTED }}>
-                <HugeiconsIcon icon={Edit01Icon} size={16} />
-              </button>)}
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => navigate(`/talleres/${id}/editar`)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all duration-200 active:scale-[0.97]"
+                    style={{ backgroundColor: ACCENT }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />Editar
+                  </button>
+                  <button onClick={() => setShowDeleteTallerConfirm(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 bg-black/5 text-charcoal/60 hover:bg-red-50 hover:text-red-600 active:scale-95">
+                    <HugeiconsIcon icon={Delete01Icon} size={14} />Eliminar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -819,6 +844,19 @@ export function TallerDetallePage() {
         isDangerous
         onConfirm={handleDeleteInscripcion}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteTallerConfirm}
+        title="Eliminar Taller"
+        message={`¿Estás seguro de eliminar "${taller.nombre}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isLoading={deletingTaller}
+        icon="trash"
+        isDangerous
+        onConfirm={handleDeleteTaller}
+        onCancel={() => setShowDeleteTallerConfirm(false)}
       />
     </div>
   )

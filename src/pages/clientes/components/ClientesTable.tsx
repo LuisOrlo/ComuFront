@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { UserGroupIcon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
-import { Eye, Pencil, Trash2 } from "lucide-react"
+import { Eye } from "lucide-react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -23,14 +23,12 @@ interface ClientesTableProps {
   loading: boolean
   search: string
   onSearchChange: (value: string) => void
-  onEdit: (cliente: ClienteExterno) => void
-  onDelete: (cliente: ClienteExterno) => void
 }
 
 const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
 
-export function ClientesTable({ clientes, loading, search, onSearchChange, onEdit, onDelete }: ClientesTableProps) {
+export function ClientesTable({ clientes, loading, search, onSearchChange }: ClientesTableProps) {
   const navigate = useNavigate()
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 })
@@ -86,26 +84,16 @@ export function ClientesTable({ clientes, loading, search, onSearchChange, onEdi
         return (
           <div className="flex items-center justify-center gap-1">
             <button onClick={() => navigate(`/clientes/${c.id}`)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              title="Ver detalle">
-              <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
-            </button>
-            <button onClick={() => onEdit(c)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              title="Editar">
-              <Pencil size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-amber-600 transition-colors" />
-            </button>
-            <button onClick={() => onDelete(c)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
-              title="Eliminar">
-              <Trash2 size={14} className="opacity-40 text-red-500 group-hover:opacity-100 group-hover:text-red-600 transition-colors" />
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-xs font-medium"
+              style={{ color: "#6b7280" }}>
+              <Eye size={13} />
+              Ver detalle
             </button>
           </div>
         )
       },
       enableSorting: false,
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [navigate])
 
   // eslint-disable-next-line react-hooks/incompatible-library

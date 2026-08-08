@@ -14,6 +14,7 @@ import {
   UserGroupIcon,
   CheckmarkCircle01Icon,
   Money01Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -161,10 +162,19 @@ export function CursoDetailPage() {
                   </span>
                 </div>
               </div>
-              {isAdmin && (<button onClick={() => setShowDeleteConfirm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-black/5 text-charcoal/60 hover:bg-red-50 hover:text-red-600 active:scale-95">
-                <Trash2 size={14} />Eliminar
-              </button>)}
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => navigate(`/cursos/${id}/editar`)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-white active:scale-95"
+                    style={{ backgroundColor: COLORS.ACCENT, boxShadow: `0 0 15px ${COLORS.ACCENT}25` }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={14} />Editar
+                  </button>
+                  <button onClick={() => setShowDeleteConfirm(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-black/5 text-charcoal/60 hover:bg-red-50 hover:text-red-600 active:scale-95">
+                    <Trash2 size={14} />Eliminar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

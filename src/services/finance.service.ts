@@ -92,6 +92,11 @@ export const financeService = {
     return response.data
   },
 
+  async updateTransaccion(id: string, dto: { monto?: number; metodo_pago?: string; observaciones?: string }) {
+    const response = await api.patch(`/finanzas/transacciones/${id}`, dto)
+    return response.data
+  },
+
   async getResumen() {
     const response = await api.get("/finanzas/resumen")
     return response.data

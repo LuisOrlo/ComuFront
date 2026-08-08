@@ -230,7 +230,7 @@ export function EstudiantePerfilAcademicoPage() {
             <AcademicTabContent data={academicData} loading={loading && !academicData} />
           )}
           {activeTab === "financiero" && (
-            <FinancialTabContent data={financialData} loading={loading && !financialData} />
+            <FinancialTabContent data={financialData} loading={loading && !financialData} onRefresh={refreshData} />
           )}
         </div>
       </div>

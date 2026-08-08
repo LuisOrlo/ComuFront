@@ -130,14 +130,29 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
                     Asistencia: {matricula.porcentaje_asistencia}%
                   </p>
                 </div>
-                {isAdmin && (<button
-                  onClick={() => setTransferMatricula(matricula)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all hover:scale-[0.97] active:scale-[0.95] shrink-0"
-                  style={{ backgroundColor: COLORS.ACCENT }}
-                >
-                  <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} size={13} />
-                  Transferir
-                </button>)}
+                {isAdmin && (
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold"
+                      style={{
+                        borderColor: "oklch(0.8 0.15 75 / 0.3)",
+                        backgroundColor: "oklch(0.8 0.15 75 / 0.08)",
+                        color: "oklch(0.55 0.15 75)",
+                      }}
+                    >
+                      En revisión - Por confirmar proceso
+                    </span>
+                    <button
+                      onClick={() => setTransferMatricula(matricula)}
+                      disabled
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white cursor-not-allowed disabled:opacity-40 shrink-0"
+                      style={{ backgroundColor: COLORS.ACCENT }}
+                    >
+                      <HugeiconsIcon icon={ArrowDataTransferHorizontalIcon} size={13} />
+                      Transferir
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

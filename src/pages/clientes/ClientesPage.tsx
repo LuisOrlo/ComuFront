@@ -4,7 +4,6 @@ import { Plus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { toast } from "sonner"
-import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { ClientesFilters } from "./components/ClientesFilters"
 import { ClientesTable } from "./components/ClientesTable"
 
@@ -15,7 +14,6 @@ export function ClientesPage() {
   const [clientes, setClientes] = useState<ClienteExterno[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const loadClientes = useCallback(async () => {
     setLoading(true)
@@ -34,18 +32,6 @@ export function ClientesPage() {
   useEffect(() => {
     loadClientes()
   }, [loadClientes])
-
-  const confirmDelete = async () => {
-    if (!deleteConfirm) return
-    try {
-      await clientesService.deleteCliente(deleteConfirm.id)
-      toast.success("Cliente eliminado")
-      setDeleteConfirm(null)
-      loadClientes()
-    } catch {
-      toast.error("Error al eliminar cliente")
-    }
-  }
 
   const handleSearch = (value: string) => {
     setSearch(value)
@@ -80,23 +66,9 @@ export function ClientesPage() {
             loading={loading}
             search={search}
             onSearchChange={handleSearch}
-            onEdit={(c) => navigate(`/clientes/${c.id}/editar`)}
-            onDelete={(c) => setDeleteConfirm({ id: c.id, name: `${c.nombres} ${c.apellidos || ""}`.trim() })}
           />
         </div>
       </div>
-
-      <ConfirmationModal
-        isOpen={!!deleteConfirm}
-        title="Eliminar Cliente"
-        message={`¿Eliminar al cliente "${deleteConfirm?.name}"?`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        isDangerous
-        icon="trash"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirm(null)}
-      />
     </div>
   )
 }

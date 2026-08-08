@@ -46,6 +46,7 @@ import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
 import { ClientesPage } from "@/pages/clientes/ClientesPage"
 import { NuevoClientePage } from "@/pages/clientes/NuevoClientePage"
 import { ClienteDetallePage } from "@/pages/clientes/detalle/ClienteDetallePage"
+import { ClientePagoPage } from "@/pages/clientes/detalle/ClientePagoPage"
 import { TarifasPage as RadioTarifasPage } from "@/pages/servicios/radio/TarifasPage"
 import { InstructorDashboardPage } from "@/pages/instructor-portal/InstructorDashboardPage"
 import { InstructorCursosPage } from "@/pages/instructor-portal/InstructorCursosPage"
@@ -185,6 +186,7 @@ function AppLayout() {
             <Route path="/personas/:id/pagos" element={<RoleGuard roles={["Administrador"]}><PagosPersonaPage /></RoleGuard>} />
             <Route path="/clientes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClientesPage /></RoleGuard>} />
             <Route path="/clientes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoClientePage /></RoleGuard>} />
+            <Route path="/clientes/:clienteId/pagar/:cuentaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClientePagoPage /></RoleGuard>} />
             <Route path="/clientes/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClienteDetallePage /></RoleGuard>} />
             <Route path="/clientes/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoClientePage /></RoleGuard>} />
             <Route path="/estudiantes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesPage /></RoleGuard>} />

@@ -5,12 +5,11 @@ import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpenIcon, Add01Icon, Search01Icon,
-  ViewIcon, Edit01Icon, Delete01Icon,
+  ViewIcon,
   UserGroupIcon, CalendarIcon, CheckmarkCircle01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService, type Taller, type TallerStats } from "@/services/taller.service"
-import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -40,9 +39,6 @@ export function TalleresPage() {
   const [tab, setTab] = useState<"proximos" | "pasados" | "todos">("proximos")
   const [modalidadFilter, setModalidadFilter] = useState("")
   const [estadoFilter, setEstadoFilter] = useState("")
-  const [deleteTarget, setDeleteTarget] = useState<Taller | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const params: Record<string, unknown> = { per_page: 100 }
@@ -53,7 +49,7 @@ export function TalleresPage() {
       .then(res => setTalleres((res as any).data || []))
       .catch(() => toast.error("Error al cargar talleres"))
       .finally(() => setLoading(false))
-  }, [tab, modalidadFilter, estadoFilter, refreshKey])
+  }, [tab, modalidadFilter, estadoFilter])
 
   useEffect(() => {
     if (!search) return
@@ -90,21 +86,6 @@ export function TalleresPage() {
       total: all.length,
     } as any
   }, [talleres])
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    setDeleting(true)
-    try {
-      await tallerService.eliminar(deleteTarget.id)
-      toast.success("Taller eliminado")
-      setDeleteTarget(null)
-      setRefreshKey(k => k + 1)
-    } catch {
-      toast.error("Error al eliminar taller")
-    } finally {
-      setDeleting(false)
-    }
-  }
 
   const formatFecha = (f: string) => {
     try {
@@ -261,17 +242,10 @@ export function TalleresPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                          {isAdmin && (<button onClick={() => navigate(`/talleres/${t.id}/editar`)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: TEXT_MUTED }}>
-                            <HugeiconsIcon icon={Edit01Icon} size={14} />
-                          </button>)}
-                          {isAdmin && (<button onClick={() => setDeleteTarget(t)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" style={{ color: TEXT_MUTED }}>
-                            <HugeiconsIcon icon={Delete01Icon} size={14} />
-                          </button>)}
                           <button onClick={() => navigate(`/talleres/${t.id}`)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors" style={{ color: ACCENT }}>
-                            <HugeiconsIcon icon={ViewIcon} size={14} />
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-xs font-medium" style={{ color: ACCENT }}>
+                            <HugeiconsIcon icon={ViewIcon} size={13} />
+                            Ver detalle
                           </button>
                         </div>
                       </td>
@@ -283,19 +257,6 @@ export function TalleresPage() {
           </div>
         </div>
       </main>
-
-      <ConfirmationModal
-        isOpen={!!deleteTarget}
-        title="Eliminar Taller"
-        message={`¿Estás seguro de eliminar "${deleteTarget?.nombre}"? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        isLoading={deleting}
-        icon="trash"
-        isDangerous
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </div>
   )
 }

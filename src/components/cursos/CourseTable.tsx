@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ViewIcon, Edit01Icon } from "@hugeicons/core-free-icons"
+import { ViewIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { type CSSProperties } from "react"
 import { StatusBadge } from "./StatusBadge"
@@ -7,11 +7,9 @@ import type { Curso } from "@/services/cursos.service"
 
 export type { Curso }
 
-export function CourseTable({ cursos, onView, onEdit, onDelete }: {
+export function CourseTable({ cursos, onView }: {
   cursos: Curso[]
   onView?: (id: string) => void
-  onEdit?: (id: string) => void
-  onDelete?: (id: string) => void
 }) {
   return (
     <div className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -97,7 +95,7 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                     <div className="flex justify-end gap-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); onView?.(c.id) }}
-                        className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
+                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors duration-150 text-xs font-medium"
                         style={{ color: COLORS.TEXT_MUTED }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.color = COLORS.ACCENT
@@ -108,42 +106,9 @@ export function CourseTable({ cursos, onView, onEdit, onDelete }: {
                           e.currentTarget.style.backgroundColor = "transparent"
                         }}
                       >
-                        <HugeiconsIcon icon={ViewIcon} size={16} />
+                        <HugeiconsIcon icon={ViewIcon} size={13} />
+                        Ver detalle
                       </button>
-                      {onEdit && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(c.id) }}
-                        className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
-                        style={{ color: COLORS.TEXT_MUTED }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = "oklch(0.50 0.12 250)"
-                          e.currentTarget.style.backgroundColor = "oklch(0.50 0.12 250 / 0.10)"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = COLORS.TEXT_MUTED
-                          e.currentTarget.style.backgroundColor = "transparent"
-                        }}
-                      >
-                        <HugeiconsIcon icon={Edit01Icon} size={16} />
-                      </button>
-                      )}
-                      {onDelete && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(c.id) }}
-                        className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
-                        style={{ color: COLORS.TEXT_MUTED }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = "oklch(0.50 0.12 10)"
-                          e.currentTarget.style.backgroundColor = "oklch(0.50 0.12 10 / 0.10)"
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = COLORS.TEXT_MUTED
-                          e.currentTarget.style.backgroundColor = "transparent"
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
-                      )}
                     </div>
                   </td>
                 </tr>

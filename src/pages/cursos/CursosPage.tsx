@@ -13,9 +13,7 @@ import { COLORS } from "@/lib/constants"
 import { FilterBar } from "@/components/cursos/FilterBar"
 import { CourseTable, type Curso } from "@/components/cursos/CourseTable"
 import { CourseCardGrid } from "@/components/cursos/CourseCardGrid"
-import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type CursoFilters } from "@/services/cursos.service"
-import { toast } from "sonner"
 
 type Vista = "tabla" | "cards"
 
@@ -26,11 +24,6 @@ export function CursosPage() {
   const [cursos, setCursos] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Estados para confirmación de eliminación
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [cursoToDelete, setCursoToDelete] = useState<{ id: string; nombre: string } | null>(null)
-  const [deletingCurso, setDeletingCurso] = useState(false)
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -74,31 +67,6 @@ export function CursosPage() {
 
   const handleViewCurso = async (id: string) => {
     navigate(`/cursos/${id}`)
-  }
-
-  const handleEditCurso = (id: string) => {
-    navigate(`/cursos/${id}/editar`)
-  }
-
-  const handleDeleteCurso = (id: string, nombre: string) => {
-    setCursoToDelete({ id, nombre })
-    setShowDeleteConfirm(true)
-  }
-
-  const confirmDeleteCurso = async () => {
-    if (!cursoToDelete) return
-    setDeletingCurso(true)
-    try {
-      await cursosService.eliminarCursoAbierto(cursoToDelete.id)
-      toast.success("Curso eliminado exitosamente")
-      setShowDeleteConfirm(false)
-      setCursoToDelete(null)
-      cargarCursos()
-    } catch {
-      toast.error("Error al eliminar el curso")
-    } finally {
-      setDeletingCurso(false)
-    }
   }
 
   const irAPagina = (pagina: number) => {
@@ -244,7 +212,7 @@ export function CursosPage() {
           {/* Tabla o Cards */}
           {!loading && cursos.length > 0 && (
             vista === "tabla" ? (
-              <CourseTable cursos={cursos} onView={handleViewCurso} onEdit={isAdmin ? handleEditCurso : undefined} onDelete={isAdmin ? (id) => { const c = cursos.find(x => x.id === id); handleDeleteCurso(id, c?.nombre || "curso") } : undefined} />
+              <CourseTable cursos={cursos} onView={handleViewCurso} />
             ) : (
               <CourseCardGrid cursos={cursos} />
             )
@@ -304,22 +272,6 @@ export function CursosPage() {
           )}
         </div>
       </main>
-
-      <ConfirmationModal
-        isOpen={showDeleteConfirm}
-        title="Eliminar Curso"
-        message={`¿Estás seguro de que deseas eliminar el curso "${cursoToDelete?.nombre}"? Esta acción no se puede deshacer.`}
-        confirmText="Sí, eliminar"
-        cancelText="No, cancelar"
-        isDangerous={true}
-        isLoading={deletingCurso}
-        icon="trash"
-        onConfirm={confirmDeleteCurso}
-        onCancel={() => {
-          setShowDeleteConfirm(false)
-          setCursoToDelete(null)
-        }}
-      />
     </div>
   )
 }

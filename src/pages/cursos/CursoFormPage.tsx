@@ -3,10 +3,11 @@ import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ChevronRight, ChevronLeft, Search, Plus, Trash2 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, MapPinIcon, Cancel01Icon, CheckmarkCircle01Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, MapPinIcon, Cancel01Icon, CheckmarkCircle01Icon, Loading02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { ValidatedInput } from "@/components/form"
 import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services/cursos.service"
+import { iconMap } from "@/pages/catalogos/components/catalog-icons"
 import { instructoresService } from "@/services/instructores.service"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { toast } from "sonner"
@@ -419,7 +420,9 @@ export function CursoFormPage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ color: TEXT_MUTED }}>
         <div className="text-center">
-          <div className="inline-block animate-spin mb-3" style={{ color: ACCENT }}>⏳</div>
+          <div className="mb-3">
+            <HugeiconsIcon icon={Loading02Icon} size={32} className="animate-spin" style={{ color: ACCENT }} />
+          </div>
           <p className="text-sm">Cargando datos...</p>
         </div>
       </div>
@@ -485,24 +488,51 @@ export function CursoFormPage() {
                     className="w-full pl-9 pr-3.5 py-2.5 border rounded-lg text-sm outline-none bg-white"
                     style={{ borderColor: BORDER }} />
                 </div>
-                <div className={`grid grid-cols-1 gap-2 ${hiddenScroll} max-h-[300px] rounded-lg border`} style={{ borderColor: BORDER }}>
-                  {filteredCatalogos.map(cat => (
+                <p className="text-xs font-medium mb-3" style={{ color: TEXT_MUTED }}>
+                  Selecciona el catalogo del curso que deseas crear
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {filteredCatalogos.map(cat => {
+                    const isSelected = form.catalogo_curso_id === cat.id
+                    const colorHex = cat.color || COLORS.ACCENT
+                    return (
                     <button key={cat.id} type="button"
-                      onClick={() => updateField("catalogo_curso_id", form.catalogo_curso_id === cat.id ? "" : cat.id)}
-                      className="px-4 py-3 text-left border-b last:border-b-0 hover:bg-gray-50 transition-colors flex items-start justify-between group"
-                      style={{ borderColor: BORDER }}>
-                      <div className="flex-1">
-                        <span className="block text-sm font-medium truncate"
-                          style={{ color: form.catalogo_curso_id === cat.id ? ACCENT : CHARCOAL }}>
-                          {cat.nombre}
-                        </span>
-
+                      onClick={() => updateField("catalogo_curso_id", isSelected ? "" : cat.id)}
+                      className="relative flex flex-col items-start gap-2 p-4 rounded-xl border-2 text-left transition-all hover:shadow-sm"
+                      style={{
+                        borderColor: isSelected ? colorHex : BORDER,
+                        backgroundColor: isSelected ? `color-mix(in srgb, ${colorHex} 8%, white)` : "white",
+                      }}>
+                      <div className="size-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `color-mix(in srgb, ${colorHex} 15%, transparent)`, color: colorHex }}>
+                        {(() => {
+                          const icon = cat.imagen && iconMap[cat.imagen]
+                          return icon ? (
+                            <HugeiconsIcon icon={icon} size={18} />
+                          ) : (
+                            <span className="text-sm font-black">{cat.nombre.charAt(0).toUpperCase()}</span>
+                          )
+                        })()}
                       </div>
-                      {form.catalogo_curso_id === cat.id && <span className="ml-2 text-lg">✓</span>}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: CHARCOAL }}>
+                          {cat.nombre}
+                        </p>
+                        {cat.descripcion && (
+                          <p className="text-[11px] mt-1.5 leading-tight opacity-50 line-clamp-2" style={{ color: TEXT_MUTED }}>
+                            {cat.descripcion}
+                          </p>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="absolute -top-1.5 -right-1.5 size-4 rounded-full flex items-center justify-center" style={{ backgroundColor: colorHex }}>
+                          <HugeiconsIcon icon={CheckmarkCircle01Icon} size={8} className="text-white" />
+                        </div>
+                      )}
                     </button>
-                  ))}
+                  )})}
                   {filteredCatalogos.length === 0 && (
-                    <div className="p-6 text-center text-sm" style={{ color: TEXT_MUTED }}>No se encontraron catálogos</div>
+                    <div className="col-span-full p-6 text-center text-sm" style={{ color: TEXT_MUTED }}>No se encontraron catlogos</div>
                   )}
                 </div>
                 {getError("catalogo_curso_id") && <p className="text-xs mt-2" style={{ color: "#ef4444" }}>{getError("catalogo_curso_id")}</p>}
@@ -635,14 +665,11 @@ export function CursoFormPage() {
                     className={inputC} style={{ ...borderS, borderColor: getError("precio_base") ? "#ef4444" : BORDER }} />
                   {getError("precio_base") && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{getError("precio_base")}</p>}
                   <p className="text-xs mt-1.5" style={{ color: ACCENT }}>
-                    {Number(form.precio_base) > 0
-                      ? <>Cada módulo costará <strong>${Number(form.precio_base).toLocaleString()}</strong>.
-                          {selectedCatalogo && numModulosDefault > 0
-                            ? <> Total del curso: <strong>${(numModulosDefault * Number(form.precio_base)).toLocaleString()}</strong> ({numModulosDefault} módulos).</>
-                            : " Selecciona un catálogo para ver el total del curso."}</>
-                      : selectedCatalogo && numModulosDefault > 0
-                        ? <>El precio base se aplicará a cada uno de los <strong>{numModulosDefault} módulos</strong>. La suma total del curso se calculará automáticamente.</>
-                        : "El precio ingresado será el valor que cada módulo costará. La suma se calculará automáticamente para el total de módulos."}
+                  {Number(form.precio_base) > 0
+                    ? <>Total del curso: <strong>${(form.modulos.length * Number(form.precio_base)).toLocaleString()}</strong> ({form.modulos.length} módulo{form.modulos.length !== 1 ? "s" : ""}).</>
+                    : selectedCatalogo && form.modulos.length > 0
+                      ? <>El precio base se aplicar a cada uno de los <strong>{form.modulos.length} mdulos</strong>. La suma total del curso se calcular automticamente.</>
+                      : "El precio ingresado ser el valor que cada mdulo costar. La suma se calcular automticamente para el total de mdulos."}
                   </p>
                 </div>
               </div>

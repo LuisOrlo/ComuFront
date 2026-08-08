@@ -20,6 +20,7 @@ export interface ReservaRadio {
   incluye_operador: boolean
   operador_id?: string
   precio_total: number
+  pago_registrado: boolean
   estado: "reservado" | "confirmado" | "en_progreso" | "completado" | "cancelado"
   observaciones?: string
   tarifa?: TarifaRadio

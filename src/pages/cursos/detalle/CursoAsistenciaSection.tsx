@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { createPortal } from "react-dom"
+import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -9,6 +10,10 @@ import {
   InformationCircleIcon,
   SaveIcon,
   Edit01Icon,
+  Search01Icon,
+  ArrowDown01Icon,
+  CheckmarkCircle01Icon,
+  NextIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import {
@@ -21,6 +26,8 @@ import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 
 type ViewState = "overview" | "modules" | "classes" | "attendance"
+
+type FiltroEstado = "todas" | "pendientes" | "registradas"
 
 type AsistenciaLocal = {
   asistio: boolean
@@ -38,6 +45,41 @@ interface Props {
   cursoId: string
   cursoNombre: string
   modulos: ModuloItem[]
+}
+
+const COLORS_ESTADO: Record<string, { bg: string; text: string }> = {
+  registrada: { bg: "bg-emerald-50", text: "text-emerald-700" },
+  pendiente: { bg: "bg-amber-50", text: "text-amber-700" },
+}
+
+function formatMes(fecha: string): string {
+  return new Date(fecha).toLocaleDateString("es", {
+    month: "long",
+    year: "numeric",
+  })
+}
+
+function normalizeFechaBusqueda(fecha: string): string {
+  const d = new Date(fecha)
+  if (isNaN(d.getTime())) return String(fecha).toLowerCase()
+  const diaSemana = d.toLocaleDateString("es", { weekday: "long" })
+  const mes = d.toLocaleDateString("es", { month: "long" })
+  const diaMes = d.toLocaleDateString("es", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+  return [
+    fecha,
+    diaSemana,
+    mes,
+    String(d.getDate()),
+    String(d.getMonth() + 1),
+    String(d.getFullYear()),
+    diaMes,
+  ]
+    .join(" ")
+    .toLowerCase()
 }
 
 export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props) {
@@ -60,6 +102,17 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   const [editHoraFin, setEditHoraFin] = useState("")
   const [editClaseSaving, setEditClaseSaving] = useState(false)
 
+  const [moduloProgreso, setModuloProgreso] = useState<
+    Record<string, { registradas: number; total: number }>
+  >({})
+  const [loadingModulos, setLoadingModulos] = useState(false)
+
+  const [claseSearch, setClaseSearch] = useState("")
+  const [claseFiltro, setClaseFiltro] = useState<FiltroEstado>("todas")
+  const [expandedMeses, setExpandedMeses] = useState<Record<string, boolean>>({})
+
+  const [estudianteSearch, setEstudianteSearch] = useState("")
+
   const { isAdmin } = usePermission()
 
   const overviewLoading = view === "overview" && overviewEstudiantes.length === 0
@@ -71,9 +124,47 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       .catch(() => toast.error("Error al cargar estadísticas de asistencia"))
   }, [view, cursoId])
 
+  useEffect(() => {
+    if (view !== "modules" || modulos.length === 0) return
+    let cancelled = false
+    setLoadingModulos(true)
+    Promise.all(
+      modulos.map(async (m) => {
+        try {
+          const data = await instructorService.getClasesModulo(m.id)
+          return [
+            m.id,
+            {
+              registradas: data.filter((c) => c.asistencia_registrada).length,
+              total: data.length,
+            },
+          ] as const
+        } catch {
+          return [m.id, { registradas: 0, total: 0 }] as const
+        }
+      })
+    )
+      .then((results) => {
+        if (cancelled) return
+        const mapa: Record<string, { registradas: number; total: number }> = {}
+        results.forEach(([id, val]) => {
+          mapa[id] = val
+        })
+        setModuloProgreso(mapa)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingModulos(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [view, modulos])
+
   const handleModuleClick = async (modulo: ModuloItem) => {
     setSelectedModulo(modulo)
     setView("classes")
+    setClaseSearch("")
+    setClaseFiltro("todas")
     setLoading(true)
     try {
       const data = await instructorService.getClasesModulo(modulo.id)
@@ -85,32 +176,57 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
     }
   }
 
-  const handleClassClick = async (clase: ClaseItem) => {
-    setSelectedClase(clase)
-    setView("attendance")
-    setLoading(true)
-    setClaseObservaciones(clase?.observaciones ?? "")
-    try {
-      const [estudiantesData] = await Promise.all([
-        instructorService.getEstudiantesCurso(cursoId),
-        clase.id ? instructorService.getDetalleClase(clase.id) : Promise.resolve(null),
-      ])
-      setEstudiantes(estudiantesData)
+  const openClass = useCallback(
+    async (clase: ClaseItem) => {
+      setSelectedClase(clase)
+      setView("attendance")
+      setLoading(true)
+      setClaseObservaciones(clase?.observaciones ?? "")
+      setAsistenciasLocal({})
+      setEstudianteSearch("")
+      try {
+        const estudiantesData = await instructorService.getEstudiantesCurso(cursoId)
+        setEstudiantes(estudiantesData)
 
-      const initial: Record<string, AsistenciaLocal> = {}
-      estudiantesData.forEach((e) => {
-        initial[e.id] = {
-          asistio: true,
-          estado: "presente",
-          observaciones: "",
+        const initial: Record<string, AsistenciaLocal> = {}
+        estudiantesData.forEach((e) => {
+          initial[e.id] = {
+            asistio: true,
+            estado: "presente",
+            observaciones: "",
+          }
+        })
+
+        if (clase.asistencia_registrada && clase.id) {
+          try {
+            const existentes = await instructorService.getAsistenciaClase(clase.id)
+            existentes.forEach((a) => {
+              if (initial[a.matricula_id] && a.estado) {
+                initial[a.matricula_id] = {
+                  asistio:
+                    a.asistio ?? (a.estado === "presente" || a.estado === "tardanza"),
+                  estado: a.estado,
+                  observaciones: a.observaciones || "",
+                }
+              }
+            })
+          } catch {
+            /* Sin asistencias previas */
+          }
         }
-      })
-      setAsistenciasLocal(initial)
-    } catch {
-      toast.error("Error al cargar datos de asistencia")
-    } finally {
-      setLoading(false)
-    }
+
+        setAsistenciasLocal(initial)
+      } catch {
+        toast.error("Error al cargar datos de asistencia")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [cursoId]
+  )
+
+  const handleClassClick = (clase: ClaseItem) => {
+    openClass(clase)
   }
 
   const handleStatusChange = (matriculaId: string, estado: string) => {
@@ -131,32 +247,18 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
     }))
   }
 
-  const handleSave = async () => {
-    if (!selectedClase) return
-    setSaving(true)
-    try {
-      const payload = Object.entries(asistenciasLocal).map(
-        ([matriculaId, data]) => ({
-          matricula_id: matriculaId,
-          asistio: data.asistio,
-          estado: data.estado,
-          observaciones: data.observaciones,
-        }),
-      )
-      await instructorService.registrarAsistencia(selectedClase.id, payload, claseObservaciones)
-      toast.success("Asistencia guardada correctamente")
-      setView("classes")
-      setSelectedClase(null)
-      setEstudiantes([])
-      if (selectedModulo) {
-        const updated = await instructorService.getClasesModulo(selectedModulo.id)
-        setClases(updated)
-      }
-    } catch {
-      toast.error("Error al guardar la asistencia")
-    } finally {
-      setSaving(false)
-    }
+  const marcarTodos = (estado: "presente" | "ausente") => {
+    setAsistenciasLocal((prev) => {
+      const next: Record<string, AsistenciaLocal> = {}
+      Object.keys(prev).forEach((id) => {
+        next[id] = {
+          ...prev[id],
+          estado,
+          asistio: estado === "presente",
+        }
+      })
+      return next
+    })
   }
 
   const getEstudianteName = (e: EstudianteCurso) => {
@@ -175,6 +277,129 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   const presentesCount = Object.values(asistenciasLocal).filter(
     (a) => a.estado === "presente" || a.estado === "tardanza",
   ).length
+
+  const clasesRegistradas = clases.filter((c) => c.asistencia_registrada).length
+  const clasesTotal = clases.length
+  const progresoClasesPct =
+    clasesTotal > 0 ? Math.round((clasesRegistradas / clasesTotal) * 100) : 0
+
+  const hayPendientes = clases.some((c) => !c.asistencia_registrada)
+
+  const nextPending = useMemo(
+    () =>
+      clases.find((c) => !c.asistencia_registrada && c.id !== selectedClase?.id) ??
+      null,
+    [clases, selectedClase]
+  )
+
+  const goToProxima = () => {
+    const prox = clases.find((c) => !c.asistencia_registrada)
+    if (prox) openClass(prox)
+  }
+
+  const filteredClases = useMemo(() => {
+    let list = clases
+    if (claseFiltro === "pendientes") list = list.filter((c) => !c.asistencia_registrada)
+    else if (claseFiltro === "registradas") list = list.filter((c) => c.asistencia_registrada)
+    if (claseSearch.trim()) {
+      const q = claseSearch.toLowerCase().trim()
+      list = list.filter((c) => normalizeFechaBusqueda(c.fecha_clase).includes(q))
+    }
+    return list
+  }, [clases, claseFiltro, claseSearch])
+
+  const mesesAgrupados = useMemo(() => {
+    const groups: Record<string, ClaseItem[]> = {}
+    filteredClases.forEach((c) => {
+      const mes = formatMes(c.fecha_clase)
+      if (!groups[mes]) groups[mes] = []
+      groups[mes].push(c)
+    })
+    return Object.entries(groups)
+  }, [filteredClases])
+
+  useEffect(() => {
+    if (view !== "classes") return
+    const prox = clases.find((c) => !c.asistencia_registrada)
+    if (prox) {
+      const mes = formatMes(prox.fecha_clase)
+      setExpandedMeses((prev) =>
+        prev[mes] === undefined ? { ...prev, [mes]: true } : prev
+      )
+    }
+  }, [view, clases])
+
+  const toggleMes = (mes: string) => {
+    setExpandedMeses((prev) => ({ ...prev, [mes]: !prev[mes] }))
+  }
+
+  const estudiantesFiltrados = useMemo(() => {
+    if (!estudianteSearch.trim()) return estudiantes
+    const q = estudianteSearch.toLowerCase().trim()
+    return estudiantes.filter((e) => {
+      const nombre = getEstudianteName(e).toLowerCase()
+      const cedula = getEstudianteCedula(e).toLowerCase()
+      return nombre.includes(q) || cedula.includes(q)
+    })
+  }, [estudiantes, estudianteSearch])
+
+  const volverAClases = () => {
+    setView("classes")
+    setSelectedClase(null)
+    setEstudiantes([])
+  }
+
+  const handleSave = useCallback(
+    async (avanzar: boolean) => {
+      if (!selectedClase) return
+      setSaving(true)
+      try {
+        const payload = Object.entries(asistenciasLocal).map(
+          ([matriculaId, data]) => ({
+            matricula_id: matriculaId,
+            asistio: data.asistio,
+            estado: data.estado,
+            observaciones: data.observaciones,
+          })
+        )
+        await instructorService.registrarAsistencia(
+          selectedClase.id,
+          payload,
+          claseObservaciones
+        )
+
+        setClases((prev) =>
+          prev.map((c) =>
+            c.id === selectedClase.id ? { ...c, asistencia_registrada: true } : c
+          )
+        )
+        setEstudiantes([])
+
+        if (avanzar && nextPending) {
+          toast.success("Asistencia guardada")
+          await openClass(nextPending)
+        } else {
+          if (avanzar) {
+            const registradas = clases.filter(
+              (c) => c.asistencia_registrada || c.id === selectedClase.id
+            ).length
+            toast.success(
+              `Módulo completo — ${registradas}/${clases.length} clases registradas 🎉`
+            )
+          } else {
+            toast.success("Asistencia guardada correctamente")
+          }
+          setView("classes")
+          setSelectedClase(null)
+        }
+      } catch {
+        toast.error("Error al guardar la asistencia")
+      } finally {
+        setSaving(false)
+      }
+    },
+    [selectedClase, asistenciasLocal, claseObservaciones, nextPending, clases, openClass]
+  )
 
   // ─── View: Overview ───
   if (view === "overview") {
@@ -285,7 +510,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
           Volver a resumen
         </button>
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h3 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>
             Gestión de Asistencia
           </h3>
@@ -293,68 +518,78 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             Selecciona un módulo para registrar la asistencia de sus clases.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {modulos.length === 0 ? (
-            <div
-              className="md:col-span-2 p-12 text-center border rounded-xl border-dashed"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
-            >
-              <p className="text-sm font-medium">Sin módulos asignados</p>
-            </div>
-          ) : (
-            modulos.map((modulo) => (
-              <button
-                key={modulo.id}
-                onClick={() => handleModuleClick(modulo)}
-                className="group flex flex-col p-6 rounded-2xl bg-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99] text-left"
-                style={{ border: "1px solid #e8eaed" }}
-              >
-                <div className="flex items-start gap-5 mb-4">
-                  <div
-                    className="size-14 rounded-2xl flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`,
-                    }}
+        {modulos.length === 0 ? (
+          <div
+            className="p-12 text-center border rounded-xl border-dashed"
+            style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+          >
+            <p className="text-sm font-medium">Sin módulos asignados</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {loadingModulos && Object.keys(moduloProgreso).length === 0 && (
+              <div className="text-center text-xs py-3" style={{ color: COLORS.TEXT_MUTED }}>
+                Cargando progreso de clases...
+              </div>
+            )}
+            {[...modulos]
+              .sort((a, b) => (a.numero_orden ?? 999) - (b.numero_orden ?? 999))
+              .map((modulo) => {
+                const prog = moduloProgreso[modulo.id]
+                const registradas = prog?.registradas ?? 0
+                const total = prog?.total ?? 0
+                const pct = total > 0 ? Math.round((registradas / total) * 100) : 0
+                const completo = total > 0 && registradas === total
+                return (
+                  <button
+                    key={modulo.id}
+                    onClick={() => handleModuleClick(modulo)}
+                    className="group w-full flex items-center gap-4 p-4 rounded-xl bg-white transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] text-left"
+                    style={{ border: "1px solid #e8eaed", borderLeftColor: COLORS.ACCENT, borderLeftWidth: 3 }}
                   >
-                    <HugeiconsIcon
-                      icon={CheckListIcon}
-                      size={26}
-                      style={{ color: COLORS.ACCENT }}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className="text-[11px] font-bold uppercase tracking-wider"
-                      style={{ color: COLORS.ACCENT }}
+                    <div
+                      className="size-10 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold text-white"
+                      style={{ backgroundColor: COLORS.ACCENT }}
                     >
-                      Módulo {modulo.numero_orden}
-                    </span>
-                    <p
-                      className="text-base font-bold mt-1 truncate"
-                      style={{ color: COLORS.CHARCOAL }}
-                    >
-                      {modulo.nombre_modulo}
-                    </p>
-                  </div>
-                </div>
-                <div
-                  className="flex items-center justify-between mt-auto pt-4 border-t"
-                  style={{ borderColor: "#f1f3f5" }}
-                >
-                  <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                    {modulo.numero_orden || "—"}° módulo
-                  </span>
-                  <span
-                    className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all group-hover:brightness-110 group-hover:shadow-md"
-                    style={{ backgroundColor: COLORS.ACCENT }}
-                  >
-                    Ir a Clases
-                  </span>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
+                      {modulo.numero_orden ?? "—"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
+                        {modulo.nombre_modulo}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor: completo ? "oklch(0.5 0.12 150)" : COLORS.ACCENT,
+                            }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold shrink-0" style={{ color: COLORS.TEXT_MUTED }}>
+                          {registradas}/{total} clases registradas
+                        </span>
+                      </div>
+                    </div>
+                    {completo ? (
+                      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 shrink-0">
+                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} />
+                        Completo
+                      </span>
+                    ) : (
+                      <span
+                        className="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all group-hover:brightness-110 shrink-0"
+                        style={{ backgroundColor: COLORS.ACCENT }}
+                      >
+                        Ir a Clases
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+          </div>
+        )}
       </div>
     )
   }
@@ -376,7 +611,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           Volver a módulos
         </button>
 
-        <header className="mb-8">
+        <header className="mb-6">
           <span
             className="text-[10px] font-bold uppercase tracking-widest"
             style={{ color: COLORS.ACCENT }}
@@ -386,12 +621,84 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
             {selectedModulo?.nombre_modulo ?? "Módulo"}
           </h1>
-          <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+          <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>
             Selecciona una fecha para registrar la asistencia.
           </p>
         </header>
 
-        <div className="space-y-3">
+        {/* Progreso del módulo */}
+        {clasesTotal > 0 && (
+          <div className="bg-white rounded-xl border p-4 mb-5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <span className="text-xs font-semibold" style={{ color: COLORS.CHARCOAL }}>
+                Progreso de asistencia
+              </span>
+              <span className="text-xs font-bold" style={{ color: COLORS.ACCENT }}>
+                {clasesRegistradas} de {clasesTotal} clases registradas
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${progresoClasesPct}%`, backgroundColor: COLORS.ACCENT }}
+                />
+              </div>
+              <span className="text-xs font-bold w-10 text-right" style={{ color: COLORS.ACCENT }}>
+                {progresoClasesPct}%
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Buscador + filtros + Ir a próxima */}
+        {clases.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-5">
+            <div className="relative flex-1">
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ color: COLORS.TEXT_MUTED }}
+              />
+              <input
+                type="text"
+                value={claseSearch}
+                onChange={(e) => setClaseSearch(e.target.value)}
+                placeholder="Buscar por fecha, mes o día..."
+                className="w-full rounded-lg border bg-white pl-9 pr-3 py-2 text-xs outline-none transition-all focus:ring-2"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              />
+            </div>
+            <select
+              value={claseFiltro}
+              onChange={(e) => setClaseFiltro(e.target.value as FiltroEstado)}
+              className="rounded-lg border bg-white px-3 py-2 text-xs font-semibold outline-none cursor-pointer"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+            >
+              <option value="todas">Todas</option>
+              <option value="pendientes">Pendientes</option>
+              <option value="registradas">Registradas</option>
+            </select>
+            {hayPendientes ? (
+              <button
+                onClick={goToProxima}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white transition-all active:scale-[0.97]"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                <HugeiconsIcon icon={NextIcon} size={14} />
+                Ir a próxima
+              </button>
+            ) : (
+              <span className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 cursor-not-allowed">
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+                Módulo completo
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-4">
           {loading ? (
             <div className="p-12 text-center" style={{ color: COLORS.TEXT_MUTED }}>
               Cargando clases...
@@ -411,87 +718,133 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                 No hay clases programadas para este módulo.
               </p>
             </div>
+          ) : filteredClases.length === 0 ? (
+            <div
+              className="bg-white border-dashed rounded-2xl p-12 text-center"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
+            >
+              <p style={{ color: COLORS.TEXT_MUTED }}>
+                Sin resultados para el filtro o búsqueda actual.
+              </p>
+            </div>
           ) : (
-            clases.map((clase) => (
-              <div
-                key={clase.id}
-                onClick={() => handleClassClick(clase)}
-                className="w-full rounded-xl p-5 flex items-center justify-between hover:shadow-md transition-all group text-left"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClassClick(clase) }}
-                style={{
-                  borderColor: COLORS.BORDER_SUBTLE,
-                  borderWidth: 1,
-                  backgroundColor: clase.asistencia_registrada
-                    ? "oklch(0.97 0.03 145 / 0.35)"
-                    : "white",
-                }}
-              >
-                <div className="flex items-center gap-4">
+            mesesAgrupados.map(([mes, items]) => {
+              const isOpen = !!expandedMeses[mes]
+              return (
+                <div
+                  key={mes}
+                  className="border rounded-2xl bg-white overflow-hidden"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                >
                   <div
-                    className="size-12 rounded-xl flex flex-col items-center justify-center text-white"
-                    style={{ backgroundColor: COLORS.ACCENT }}
+                    onClick={() => toggleMes(mes)}
+                    className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors select-none"
                   >
-                    <span className="text-[10px] font-bold uppercase">
-                      {new Date(clase.fecha_clase).toLocaleString("es", {
-                        month: "short",
-                      })}
-                    </span>
-                    <span className="text-lg font-black leading-none">
-                      {new Date(clase.fecha_clase).getDate()}
+                    <div className="flex items-center gap-3">
+                      <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
+                        <HugeiconsIcon icon={ArrowDown01Icon} size={15} style={{ color: COLORS.TEXT_MUTED }} />
+                      </motion.div>
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider" style={{ color: COLORS.CHARCOAL }}>
+                        {mes}
+                      </h3>
+                      <span className="text-[10px] font-bold" style={{ color: COLORS.TEXT_MUTED }}>
+                        ({items.length} clase{items.length !== 1 ? "s" : ""})
+                      </span>
+                    </div>
+                    <span
+                      className="text-[10px] font-bold"
+                      style={{
+                        color:
+                          items.filter((c) => c.asistencia_registrada).length === items.length
+                            ? "oklch(0.45 0.1 150)"
+                            : COLORS.TEXT_MUTED,
+                      }}
+                    >
+                      {items.filter((c) => c.asistencia_registrada).length}/{items.length}
                     </span>
                   </div>
-                  <div>
-                    <h3 className="font-bold" style={{ color: COLORS.CHARCOAL }}>
-                      {new Date(clase.fecha_clase).toLocaleDateString("es", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </h3>
-                    <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                      {clase.hora_inicio} - {clase.hora_fin}
-                    </p>
-                    {clase.observaciones && (
-                      <p className="text-[11px] mt-1 italic truncate max-w-[280px]" style={{ color: "oklch(0.5 0.08 220)" }}>
-                        📝 {clase.observaciones}
-                      </p>
+
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: "auto" }}
+                        exit={{ height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                          {items.map((clase) => (
+                            <div
+                              key={clase.id}
+                              onClick={() => handleClassClick(clase)}
+                              className="w-full p-4 flex items-center justify-between hover:shadow-md transition-all group text-left"
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleClassClick(clase) }}
+                              style={{
+                                backgroundColor: clase.asistencia_registrada
+                                  ? "oklch(0.97 0.03 145 / 0.35)"
+                                  : "white",
+                              }}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div
+                                  className="size-11 rounded-xl flex flex-col items-center justify-center text-white shrink-0"
+                                  style={{ backgroundColor: clase.asistencia_registrada ? "oklch(0.5 0.12 150)" : COLORS.ACCENT }}
+                                >
+                                  <span className="text-[9px] font-bold uppercase">
+                                    {new Date(clase.fecha_clase).toLocaleString("es", { month: "short" })}
+                                  </span>
+                                  <span className="text-lg font-black leading-none">
+                                    {new Date(clase.fecha_clase).getDate()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>
+                                    {new Date(clase.fecha_clase).toLocaleDateString("es", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })}
+                                  </h3>
+                                  <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                                    {clase.hora_inicio} - {clase.hora_fin}
+                                  </p>
+                                  {clase.observaciones && (
+                                    <p className="text-[11px] mt-1 italic truncate max-w-[280px]" style={{ color: "oklch(0.5 0.08 220)" }}>
+                                      📝 {clase.observaciones}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 shrink-0">
+                                {clase.asistencia_registrada ? (
+                                  <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase ${COLORS_ESTADO.registrada.bg} ${COLORS_ESTADO.registrada.text}`}>
+                                    Registrada
+                                  </span>
+                                ) : (
+                                  <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase ${COLORS_ESTADO.pendiente.bg} ${COLORS_ESTADO.pendiente.text}`}>
+                                    Pendiente
+                                  </span>
+                                )}
+                                <span
+                                  className="px-4 py-2 rounded-lg text-xs font-bold text-white transition-all group-hover:brightness-110"
+                                  style={{ backgroundColor: COLORS.ACCENT }}
+                                >
+                                  {clase.asistencia_registrada ? "Ver" : "Registrar"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
+                  </AnimatePresence>
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  {clase.asistencia_registrada ? (
-                    <span
-                      className="text-[10px] font-bold px-2 py-1 rounded-full uppercase"
-                      style={{
-                        color: "oklch(0.45 0.1 150)",
-                        backgroundColor: "oklch(0.95 0.03 150)",
-                      }}
-                    >
-                      Registrada
-                    </span>
-                  ) : (
-                    <span
-                      className="text-[10px] font-bold px-2 py-1 rounded-full uppercase"
-                      style={{
-                        color: "oklch(0.5 0.08 65)",
-                        backgroundColor: "oklch(0.95 0.04 65)",
-                      }}
-                    >
-                      Pendiente
-                    </span>
-                  )}
-                  <span
-                    className="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all group-hover:brightness-110 group-hover:shadow-md"
-                    style={{ backgroundColor: COLORS.ACCENT }}
-                  >
-                    {clase.asistencia_registrada ? "Ver" : "Registrar"}
-                  </span>
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
@@ -502,11 +855,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   return (
     <div className="max-w-5xl mx-auto">
       <button
-        onClick={() => {
-          setView("classes")
-          setSelectedClase(null)
-          setEstudiantes([])
-        }}
+        onClick={volverAClases}
         className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
         style={{ color: COLORS.TEXT_MUTED }}
       >
@@ -608,7 +957,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
 
         <div className="p-8">
           <div
-            className="rounded-xl p-4 flex gap-3 mb-8"
+            className="rounded-xl p-4 flex gap-3 mb-6"
             style={{
               backgroundColor: "oklch(0.97 0.01 45)",
               borderColor: "oklch(0.9 0.02 45)",
@@ -649,153 +998,194 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               No hay estudiantes matriculados para registrar asistencia.
             </div>
           ) : (
-            <div className="space-y-4">
-              {estudiantes.map((e) => {
-                const currentStatus = asistenciasLocal[e.id]?.estado
-                return (
-                  <div
-                    key={e.id}
-                    className="grid md:grid-cols-12 gap-4 items-center p-4 rounded-xl transition-colors"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
+            <>
+              {/* Acciones masivas + buscador */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-5">
+                <div className="relative flex-1">
+                  <HugeiconsIcon
+                    icon={Search01Icon}
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2"
+                    style={{ color: COLORS.TEXT_MUTED }}
+                  />
+                  <input
+                    type="text"
+                    value={estudianteSearch}
+                    onChange={(e) => setEstudianteSearch(e.target.value)}
+                    placeholder="Buscar estudiante por nombre o cédula..."
+                    className="w-full rounded-lg border bg-white pl-9 pr-3 py-2 text-xs outline-none transition-all focus:ring-2"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => marcarTodos("presente")}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all hover:bg-gray-50 active:scale-[0.97]"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
                   >
-                    <div className="md:col-span-4 flex items-center gap-3">
-                      <div
-                        className="size-10 rounded-full flex items-center justify-center"
-                        style={{
-                          backgroundColor: "oklch(0.95 0 0)",
-                          color: COLORS.TEXT_MUTED,
-                        }}
-                      >
-                        <HugeiconsIcon icon={UserGroupIcon} size={20} />
-                      </div>
-                      <div>
-                        <div
-                          className="font-bold leading-tight"
-                          style={{ color: COLORS.CHARCOAL }}
-                        >
-                          {getEstudianteName(e)}
-                        </div>
-                        <div
-                          className="text-[10px] mt-0.5"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          {getEstudianteCedula(e)}
-                        </div>
-                      </div>
-                    </div>
+                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+                    Marcar todos presentes
+                  </button>
+                  <button
+                    onClick={() => marcarTodos("ausente")}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white transition-all active:scale-[0.97]"
+                    style={{ backgroundColor: "oklch(0.45 0.15 20)" }}
+                  >
+                    Marcar todos ausentes
+                  </button>
+                </div>
+              </div>
 
-                    <div className="md:col-span-5">
+              <div className="space-y-4">
+                {estudiantesFiltrados.length === 0 ? (
+                  <div className="text-center py-10 text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+                    Sin estudiantes que coincidan con la búsqueda.
+                  </div>
+                ) : (
+                  estudiantesFiltrados.map((e) => {
+                    const currentStatus = asistenciasLocal[e.id]?.estado
+                    return (
                       <div
-                        className="flex p-1 rounded-xl"
-                        style={{ backgroundColor: "oklch(0.95 0 0)" }}
+                        key={e.id}
+                        className="grid md:grid-cols-12 gap-4 items-center p-4 rounded-xl transition-colors"
+                        style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
                       >
-                        {[
-                          {
-                            id: "presente",
-                            label: "P",
-                            activeBg: "oklch(0.5 0.1 150)",
-                            activeColor: "white",
-                          },
-                          {
-                            id: "ausente",
-                            label: "A",
-                            activeBg: "oklch(0.45 0.15 20)",
-                            activeColor: "white",
-                          },
-                          {
-                            id: "tardanza",
-                            label: "T",
-                            activeBg: "oklch(0.6 0.15 65)",
-                            activeColor: "white",
-                          },
-                          {
-                            id: "justificado",
-                            label: "J",
-                            activeBg: "oklch(0.5 0.12 240)",
-                            activeColor: "white",
-                          },
-                        ].map((status) => (
-                          <button
-                            key={status.id}
-                            onClick={() => handleStatusChange(e.id, status.id)}
-                            className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                        <div className="md:col-span-4 flex items-center gap-3">
+                          <div
+                            className="size-10 rounded-full flex items-center justify-center"
                             style={{
-                              backgroundColor:
-                                currentStatus === status.id
-                                  ? status.activeBg
-                                  : "transparent",
-                              color:
-                                currentStatus === status.id
-                                  ? status.activeColor
-                                  : COLORS.TEXT_MUTED,
-                              boxShadow:
-                                currentStatus === status.id
-                                  ? `0 2px 6px ${status.activeBg}40`
-                                  : "none",
+                              backgroundColor: "oklch(0.95 0 0)",
+                              color: COLORS.TEXT_MUTED,
                             }}
                           >
-                            {status.label}
-              </button>
-                        ))}
-                      </div>
-                      <div className="flex justify-between px-2 mt-1">
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Presente
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Ausente
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Tarde
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Justificado
-                        </span>
-                      </div>
-                    </div>
+                            <HugeiconsIcon icon={UserGroupIcon} size={20} />
+                          </div>
+                          <div>
+                            <div
+                              className="font-bold leading-tight"
+                              style={{ color: COLORS.CHARCOAL }}
+                            >
+                              {getEstudianteName(e)}
+                            </div>
+                            <div
+                              className="text-[10px] mt-0.5"
+                              style={{ color: COLORS.TEXT_MUTED }}
+                            >
+                              {getEstudianteCedula(e)}
+                            </div>
+                          </div>
+                        </div>
 
-                    <div className="md:col-span-3">
-                      <input
-                        type="text"
-                        value={asistenciasLocal[e.id]?.observaciones || ""}
-                        onChange={(ev) =>
-                          handleObservacionChange(e.id, ev.target.value)
-                        }
-                        placeholder="Nota..."
-                        className="w-full h-10 px-3 text-xs rounded-xl outline-none transition-all"
-                        style={{
-                          borderWidth: 1,
-                          borderColor: COLORS.BORDER_SUBTLE,
-                          color: COLORS.CHARCOAL,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                        <div className="md:col-span-5">
+                          <div
+                            className="flex p-1 rounded-xl"
+                            style={{ backgroundColor: "oklch(0.95 0 0)" }}
+                          >
+                            {[
+                              {
+                                id: "presente",
+                                label: "P",
+                                activeBg: "oklch(0.5 0.1 150)",
+                                activeColor: "white",
+                              },
+                              {
+                                id: "ausente",
+                                label: "A",
+                                activeBg: "oklch(0.45 0.15 20)",
+                                activeColor: "white",
+                              },
+                              {
+                                id: "tardanza",
+                                label: "T",
+                                activeBg: "oklch(0.6 0.15 65)",
+                                activeColor: "white",
+                              },
+                              {
+                                id: "justificado",
+                                label: "J",
+                                activeBg: "oklch(0.5 0.12 240)",
+                                activeColor: "white",
+                              },
+                            ].map((status) => (
+                              <button
+                                key={status.id}
+                                onClick={() => handleStatusChange(e.id, status.id)}
+                                className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                                style={{
+                                  backgroundColor:
+                                    currentStatus === status.id
+                                      ? status.activeBg
+                                      : "transparent",
+                                  color:
+                                    currentStatus === status.id
+                                      ? status.activeColor
+                                      : COLORS.TEXT_MUTED,
+                                  boxShadow:
+                                    currentStatus === status.id
+                                      ? `0 2px 6px ${status.activeBg}40`
+                                      : "none",
+                                }}
+                              >
+                                {status.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex justify-between px-2 mt-1">
+                            <span
+                              className="text-[9px] font-bold uppercase"
+                              style={{ color: COLORS.TEXT_MUTED }}
+                            >
+                              Presente
+                            </span>
+                            <span
+                              className="text-[9px] font-bold uppercase"
+                              style={{ color: COLORS.TEXT_MUTED }}
+                            >
+                              Ausente
+                            </span>
+                            <span
+                              className="text-[9px] font-bold uppercase"
+                              style={{ color: COLORS.TEXT_MUTED }}
+                            >
+                              Tarde
+                            </span>
+                            <span
+                              className="text-[9px] font-bold uppercase"
+                              style={{ color: COLORS.TEXT_MUTED }}
+                            >
+                              Justificado
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <input
+                            type="text"
+                            value={asistenciasLocal[e.id]?.observaciones || ""}
+                            onChange={(ev) =>
+                              handleObservacionChange(e.id, ev.target.value)
+                            }
+                            placeholder="Nota..."
+                            className="w-full h-10 px-3 text-xs rounded-xl outline-none transition-all"
+                            style={{
+                              borderWidth: 1,
+                              borderColor: COLORS.BORDER_SUBTLE,
+                              color: COLORS.CHARCOAL,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </>
           )}
 
-          <div className="mt-12 flex justify-end gap-4">
+          <div className="mt-12 flex justify-end gap-3">
             <button
-              onClick={() => {
-                setView("classes")
-                setSelectedClase(null)
-                setEstudiantes([])
-              }}
-              className="px-6 py-3 rounded-xl font-bold transition-all"
+              onClick={volverAClases}
+              className="px-5 py-3 rounded-xl font-bold transition-all"
               style={{
                 borderColor: COLORS.BORDER_SUBTLE,
                 borderWidth: 1,
@@ -805,7 +1195,19 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               Cancelar
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => handleSave(false)}
+              disabled={saving}
+              className="px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50"
+              style={{
+                borderColor: COLORS.BORDER_SUBTLE,
+                borderWidth: 1,
+                color: COLORS.CHARCOAL,
+              }}
+            >
+              {saving ? "Guardando..." : "Solo guardar"}
+            </button>
+            <button
+              onClick={() => handleSave(true)}
               disabled={saving}
               className="px-8 py-3 rounded-xl text-white font-bold transition-all flex items-center gap-2 disabled:opacity-50"
               style={{
@@ -818,7 +1220,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               ) : (
                 <>
                   <HugeiconsIcon icon={SaveIcon} size={20} />
-                  Guardar Asistencia
+                  {nextPending ? "Guardar y continuar" : "Guardar"}
                 </>
               )}
             </button>

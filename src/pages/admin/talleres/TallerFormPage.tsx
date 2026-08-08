@@ -350,7 +350,7 @@ export function TallerFormPage() {
                       <p className="text-xs">Buscando instructores...</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {instructores
                         .filter(p => !instructorQuery.trim() || `${p.nombres} ${p.apellidos}`.toLowerCase().includes(instructorQuery.toLowerCase()))
                         .map(p => (
@@ -419,7 +419,7 @@ export function TallerFormPage() {
             </div>
 
             <div className="col-span-2">
-              <label className="inline-flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={multiDia} onChange={e => {
                   setMultiDia(e.target.checked)
                   if (!e.target.checked) {
@@ -428,8 +428,8 @@ export function TallerFormPage() {
                     setDiasSeleccionados([])
                   }
                 }}
-                  className="rounded" style={{ accentColor: ACCENT }} />
-                <span className="text-xs font-medium" style={{ color: CHARCOAL }}>Taller de varios días</span>
+                  className="rounded w-4 h-4" style={{ accentColor: ACCENT }} />
+                <span className="text-sm font-medium" style={{ color: CHARCOAL }}>Taller de varios das</span>
               </label>
             </div>
 
@@ -496,18 +496,20 @@ export function TallerFormPage() {
                     const h = horarios.find(x => x.dia_semana === dia)
                     const diaLabel = DIAS.find(d => d.num === dia)?.label || ""
                     return (
-                      <div key={dia} className="flex items-center gap-3 p-3 rounded-lg border" style={{ borderColor: BORDER }}>
-                        <span className="text-xs font-bold w-10 shrink-0" style={{ color: ACCENT }}>{diaLabel}</span>
-                        <input type="time" value={h?.hora_inicio || ""} onChange={e => updateHorario(dia, "hora_inicio", e.target.value)}
-                          className="px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} />
-                        <span className="text-xs" style={{ color: TEXT_MUTED }}>a</span>
-                        <input type="time" value={h?.hora_fin || ""} onChange={e => updateHorario(dia, "hora_fin", e.target.value)}
-                          className="px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} />
-                        <input type="text" value={h?.aula || ""} onChange={e => updateHorario(dia, "aula", e.target.value)}
-                          className="px-2 py-1.5 rounded text-xs border outline-none flex-1" style={{ borderColor: BORDER }} placeholder="Aula (opcional)" />
-                        <button type="button" onClick={() => toggleDia(dia)} className="shrink-0 p-1 rounded hover:bg-red-50" style={{ color: "#ef4444" }}>
-                          <HugeiconsIcon icon={Delete01Icon} size={14} />
-                        </button>
+                  <div key={dia} className="flex items-center gap-2 p-3 rounded-lg border flex-wrap" style={{ borderColor: BORDER }}>
+                    <span className="text-xs font-bold w-10 shrink-0" style={{ color: ACCENT }}>{diaLabel}</span>
+                    <div className="flex items-center gap-1.5">
+                      <input type="time" value={h?.hora_inicio || ""} onChange={e => updateHorario(dia, "hora_inicio", e.target.value)}
+                        className="w-28 px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} />
+                      <span className="text-xs" style={{ color: TEXT_MUTED }}>a</span>
+                      <input type="time" value={h?.hora_fin || ""} onChange={e => updateHorario(dia, "hora_fin", e.target.value)}
+                        className="w-28 px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} />
+                    </div>
+                    <input type="text" value={h?.aula || ""} onChange={e => updateHorario(dia, "aula", e.target.value)}
+                      className="flex-1 min-w-[80px] px-2 py-1.5 rounded text-xs border outline-none" style={{ borderColor: BORDER }} placeholder="Aula (opcional)" />
+                    <button type="button" onClick={() => toggleDia(dia)} className="shrink-0 p-1 rounded hover:bg-red-50" style={{ color: "#ef4444" }}>
+                      <HugeiconsIcon icon={Delete01Icon} size={14} />
+                    </button>
                       </div>
                     )
                   })}
@@ -516,13 +518,13 @@ export function TallerFormPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-2">
             <button type="button" onClick={() => navigate("/talleres")}
-              className="px-5 py-2.5 rounded-lg text-xs font-semibold border" style={{ borderColor: BORDER, color: TEXT_MUTED }}>
+              className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold border min-h-[44px] sm:min-h-0" style={{ borderColor: BORDER, color: TEXT_MUTED }}>
               Cancelar
             </button>
             <button type="submit" disabled={saving}
-              className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-60"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-60 min-h-[44px] sm:min-h-0"
               style={{ backgroundColor: ACCENT }}>
               {saving ? "Guardando..." : isEdit ? "Guardar Cambios" : "Crear Taller"}
             </button>

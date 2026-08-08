@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { CreditCardIcon, CheckmarkCircle01Icon, Cancel01Icon, TimeHalfPassIcon } from "@hugeicons/core-free-icons"
+import { CreditCardIcon, CheckmarkCircle01Icon, Cancel01Icon, TimeHalfPassIcon, PaymentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { clientesService } from "@/services/clientes.service"
 import { toast } from "sonner"
@@ -16,6 +17,7 @@ const estadoConfig: Record<string, { icon: typeof CreditCardIcon; color: string;
 }
 
 export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
+  const navigate = useNavigate()
   const [cuentas, setCuentas] = useState<Array<Record<string, unknown>>>([])
   const [loading, setLoading] = useState(true)
 
@@ -90,10 +92,22 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full"
-                  style={{ backgroundColor: cfg.bg, color: cfg.color }}>
-                  {cfg.label}
-                </span>
+                <div className="flex items-center gap-2">
+                  {saldo > 0 && (
+                    <button onClick={() => navigate(`/clientes/${clienteId}/pagar/${cuenta.id}`, {
+                      state: { montoSaldo: saldo, montoTotal: total, concepto: cuenta.tipo || "Servicio" }
+                    })}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                      <HugeiconsIcon icon={PaymentIcon} size={12} />
+                      Pagar
+                    </button>
+                  )}
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-full"
+                    style={{ backgroundColor: cfg.bg, color: cfg.color }}>
+                    {cfg.label}
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center gap-4 text-xs">

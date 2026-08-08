@@ -347,17 +347,18 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
       {/* 1. KPIs Section */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Cobrado */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50 hover:shadow-md hover:scale-[1.01] transition-all duration-200 cursor-default"
+          style={{ ["--hover-bg" as string]: "oklch(0.65 0.15 45 / 0.06)" }}>
           <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-1">Cobrado</p>
           <p className="text-2xl font-black text-gray-900 dark:text-white">${totalCobrado.toLocaleString()}</p>
         </div>
         {/* Con Deuda */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700/50 hover:shadow-md hover:scale-[1.01] transition-all duration-200 cursor-default">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-1">Con Deuda</p>
           <p className="text-2xl font-black text-gray-900 dark:text-white">{totalConDeuda}</p>
         </div>
         {/* Total Pendiente */}
-        <div className="bg-red-50 dark:bg-red-950/40 rounded-xl p-4 border border-red-100 dark:border-red-900/30">
+        <div className="bg-red-50 dark:bg-red-950/40 rounded-xl p-4 border border-red-100 dark:border-red-900/30 hover:shadow-md hover:scale-[1.01] transition-all duration-200 cursor-default">
           <p className="text-xs text-red-700 dark:text-red-300 font-bold uppercase tracking-wider mb-1">Total Pendiente</p>
           <p className="text-2xl font-black text-red-700 dark:text-red-300">${totalPendiente.toLocaleString()}</p>
         </div>
@@ -444,7 +445,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
               {/* Category Header */}
               <div
                 onClick={() => setOpenCategories(prev => ({ ...prev, [type]: !prev[type] }))}
-                className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 cursor-pointer hover:bg-black/[0.01] dark:hover:bg-white/[0.01] select-none transition-colors border-b border-transparent [&:not(:last-child)]:border-gray-100"
+                className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 cursor-pointer hover:bg-orange-50/70 dark:hover:bg-orange-950/20 select-none transition-colors duration-200 border-b border-transparent [&:not(:last-child)]:border-gray-100"
               >
                 <div className="flex items-center gap-3">
                   <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
@@ -486,7 +487,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                         const isExpanded = expandedRowId === rowId
 
                         return (
-                          <div key={item.name} className="transition-colors hover:bg-black/[0.005] dark:hover:bg-white/[0.005]">
+                          <div key={item.name} className="transition-colors duration-200 hover:bg-orange-50/60 dark:hover:bg-orange-950/15 hover:border-l-2 hover:border-orange-400/50 hover:pl-[18px] border-l-2 border-l-transparent pl-5">
                             {/* Row Header clickable to toggle details */}
                             <div
                               onClick={() => setExpandedRowId(isExpanded ? null : rowId)}
@@ -588,7 +589,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                         const lineasPago = cuenta.lineas_pago || []
 
                                         return (
-                                          <div key={cuenta.id || Math.random()} className="px-5 py-3 transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
+                                          <div key={cuenta.id || Math.random()} className="px-5 py-3 transition-colors duration-200 hover:bg-orange-50/50 dark:hover:bg-orange-950/10">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                                 <div className="size-6 rounded-full flex items-center justify-center shrink-0 bg-gray-100 dark:bg-gray-800">
@@ -622,7 +623,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
                                                 {lineasPago.length > 0 && (
                                                   <button
                                                     onClick={() => toggleModulos(cuenta.id || cuenta.matricula_id)}
-                                                    className="text-[10px] font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 shrink-0 ml-2"
+                                                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline dark:text-orange-400 dark:hover:text-orange-300 shrink-0 ml-2 transition-colors duration-200"
                                                   >
                                                     {modulosExpandidos.has(cuenta.id || cuenta.matricula_id) ? "Ocultar módulos" : "Ver módulos"}
                                                   </button>

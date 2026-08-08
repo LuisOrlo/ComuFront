@@ -389,7 +389,7 @@ export const estudiantesService = {
     return response.data.datos ?? response.data
   },
 
-  async transferirCurso(matriculaId: string, data: { curso_abierto_nuevo_id: string; motivo?: string }): Promise<TransferirResponse> {
+  async transferirCurso(matriculaId: string, data: { curso_abierto_nuevo_id: string; motivo?: string; lineas?: { modulo_id: string | null; tipo: string; monto_abonado: number; monto_ajustado: number }[] }): Promise<TransferirResponse> {
     const response = await api.post(`/academic/matriculas/${matriculaId}/transferir`, data)
     return response.data
   },
