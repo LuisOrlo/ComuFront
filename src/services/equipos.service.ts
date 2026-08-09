@@ -30,6 +30,7 @@ export interface AlquilerEquipo {
   equipo?: Equipo
   persona?: { id: string; nombres: string; apellidos: string; correo?: string }
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
+  cuenta_por_cobrar?: { id: string; estado: string; monto_total: number; monto_abonado: number }
 }
 
 export const equiposService = {
@@ -77,6 +78,12 @@ export const equiposService = {
   createAlquiler: async (alquiler: Partial<AlquilerEquipo> | FormData) => {
     const client = alquiler instanceof FormData ? apiMultipart : api
     const { data } = await client.post<{ data: AlquilerEquipo }>("/academic/servicios/alquileres-equipos", alquiler)
+    return data.data
+  },
+
+  updateAlquiler: async (id: string, alquiler: Partial<AlquilerEquipo> | FormData) => {
+    const client = alquiler instanceof FormData ? apiMultipart : api
+    const { data } = await client.put<{ data: AlquilerEquipo }>(`/academic/servicios/alquileres-equipos/${id}`, alquiler)
     return data.data
   },
 

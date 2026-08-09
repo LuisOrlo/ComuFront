@@ -66,6 +66,11 @@ export const aulasService = {
     return data.data
   },
 
+  getReserva: async (id: string) => {
+    const { data } = await api.get<{ data: ReservaAula }>(`/academic/servicios/reservas-aulas/${id}`)
+    return data.data
+  },
+
   createReserva: async (reserva: Partial<ReservaAula>) => {
     const { data } = await api.post<{ data: ReservaAula }>("/academic/servicios/reservas-aulas", reserva)
     return data.data
@@ -73,6 +78,11 @@ export const aulasService = {
 
   updateReservaEstado: async (id: string, estado: string) => {
     const { data } = await api.put<{ data: ReservaAula }>(`/academic/servicios/reservas-aulas/${id}`, { estado })
+    return data.data
+  },
+
+  updateReserva: async (id: string, reserva: Partial<ReservaAula>) => {
+    const { data } = await api.put<{ data: ReservaAula }>(`/academic/servicios/reservas-aulas/${id}`, reserva)
     return data.data
   },
 

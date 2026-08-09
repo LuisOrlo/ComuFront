@@ -35,12 +35,14 @@ interface ClienteOption {
 
 export function NuevaReservaPage() {
   const navigate = useNavigate()
-  const { aulaId } = useParams<{ aulaId: string }>()
+  const { aulaId, id } = useParams<{ aulaId?: string; id?: string }>()
+  const isEdit = !!id
   const location = useLocation()
   const state = location.state as { fecha_reserva?: string; hora_inicio?: string; hora_fin?: string } | null
 
   const [aula, setAula] = useState<Aula | null>(null)
   const [loading, setLoading] = useState(true)
+  const [estadoOriginal, setEstadoOriginal] = useState<string>("reservado")
 
   const [fechaReserva, setFechaReserva] = useState(state?.fecha_reserva || new Date().toISOString().split("T")[0])
   const [horaInicio, setHoraInicio] = useState(state?.hora_inicio || "08:00")
@@ -63,12 +65,36 @@ export function NuevaReservaPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    if (!aulaId) { navigate("/servicios/aulas"); return }
-    aulasService.getAula(aulaId)
-      .then(setAula)
-      .catch(() => { toast.error("Error al cargar aula"); navigate("/servicios/aulas") })
-      .finally(() => setLoading(false))
-  }, [aulaId, navigate])
+    if (isEdit) {
+      if (!id) { navigate("/servicios/aulas"); return }
+      aulasService.getReserva(id)
+        .then(r => {
+          setEstadoOriginal(r.estado)
+          setFechaReserva(r.fecha_reserva?.substring(0, 10) || new Date().toISOString().split("T")[0])
+          setHoraInicio(r.hora_inicio?.substring(0, 5) || "08:00")
+          setHoraFin(r.hora_fin?.substring(0, 5) || "10:00")
+          if (r.persona_id) {
+            const opt: ClienteOption = { tipo: "persona", id: r.persona_id, nombres: r.persona?.nombres || "", apellidos: r.persona?.apellidos || "" }
+            setSelectedCliente(opt)
+            setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
+          } else if (r.cliente_externo_id) {
+            const opt: ClienteOption = { tipo: "cliente_externo", id: r.cliente_externo_id, nombres: r.cliente_externo?.nombres || "", apellidos: r.cliente_externo?.apellidos || "", cedula: r.cliente_externo?.cedula, correo: r.cliente_externo?.correo }
+            setSelectedCliente(opt)
+            setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
+          }
+          return aulasService.getAula(r.aula_id)
+        })
+        .then(setAula)
+        .catch(() => { toast.error("Error al cargar reserva"); navigate("/servicios/aulas") })
+        .finally(() => setLoading(false))
+    } else {
+      if (!aulaId) { navigate("/servicios/aulas"); return }
+      aulasService.getAula(aulaId)
+        .then(setAula)
+        .catch(() => { toast.error("Error al cargar aula"); navigate("/servicios/aulas") })
+        .finally(() => setLoading(false))
+    }
+  }, [isEdit, id, aulaId, navigate])
 
   useEffect(() => {
     const q = clienteSearch.trim()
@@ -112,7 +138,8 @@ export function NuevaReservaPage() {
   }, [])
 
   useEffect(() => {
-    if (!aulaId || !fechaReserva || !horaInicio || !horaFin || horaFin <= horaInicio) {
+    const aulaActual = isEdit ? aula?.id : aulaId || undefined
+    if (!aulaActual || !fechaReserva || !horaInicio || !horaFin || horaFin <= horaInicio) {
       setConflicto(null)
       return
     }
@@ -120,11 +147,12 @@ export function NuevaReservaPage() {
     const timer = setTimeout(async () => {
       setVerificandoConflicto(true)
       try {
-        const reservas = await aulasService.getReservas({ aula_id: aulaId, fecha_inicio: fechaReserva, fecha_fin: fechaReserva })
+        const reservas = await aulasService.getReservas({ aula_id: aulaActual, fecha_inicio: fechaReserva, fecha_fin: fechaReserva })
         if (!active) return
         const conflictoEncontrado = (Array.isArray(reservas) ? reservas : []).find(r =>
           r.fecha_reserva === fechaReserva &&
           r.estado !== "cancelado" &&
+          r.id !== id &&
           horaInicio < r.hora_fin && horaFin > r.hora_inicio
         ) || null
         setConflicto(conflictoEncontrado)
@@ -135,7 +163,7 @@ export function NuevaReservaPage() {
       }
     }, 400)
     return () => { active = false; clearTimeout(timer) }
-  }, [aulaId, fechaReserva, horaInicio, horaFin])
+  }, [isEdit, aula, aulaId, fechaReserva, horaInicio, horaFin, id])
 
   const calcularPrecio = () => {
     if (!aula || !horaInicio || !horaFin) return 0
@@ -196,7 +224,11 @@ export function NuevaReservaPage() {
         hora_inicio: horaInicio,
         hora_fin: horaFin,
         precio_total: precioTotal,
-        estado: "reservado",
+      }
+      if (isEdit) {
+        payload.estado = estadoOriginal
+      } else {
+        payload.estado = "reservado"
       }
       if (selectedCliente?.tipo === "persona") {
         payload.persona_id = selectedCliente.id
@@ -204,11 +236,16 @@ export function NuevaReservaPage() {
         payload.cliente_externo_id = selectedCliente!.id
       }
 
-      await aulasService.createReserva(payload)
-      toast.success("Reserva creada exitosamente")
+      if (isEdit && id) {
+        await aulasService.updateReserva(id, payload)
+        toast.success("Reserva actualizada exitosamente")
+      } else {
+        await aulasService.createReserva(payload)
+        toast.success("Reserva creada exitosamente")
+      }
       navigate("/servicios/aulas")
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al crear reserva"
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (isEdit ? "Error al actualizar reserva" : "Error al crear reserva")
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -269,7 +306,7 @@ export function NuevaReservaPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>
-                  Nueva Reserva
+                  {isEdit ? "Editar Reserva" : "Nueva Reserva"}
                 </h1>
                 <p className="text-xs opacity-40 mt-0.5 truncate">
                   {aula.nombre} · ${Number(aula.precio_hora).toFixed(2)}/hora
@@ -332,10 +369,10 @@ export function NuevaReservaPage() {
               </div>
 
               {verificandoConflicto && (
-                <p className="flex items-center gap-2 text-xs opacity-40" style={{ color: COLORS.TEXT_MUTED }}>
+                <div className="flex items-center gap-2 text-xs opacity-40" style={{ color: COLORS.TEXT_MUTED }}>
                   <div className="animate-spin size-3 border-2 border-gray-400 border-t-transparent rounded-full" />
                   Verificando disponibilidad...
-                </p>
+                </div>
               )}
 
               {conflicto && !verificandoConflicto && (
@@ -515,22 +552,22 @@ export function NuevaReservaPage() {
                 className="flex-1 py-3.5 rounded-xl text-sm font-bold border-2 border-gray-200 transition-all hover:bg-gray-50 active:scale-[0.98]">
                 Cancelar
               </button>
-              <button type="submit" disabled={saving || !!conflicto}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] flex items-center justify-center gap-2.5"
-                style={{ backgroundColor: conflicto ? "#9ca3af" : "#7c3aed" }}
-                title={conflicto ? "Corrige el conflicto de horario antes de confirmar" : undefined}>
-                {saving ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <HugeiconsIcon icon={Tick02Icon} size={16} />
-                    Confirmar Reserva
-                  </>
-                )}
-              </button>
+<button type="submit" disabled={saving || !!conflicto}
+                  className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] flex items-center justify-center gap-2.5"
+                  style={{ backgroundColor: conflicto ? "#9ca3af" : "#7c3aed" }}
+                  title={conflicto ? "Corrige el conflicto de horario antes de confirmar" : undefined}>
+                  {saving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Tick02Icon} size={16} />
+                      {isEdit ? "Guardar Cambios" : "Confirmar Reserva"}
+                    </>
+                  )}
+                </button>
             </div>
           </form>
 

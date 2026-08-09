@@ -298,7 +298,7 @@ export function RegistrarPagoPage() {
                       placeholder={`0.00 (máx $${totalPendiente.toLocaleString()})`}
                       value={montoPago}
                       onChange={e => setMontoPago(e.target.value)}
-                      className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-3 md:py-3.5 min-h-[44px] border-2 border-blue-200 rounded-xl md:rounded-2xl text-base md:text-lg font-black font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white"
+                      className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2.5 min-h-[36px] border-2 border-blue-200 rounded-xl md:rounded-2xl text-sm md:text-base font-black font-mono outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all bg-white"
                     />
                   </div>
                   {montoPagoNum > totalPendiente && (
@@ -306,7 +306,7 @@ export function RegistrarPagoPage() {
                   )}
                   {montoPagoNum > 0 && montoPagoNum <= totalPendiente && (
                     <p className="text-xs text-emerald-600 font-medium">
-                      Se aplicará a {cuentaAfectadas} módulo(s)
+                      Cubrirá ${montoPagoNum.toLocaleString()} de {cuentaAfectadas} módulo(s). Saldo restante: ${(totalPendiente - montoPagoNum).toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -324,9 +324,6 @@ export function RegistrarPagoPage() {
                   >
                     <option value="efectivo">Efectivo</option>
                     <option value="transferencia">Transferencia</option>
-                    <option value="deposito">Depósito</option>
-                    <option value="tarjeta">Tarjeta</option>
-                    <option value="otro">Otro</option>
                   </select>
                 </div>
 

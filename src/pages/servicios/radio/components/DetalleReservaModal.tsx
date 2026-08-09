@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   NoteIcon,
   Cancel01Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { radioService } from "@/services/radio.service"
@@ -35,10 +36,12 @@ export function DetalleReservaModal({
   isOpen,
   onClose,
   reserva,
+  onEdit,
 }: {
   isOpen: boolean
   onClose: () => void
   reserva: ReservaRadio | null
+  onEdit?: () => void
 }) {
   const [estadoLocal, setEstadoLocal] = useState(reserva?.estado || "reservado")
   const [saving, setSaving] = useState(false)
@@ -105,17 +108,29 @@ export function DetalleReservaModal({
         </div>
 
         <div className="p-5">
-          <select
-            value={estadoLocal}
-            onChange={e => handleCambiarEstado(e.target.value)}
-            disabled={saving}
-            className="mb-4 px-3 py-2 rounded-lg text-[10px] font-bold uppercase border outline-none cursor-pointer transition-opacity"
-            style={{ backgroundColor: estilo.bg, color: estilo.text, borderColor: "transparent", opacity: saving ? 0.5 : 1 }}
-          >
-            {Object.entries(ESTADO_STYLES).map(([val, s]) => (
-              <option key={val} value={val}>{s.label}</option>
-            ))}
-          </select>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <select
+              value={estadoLocal}
+              onChange={e => handleCambiarEstado(e.target.value)}
+              disabled={saving}
+              className="px-3 py-2 rounded-lg text-[10px] font-bold uppercase border outline-none cursor-pointer transition-opacity"
+              style={{ backgroundColor: estilo.bg, color: estilo.text, borderColor: "transparent", opacity: saving ? 0.5 : 1 }}
+            >
+              {Object.entries(ESTADO_STYLES).map(([val, s]) => (
+                <option key={val} value={val}>{s.label}</option>
+              ))}
+            </select>
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold border transition-colors hover:bg-gray-50"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              >
+                <HugeiconsIcon icon={Edit01Icon} size={12} />
+                Editar
+              </button>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             {fields.map((field, i) => (

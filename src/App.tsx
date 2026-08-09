@@ -210,11 +210,13 @@ function AppLayout() {
             <Route path="/servicios/aulas/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialAulasPage /></RoleGuard>} />
             <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasGestionPage /></RoleGuard>} />
             <Route path="/servicios/aulas/nueva-reserva/:aulaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
+            <Route path="/servicios/aulas/reservas/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
             <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EquiposPage /></RoleGuard>} />
             <Route path="/servicios/equipos/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
             <Route path="/servicios/equipos/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
             <Route path="/servicios/equipos/nuevo-alquiler/:equipoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoAlquilerPage /></RoleGuard>} />
             <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquileresListPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/alquileres/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoAlquilerPage /></RoleGuard>} />
             <Route path="/servicios/equipos/:id/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEquipoPage /></RoleGuard>} />
             <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PodcastPage /></RoleGuard>} />
             <Route path="/servicios/podcast/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPodcastPage /></RoleGuard>} />

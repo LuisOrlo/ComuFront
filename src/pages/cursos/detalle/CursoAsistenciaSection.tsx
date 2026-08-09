@@ -16,6 +16,7 @@ import {
   NextIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { dateLocal } from "@/lib/utils"
 import {
   instructorService,
   type EstudianteCurso,
@@ -53,15 +54,16 @@ const COLORS_ESTADO: Record<string, { bg: string; text: string }> = {
 }
 
 function formatMes(fecha: string): string {
-  return new Date(fecha).toLocaleDateString("es", {
+  const d = dateLocal(fecha)
+  return d ? d.toLocaleDateString("es", {
     month: "long",
     year: "numeric",
-  })
+  }) : String(fecha).toLowerCase()
 }
 
 function normalizeFechaBusqueda(fecha: string): string {
-  const d = new Date(fecha)
-  if (isNaN(d.getTime())) return String(fecha).toLowerCase()
+  const d = dateLocal(fecha)
+  if (!d || isNaN(d.getTime())) return String(fecha).toLowerCase()
   const diaSemana = d.toLocaleDateString("es", { weekday: "long" })
   const mes = d.toLocaleDateString("es", { month: "long" })
   const diaMes = d.toLocaleDateString("es", {
@@ -794,15 +796,15 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                                   style={{ backgroundColor: clase.asistencia_registrada ? "oklch(0.5 0.12 150)" : COLORS.ACCENT }}
                                 >
                                   <span className="text-[9px] font-bold uppercase">
-                                    {new Date(clase.fecha_clase).toLocaleString("es", { month: "short" })}
+                                    {dateLocal(clase.fecha_clase)?.toLocaleString("es", { month: "short" })}
                                   </span>
                                   <span className="text-lg font-black leading-none">
-                                    {new Date(clase.fecha_clase).getDate()}
+                                    {dateLocal(clase.fecha_clase)?.getDate()}
                                   </span>
                                 </div>
                                 <div>
                                   <h3 className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>
-                                    {new Date(clase.fecha_clase).toLocaleDateString("es", {
+                                    {dateLocal(clase.fecha_clase)?.toLocaleDateString("es", {
                                       weekday: "long",
                                       year: "numeric",
                                       month: "long",
@@ -898,7 +900,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               >
                 <HugeiconsIcon icon={Calendar03Icon} size={16} />
                 <span className="font-medium">
-                  {new Date(selectedClase.fecha_clase).toLocaleDateString("es", {
+                  {dateLocal(selectedClase.fecha_clase)?.toLocaleDateString("es", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
@@ -916,9 +918,9 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                     onClick={(e) => {
                       e.stopPropagation()
                       setEditClase(selectedClase)
-                      setEditFecha(selectedClase.fecha_clase || "")
-                      setEditHoraInicio(selectedClase.hora_inicio || "")
-                      setEditHoraFin(selectedClase.hora_fin || "")
+                      setEditFecha((selectedClase.fecha_clase || "").substring(0, 10))
+                      setEditHoraInicio((selectedClase.hora_inicio || "").substring(0, 5))
+                      setEditHoraFin((selectedClase.hora_fin || "").substring(0, 5))
                     }}
                     className="ml-2 px-2.5 py-1 rounded-lg text-[11px] font-bold border hover:bg-gray-50 transition-colors"
                     style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}
@@ -1234,7 +1236,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <h3 className="text-base font-bold mb-4" style={{ color: COLORS.CHARCOAL }}>Cambiar día y hora</h3>
             <p className="text-xs mb-4" style={{ color: COLORS.TEXT_MUTED }}>
-              {new Date(editClase.fecha_clase).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
+              {dateLocal(editClase.fecha_clase)?.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <div className="space-y-3">
               <div>
@@ -1278,14 +1280,17 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                   try {
                     await cursosService.updateClase(editClase.id, {
                       fecha_clase: editFecha,
-                      hora_inicio: editHoraInicio,
-                      hora_fin: editHoraFin,
+                      hora_inicio: editHoraInicio.substring(0, 5),
+                      hora_fin: editHoraFin.substring(0, 5),
                     })
                     toast.success("Clase actualizada")
                     setEditClase(null)
                     try {
                       const data = await instructorService.getClasesModulo(selectedModulo!.id)
                       setClases(data)
+                      setSelectedClase(prev => prev && prev.id === editClase.id
+                        ? { ...prev, fecha_clase: editFecha, hora_inicio: editHoraInicio.substring(0, 5), hora_fin: editHoraFin.substring(0, 5) }
+                        : prev)
                     } catch { /* silent */ }
                   } catch {
                     toast.error("Error al actualizar la clase")

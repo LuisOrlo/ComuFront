@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function dateLocal(fecha: string): Date | null {
+  const parts = fecha.slice(0, 10).split("-").map(Number)
+  if (parts.length < 3 || parts.some((n) => isNaN(n))) return null
+  const [y, m, d] = parts
+  return new Date(y, m - 1, d)
+}
+
 export function getStorageUrl(url?: string | null): string {
   if (!url) return ""
   if (url.startsWith("blob:")) return url

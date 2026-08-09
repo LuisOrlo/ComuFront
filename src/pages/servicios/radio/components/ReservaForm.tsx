@@ -160,7 +160,7 @@ export function ReservaForm({
     if (editingReserva) {
       setTarifaId(editingReserva.tarifa_id)
       setFecha(editingReserva.fecha_reserva)
-      setHoraInicio(editingReserva.hora_inicio)
+      setHoraInicio(editingReserva.hora_inicio.substring(0, 5))
       const inicio = editingReserva.hora_inicio.split(":").map(Number)
       const fin = editingReserva.hora_fin.split(":").map(Number)
       setDuracionInput(String((fin[0] * 60 + fin[1]) - (inicio[0] * 60 + inicio[1])))
@@ -255,11 +255,13 @@ export function ReservaForm({
 
     setSaving(true)
     try {
+      const normalizarHora = (t: string) => (t.length > 5 ? t.substring(0, 5) : t)
+
       const payload: Record<string, unknown> = {
         tarifa_id: parseInt(tarifaId),
         fecha_reserva: fecha,
-        hora_inicio: horaInicio,
-        hora_fin: horaFin,
+        hora_inicio: normalizarHora(horaInicio),
+        hora_fin: normalizarHora(horaFin),
         incluye_operador: incluyeOperador,
         operador_id: incluyeOperador ? operadorId : null,
         observaciones: observaciones || null,

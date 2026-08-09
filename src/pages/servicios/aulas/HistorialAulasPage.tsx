@@ -11,6 +11,7 @@ import {
   CheckmarkCircle04Icon,
   Search01Icon,
   Cancel01Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
@@ -281,6 +282,13 @@ export function HistorialAulasPage() {
                                 <span className="text-xs font-bold w-20 text-right shrink-0" style={{ color: COLORS.CHARCOAL }}>
                                   ${Number(r.precio_total).toLocaleString()}
                                 </span>
+
+                                <button onClick={() => navigate(`/servicios/aulas/reservas/${r.id}/editar`)}
+                                  className="size-7 flex items-center justify-center rounded-lg border hover:bg-gray-50 transition-colors shrink-0"
+                                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                                  title="Editar reserva">
+                                  <HugeiconsIcon icon={Edit01Icon} size={13} />
+                                </button>
 
                                 <button onClick={() => handlePago(r)}
                                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 shrink-0"

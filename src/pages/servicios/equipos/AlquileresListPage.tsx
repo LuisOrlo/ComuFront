@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Calendar03Icon, SearchIcon, UserIcon, Home02Icon,
-  Alert02Icon, ArrowLeft02Icon, CheckmarkCircle04Icon,
+  Alert02Icon, ArrowLeft02Icon, CheckmarkCircle04Icon, Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -160,13 +160,41 @@ export function AlquileresListPage() {
                         <td className="p-3 text-xs font-medium opacity-70 max-w-[120px] truncate cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{clienteNombre}</td>
                         <td className="p-3 text-xs font-mono opacity-60 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
                         <td className="p-3 text-xs font-mono opacity-60 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="p-3 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}><span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span></td>
+                        <td className="p-3 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span>
+                              {(() => {
+                                const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
+                                const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
+                                const saldo = total - abonado
+                                return (
+                                  <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", saldo <= 0 ? "bg-green-100 text-green-700 border-green-200" : "bg-amber-100 text-amber-700 border-amber-200")}>
+                                    {saldo <= 0 ? "Pago OK" : `Saldo $${saldo.toFixed(2)}`}
+                                  </span>
+                                )
+                              })()}
+                            </div>
+                          </td>
                         <td className="p-3 text-xs font-bold cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }} style={{ color: COLORS.CHARCOAL }}>${Number(a.precio_total).toFixed(2)}</td>
                         <td className="p-3">
-                          <button onClick={(e) => { e.stopPropagation(); navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: clienteNombre, montoTotal: Number(a.precio_total) || 0, montoSaldo: Number(a.precio_total) || 0, nombreServicio: `Alquiler de ${a.equipo?.nombre || "Equipo"}` } }) }} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap" style={{ backgroundColor: COLORS.ACCENT }}>
-                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                            Registrar pago
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={(e) => { e.stopPropagation(); navigate(`/servicios/equipos/alquileres/${a.id}/editar`) }}
+                              className="size-7 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors" title="Editar alquiler">
+                              <HugeiconsIcon icon={Edit01Icon} size={13} style={{ color: COLORS.TEXT_MUTED }} />
+                            </button>
+                            {(() => {
+                              const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
+                              const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
+                              const saldo = total - abonado
+                              if (saldo <= 0) return null
+                              return (
+                                <button onClick={(e) => { e.stopPropagation(); navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: clienteNombre, montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${a.equipo?.nombre || "Equipo"}` } }) }} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap" style={{ backgroundColor: COLORS.ACCENT }}>
+                                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                  Registrar pago
+                                </button>
+                              )
+                            })()}
+                          </div>
                         </td>
                       </tr>
                     )

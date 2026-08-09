@@ -11,6 +11,7 @@ import {
   Cancel01Icon,
   RadioIcon,
   PackageIcon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { Link } from "react-router"
 import { cn } from "@/lib/utils"
@@ -179,6 +180,12 @@ export function RadioHistorialPage() {
                           style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                           <HugeiconsIcon icon={Calendar03Icon} size={12} />Ver detalle
                         </button>
+                        <button onClick={() => navigate("/servicios/radio", { state: { editarReserva: r } })}
+                          className="size-7 flex items-center justify-center rounded-lg border transition-colors hover:bg-gray-50"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                          title="Editar reserva">
+                          <HugeiconsIcon icon={Edit01Icon} size={13} />
+                        </button>
                         <select
                           value={r.estado}
                           onChange={e => handleCambiarEstado(r.id, e.target.value)}
@@ -224,7 +231,7 @@ export function RadioHistorialPage() {
         </div>
       </div>
 
-      <DetalleReservaModal isOpen={detalleOpen} onClose={() => setDetalleOpen(false)} reserva={detalleReserva} />
+      <DetalleReservaModal isOpen={detalleOpen} onClose={() => setDetalleOpen(false)} reserva={detalleReserva} onEdit={() => { if (detalleReserva) navigate("/servicios/radio", { state: { editarReserva: detalleReserva } }) }} />
     </div>
   )
 }

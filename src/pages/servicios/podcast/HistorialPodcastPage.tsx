@@ -11,6 +11,7 @@ import {
   CheckmarkCircle04Icon,
   PackageIcon,
   Cancel01Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
@@ -233,6 +234,12 @@ export function HistorialPodcastPage() {
                             <option key={val} value={val}>{label}</option>
                           ))}
                         </select>
+                        <button onClick={() => navigate("/servicios/podcast", { state: { editarReserva: r } })}
+                          className="size-7 flex items-center justify-center rounded-lg border transition-colors hover:bg-gray-50 shrink-0"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                          title="Editar reserva">
+                          <HugeiconsIcon icon={Edit01Icon} size={13} />
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -16,6 +16,7 @@ import {
   CheckmarkCircle04Icon,
   InformationCircleIcon,
   Image01Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -314,6 +315,27 @@ export function HistorialEquipoPage() {
                         )}>
                           {ESTADO_LABELS[displayEstado] || displayEstado}
                         </span>
+                        {(() => {
+                          const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
+                          const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
+                          const saldo = total - abonado
+                          return (
+                            <span className={cn(
+                              "shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border",
+                              saldo <= 0
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : "bg-amber-100 text-amber-700 border-amber-200"
+                            )}>
+                              {saldo <= 0 ? "Pago completado" : `Pago pendiente: $${saldo.toFixed(2)}`}
+                            </span>
+                          )
+                        })()}
+                        <button onClick={() => navigate(`/servicios/equipos/alquileres/${a.id}/editar`)}
+                          className="shrink-0 size-7 flex items-center justify-center rounded-lg border hover:bg-gray-50 transition-colors"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                          title="Editar alquiler">
+                          <HugeiconsIcon icon={Edit01Icon} size={13} />
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -339,10 +361,18 @@ export function HistorialEquipoPage() {
                               ${Number(a.precio_total).toFixed(2)}
                             </p>
                           </div>
-                          <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: getResponsable(a), montoTotal: Number(a.precio_total) || 0, montoSaldo: Number(a.precio_total) || 0, nombreServicio: `Alquiler de ${equipo.nombre}` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0" style={{ backgroundColor: COLORS.ACCENT }}>
-                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                            Registrar pago
-                          </button>
+                          {(() => {
+                            const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
+                            const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
+                            const saldo = total - abonado
+                            if (saldo <= 0) return null
+                            return (
+                              <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: getResponsable(a), montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${equipo.nombre}` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0" style={{ backgroundColor: COLORS.ACCENT }}>
+                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                Registrar pago
+                              </button>
+                            )
+                          })()}
                         </div>
                       </div>
 

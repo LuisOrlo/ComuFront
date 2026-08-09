@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Microphone, UserIcon, Money01Icon, Mail01Icon, CallIcon,
-  IdentificationIcon, Clock01Icon, Tick02Icon,
+  IdentificationIcon, Clock01Icon, Tick02Icon, Edit02Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -21,10 +21,11 @@ const ESTADO_LABELS: Record<string, { label: string; color: string }> = {
 
 function fmtHora(h: string) { return h.substring(0, 5) }
 
-export function DetalleReservaModal({ isOpen, onClose, reserva }: {
+export function DetalleReservaModal({ isOpen, onClose, reserva, onEdit }: {
   isOpen: boolean
   onClose: () => void
   reserva: ReservaPodcast | null
+  onEdit?: () => void
 }) {
   const [estadoLocal, setEstadoLocal] = useState(reserva?.estado || "pendiente")
   const [saving, setSaving] = useState(false)
@@ -161,8 +162,16 @@ export function DetalleReservaModal({ isOpen, onClose, reserva }: {
                 )}
               </div>
             </div>
-            <div className="px-6 py-5 bg-gray-50 border-t flex justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="px-6 py-5 bg-gray-50 border-t flex flex-wrap gap-2 justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <button onClick={onClose} className="px-6 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10">Cerrar</button>
+              {onEdit && (
+                <button onClick={onEdit}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ backgroundColor: COLORS.ACCENT }}>
+                  <HugeiconsIcon icon={Edit02Icon} size={15} />
+                  Editar
+                </button>
+              )}
             </div>
           </motion.div>
         </div>

@@ -329,7 +329,7 @@ export function NuevaReservaPage() {
 
               <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                  Paquete
+                  Paquete Contratado
                   <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -351,7 +351,7 @@ export function NuevaReservaPage() {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
                     <HugeiconsIcon icon={Calendar03Icon} size={12} className="opacity-40" />
-                    Fecha
+                    Fecha de la reserva
                     <span className="text-red-500">*</span>
                   </label>
                   <input type="date" value={fecha}
@@ -363,7 +363,7 @@ export function NuevaReservaPage() {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
                     <HugeiconsIcon icon={Clock01Icon} size={12} className="opacity-40" />
-                    Entrada
+                    Hora de inicio
                     <span className="text-red-500">*</span>
                   </label>
                   <input type="time" value={horaInicio}
@@ -375,7 +375,7 @@ export function NuevaReservaPage() {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
                     <HugeiconsIcon icon={Clock01Icon} size={12} className="opacity-40" />
-                    Salida
+                    Hora de fin
                     <span className="text-red-500">*</span>
                   </label>
                   <input type="time" value={horaFin}
@@ -387,10 +387,10 @@ export function NuevaReservaPage() {
               </div>
 
               {verificandoConflicto && (
-                <p className="flex items-center gap-2 text-xs opacity-40">
+                <div className="flex items-center gap-2 text-xs opacity-40">
                   <div className="animate-spin size-3 border-2 border-gray-400 border-t-transparent rounded-full" />
                   Verificando disponibilidad...
-                </p>
+                </div>
               )}
 
               {conflicto && !verificandoConflicto && (

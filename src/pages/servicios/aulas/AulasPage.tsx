@@ -18,6 +18,7 @@ import {
   IdentificationIcon,
   PackageIcon,
   Search01Icon,
+  Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { X, Plus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -526,8 +527,16 @@ export function AulasPage() {
                   ) : <p className="text-xs opacity-30 italic">No especificado</p>}
                 </div>
               </div>
-              <div className="shrink-0 px-6 py-5 bg-gray-50 border-t flex justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="shrink-0 px-6 py-5 bg-gray-50 border-t flex flex-wrap gap-2 justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <button onClick={() => setDetalleOpen(false)} className="px-6 py-3 rounded-xl bg-black/5 text-sm font-bold text-charcoal/60 hover:bg-black/10">Cerrar</button>
+                {detalleReserva.estado !== "cancelado" && detalleReserva.estado !== "completado" && (
+                  <button onClick={() => { navigate(`/servicios/aulas/reservas/${detalleReserva.id}/editar`); setDetalleOpen(false) }}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+                    style={{ backgroundColor: COLORS.ACCENT, color: "#ffffff" }}>
+                    <HugeiconsIcon icon={Edit01Icon} size={15} />
+                    Editar
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>

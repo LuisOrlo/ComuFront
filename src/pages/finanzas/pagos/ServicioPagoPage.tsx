@@ -173,7 +173,8 @@ export function ServicioPagoPage() {
     }
   }
 
-  const pctPagado = montoTotalCuenta > 0 ? Math.round((montoTotalCuenta - saldoActual) / montoTotalCuenta * 100) : 0
+  const abonadoPrevio = Math.max(0, montoTotalCuenta - saldoActual)
+  const pctPagado = montoTotalCuenta > 0 ? Math.min(100, Math.round(((abonadoPrevio + montoNum) / montoTotalCuenta) * 100)) : 0
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">

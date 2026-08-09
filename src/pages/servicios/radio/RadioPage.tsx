@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Link } from "react-router"
+import { Link, useLocation } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
@@ -96,6 +96,17 @@ export function RadioPage() {
       .finally(() => setLoading(false))
   }, [loadReservas])
 
+  const location = useLocation()
+  useEffect(() => {
+    const initial = location.state as { editarReserva?: ReservaRadio } | null
+    if (initial?.editarReserva) {
+      setEditingReserva(initial.editarReserva)
+      setVista("lista")
+      setReservaModalOpen(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const timer = setTimeout(() => setSearchQuery(searchInput), 300)
     return () => clearTimeout(timer)
@@ -154,6 +165,7 @@ export function RadioPage() {
   }
 
   const handleEdit = (r: ReservaRadio) => {
+    setDetalleOpen(false)
     setEditingReserva(r)
     setReservaModalOpen(true)
   }
@@ -459,6 +471,7 @@ export function RadioPage() {
         isOpen={detalleOpen}
         onClose={() => setDetalleOpen(false)}
         reserva={detalleReserva}
+        onEdit={() => { if (detalleReserva) handleEdit(detalleReserva) }}
       />
 
       <ConfirmationModal

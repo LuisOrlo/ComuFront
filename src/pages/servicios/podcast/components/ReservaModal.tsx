@@ -30,8 +30,8 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
       return {
         paquete_id: editingReserva.paquete_id,
         fecha_reserva: editingReserva.fecha_reserva,
-        hora_inicio: editingReserva.hora_inicio,
-        hora_fin: editingReserva.hora_fin,
+        hora_inicio: editingReserva.hora_inicio.substring(0, 5),
+        hora_fin: editingReserva.hora_fin.substring(0, 5),
         precio_total: editingReserva.precio_total,
         titulo: editingReserva.titulo,
         notas: editingReserva.notas,
@@ -125,12 +125,15 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
     try {
       if (!reservaForm.paquete_id) { toast.error("Debe seleccionar un paquete"); return }
       setSaving(true)
+      const normalizarHora = (t?: string) => (t && t.length > 5 ? t.substring(0, 5) : t || "")
       const payload: Record<string, unknown> = {
         ...reservaForm,
+        hora_inicio: normalizarHora(reservaForm.hora_inicio),
+        hora_fin: normalizarHora(reservaForm.hora_fin),
         precio_total: precioActual,
-        estado: "pendiente",
         asignaciones: asignaciones.map(a => ({ persona_id: a.persona_id, rol: a.rol || null })),
       }
+      if (!editingReserva) payload.estado = "pendiente"
       if (tipoResponsable === "interno") {
         if (!selectedPersonaId) { toast.error("Debe seleccionar un responsable interno"); return }
         payload.persona_id = selectedPersonaId

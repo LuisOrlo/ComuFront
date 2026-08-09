@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Calendar03Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { dateLocal } from "@/lib/utils"
 import {
   instructorService,
   type ClaseItem,
@@ -103,17 +104,17 @@ export function ClasesModuloPage() {
                   style={{ backgroundColor: COLORS.ACCENT }}
                 >
                   <span className="text-[10px] font-bold uppercase">
-                    {new Date(clase.fecha_clase).toLocaleString("es", {
+                    {dateLocal(clase.fecha_clase)?.toLocaleString("es", {
                       month: "short",
                     })}
                   </span>
                   <span className="text-lg font-black leading-none">
-                    {new Date(clase.fecha_clase).getDate()}
+                    {dateLocal(clase.fecha_clase)?.getDate()}
                   </span>
                 </div>
                 <div>
                   <h3 className="font-bold" style={{ color: COLORS.CHARCOAL }}>
-                    {new Date(clase.fecha_clase).toLocaleDateString("es", {
+                    {dateLocal(clase.fecha_clase)?.toLocaleDateString("es", {
                       weekday: "long",
                       year: "numeric",
                       month: "long",

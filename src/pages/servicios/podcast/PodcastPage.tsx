@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import { Link, useNavigate } from "react-router"
+import { Link, useLocation, useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Download02Icon, Clock01Icon, ArrowDown01Icon, Search01Icon, Cancel01Icon, CheckmarkCircle04Icon, Edit01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
@@ -73,6 +73,17 @@ export function PodcastPage() {
     return () => clearTimeout(timer)
   }, [searchInput])
 
+  const location = useLocation()
+  useEffect(() => {
+    const initial = location.state as { editarReserva?: ReservaPodcast } | null
+    if (initial?.editarReserva) {
+      setEditingReserva(initial.editarReserva)
+      setVista("lista")
+      setReservaModalOpen(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (searchQuery && vista === "calendario") setVista("lista")
   }, [searchQuery, vista])
@@ -114,6 +125,7 @@ export function PodcastPage() {
   }, [groupedByDate, expandedGroups])
 
   const handleEdit = (r: ReservaPodcast) => {
+    setDetalleOpen(false)
     setEditingReserva(r)
     setReservaModalOpen(true)
   }
@@ -500,6 +512,7 @@ export function PodcastPage() {
         isOpen={detalleOpen}
         onClose={() => setDetalleOpen(false)}
         reserva={detalleReserva}
+        onEdit={() => { if (detalleReserva) handleEdit(detalleReserva) }}
       />
 
       <ConfirmationModal

@@ -108,14 +108,11 @@ export function ClientePagoPage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Mtodo de pago</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Método de pago</label>
               <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
                 className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-2xl text-sm outline-none bg-white">
                 <option value="efectivo">Efectivo</option>
                 <option value="transferencia">Transferencia</option>
-                <option value="deposito">Depsito</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="otro">Otro</option>
               </select>
             </div>
 

@@ -31,7 +31,9 @@ const MAX_FOTO_SIZE = 2 * 1024 * 1024
 
 export function NuevoAlquilerPage() {
   const navigate = useNavigate()
-  const { equipoId } = useParams<{ equipoId: string }>()
+  const { equipoId, id } = useParams<{ equipoId: string; id: string }>()
+  const editingAlquilerId = id || null
+  const isEdit = !!editingAlquilerId
 
   const [equipo, setEquipo] = useState<Equipo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -61,14 +63,51 @@ export function NuevoAlquilerPage() {
   const externosEnLista = useMemo(() => clientesDisponibles.filter(c => c.tipo === "cliente_externo"), [clientesDisponibles])
 
   useEffect(() => {
-    if (!equipoId) { navigate("/servicios/equipos"); return }
-    equiposService.getEquipo(equipoId)
-      .then(setEquipo)
-      .catch(() => { toast.error("Error al cargar equipo"); navigate("/servicios/equipos") })
-      .finally(() => setLoading(false))
-  }, [equipoId, navigate])
+    const load = async () => {
+      try {
+        if (editingAlquilerId) {
+          const alquiler = await equiposService.getAlquiler(editingAlquilerId)
+          setEquipo(await equiposService.getEquipo(alquiler.equipo_id))
+          if (alquiler.fecha_entrega) setFechaEntrega(alquiler.fecha_entrega.slice(0, 16))
+          if (alquiler.fecha_devolucion_esperada) setFechaDevolucion(alquiler.fecha_devolucion_esperada.slice(0, 16))
+          setObservaciones(alquiler.observaciones || "")
+
+          if (alquiler.persona_id) {
+            const nombres = alquiler.persona?.nombres || ""
+            const apellidos = alquiler.persona?.apellidos || ""
+            setClienteId(alquiler.persona_id)
+            setClienteTipo("persona")
+            setSelectedCliente({ tipo: "persona", id: alquiler.persona_id, nombres, apellidos })
+            setClienteSearch(`${nombres} ${apellidos}`.trim())
+          } else if (alquiler.cliente_externo_id) {
+            const nombres = alquiler.cliente_externo?.nombres || ""
+            const apellidos = alquiler.cliente_externo?.apellidos || ""
+            setClienteId(alquiler.cliente_externo_id)
+            setClienteTipo("cliente_externo")
+            setSelectedCliente({ tipo: "cliente_externo", id: alquiler.cliente_externo_id, nombres, apellidos, cedula: alquiler.cliente_externo?.cedula })
+            setClienteSearch(`${nombres} ${apellidos}`.trim())
+          }
+        } else {
+          if (!equipoId) { navigate("/servicios/equipos"); return }
+          setEquipo(await equiposService.getEquipo(equipoId))
+        }
+      } catch {
+        toast.error("Error al cargar datos del alquiler")
+        navigate("/servicios/equipos")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [editingAlquilerId, equipoId, navigate])
 
   useEffect(() => {
+    const q = clienteSearch.trim()
+    if (q.length < 2) {
+      setClientesDisponibles([])
+      setSearchingCliente(false)
+      return
+    }
     const timer = setTimeout(() => {
       if (abortRef.current) abortRef.current.abort()
       const controller = new AbortController()
@@ -76,8 +115,8 @@ export function NuevoAlquilerPage() {
 
       setSearchingCliente(true)
       Promise.allSettled([
-        personasService.getPersonas({ buscar: clienteSearch || undefined, tipo: "estudiante,instructor", page: 1 }),
-        clientesService.getClientes({ search: clienteSearch || undefined, per_page: 50 }),
+        personasService.getPersonas({ buscar: q, tipo: "estudiante,instructor", page: 1 }),
+        clientesService.getClientes({ search: q, per_page: 50 }),
       ]).then(([personasRes, clientesRes]) => {
         if (controller.signal.aborted) return
         const results: ClienteOption[] = []
@@ -191,11 +230,17 @@ export function NuevoAlquilerPage() {
         form.append("cliente_externo_id", clienteId)
       }
 
-      await equiposService.createAlquiler(form)
-      toast.success("Alquiler registrado exitosamente")
-      navigate("/servicios/equipos")
+      if (editingAlquilerId) {
+        await equiposService.updateAlquiler(editingAlquilerId, form)
+        toast.success("Alquiler actualizado exitosamente")
+        navigate("/servicios/equipos/alquileres")
+      } else {
+        await equiposService.createAlquiler(form)
+        toast.success("Alquiler registrado exitosamente")
+        navigate("/servicios/equipos")
+      }
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al registrar alquiler"
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (isEdit ? "Error al actualizar alquiler" : "Error al registrar alquiler")
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -256,7 +301,7 @@ export function NuevoAlquilerPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>
-                  Nuevo Alquiler
+                  {isEdit ? "Editar Alquiler" : "Nuevo Alquiler"}
                 </h1>
                 <p className="text-xs opacity-40 mt-0.5 truncate">
                   {equipo.nombre} · ${Number(equipo.precio_diario).toFixed(2)}/día
@@ -283,7 +328,7 @@ export function NuevoAlquilerPage() {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
                     <HugeiconsIcon icon={Clock01Icon} size={12} className="opacity-40" />
-                    Fecha entrega
+                    Fecha entrega del equipo
                     <span className="text-red-500">*</span>
                   </label>
                   <input type="datetime-local" value={fechaEntrega}
@@ -295,7 +340,7 @@ export function NuevoAlquilerPage() {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
                     <HugeiconsIcon icon={Calendar03Icon} size={12} className="opacity-40" />
-                    Devolución esperada
+                    Fecha de devolución esperada
                     <span className="text-red-500">*</span>
                   </label>
                   <input type="datetime-local" value={fechaDevolucion}
@@ -335,7 +380,7 @@ export function NuevoAlquilerPage() {
                 <span className="size-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.92 0.03 270)", color: "#7c3aed" }}>
                   <HugeiconsIcon icon={Home02Icon} size={14} />
                 </span>
-                Foto del equipo (salida)
+                Foto del equipo entregado
               </h2>
 
               <div className="flex items-center gap-3">
@@ -370,7 +415,7 @@ export function NuevoAlquilerPage() {
                     <input type="text"
                       value={clienteSearch}
                       onChange={e => { setClienteSearch(e.target.value); setShowClienteDropdown(true) }}
-                      onFocus={() => { if (!clienteId || clienteSearch) setShowClienteDropdown(true) }}
+                      onFocus={() => { if (clienteSearch.trim()) setShowClienteDropdown(true) }}
                       placeholder="Buscar persona o cliente por nombre o cédula..."
                       className={cn(
                         "w-full pl-11 pr-10 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white",
@@ -411,7 +456,7 @@ export function NuevoAlquilerPage() {
                         </div>
                       ) : clientesDisponibles.length === 0 ? (
                         <div className="p-5 text-center text-xs opacity-40">
-                          {clienteSearch.trim() ? "Sin resultados para esta búsqueda" : "Escribe para buscar..."}
+                          {clienteSearch.trim().length >= 2 ? "Sin resultados para esta búsqueda" : "Escribe al menos 2 caracteres para buscar..."}
                         </div>
                       ) : (
                         <>
@@ -539,7 +584,7 @@ export function NuevoAlquilerPage() {
                 ) : (
                   <>
                     <HugeiconsIcon icon={Tick02Icon} size={16} />
-                    Registrar Alquiler
+                    {isEdit ? "Guardar Cambios" : "Registrar Alquiler"}
                   </>
                 )}
               </button>
