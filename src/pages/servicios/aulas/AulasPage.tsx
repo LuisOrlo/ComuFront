@@ -75,7 +75,7 @@ function getWeekDays(monday: Date) {
 export function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedAula, setSelectedAula] = useState<Aula | null>(null)
+  const [selectedAula, setSelectedAula] = useState<Aula | "todas" | null>("todas")
 
   // Reservas
   const [reservas, setReservas] = useState<ReservaAula[]>([])
@@ -102,9 +102,6 @@ export function AulasPage() {
       setLoading(true)
       const data = await aulasService.getAulas()
       setAulas(data)
-      if (data.length > 0 && !selectedAula) {
-        handleSelectAula(data[0])
-      }
     } catch {
       toast.error("Error al cargar aulas")
     } finally {
@@ -134,11 +131,8 @@ export function AulasPage() {
   }, [genMonday, genSunday])
 
   useEffect(() => {
-    if (modoVista === "general") {
-
-      loadReservasGenerales()
-    }
-  }, [modoVista, loadReservasGenerales])
+    loadReservasGenerales()
+  }, [loadReservasGenerales])
 
   const colorForAula = (aulaId: string) => AULA_PALETTE[aulas.findIndex(a => a.id === aulaId) % AULA_PALETTE.length]
 
@@ -174,16 +168,17 @@ export function AulasPage() {
   const isFirstHour = (r: ReservaAula, h: number) => h === parseInt(r.hora_inicio.split(":")[0])
   const reservaSpan = (r: ReservaAula) => Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0]))
 
-  const handleSelectAula = (aula: Aula) => {
+  const handleSelectAula = (aula: Aula | "todas") => {
     setSelectedAula(aula)
     setAulaWeekRef(new Date())
-    loadReservas(aula.id)
+    if (aula !== "todas") {
+      loadReservas(aula.id)
+    }
   }
 
   useEffect(() => {
 
     loadAulas()
-    loadReservasGenerales()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -243,8 +238,25 @@ export function AulasPage() {
               </div>
             ) : (
               <div className="flex items-center gap-1.5 overflow-x-auto flex-nowrap min-w-0 pb-1 scrollbar-thin">
+                <motion.button
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  onClick={() => handleSelectAula("todas")}
+                  className={cn(
+                    "relative flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap active:scale-[0.97] shrink-0",
+                    selectedAula === "todas"
+                      ? "text-white shadow-sm"
+                      : "bg-white/50 hover:bg-white border-2 border-transparent hover:border-black/10"
+                  )}
+                  style={{
+                    backgroundColor: selectedAula === "todas" ? COLORS.ACCENT : undefined,
+                    color: selectedAula === "todas" ? "white" : COLORS.CHARCOAL,
+                  }}
+                >
+                  <span className="relative z-10">Todas</span>
+                </motion.button>
                 {visibleAulas.map((aula, i) => {
-                  const isSelected = selectedAula?.id === aula.id
+                  const isSelected = selectedAula === aula || (typeof selectedAula === "object" && selectedAula?.id === aula.id)
                   const now = new Date()
                   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
                   const date = now.toISOString().split('T')[0]
@@ -290,8 +302,8 @@ export function AulasPage() {
                     {showMoreAulas && (
                       <div className="absolute top-full mt-1 left-0 z-50 bg-white border rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto min-w-[140px]"
                         style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        {hiddenAulas.map(aula => {
-                          const isSelected = selectedAula?.id === aula.id
+                         {hiddenAulas.map(aula => {
+                          const isSelected = typeof selectedAula === "object" && selectedAula?.id === aula.id
                           return (
                             <button
                               key={aula.id}
@@ -409,7 +421,16 @@ export function AulasPage() {
           <div className="flex-1 min-h-0 overflow-auto">
             <AnimatePresence mode="wait">
               {modoVista === "aula" ? (
-                selectedAula ? (
+                selectedAula === "todas" ? (
+                  <TodasAulasCalendar
+                    key="todas-cal"
+                    aulas={aulas}
+                    reservas={reservasGenerales}
+                    fechaRef={fechaRef}
+                    onWeekChange={setFechaRef}
+                    onSelect={(r) => { setDetalleReserva(r); setDetalleOpen(true) }}
+                  />
+                ) : selectedAula ? (
                   <AulaCalendar
                     key="aula-cal"
                     aula={selectedAula}
@@ -665,6 +686,133 @@ function AulaCalendar({ aula, reservas, onSlotClick, onCrearReserva, onSelect, f
           <div className="size-2.5 rounded bg-gray-300" />
           <span>Pasado</span>
         </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function TodasAulasCalendar({ aulas, reservas, fechaRef, onWeekChange, onSelect }: {
+  aulas: Aula[]; reservas: ReservaAula[]; fechaRef: Date; onWeekChange: (d: Date) => void; onSelect: (r: ReservaAula) => void
+}) {
+  const navigate = useNavigate()
+  const today = new Date()
+  const { monday, sunday } = useMemo(() => getWeekRange(fechaRef), [fechaRef])
+  const days: Date[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    days.push(d)
+  }
+  const hours = Array.from({ length: 14 }, (_, i) => i + 7)
+
+  const weekLabel = `${monday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} – ${sunday.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}`
+  const isCurrentWeek = today >= monday && today <= sunday
+
+  return (
+    <motion.div key="todas" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Todas las aulas</h2>
+            {isCurrentWeek && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider bg-blue-100 text-blue-700">Semana actual</span>}
+          </div>
+          <p className="text-xs font-medium opacity-50 mt-0.5">Vista general de reservas de todas las aulas</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() - 7); onWeekChange(d) }}
+              className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+              <HugeiconsIcon icon={ArrowLeft02Icon} size={14} className="opacity-50" />
+            </button>
+            <span className="text-xs font-bold opacity-50 min-w-[180px] text-center">{weekLabel}</span>
+            <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() + 7); onWeekChange(d) }}
+              className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
+              <HugeiconsIcon icon={ArrowRight02Icon} size={14} className="opacity-50" />
+            </button>
+          </div>
+          {!isCurrentWeek && (
+            <button onClick={() => onWeekChange(new Date())}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-bold border hover:bg-gray-50 transition-colors"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+              Hoy
+            </button>
+          )}
+          <button onClick={() => navigate("/servicios/aulas/nueva-reserva")}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg shadow-blue-600/20 hover:opacity-90 active:scale-[0.97]">
+            <HugeiconsIcon icon={Calendar03Icon} size={16} /> Crear Reserva
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 border rounded-[1.5rem] overflow-hidden shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="p-2.5 text-center border-r flex items-center justify-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <HugeiconsIcon icon={Calendar03Icon} size={11} className="opacity-30" />
+            <span className="text-[9px] font-bold uppercase tracking-widest opacity-40 ml-1">Hora</span>
+          </div>
+          {days.map((day, i) => {
+            const isToday = day.toDateString() === today.toDateString()
+            return (
+              <div key={i} className={cn("p-2.5 text-center border-r last:border-0 relative", isToday && "bg-amber-50/80")} style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                {isToday && <div className="absolute -top-px left-1 right-1 h-[3px] bg-amber-400 rounded-b-full" />}
+                <div className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-0.5">{day.toLocaleDateString("es-ES", { weekday: "short" })}</div>
+                <div className={cn("text-base font-bold", isToday && "text-amber-600")} style={{ color: isToday ? undefined : COLORS.CHARCOAL }}>{day.getDate()}</div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="divide-y overflow-auto" style={{ borderColor: COLORS.BORDER_SUBTLE, maxHeight: "calc(100% - 48px)" }}>
+          {hours.map(hour => (
+            <div key={hour} className="grid grid-cols-8 min-h-[50px]">
+              <div className="p-2 text-center border-r bg-gray-50/20 flex items-center justify-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <span className="text-[10px] font-mono font-bold opacity-40">{hour.toString().padStart(2, "0")}:00</span>
+              </div>
+              {days.map((day, di) => {
+                const dateStr = fmtDate(day)
+                const isPast = day < new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                const isToday = day.toDateString() === today.toDateString()
+                const iniciosSlot = reservas.filter(r =>
+                  r.fecha_reserva === dateStr &&
+                  r.estado !== "cancelado" &&
+                  hour === parseInt(r.hora_inicio.split(":")[0])
+                )
+                const count = iniciosSlot.length
+                return (
+                  <div key={di} className={cn("p-0.5 border-r last:border-0 relative", isPast ? "bg-gray-100/50" : isToday ? "bg-amber-50/30" : "")} style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    {iniciosSlot.map((r, idx) => {
+                      const span = Math.max(1, parseInt(r.hora_fin.split(":")[0]) - parseInt(r.hora_inicio.split(":")[0]))
+                      const c = AULA_PALETTE[aulas.findIndex(a => a.id === r.aula_id) % AULA_PALETTE.length] || AULA_PALETTE[0]
+                      const rowHeight = 50
+                      const cardHeight = span * rowHeight
+                      const slice = count > 1 ? Math.floor(cardHeight / count) : cardHeight
+                      return (
+                        <motion.div key={r.id} initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+                          className={cn("absolute left-0.5 right-0.5 rounded-lg z-10 shadow-sm border cursor-pointer hover:brightness-110 flex flex-col items-center justify-center overflow-hidden text-center", c.bgLight, c.border)}
+                          style={{
+                            top: `${idx * slice + 2}px`,
+                            height: `${Math.max(slice - 3, 30)}px`,
+                          }}
+                          onClick={() => onSelect(r)}>
+                          <p className={cn("text-[11px] font-extrabold leading-tight truncate px-1", c.text)}>{r.aula?.nombre || "—"}</p>
+                          <p className="text-[9px] font-semibold opacity-50 mt-0.5">{fmtHora(r.hora_inicio)}-{fmtHora(r.hora_fin)}</p>
+                          <p className={cn("text-[10px] font-medium leading-tight truncate mt-0.5 px-1 max-w-full", c.text)}>{r.persona?.nombres || r.cliente_externo?.nombres || ""}</p>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-4 mt-3 text-[10px] font-medium opacity-50 flex-wrap">
+        {aulas.slice(0, 8).map((a, i) => (
+          <div key={a.id} className="flex items-center gap-1.5">
+            <div className={cn("size-2.5 rounded-sm", AULA_PALETTE[i % 8].dot)} />
+            <span className="truncate max-w-[80px]">{a.nombre}</span>
+          </div>
+        ))}
+        {aulas.length > 8 && <span>+{aulas.length - 8} más</span>}
       </div>
     </motion.div>
   )

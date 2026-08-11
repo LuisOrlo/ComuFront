@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Search01Icon, UserGroupIcon, AlertCircleIcon, Coins01Icon, CheckmarkCircle02Icon,
+  MapsLocation01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 
@@ -12,6 +13,9 @@ interface StudentFiltersProps {
   paymentFilter: PaymentFilter
   onPaymentFilterChange: (value: PaymentFilter) => void
   stats: { todos: number; deudor: number; abonado: number; al_dia: number }
+  ciudadFilter: string
+  onCiudadFilterChange: (value: string) => void
+  ciudades: string[]
 }
 
 const filters = [
@@ -34,35 +38,70 @@ export function StudentFilters({
   paymentFilter,
   onPaymentFilterChange,
   stats,
+  ciudadFilter,
+  onCiudadFilterChange,
+  ciudades,
 }: StudentFiltersProps) {
   return (
     <>
-        <div className="relative max-w-sm mb-4">
-          <HugeiconsIcon
-            icon={Search01Icon}
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: COLORS.TEXT_MUTED }}
-          />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o cedula..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all duration-180 ease-out"
-            style={{
-              borderColor: COLORS.BORDER_SUBTLE,
-              color: COLORS.CHARCOAL,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = COLORS.ACCENT
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-              e.currentTarget.style.boxShadow = "none"
-            }}
-          />
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative max-w-sm flex-1">
+            <HugeiconsIcon
+              icon={Search01Icon}
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: COLORS.TEXT_MUTED }}
+            />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o cedula..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all duration-180 ease-out"
+              style={{
+                borderColor: COLORS.BORDER_SUBTLE,
+                color: COLORS.CHARCOAL,
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = COLORS.ACCENT
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
+                e.currentTarget.style.boxShadow = "none"
+              }}
+            />
+          </div>
+          <div className="relative w-48">
+            <HugeiconsIcon
+              icon={MapsLocation01Icon}
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: COLORS.TEXT_MUTED }}
+            />
+            <select
+              value={ciudadFilter}
+              onChange={(e) => onCiudadFilterChange(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg outline-none bg-white transition-all duration-180 ease-out appearance-none"
+              style={{
+                borderColor: COLORS.BORDER_SUBTLE,
+                color: COLORS.CHARCOAL,
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = COLORS.ACCENT
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
+                e.currentTarget.style.boxShadow = "none"
+              }}
+            >
+              <option value="">Todas las ciudades</option>
+              {ciudades.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
       <div className="flex items-center gap-1 border-b mb-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>

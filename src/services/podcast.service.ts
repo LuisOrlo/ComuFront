@@ -90,4 +90,9 @@ export const podcastService = {
     const { data } = await api.post<{ data: ReservaPodcast }>(`/academic/servicios/reservas-podcast/${id}/estado`, { estado })
     return data.data
   },
+
+  getReserva: async (id: string) => {
+    const { data } = await api.get<{ data: ReservaPodcast }>(`/academic/servicios/reservas-podcast/${id}`)
+    return data.data
+  },
 }

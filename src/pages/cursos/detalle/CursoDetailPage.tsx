@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { usePermission } from "@/hooks/usePermission"
-import { useParams, useNavigate } from "react-router"
+import { useParams, useNavigate, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeftIcon,
@@ -18,7 +18,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
-import { generarListadoAsistenciaPDF, generarListadoParticipantesCursoPDF } from "@/lib/generarAsistenciaPDF"
+import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
 import { CursoEstudiantesTable } from "./CursoEstudiantesTable"
 import { CursoPagosSection } from "./CursoPagosSection"
@@ -83,14 +83,6 @@ export function CursoDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const updateModulo = async (moduloId: string, data: Record<string, unknown>) => {
-    try {
-      await cursosService.actualizarModulo(moduloId, data)
-      toast.success("Actualizado")
-      cargarTodo()
-    } catch { toast.error("Error al actualizar") }
-  }
-
   const confirmDeleteCurso = async () => {
     if (!id || !curso) return
     setDeleting(true)
@@ -131,8 +123,10 @@ export function CursoDetailPage() {
         <div style={{ background: `linear-gradient(to bottom, ${COLORS.ACCENT}04, transparent)`, borderBottom: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
           <div className="max-w-[1100px] mx-auto px-6 py-8 relative">
             <button onClick={() => navigate("/cursos")}
-              className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 opacity-60 hover:opacity-100 transition-opacity"
-              style={{ color: COLORS.TEXT_MUTED }}>
+              className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 transition-all duration-200"
+              style={{ color: COLORS.TEXT_MUTED }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = COLORS.ACCENT }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = COLORS.TEXT_MUTED }}>
               <HugeiconsIcon icon={ArrowLeftIcon} size={14} />Volver a cursos
             </button>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -311,12 +305,37 @@ export function CursoDetailPage() {
                            }}>
                            {estadoConfig[estado].label}
                          </span>
+                         {isAdmin && (
+                           <Link
+                             to={`/instructor/notas/${id}/${mod.id}`}
+                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all active:scale-95 shrink-0"
+                             style={{ backgroundColor: COLORS.ACCENT }}
+                           >
+                             <HugeiconsIcon icon={NoteIcon} size={12} />
+                             Registrar Notas
+                           </Link>
+                         )}
                        </div>
                         <div className="grid grid-cols-3 gap-4 ml-11">
-                          <ModuleField label="Fecha inicio" value={mod.fecha_inicio} modId={mod.id} field="fecha_inicio" type="date" onUpdate={updateModulo} />
-                          <ModuleField label="Fecha fin" value={mod.fecha_fin} modId={mod.id} field="fecha_fin" type="date" onUpdate={updateModulo} />
-                          <ModuleField label="Precio" value={mod.precio_base != null ? String(mod.precio_base) : undefined} modId={mod.id} field="precio_base" type="number" onUpdate={updateModulo} />
-                        </div>
+                           <div>
+                             <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Fecha inicio</span>
+                             <p className="text-sm font-medium mt-1" style={{ color: mod.fecha_inicio ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
+                               {mod.fecha_inicio ? new Date(mod.fecha_inicio + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "Sin definir"}
+                             </p>
+                           </div>
+                           <div>
+                             <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Fecha fin</span>
+                             <p className="text-sm font-medium mt-1" style={{ color: mod.fecha_fin ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
+                               {mod.fecha_fin ? new Date(mod.fecha_fin + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "Sin definir"}
+                             </p>
+                           </div>
+                           <div>
+                             <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Precio</span>
+                             <p className="text-sm font-medium mt-1" style={{ color: mod.precio_base != null ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
+                               {mod.precio_base != null ? `$${Number(mod.precio_base).toFixed(2)}` : "Sin definir"}
+                             </p>
+                           </div>
+                         </div>
                      </div>
                    )
                  })
@@ -340,27 +359,6 @@ export function CursoDetailPage() {
                 <div className="flex items-center justify-between">
                   <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{matriculas.length} estudiante{matriculas.length !== 1 ? "s" : ""}</p>
                   <div className="flex gap-2">
-                    <button onClick={async () => {
-                      try {
-                        const participantes = matriculas.map((m) => {
-                          const e = m.estudiante
-                          const ext = m.solicitud_inscripcion?.participante_externo
-                          const sol = m.solicitud_inscripcion?.estudiante
-                          return {
-                            nombres: e?.nombres || ext?.nombres || sol?.nombres || "",
-                            apellidos: e?.apellidos || ext?.apellidos || sol?.apellidos || "",
-                            ciudad: e?.ciudad || sol?.ciudad || ext?.ciudad || "—",
-                            ocupacion: e?.perfil_estudiante?.ocupacion || sol?.perfil_estudiante?.ocupacion || "—",
-                            fechaInscripcion: m.fecha_inscripcion ? new Date(m.fecha_inscripcion).toLocaleDateString("es-ES") : "—",
-                          }
-                        })
-                        await generarListadoParticipantesCursoPDF(curso.nombre, participantes, id!)
-                        toast.success("PDF descargado")
-    } catch (e) { console.error(e); toast.error("Error al generar PDF") }
-                    }} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border hover:bg-gray-50 transition-colors"
-                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
-                      <HugeiconsIcon icon={Download01Icon} size={14} />PDF
-                    </button>
                     <button
   onClick={async () => {
     if (!curso) return;
@@ -401,6 +399,8 @@ export function CursoDetailPage() {
           {tab === "pagos" && (
             <CursoPagosSection
               cursoId={id!}
+              cursoNombre={curso.nombre}
+              matriculas={matriculas}
             />
           )}
         </div>
@@ -453,30 +453,3 @@ function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; lab
   )
 }
 
-function ModuleField({ label, value, modId, field, type = "text", onUpdate }: {
-  label: string; value?: string; modId: string; field: string; type?: string; onUpdate: (id: string, data: Record<string, unknown>) => void
-}) {
-  const { isAdmin } = usePermission()
-  const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(value || "")
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>{label}</span>
-        {!editing && isAdmin && <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium hover:underline" style={{ color: COLORS.ACCENT }}>Editar</button>}
-      </div>
-      {editing ? (
-        <div className="flex gap-2">
-          <input type={type} value={val} onChange={e => setVal(e.target.value)}
-            className="flex-1 px-2.5 py-2 border rounded-lg text-sm outline-none focus:ring-2" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL, backgroundColor: "white", colorScheme: "light" }} />
-          <button type="button" onClick={() => { onUpdate(modId, { [field]: val || null }); setEditing(false) }}
-            className="px-3 py-2 rounded-lg text-xs font-medium text-black" style={{ backgroundColor: COLORS.ACCENT }}>Guardar</button>
-          <button type="button" onClick={() => { setEditing(false); setVal(value || "") }}
-            className="px-3 py-2 rounded-lg text-xs font-medium hover:bg-gray-100" style={{ color: COLORS.TEXT_MUTED }}>Cancelar</button>
-        </div>
-      ) : (
-        <p className="text-sm font-medium" style={{ color: value ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>{value || "Sin definir"}</p>
-      )}
-    </div>
-  )
-}

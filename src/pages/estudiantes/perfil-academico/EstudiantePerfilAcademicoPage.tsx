@@ -117,14 +117,16 @@ export function EstudiantePerfilAcademicoPage() {
           <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
           Volver a listado de estudiantes
         </Link>
-        <Link
-          to={`/estudiantes/${id}/inscribir`}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.97]"
-          style={{ backgroundColor: COLORS.ACCENT }}
+        <button
+          disabled
+          title="En revisión - Por confirmar proceso"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all opacity-50 cursor-not-allowed"
+          style={{ backgroundColor: COLORS.TEXT_MUTED }}
         >
           <HugeiconsIcon icon={AddCircleIcon} size={16} />
           Inscribir a nuevo curso/taller
-        </Link>
+          <span className="text-[10px] opacity-70 ml-1">En revisión</span>
+        </button>
       </div>
 
       <ProfileHeader

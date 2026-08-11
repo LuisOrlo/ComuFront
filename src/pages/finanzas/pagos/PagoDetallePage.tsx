@@ -30,7 +30,6 @@ export function PagoDetallePage() {
   const [modalImage, setModalImage] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [modulosExpandidos, setModulosExpandidos] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -99,6 +98,20 @@ export function PagoDetallePage() {
     return "—"
   }
 
+  const getTipoLabel = (): string => {
+    const cp = data?.cuenta_por_cobrar
+    const lp = data?.linea_pago_modulo
+
+    if (lp || cp?.matricula || cp?.solicitud_inscripcion) return "Curso"
+    if (cp?.inscripcion_taller) return "Taller"
+    if (cp?.reserva_aula_id) return "Aula"
+    if (cp?.reserva_podcast_id) return "Podcast"
+    if (cp?.alquiler_equipo_id) return "Equipo"
+    if (cp?.reserva_radio_id) return "Radio"
+    if (cp?.edicion_video_id) return "Video"
+    return "Concepto"
+  }
+
   const getCursoNombre = () => {
     if (data?.curso_nombre) return data.curso_nombre
     if (data?.taller_nombre) return data.taller_nombre
@@ -138,19 +151,6 @@ export function PagoDetallePage() {
       ?? cp.inscripcion_taller?.taller?.nombre
     if (academia) return academia
     return nombreServicio(cp)
-  }
-
-  const getModuloNombre = () => {
-    if (data?.modulo_nombre) return data.modulo_nombre
-
-    const lp = data?.linea_pago_modulo
-    if (lp?.modulo?.nombre_modulo) return lp.modulo.nombre_modulo
-    if (lp?.modulo?.nombre) return lp.modulo.nombre
-
-    const cp = data?.cuenta_por_cobrar
-    const m = cp?.matricula
-    if (m?.modulo?.nombre) return m.modulo.nombre
-    return null
   }
 
   const handleDeleteComprobante = async () => {
@@ -281,46 +281,8 @@ export function PagoDetallePage() {
             <DetailRow icon={Calendar02Icon} label="Fecha de Pago" value={new Date(data.fecha_pago || data.created_at).toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })} />
             <DetailRow icon={Money02Icon} label="Método" value={data.metodo_pago} capitalize />
             <DetailRow icon={UserIcon} label="Estudiante" value={getNombreEstudiante()} />
-            <DetailRow icon={UserIcon} label="Curso / Taller" value={getCursoNombre()} />
+            <DetailRow icon={UserIcon} label={getTipoLabel()} value={getCursoNombre()} />
           </div>
-
-          {data.tiene_multiples_modulos && data.modulos?.length > 0 && (
-            <div className="space-y-2 pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>Módulos</p>
-              <div className="pl-9 space-y-1.5">
-                {(modulosExpandidos ? data.modulos : data.modulos.slice(0, 5)).map((m: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-sm py-1 px-3 rounded-lg bg-gray-50">
-                    <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{m.modulo_nombre}</span>
-                    <span className="font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>${Number(m.monto).toLocaleString()}</span>
-                  </div>
-                ))}
-                {data.modulos.length > 5 && !modulosExpandidos && (
-                  <button
-                    onClick={() => setModulosExpandidos(true)}
-                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline transition-colors px-3"
-                  >
-                    Ver todos los módulos ({data.modulos.length - 5} más)
-                  </button>
-                )}
-                {modulosExpandidos && data.modulos.length > 5 && (
-                  <button
-                    onClick={() => setModulosExpandidos(false)}
-                    className="text-[10px] font-bold text-orange-500 hover:text-orange-600 hover:underline transition-colors px-3"
-                  >
-                    Ocultar módulos
-                  </button>
-                )}
-                <div className="flex items-center justify-between text-sm py-1 px-3 rounded-lg border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>Total</span>
-                  <span className="font-black" style={{ color: COLORS.ACCENT }}>${Number(data.monto || 0).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!data.tiene_multiples_modulos && getModuloNombre() && (
-            <DetailRow icon={UserIcon} label="Módulo" value={getModuloNombre()} />
-          )}
 
           {data.observaciones && (
             <DetailRow icon={Note01Icon} label="Observaciones" value={data.observaciones} />

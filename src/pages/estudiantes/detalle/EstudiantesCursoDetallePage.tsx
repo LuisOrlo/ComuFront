@@ -113,7 +113,7 @@ export function EstudiantesCursoDetallePage() {
       cedula: r.cedula ?? "",
       correo: r.correo,
       telefono: r.telefono,
-      estado_financiero: r.estado_pago,
+      ciudad: r.ciudad,
       saldo: r.saldo_pendiente,
       total_cursos: r.total_cursos,
     }))

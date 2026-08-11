@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserGroupIcon, Download04Icon } from "@hugeicons/core-free-icons"
+import { UserGroupIcon, Download04Icon, SaveIcon } from "@hugeicons/core-free-icons"
 import { COLORS, ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
 import { tallerService, type Taller, type AsistenciaEstudiante } from "@/services/taller.service"
 import { generarReporteAsistenciaPDF, type EstudianteReporte } from "@/lib/generarAsistenciaPDF"
@@ -27,30 +27,87 @@ interface Props {
 export function TallerAsistencia({ taller }: Props) {
   const [detalleAsistencias, setDetalleAsistencias] = useState<Record<string, AsistenciaEstudiante[]>>({})
   const [cargando, setCargando] = useState(true)
+  const [editandoSesion, setEditandoSesion] = useState<string | null>(null)
+  const [editandoEstados, setEditandoEstados] = useState<Record<string, boolean>>({})
+  const [guardando, setGuardando] = useState(false)
 
-  useEffect(() => {
+  const cargarAsistencias = useCallback(async () => {
     if (!taller.asistencias || taller.asistencias.length === 0) {
-
       setCargando(false)
       return
     }
-    const cargar = async () => {
-      const resultados: Record<string, AsistenciaEstudiante[]> = {}
-      await Promise.all(
-        taller.asistencias!.map(async a => {
-          try {
-            const res = await tallerService.listarAsistenciaEstudiantes(taller.id, a.id)
-            resultados[a.id] = (res as { estudiantes: AsistenciaEstudiante[] }).estudiantes || []
-          } catch {
-            resultados[a.id] = []
-          }
-        })
-      )
-      setDetalleAsistencias(resultados)
-      setCargando(false)
-    }
-    cargar()
+    setCargando(true)
+    const resultados: Record<string, AsistenciaEstudiante[]> = {}
+    await Promise.all(
+      taller.asistencias.map(async a => {
+        try {
+          const res = await tallerService.listarAsistenciaEstudiantesInstructor(taller.id, a.id)
+          resultados[a.id] = (res as { estudiantes: AsistenciaEstudiante[] }).estudiantes || []
+        } catch {
+          resultados[a.id] = []
+        }
+      })
+    )
+    setDetalleAsistencias(resultados)
+    setCargando(false)
   }, [taller])
+
+  useEffect(() => {
+    cargarAsistencias()
+  }, [cargarAsistencias])
+
+  const iniciarEdicion = (sesionId: string) => {
+    const estudiantes = detalleAsistencias[sesionId] || []
+    const estados: Record<string, boolean> = {}
+    estudiantes.forEach(e => {
+      estados[e.id] = e.asistio
+    })
+    setEditandoEstados(estados)
+    setEditandoSesion(sesionId)
+  }
+
+  const cancelarEdicion = () => {
+    setEditandoSesion(null)
+    setEditandoEstados({})
+  }
+
+  const toggleAsistencia = (estudianteId: string) => {
+    setEditandoEstados(prev => ({
+      ...prev,
+      [estudianteId]: !prev[estudianteId],
+    }))
+  }
+
+  const guardarAsistencia = async () => {
+    if (!editandoSesion) return
+    setGuardando(true)
+    try {
+      const estudiantes = detalleAsistencias[editandoSesion] || []
+      const asistencias = estudiantes.map(e => ({
+        id: e.id,
+        asistio: editandoEstados[e.id] ?? e.asistio,
+        estado: editandoEstados[e.id] ? "presente" : "ausente",
+      }))
+
+      await tallerService.actualizarAsistenciaInstructor(editandoSesion, { estudiantes: asistencias })
+      toast.success("Asistencia actualizada")
+
+      setDetalleAsistencias(prev => ({
+        ...prev,
+        [editandoSesion]: estudiantes.map(e => ({
+          ...e,
+          asistio: editandoEstados[e.id] ?? e.asistio,
+          estado: editandoEstados[e.id] ? "presente" : "ausente",
+        })),
+      }))
+
+      cancelarEdicion()
+    } catch {
+      toast.error("Error al guardar asistencia")
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   const asistencias = taller.asistencias || []
 
@@ -68,6 +125,7 @@ export function TallerAsistencia({ taller }: Props) {
               const pct = sesion.capacidad_registrada > 0
                 ? Math.round((sesion.asistentes / sesion.capacidad_registrada) * 100)
                 : 0
+              const editando = editandoSesion === sesion.id
 
               return (
                 <div key={sesion.id} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: BORDER }}>
@@ -116,6 +174,26 @@ export function TallerAsistencia({ taller }: Props) {
                           style={{ borderColor: BORDER, color: ACCENT, backgroundColor: `color-mix(in srgb, ${ACCENT} 8%, transparent)` }}>
                           <HugeiconsIcon icon={Download04Icon} size={12} />Descargar Reporte
                         </button>
+                        {!editando ? (
+                          <button onClick={() => iniciarEdicion(sesion.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all"
+                            style={{ backgroundColor: ACCENT }}>
+                            <HugeiconsIcon icon={SaveIcon} size={12} />Registrar Asistencia
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button onClick={guardarAsistencia} disabled={guardando}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all disabled:opacity-50"
+                              style={{ backgroundColor: "oklch(0.50 0.12 150)" }}>
+                              <HugeiconsIcon icon={SaveIcon} size={12} />{guardando ? "Guardando..." : "Guardar"}
+                            </button>
+                            <button onClick={cancelarEdicion}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all"
+                              style={{ borderColor: BORDER, color: TEXT_MUTED }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {sesion.observaciones && (
@@ -143,10 +221,18 @@ export function TallerAsistencia({ taller }: Props) {
                         </thead>
                         <tbody>
                           {estudiantes.map(est => {
-                            const estado = est.estado || (est.asistio ? "presente" : "ausente")
+                            const asistioEnEdicion = editando ? (editandoEstados[est.id] ?? est.asistio) : est.asistio
+                            const estado = editando
+                              ? (asistioEnEdicion ? "presente" : "ausente")
+                              : (est.estado || (est.asistio ? "presente" : "ausente"))
                             const badge = ESTADO_ASISTENCIA_BADGE[estado] || ESTADO_ASISTENCIA_BADGE.ausente
                             return (
-                              <tr key={est.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: BORDER }}>
+                              <tr key={est.id} className="border-b hover:bg-gray-50/50"
+                                style={{
+                                  borderColor: BORDER,
+                                  cursor: editando ? "pointer" : "default",
+                                }}
+                                onClick={() => editando && toggleAsistencia(est.id)}>
                                 <td className="px-5 py-3 font-semibold whitespace-nowrap" style={{ color: CHARCOAL }}>
                                   {est.inscripcion_taller?.nombres || "—"}
                                 </td>
@@ -182,7 +268,7 @@ export function TallerAsistencia({ taller }: Props) {
           <div className="p-8 text-center">
             <p className="text-sm" style={{ color: TEXT_MUTED }}>No hay registros de asistencia</p>
             <p className="text-xs mt-1" style={{ color: TEXT_MUTED }}>
-              Las sesiones aparecerán aquí cuando el administrador las registre
+              Las sesiones aparecerán aquí cuando sean registradas
             </p>
           </div>
         </div>

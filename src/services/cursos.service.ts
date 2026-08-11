@@ -239,6 +239,12 @@ export interface MatriculaDetallada {
       ciudad?: string
     } | null
   } | null
+  notas?: Array<{
+    id: string
+    calificacion: number
+    aprobado: boolean
+    modulo_id: string
+  }>
 }
 
 // ============================================================================

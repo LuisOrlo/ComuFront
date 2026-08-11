@@ -13,7 +13,6 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { GraduationCapIcon, Clock04Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { FinancialStatusBadge } from "./FinancialStatusBadge"
 import { PaginationControls } from "@/components/table/PaginationControls"
 
 export interface StudentRow {
@@ -47,9 +46,46 @@ const TEXT_MUTED = COLORS.TEXT_MUTED
 
 const COLUMN_ALIGN: Record<string, "center" | "right"> = {
   estado: "center",
+  ciudad: "center",
   cursos: "center",
   saldo: "center",
   acciones: "right",
+}
+
+const CIUDAD_COLORS: Array<{ bg: string; text: string; dot: string }> = [
+  { bg: "oklch(0.95 0.04 260)", text: "oklch(0.45 0.12 260)", dot: "oklch(0.50 0.20 260)" },
+  { bg: "oklch(0.95 0.04 180)", text: "oklch(0.42 0.12 180)", dot: "oklch(0.48 0.18 180)" },
+  { bg: "oklch(0.95 0.05 80)", text: "oklch(0.50 0.15 80)", dot: "oklch(0.55 0.20 80)" },
+  { bg: "oklch(0.95 0.05 20)", text: "oklch(0.48 0.15 20)", dot: "oklch(0.52 0.20 20)" },
+  { bg: "oklch(0.95 0.04 300)", text: "oklch(0.46 0.12 300)", dot: "oklch(0.52 0.18 300)" },
+  { bg: "oklch(0.95 0.04 140)", text: "oklch(0.45 0.12 140)", dot: "oklch(0.50 0.18 140)" },
+  { bg: "oklch(0.95 0.04 40)", text: "oklch(0.50 0.12 40)", dot: "oklch(0.55 0.18 40)" },
+  { bg: "oklch(0.95 0.04 340)", text: "oklch(0.48 0.12 340)", dot: "oklch(0.53 0.18 340)" },
+]
+
+function getCiudadColor(ciudad: string) {
+  let hash = 0
+  for (let i = 0; i < ciudad.length; i++) {
+    hash = ((hash << 5) - hash) + ciudad.charCodeAt(i)
+    hash |= 0
+  }
+  return CIUDAD_COLORS[Math.abs(hash) % CIUDAD_COLORS.length]
+}
+
+function CiudadBadge({ ciudad }: { ciudad: string | undefined }) {
+  if (!ciudad) {
+    return <span className="text-xs" style={{ color: TEXT_MUTED }}>—</span>
+  }
+  const colors = getCiudadColor(ciudad)
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold"
+      style={{ backgroundColor: colors.bg, color: colors.text }}
+    >
+      <span className="size-1.5 rounded-full" style={{ backgroundColor: colors.dot }} />
+      {ciudad}
+    </span>
+  )
 }
 
 function SaldoCell({ saldo_pendiente, estado_pago }: { saldo_pendiente?: number; estado_pago?: string }) {
@@ -138,10 +174,10 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
       enableSorting: true,
     },
     {
-      id: "estado",
-      accessorFn: (r) => r.estado_pago || "ninguno",
-      header: "Estado Financiero",
-      cell: ({ getValue }) => <FinancialStatusBadge status={getValue<string>()} />,
+      id: "ciudad",
+      accessorFn: (r) => r.ciudad ?? "—",
+      header: "Ciudad",
+      cell: ({ row }) => <CiudadBadge ciudad={row.original.ciudad} />,
       enableSorting: true,
     },
     {

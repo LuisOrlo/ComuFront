@@ -99,9 +99,9 @@ export function EstudiantesCiudadDetallePage() {
       cedula: r.cedula ?? "",
       correo: r.correo,
       telefono: r.telefono,
+      ciudad: r.ciudad,
       direccion: r.direccion,
       ocupacion: r.ocupacion,
-      estado_financiero: r.estado_pago,
       total_cursos: r.total_cursos,
     }))
 
@@ -115,11 +115,11 @@ export function EstudiantesCiudadDetallePage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <button
-        onClick={() => navigate("/estudiantes?tab=ciudades")}
+        onClick={() => navigate("/estudiantes")}
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-5"
       >
         <HugeiconsIcon icon={ArrowLeft02Icon} size={16} />
-        Volver a Ciudades
+        Volver a Estudiantes
       </button>
 
       <div className="flex items-center justify-between mb-6">

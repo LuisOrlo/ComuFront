@@ -1,15 +1,13 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import { Link, useLocation, useNavigate } from "react-router"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { Link, useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Download02Icon, Clock01Icon, ArrowDown01Icon, Search01Icon, Cancel01Icon, CheckmarkCircle04Icon, Edit01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
+import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Clock01Icon, ArrowDown01Icon, Search01Icon, Cancel01Icon, CheckmarkCircle04Icon, Edit01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
 import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 import { podcastService, type ReservaPodcast, type PaquetePodcast } from "@/services/podcast.service"
 import { toast } from "sonner"
-import html2canvas from "html2canvas-pro"
-import { jsPDF } from "jspdf"
 import { PodcastKPIs } from "./components/PodcastKPIs"
 import { PodcastCalendar } from "./components/PodcastCalendar"
 import { getWeekRange, getWeekDays } from "./components/podcast-calendar.utils"
@@ -27,7 +25,6 @@ export function PodcastPage() {
 
   const [vista, setVista] = useState<"calendario" | "lista">("calendario")
   const [fechaRef, setFechaRef] = useState(() => new Date())
-  const [filtroEstado, setFiltroEstado] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -39,50 +36,30 @@ export function PodcastPage() {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
   const [deletingItem, setDeletingItem] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
-
   const { monday, sunday } = useMemo(() => getWeekRange(fechaRef), [fechaRef])
   const weekDays = useMemo(() => getWeekDays(monday), [monday])
 
   const loadReservas = useCallback(async () => {
     try {
-      const filters: Record<string, string> = {}
-      if (filtroEstado) filters.estado = filtroEstado
-      setReservas(await podcastService.getReservas(filters))
+      setReservas(await podcastService.getReservas())
     } catch { toast.error("Error al cargar reservas") }
-  }, [filtroEstado])
+  }, [])
 
   useEffect(() => {
     Promise.all([
       podcastService.getPaquetes()
         .then(setPaquetes)
         .catch(() => toast.error("Error al cargar paquetes")),
-      (() => {
-        const filters: Record<string, string> = {}
-        if (filtroEstado) filters.estado = filtroEstado
-        return podcastService.getReservas(filters)
-          .then(setReservas)
-          .catch(() => toast.error("Error al cargar reservas"))
-      })(),
+      podcastService.getReservas()
+        .then(setReservas)
+        .catch(() => toast.error("Error al cargar reservas")),
     ]).finally(() => setLoading(false))
-  }, [filtroEstado])
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchQuery(searchInput), 300)
     return () => clearTimeout(timer)
   }, [searchInput])
-
-  const location = useLocation()
-  useEffect(() => {
-    const initial = location.state as { editarReserva?: ReservaPodcast } | null
-    if (initial?.editarReserva) {
-      setEditingReserva(initial.editarReserva)
-      setVista("lista")
-      setReservaModalOpen(true)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   useEffect(() => {
     if (searchQuery && vista === "calendario") setVista("lista")
@@ -170,91 +147,6 @@ export function PodcastPage() {
     loadReservas()
   }
 
-  const handleDownloadPDF = async () => {
-  if (!contentRef.current) return
-  setDownloading(true)
-  const el = contentRef.current
-  const originalOverflow = el.style.overflow
-  el.style.overflow = "visible"
-
-  try {
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-      onclone: (doc) => {
-        if (vista === "lista") {
-          const s = doc.createElement("style")
-          s.textContent =
-            "table th:last-child, table td:last-child { display: none !important; }"
-          doc.head.appendChild(s)
-        }
-      },
-    })
-
-    const imgData = canvas.toDataURL("image/png")
-
-    // ── Configuración del PDF ──
-    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
-    const pageWidth = pdf.internal.pageSize.getWidth()   // 297mm
-    const pageHeight = pdf.internal.pageSize.getHeight() // 210mm
-    const margin = 10 // mm
-
-    // ── Título principal ──
-    pdf.setFontSize(16)
-    pdf.setFont("helvetica", "bold")
-    pdf.setTextColor(30, 30, 30)
-    const titulo = vista === "calendario" ? "Horario de Podcast" : "Lista de Reservas - Podcast"
-    // text(text, x, y) — "center" como align hace que x sea el centro
-    pdf.text(titulo, pageWidth / 2, margin + 8, { align: "center" })
-
-    // ── Subtítulo con rango de semana (solo en vista calendario) ──
-    if (vista === "calendario") {
-      const formatFecha = (d: Date) =>
-        d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
-      const subtitulo = `Semana del ${formatFecha(monday)} al ${formatFecha(sunday)}`
-      pdf.setFontSize(10)
-      pdf.setFont("helvetica", "normal")
-      pdf.setTextColor(100, 100, 100)
-      pdf.text(subtitulo, pageWidth / 2, margin + 15, { align: "center" })
-    }
-
-    // ── Imagen centrada debajo del header ──
-    const headerHeight = vista === "calendario" ? margin + 20 : margin + 14 // espacio para textos
-    const availableWidth = pageWidth - margin * 2
-    const availableHeight = pageHeight - headerHeight - margin
-
-    // Calcular dimensiones manteniendo aspect ratio
-    const canvasRatio = canvas.height / canvas.width
-    let imgWidth = availableWidth
-    let imgHeight = imgWidth * canvasRatio
-
-    // Si se pasa del alto disponible, ajustar por alto
-    if (imgHeight > availableHeight) {
-      imgHeight = availableHeight
-      imgWidth = imgHeight / canvasRatio
-    }
-
-    // Centrar horizontalmente
-    const xPos = (pageWidth - imgWidth) / 2
-    const yPos = headerHeight
-
-    pdf.addImage(imgData, "PNG", xPos, yPos, imgWidth, imgHeight)
-
-    const label = vista === "calendario" ? "horario" : "lista"
-    pdf.save(`reservas-podcast-${label}.pdf`)
-    toast.success("PDF descargado")
-  } catch (e) {
-    console.error("Error al generar PDF:", e)
-    toast.error("Error al generar PDF")
-  } finally {
-    el.style.overflow = originalOverflow
-    setDownloading(false)
-  }
-}
-
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
       <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -266,14 +158,6 @@ export function PodcastPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              to="/servicios/podcast/historial"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-[0.97] hover:bg-gray-50"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-            >
-              <HugeiconsIcon icon={Clock01Icon} size={14} />
-              Historial
-            </Link>
             <Link
               to="/servicios/podcast/paquetes"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
@@ -338,18 +222,19 @@ export function PodcastPage() {
                       <HugeiconsIcon icon={ArrowRight02Icon} size={14} className="opacity-50" />
                     </button>
                   </div>
-                  <div className="flex items-center gap-4 ml-4 text-[10px] font-medium opacity-40">
-                    <span className="flex items-center gap-1"><span className="size-2 rounded bg-blue-100 border border-blue-200" /> Pendiente</span>
-                    <span className="flex items-center gap-1"><span className="size-2 rounded bg-amber-100 border border-amber-200" /> Confirmado</span>
-                    <span className="flex items-center gap-1"><span className="size-2 rounded bg-indigo-100 border border-indigo-200" /> En progreso</span>
-                    <span className="flex items-center gap-1"><span className="size-2 rounded bg-green-100 border border-green-200" /> Completado</span>
-                    <span className="flex items-center gap-1"><span className="size-2 rounded bg-red-100 border border-red-200" /> Cancelado</span>
-                  </div>
                 </>
               )}
             </div>
 
             <div className="flex items-center gap-2">
+              <Link
+                to="/servicios/podcast/historial"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-bold border transition-all active:scale-[0.97] hover:bg-gray-50"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              >
+                <HugeiconsIcon icon={Clock01Icon} size={13} />
+                Historial
+              </Link>
               <div className="relative w-52">
                 <HugeiconsIcon icon={Search01Icon} size={13} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
                 <input
@@ -367,32 +252,10 @@ export function PodcastPage() {
                   </button>
                 )}
               </div>
-              <select
-                value={filtroEstado}
-                onChange={e => setFiltroEstado(e.target.value)}
-                className="px-3 py-2 rounded-xl border bg-gray-50 text-[10px] font-medium outline-none"
-                style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              >
-                <option value="">Todos los estados</option>
-                <option value="pendiente">Pendiente</option>
-                <option value="confirmado">Confirmado</option>
-                <option value="en_progreso">En progreso</option>
-                <option value="completado">Completado</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-              <button
-                onClick={handleDownloadPDF}
-                disabled={downloading}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border bg-gray-50 text-[10px] font-bold transition-all active:scale-[0.97] disabled:opacity-50"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-              >
-                <HugeiconsIcon icon={Download02Icon} size={14} />
-                {downloading ? "Generando…" : "PDF"}
-              </button>
             </div>
           </div>
 
-          <div ref={contentRef}>
+          <div>
             {loading ? (
               <div className="flex items-center justify-center py-24">
                 <div className="space-y-3 w-full max-w-lg px-8">

@@ -503,7 +503,7 @@ export function EdicionVideoFormPage() {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
                     <HugeiconsIcon icon={Calendar01Icon} size={12} className="opacity-40" />
-                    Fecha de Recibo
+                    Fecha de solicitud / recibo
                     <span className="text-red-500">*</span>
                   </label>
                   <input type="date" value={fechaRecibo}

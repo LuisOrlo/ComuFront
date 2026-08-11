@@ -172,7 +172,7 @@ export function EdicionVideoDetallePage() {
           {/* Info grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-5 rounded-2xl bg-white border space-y-1" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Fecha de Recibo</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Fecha de solicitud</p>
               <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
                 {new Date(trabajo.fecha_recibo).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
               </p>

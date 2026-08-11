@@ -38,7 +38,6 @@ export function RadioPage() {
 
   const [vista, setVista] = useState<"calendario" | "lista">("calendario")
   const [fechaRef, setFechaRef] = useState(() => new Date())
-  const [filtroEstado, setFiltroEstado] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -73,13 +72,12 @@ export function RadioPage() {
         filters.fecha_desde = monday.toISOString().split("T")[0]
         filters.fecha_hasta = sunday.toISOString().split("T")[0]
       }
-      if (filtroEstado) filters.estado = filtroEstado
       const res = await radioService.getReservas(filters)
       setReservas(res.data)
     } catch {
       toast.error("Error al cargar reservas")
     }
-  }, [monday, sunday, filtroEstado, vista, listaFechaDesde, listaFechaHasta])
+  }, [monday, sunday, vista, listaFechaDesde, listaFechaHasta])
 
   const loadTarifas = async () => {
     try {
@@ -216,7 +214,6 @@ export function RadioPage() {
             </div>
             <div className="flex items-center gap-3">
               <LinkButton to="/servicios/radio/tarifas" icon={DiscountIcon} label="Gestionar Tarifas" />
-              <LinkButton to="/servicios/radio/historial" icon={HistoryIcon} label="Historial" />
               <button
                 onClick={() => { setEditingReserva(null); setReservaModalOpen(true) }}
                 className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-violet-500/20"
@@ -269,34 +266,24 @@ export function RadioPage() {
                   </div>
 
                   {vista === "calendario" && (
-                    <>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() - 7); setFechaRef(d) }}
-                          className="size-7 flex items-center justify-center rounded-full hover:bg-black/5">
-                          <HugeiconsIcon icon={ArrowLeft02Icon} size={14} className="opacity-50" />
-                        </button>
-                        <button onClick={() => setFechaRef(new Date())}
-                          className="px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-black/5 hover:bg-black/10 transition-all opacity-60 hover:opacity-100">
-                          Hoy
-                        </button>
-                        <span className="text-[11px] font-bold opacity-60 min-w-[120px] text-center">
-                          {monday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} – {sunday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
-                        </span>
-                        <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() + 7); setFechaRef(d) }}
-                          className="size-7 flex items-center justify-center rounded-full hover:bg-black/5">
-                          <HugeiconsIcon icon={ArrowRight02Icon} size={14} className="opacity-50" />
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-4 ml-4 text-[10px] font-medium opacity-40">
-                        <span className="flex items-center gap-1"><span className="size-2 rounded bg-orange-100 border border-orange-200" /> Pendiente</span>
-                        <span className="flex items-center gap-1"><span className="size-2 rounded bg-emerald-100 border border-emerald-200" /> Confirmado</span>
-                        <span className="flex items-center gap-1"><span className="size-2 rounded bg-blue-100 border border-blue-200" /> En progreso</span>
-                        <span className="flex items-center gap-1"><span className="size-2 rounded bg-gray-100 border border-gray-200" /> Finalizado</span>
-                        <span className="flex items-center gap-1"><span className="size-2 rounded bg-red-100 border border-red-200" /> Cancelado</span>
-                      </div>
-                    </>
+                    <div className="flex items-center gap-1 ml-2">
+                      <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() - 7); setFechaRef(d) }}
+                        className="size-7 flex items-center justify-center rounded-full hover:bg-black/5">
+                        <HugeiconsIcon icon={ArrowLeft02Icon} size={14} className="opacity-50" />
+                      </button>
+                      <button onClick={() => setFechaRef(new Date())}
+                        className="px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-black/5 hover:bg-black/10 transition-all opacity-60 hover:opacity-100">
+                        Hoy
+                      </button>
+                      <span className="text-[11px] font-bold opacity-60 min-w-[120px] text-center">
+                        {monday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} – {sunday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                      </span>
+                      <button onClick={() => { const d = new Date(fechaRef); d.setDate(d.getDate() + 7); setFechaRef(d) }}
+                        className="size-7 flex items-center justify-center rounded-full hover:bg-black/5">
+                        <HugeiconsIcon icon={ArrowRight02Icon} size={14} className="opacity-50" />
+                      </button>
+                    </div>
                   )}
-                </div>
 
                 {vista === "lista" && (
                   <div className="flex items-center gap-1.5 ml-2">
@@ -327,8 +314,17 @@ export function RadioPage() {
                     </button>
                   </div>
                 )}
+                </div>
 
-              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/servicios/radio/historial"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-bold border transition-all active:scale-[0.97] hover:bg-gray-50"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+                  >
+                    <HugeiconsIcon icon={HistoryIcon} size={13} />
+                    Historial
+                  </Link>
                   <div className="relative w-48">
                     <HugeiconsIcon icon={Search01Icon} size={13} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
                     <input
@@ -344,19 +340,6 @@ export function RadioPage() {
                       </button>
                     )}
                   </div>
-                  <select
-                    value={filtroEstado}
-                    onChange={e => setFiltroEstado(e.target.value)}
-                    className="px-3 py-2 rounded-xl border bg-gray-50 text-[10px] font-medium outline-none"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                  >
-                    <option value="">Todos los estados</option>
-                    <option value="reservado">Pendiente</option>
-                    <option value="confirmado">Confirmado</option>
-                    <option value="en_progreso">En progreso</option>
-                    <option value="completado">Finalizado</option>
-                    <option value="cancelado">Cancelado</option>
-                  </select>
                 </div>
               </div>
                 {loading ? (

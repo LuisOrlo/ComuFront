@@ -154,7 +154,7 @@ export const instructorService = {
   async registrarNotas(moduloId: string, notas: Array<{
     matricula_id: string
     calificacion: number
-    observaciones: string
+    observaciones?: string
   }>) {
     const response = await api.post("/instructor/notas", { modulo_id: moduloId, notas })
     return response.data

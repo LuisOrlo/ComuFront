@@ -319,32 +319,25 @@ export function NuevoEstudiantePage() {
     setLoadingSubmit(true)
     try {
       if (esTaller) {
-        const inscripcion = await tallerService.inscribir({
-          taller_id: selectedCourseId,
-          nombres: estudiante.nombres,
-          apellidos: estudiante.apellidos,
-          cedula: estudiante.cedula,
-          correo: estudiante.correo,
-          telefono: estudiante.telefono,
-          ocupacion: estudiante.ocupacion || undefined,
-          direccion: estudiante.direccion || undefined,
-          ciudad: estudiante.ciudad || undefined,
-          estado_civil: estudiante.estado_civil || undefined,
-          edad: estudiante.edad ? Number(estudiante.edad) : undefined,
-          tipo_pago: "abono",
-          monto_pagado: 0,
-          metodo_pago: metodoPago,
-          fecha_pago: new Date().toISOString().split("T")[0],
-        })
-        const inscId = (inscripcion as Record<string, unknown>).id as string
-        if (comprobanteFile) {
-          try { await tallerService.subirComprobante(inscId, comprobanteFile) }
-          catch { toast.error("Error al subir comprobante") }
-        }
-        if (cedulaFile) {
-          try { await tallerService.subirCedula(inscId, cedulaFile) }
-          catch { toast.error("Error al subir foto de cédula") }
-        }
+        const formData = new FormData()
+        formData.append("taller_id", selectedCourseId)
+        formData.append("nombres", estudiante.nombres)
+        formData.append("apellidos", estudiante.apellidos)
+        formData.append("cedula", estudiante.cedula)
+        formData.append("correo", estudiante.correo)
+        formData.append("telefono", estudiante.telefono)
+        formData.append("ocupacion", estudiante.ocupacion)
+        formData.append("direccion", estudiante.direccion)
+        formData.append("ciudad", estudiante.ciudad)
+        formData.append("estado_civil", estudiante.estado_civil)
+        formData.append("edad", estudiante.edad)
+        formData.append("tipo_pago", "abono")
+        formData.append("monto_pagado", "0")
+        formData.append("metodo_pago", metodoPago)
+        formData.append("fecha_pago", new Date().toISOString().split("T")[0])
+        if (comprobanteFile) formData.append("comprobante", comprobanteFile)
+        if (cedulaFile) formData.append("archivo_cedula", cedulaFile)
+        await tallerService.inscribir(formData)
         toast.success("Inscripción al taller enviada correctamente")
       } else {
         const formData = new FormData()
@@ -362,7 +355,6 @@ export function NuevoEstudiantePage() {
         formData.append("direccion", estudiante.direccion)
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
-        formData.append("edad", estudiante.edad)
         formData.append("edad", estudiante.edad)
         formData.append("monto_solicitado", "0")
         if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
@@ -465,19 +457,7 @@ export function NuevoEstudiantePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 min-w-0">
             <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.ocupacion && errors.ocupacion && <p className="text-[11px] mt-1 text-red-500">{errors.ocupacion}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option><option value="otro">Otro</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
-            <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" min="10" max="120" value={estudiante.edad} onChange={e => updateEstudiante("edad", e.target.value)} onBlur={() => blurEstudiante("edad")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.edad && errors.edad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.edad && errors.edad && <p className="text-[11px] mt-1 text-red-500">{errors.edad}</p>}</div>
-            <div>
-  <label className="block text-xs font-medium mb-1.5">Edad</label>
-  <input
-    type="number"
-    readOnly
-    value={estudiante.edad}
-    className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-gray-50"
-  />
-  <p className="mt-1 text-[11px] text-orange-500">
-    * La edad se calcula automáticamente a partir de la fecha de nacimiento.
-  </p>
-</div>
+            <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" min="10" max="120" value={estudiante.edad} onChange={e => updateEstudiante("edad", e.target.value)} onBlur={() => blurEstudiante("edad")} placeholder="Ej: 25" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.edad && errors.edad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.edad && errors.edad && <p className="text-[11px] mt-1 text-red-500">{errors.edad}</p>}</div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>
               <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} onChange={e => { setEstudiante({...estudiante, ciudad: e.target.value.toUpperCase()}); const err = validateField("ciudad", e.target.value.toUpperCase()); setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); setCiudadOpen(true) }} onBlur={() => blurEstudiante("ciudad")} onFocus={() => setCiudadOpen(true)} placeholder="Busca tu ciudad..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none bg-white" style={{ borderColor: touched.ciudad && errors.ciudad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
@@ -496,10 +476,30 @@ export function NuevoEstudiantePage() {
             </div>
             <div><label className="block text-xs font-medium mb-1.5">Residencia</label><input type="text" value={estudiante.direccion} onChange={e => updateEstudiante("direccion", e.target.value)} onBlur={() => blurEstudiante("direccion")} placeholder="Av. Siempre Viva 123" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.direccion && errors.direccion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.direccion && errors.direccion && <p className="text-[11px] mt-1 text-red-500">{errors.direccion}</p>}</div>
           </div>
-          <div>
+           <div>
             <br />
             <label className="block text-xs font-medium mb-1.5">Foto de la Cédula</label>
-            <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) { setCedulaFile(file); setCedulaPreview(URL.createObjectURL(file)); setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n }) } }} />
+            <p className="text-[11px] text-gray-500 mb-2">
+              Asegúrese de que la imagen esté en formato JPG, JPEG o PNG y no supere los <strong>2 MB</strong> de tamaño.
+            </p>
+            <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const MAX = 2 * 1024 * 1024
+              if (!file.type.startsWith("image/")) {
+                setErrors(prev => ({ ...prev, cedulaFile: "Solo se permiten imágenes (JPG, PNG)" }))
+                if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+                return
+              }
+              if (file.size > MAX) {
+                setErrors(prev => ({ ...prev, cedulaFile: "La imagen no debe superar los 2MB" }))
+                if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+                return
+              }
+              setCedulaFile(file)
+              setCedulaPreview(URL.createObjectURL(file))
+              setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n })
+            }} />
             <div onClick={() => !cedulaPreview && cedulaInputRef.current?.click()} className="relative rounded-lg border-2 border-dashed p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50" style={{ borderColor: errors.cedulaFile ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
               {cedulaPreview ? <img src={cedulaPreview} className="max-h-64 rounded" alt="Cédula" /> : <div className="flex flex-col items-center gap-2 text-xs text-gray-400"><HugeiconsIcon icon={ImageAdd02Icon} size={32} /><span>Subir foto de cédula</span></div>}
             </div>

@@ -21,6 +21,9 @@ export function TodosTab() {
     setSearch,
     paymentFilter,
     setPaymentFilter,
+    ciudadFilter,
+    setCiudadFilter,
+    ciudades,
     stats,
     selectedIds,
     toggleSelect,
@@ -47,7 +50,7 @@ export function TodosTab() {
       telefono: r.telefono,
       direccion: r.direccion,
       ocupacion: r.ocupacion,
-      estado_financiero: r.estado_pago,
+      ciudad: r.ciudad,
       saldo: r.saldo_pendiente,
       total_cursos: r.total_cursos,
     }))
@@ -97,6 +100,7 @@ export function TodosTab() {
     cedula: e.cedula,
     correo: e.correo,
     telefono: e.celular,
+    ciudad: e.ciudad?.nombre || e.perfil_estudiante?.ciudad,
     direccion: e.perfil_estudiante?.direccion,
     ocupacion: e.perfil_estudiante?.ocupacion,
     estado_pago: e.estado_pago,
@@ -112,6 +116,9 @@ export function TodosTab() {
         paymentFilter={paymentFilter}
         onPaymentFilterChange={(f) => { setPaymentFilter(f) }}
         stats={stats}
+        ciudadFilter={ciudadFilter}
+        onCiudadFilterChange={setCiudadFilter}
+        ciudades={ciudades}
       />
 
       <div className="sticky top-0 z-20 min-h-[32px]">

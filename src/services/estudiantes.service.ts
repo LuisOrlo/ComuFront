@@ -32,6 +32,7 @@ export interface Estudiante {
 
 export interface EstudiantesResponse {
   datos: Estudiante[]
+  ciudades?: string[]
   stats?: {
     todos: number
     deudor: number
@@ -276,6 +277,7 @@ export const estudiantesService = {
     const response = await api.get("/personas/estudiantes", { params })
     return {
       datos: response.data.datos ?? [],
+      ciudades: response.data.ciudades ?? [],
       stats: response.data.stats,
       meta: response.data.meta,
     }

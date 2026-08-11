@@ -94,6 +94,28 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
       enableSorting: true,
     },
     {
+      id: "notas",
+      header: "Notas",
+      accessorFn: (row) => {
+        const notas = row.notas || []
+        if (notas.length === 0) return null
+        return notas.reduce((sum, n) => sum + (Number(n.calificacion) || 0), 0) / notas.length
+      },
+      cell: ({ getValue, row }) => {
+        const avg = getValue<number | null>()
+        if (avg === null || avg === undefined) return <span className="text-xs" style={{ color: TEXT_MUTED }}>—</span>
+        const notas = row.original.notas || []
+        const color = avg >= 7 ? "oklch(0.50 0.12 150)" : avg >= 4 ? "oklch(0.65 0.15 80)" : "oklch(0.50 0.12 10)"
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold" style={{ color }}>{avg.toFixed(1)}</span>
+            <span className="text-[10px]" style={{ color: TEXT_MUTED }}>({notas.length})</span>
+          </div>
+        )
+      },
+      enableSorting: true,
+    },
+    {
       id: "inscripcion",
       header: "Inscripción",
       accessorFn: (row) => formatDate(row.fecha_inscripcion),

@@ -129,10 +129,6 @@ export function HistorialPage() {
     return nombreDesdeCuentaCobrar(cp) || t.curso_nombre || ""
   }, [])
 
-  function esPagoPorModulo(t: any): boolean {
-    return !!(t.modulo_nombre || t.linea_pago_modulo)
-  }
-
   const esEgreso = (t: any) => t.tipo_movimiento === "egreso"
 
   // Local filtering based on all transacciones
@@ -170,10 +166,14 @@ export function HistorialPage() {
     return list
   }, [allTransacciones, search, getNombreEstudiante, getCursoNombre, metodoFilter, estadoFilter, tipoFilter])
 
-  // Group items by Date
+  // Group items by Date (sorted by time within each group)
   const groupedByDate = useMemo(() => {
+    const sorted = [...clientFiltered].sort((a, b) =>
+      new Date(b.fecha_pago || b.created_at).getTime() -
+      new Date(a.fecha_pago || a.created_at).getTime()
+    )
     const groups: Record<string, any[]> = {}
-    clientFiltered.forEach((t) => {
+    sorted.forEach((t) => {
       const dateKey = new Date(t.fecha_pago || t.created_at).toLocaleDateString("es-ES", {
         year: "numeric",
         month: "long",
@@ -502,15 +502,13 @@ export function HistorialPage() {
                                   <p className="text-xs font-extrabold text-gray-800 dark:text-gray-200 truncate">
                                     {getNombreEstudiante(t)}
                                   </p>
-                                  <p className="text-[10px] opacity-45 dark:text-gray-400 font-bold truncate">
-                                    {esEgreso(t)
-                                      ? `${getCursoNombre(t) || t.metodo_pago}`
-                                      : t.modulos_count > 1
-                                        ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulos_count} módulos`
-                                        : esPagoPorModulo(t) && t.modulo_nombre
-                                          ? `${getCursoNombre(t) || t.metodo_pago} — ${t.modulo_nombre}`
-                                          : (getCursoNombre(t) || t.metodo_pago)}
-                                  </p>
+                                <p className="text-[10px] opacity-45 dark:text-gray-400 font-bold truncate">
+                                  {(() => {
+                                    const nombre = getCursoNombre(t) || t.metodo_pago
+                                    if (esEgreso(t)) return nombre
+                                    return nombre
+                                  })()}
+                                </p>
                                 </div>
 
                                 {/* Method Icon & Status Badges */}
@@ -538,19 +536,21 @@ export function HistorialPage() {
                                   )}
 
                                   {/* Type tags */}
-                                  {esEgreso(t) ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-red-100 text-red-700 shrink-0">
-                                      Egreso
-                                    </span>
-                                  ) : t.modulos_count > 1 ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-purple-100 text-purple-700 shrink-0">
-                                      {t.modulos_count} módulos
-                                    </span>
-                                  ) : esPagoPorModulo(t) ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-purple-100 text-purple-700 shrink-0">
-                                      Módulo
-                                    </span>
-                                  ) : null}
+                                  {(() => {
+                                    if (esEgreso(t)) {
+                                      return (
+                                        <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase bg-red-100 text-red-700 shrink-0">
+                                          Egreso
+                                        </span>
+                                      )
+                                    }
+                                    const { tipo, color } = getTipoPago(t)
+                                    return (
+                                      <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase shrink-0", color)}>
+                                        {tipo}
+                                      </span>
+                                    )
+                                  })()}
 
                                   {/* Monto */}
                                   <span
@@ -647,6 +647,27 @@ export function HistorialPage() {
       )}
     </div>
   )
+}
+
+function getTipoPago(t: any): { tipo: string; color: string } {
+  if (t.tipo_movimiento === "egreso") return { tipo: "Egreso", color: "bg-red-100 text-red-700" }
+
+  const cp = t.cuenta_por_cobrar
+  if (!cp) {
+    if (t.modulo_nombre || t.linea_pago_modulo || t.curso_nombre) return { tipo: "Curso", color: "bg-blue-100 text-blue-700" }
+    return { tipo: "Servicio", color: "bg-purple-100 text-purple-700" }
+  }
+
+  if (cp.inscripcion_taller) return { tipo: "Taller", color: "bg-emerald-100 text-emerald-700" }
+  if (cp.matricula || cp.solicitud_inscripcion) return { tipo: "Curso", color: "bg-blue-100 text-blue-700" }
+
+  if (cp.reserva_aula_id) return { tipo: "Aula", color: "bg-violet-100 text-violet-700" }
+  if (cp.reserva_podcast_id) return { tipo: "Podcast", color: "bg-fuchsia-100 text-fuchsia-700" }
+  if (cp.alquiler_equipo_id) return { tipo: "Equipo", color: "bg-amber-100 text-amber-700" }
+  if (cp.reserva_radio_id) return { tipo: "Radio", color: "bg-orange-100 text-orange-700" }
+  if (cp.edicion_video_id) return { tipo: "Video", color: "bg-cyan-100 text-cyan-700" }
+
+  return { tipo: "—", color: "bg-gray-100 text-gray-600" }
 }
 
 function nombreServicio(cp: any): string {

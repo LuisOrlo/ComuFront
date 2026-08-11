@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router"
+import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, SaveIcon, InformationCircleIcon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, SaveIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import {
   instructorService,
@@ -11,11 +12,15 @@ import {
 } from "@/services/instructor.service"
 import { toast } from "sonner"
 
-type NotaLocal = { calificacion: string; observaciones: string }
+type NotaLocal = { calificacion: string }
 
 export function NotasRegistroPage() {
   const { cursoId, moduloId } = useParams<{ cursoId: string; moduloId: string }>()
   const navigate = useNavigate()
+  const { isAdmin } = usePermission()
+  const backUrl = isAdmin
+    ? `/cursos/${cursoId}?tab=modulos`
+    : `/instructor/cursos/${cursoId}?tab=grades`
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
   const [modulo, setModulo] = useState<ModuloResumen | null>(null)
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
@@ -40,7 +45,6 @@ export function NotasRegistroPage() {
         const notaExistente = e.notas.find((n) => n.modulo_id === moduloId)
         initialNotas[e.id] = {
           calificacion: notaExistente?.calificacion?.toString() || "",
-          observaciones: notaExistente?.observaciones || "",
         }
       })
       setNotasLocal(initialNotas)
@@ -69,13 +73,6 @@ export function NotasRegistroPage() {
     }
   }
 
-  const handleObservacionChange = (matriculaId: string, value: string) => {
-    setNotasLocal((prev) => ({
-      ...prev,
-      [matriculaId]: { ...prev[matriculaId], observaciones: value },
-    }))
-  }
-
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -83,13 +80,12 @@ export function NotasRegistroPage() {
         ([matriculaId, data]) => ({
           matricula_id: matriculaId,
           calificacion: parseFloat(data.calificacion) || 0,
-          observaciones: data.observaciones,
         }),
       )
 
       await instructorService.registrarNotas(moduloId!, payload)
       toast.success("Notas guardadas correctamente")
-      navigate(`/instructor/cursos/${cursoId}?tab=grades`)
+      navigate(backUrl)
     } catch {
       toast.error("Error al guardar las notas")
     } finally {
@@ -128,7 +124,7 @@ export function NotasRegistroPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link
-        to={`/instructor/cursos/${cursoId}?tab=grades`}
+        to={backUrl}
         className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
         style={{ color: COLORS.TEXT_MUTED }}
       >
@@ -213,22 +209,16 @@ export function NotasRegistroPage() {
 
         <div className="p-8">
           <div
-            className="rounded-xl p-4 flex gap-3 mb-8"
+            className="rounded-xl p-4 mb-8"
             style={{
               backgroundColor: "oklch(0.95 0.04 65)",
               borderColor: "oklch(0.88 0.05 65)",
               borderWidth: 1,
             }}
           >
-            <HugeiconsIcon
-              icon={InformationCircleIcon}
-              size={20}
-              style={{ color: "oklch(0.5 0.08 65)", flexShrink: 0 }}
-            />
             <p className="text-sm" style={{ color: "oklch(0.4 0.06 65)" }}>
               Recuerda que la nota mínima de aprobación es <b>6.5</b>. El sistema
-              validará automáticamente el resultado académico basado en esta nota
-              y el 70% de asistencia mínima.
+              validará automáticamente el resultado académico.
             </p>
           </div>
 
@@ -244,12 +234,11 @@ export function NotasRegistroPage() {
               estudiantes.map((e) => {
                 const nota = parseFloat(notasLocal[e.id]?.calificacion || "0")
                 const isApproved = nota >= 6.5
-                const attendanceWarning = e.porcentaje_asistencia < 70
 
                 return (
                   <div
                     key={e.id}
-                    className="grid md:grid-cols-12 gap-4 items-center p-4 rounded-xl transition-colors"
+                    className="grid md:grid-cols-10 gap-4 items-center p-4 rounded-xl transition-colors"
                     style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
                   >
                     <div className="md:col-span-4">
@@ -263,28 +252,16 @@ export function NotasRegistroPage() {
                         <span
                           className="text-[10px] font-bold px-1.5 py-0.5 rounded"
                           style={{
-                            backgroundColor: attendanceWarning
-                              ? "oklch(0.95 0.04 20)"
-                              : "oklch(0.95 0.03 150)",
-                            color: attendanceWarning
-                              ? "oklch(0.45 0.15 20)"
-                              : "oklch(0.45 0.1 150)",
+                            backgroundColor: "oklch(0.95 0.03 150)",
+                            color: "oklch(0.45 0.1 150)",
                           }}
                         >
                           {e.porcentaje_asistencia}% Asistencia
                         </span>
-                        {attendanceWarning && (
-                          <span
-                            className="text-[10px] font-medium"
-                            style={{ color: "oklch(0.45 0.15 20)" }}
-                          >
-                            No cumple asistencia
-                          </span>
-                        )}
                       </div>
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-3">
                       <div className="relative">
                         <input
                           type="text"
@@ -325,37 +302,18 @@ export function NotasRegistroPage() {
                       </div>
                     </div>
 
-                    <div className="md:col-span-4">
-                      <input
-                        type="text"
-                        value={notasLocal[e.id]?.observaciones || ""}
-                        onChange={(ev) =>
-                          handleObservacionChange(e.id, ev.target.value)
-                        }
-                        placeholder="Observaciones (opcional)"
-                        className="w-full h-12 px-4 text-sm rounded-xl outline-none transition-all"
-                        style={{
-                          borderWidth: 1,
-                          borderColor: COLORS.BORDER_SUBTLE,
-                          color: COLORS.CHARCOAL,
-                        }}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2 text-center">
+                    <div className="md:col-span-3 text-center">
                       {nota > 0 && (
                         <div
-                          className="text-[10px] font-bold uppercase"
+                          className="text-xs font-bold uppercase"
                           style={{
                             color:
-                              isApproved && !attendanceWarning
+                              isApproved
                                 ? "oklch(0.45 0.1 150)"
                                 : "oklch(0.45 0.15 20)",
                           }}
                         >
-                          {isApproved && !attendanceWarning
-                            ? "Aprobado"
-                            : "Reprobado"}
+                          {isApproved ? "Aprobado" : "Reprobado"}
                         </div>
                       )}
                     </div>
@@ -367,7 +325,7 @@ export function NotasRegistroPage() {
 
           <div className="mt-12 flex justify-end gap-4">
             <Link
-              to={`/instructor/cursos/${cursoId}?tab=grades`}
+              to={backUrl}
               className="px-6 py-3 rounded-xl font-bold transition-all"
               style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.TEXT_MUTED }}
             >

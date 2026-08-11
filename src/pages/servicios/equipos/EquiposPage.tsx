@@ -3,12 +3,14 @@ import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Calendar03Icon,
-  Edit01Icon,
   SearchIcon,
   InformationCircleIcon,
   Home02Icon,
+  MoreHorizontalIcon,
+  Delete02Icon,
+  Clock01Icon,
 } from "@hugeicons/core-free-icons"
-import { Trash2, Plus, ChevronDown } from "lucide-react"
+import { Plus } from "lucide-react"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { COLORS } from "@/lib/constants"
 import { cn, getStorageUrl } from "@/lib/utils"
@@ -42,6 +44,7 @@ export function EquiposPage() {
   const [filtroEstado, setFiltroEstado] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [estadoMenu, setEstadoMenu] = useState<string | null>(null)
+  const [accionesMenu, setAccionesMenu] = useState<string | null>(null)
 
   const loadEquipos = async () => {
     try {
@@ -134,29 +137,29 @@ export function EquiposPage() {
             <p className="text-xs opacity-20 max-w-[280px]">Registra equipos para comenzar a gestionar alquileres.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-5">
             {equipos.map((eq, i) => (
               <motion.div key={eq.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                 className="bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-all" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div className="relative aspect-[16/10] bg-gray-100 rounded-t-2xl">
+                <div className="relative aspect-[4/3] bg-gray-100 rounded-t-2xl">
                   {eq.foto_url ? (
                     <img src={getStorageUrl(eq.foto_url)} alt={eq.nombre} className="w-full h-full object-cover rounded-t-2xl" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center rounded-t-2xl"><HugeiconsIcon icon={Home02Icon} size={40} className="opacity-15" style={{ color: COLORS.CHARCOAL }} /></div>
+                    <div className="w-full h-full flex items-center justify-center rounded-t-2xl"><HugeiconsIcon icon={Home02Icon} size={36} className="opacity-15" style={{ color: COLORS.CHARCOAL }} /></div>
                   )}
-                  <div className="absolute top-3 right-3">
+                  <div className="absolute top-3 left-3">
                     <button
                       type="button"
                       onClick={e => { e.stopPropagation(); setEstadoMenu(estadoMenu === eq.id ? null : eq.id) }}
-                      className={cn("relative z-30 flex items-center justify-center gap-1 whitespace-nowrap min-w-[116px] px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border shadow-md outline-none", STATUS_COLORS[eq.estado] || "bg-gray-100")}
+                      className={cn("relative z-30 flex items-center justify-center gap-1 whitespace-nowrap min-w-[110px] px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border shadow-md outline-none", STATUS_COLORS[eq.estado] || "bg-gray-100")}
                     >
+                      <span className={cn("size-1.5 rounded-full shrink-0", STATUS_DOT[eq.estado])} />
                       {STATUS_LABELS[eq.estado]}
-                      <ChevronDown size={10} strokeWidth={3} />
                     </button>
                     {estadoMenu === eq.id && (
                       <>
                         <div className="fixed inset-0 z-20" onClick={() => setEstadoMenu(null)} />
-                        <div className="absolute right-0 top-full mt-2 z-40 min-w-[150px] bg-white rounded-xl border shadow-xl p-1" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <div className="absolute left-0 top-full mt-2 z-40 min-w-[150px] bg-white rounded-xl border shadow-xl p-1" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                           {Object.entries(STATUS_LABELS).map(([val, label]) => (
                             <button
                               key={val}
@@ -172,26 +175,60 @@ export function EquiposPage() {
                       </>
                     )}
                   </div>
+                  <div className="absolute top-3 right-3">
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setAccionesMenu(accionesMenu === eq.id ? null : eq.id) }}
+                      className="size-8 flex items-center justify-center rounded-lg bg-white/90 backdrop-blur-sm border shadow-sm hover:bg-white transition-colors z-20"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                    >
+                      <HugeiconsIcon icon={MoreHorizontalIcon} size={14} className="opacity-50" />
+                    </button>
+                    {accionesMenu === eq.id && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => setAccionesMenu(null)} />
+                        <div className="absolute right-0 top-full mt-2 z-40 min-w-[140px] bg-white rounded-xl border shadow-xl p-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                          <button
+                            type="button"
+                            onClick={() => { setAccionesMenu(null); navigate(`/servicios/equipos/${eq.id}/editar`) }}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[11px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            <HugeiconsIcon icon={Clock01Icon} size={14} className="opacity-40" />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setAccionesMenu(null); setDeleteConfirm(eq.id) }}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[11px] font-medium text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <HugeiconsIcon icon={Delete02Icon} size={14} />
+                            Eliminar
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="p-4 space-y-4">
+                <div className="p-3.5 space-y-3">
                   <div>
                     <h3 className="text-base font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>{eq.nombre}</h3>
                     {eq.descripcion && <p className="text-[11px] leading-relaxed opacity-40 mt-0.5 line-clamp-2">{eq.descripcion}</p>}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-baseline gap-0.5 text-lg font-black" style={{ color: COLORS.ACCENT }}>${eq.precio_diario}<span className="text-[11px] font-medium opacity-50">/día</span></span>
-                    <div className="flex gap-1.5">
-                      <button onClick={() => navigate(`/servicios/equipos/${eq.id}/editar`)} className="size-7 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10" title="Editar"><HugeiconsIcon icon={Edit01Icon} size={12} /></button>
-                      <button onClick={() => setDeleteConfirm(eq.id)} className="size-7 flex items-center justify-center rounded-full bg-red-50 hover:bg-red-100" title="Eliminar"><Trash2 size={12} className="text-red-500" /></button>
-                    </div>
+                  <div>
+                    <span className="flex items-baseline gap-0.5 text-lg font-black" style={{ color: COLORS.CHARCOAL }}>
+                      ${eq.precio_diario}<span className="text-[11px] font-medium opacity-50">/día</span>
+                    </span>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => openDetail(eq)} className="flex-1 py-2 rounded-xl text-[10px] font-bold border hover:bg-gray-50 transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE }}>Historial</button>
+                    <button onClick={() => openDetail(eq)} className="flex-1 py-2 rounded-xl text-[10px] font-bold border hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                      <HugeiconsIcon icon={Clock01Icon} size={13} className="opacity-40" />
+                      Historial
+                    </button>
                     <button
                       onClick={() => openAlquiler(eq)}
                       disabled={eq.estado !== "disponible"}
                       title={eq.estado === "disponible" ? "Alquilar equipo" : "Equipo no disponible para alquiler"}
-                      className={cn("flex-1 py-2 rounded-xl text-[10px] font-bold text-white transition-all", eq.estado === "disponible" ? "bg-amber-500 hover:bg-amber-600" : "bg-gray-300 cursor-not-allowed")}
+                      className={cn("flex-1 py-2 rounded-xl text-[10px] font-bold text-white transition-all", eq.estado === "disponible" ? "bg-amber-500 hover:bg-amber-600 active:scale-[0.97]" : "bg-gray-300 cursor-not-allowed")}
                     >
                       {eq.estado === "disponible" ? "Alquilar" : "No disponible"}
                     </button>

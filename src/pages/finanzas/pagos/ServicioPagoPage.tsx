@@ -120,6 +120,8 @@ export function ServicioPagoPage() {
 
   const montoNum = parseFloat(monto || "0")
   const montoValido = !isNaN(montoNum) && montoNum > 0 && montoNum <= saldoActual
+  const comprobanteValido = !!comprobanteFile
+  const formularioValido = montoValido && comprobanteValido && !!fechaPago && !!metodoPago
   const saldoRestante = Math.max(0, saldoActual - montoNum)
 
   const handleFileSelect = () => {
@@ -136,18 +138,18 @@ export function ServicioPagoPage() {
     const montoNum = parseFloat(monto)
     if (!montoNum || montoNum <= 0) { toast.error("Ingresa un monto válido"); return }
     if (montoNum > saldoActual) { toast.error("El monto supera el saldo pendiente"); return }
+    if (!comprobanteFile) { toast.error("Debes subir el comprobante de pago"); return }
+    if (!fechaPago) { toast.error("Selecciona la fecha de pago"); return }
+    if (!metodoPago) { toast.error("Selecciona el método de pago"); return }
     setSaving(true)
     try {
-      let comprobanteUrl = ""
-      if (comprobanteFile) {
-        const fd = new FormData()
-        fd.append("archivo", comprobanteFile)
-        const token = localStorage.getItem("auth_token")
-        const res = await api.post("/finanzas/pagos-iniciales/comprobante", fd, {
-          headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        })
-        comprobanteUrl = res.data.data?.url || res.data.url || ""
-      }
+      const fd = new FormData()
+      fd.append("archivo", comprobanteFile)
+      const token = localStorage.getItem("auth_token")
+      const res = await api.post("/finanzas/pagos-iniciales/comprobante", fd, {
+        headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+      const comprobanteUrl = res.data.data?.url || res.data.url || ""
       if (esPagoDirecto) {
         await financeService.pagarServicio(state.tipo, state.servicioId, {
           monto: montoNum,
@@ -379,6 +381,11 @@ export function ServicioPagoPage() {
                   Subir comprobante
                 </button>
               )}
+              {!comprobanteValido && montoValido && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                  El comprobante es obligatorio *
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -424,9 +431,10 @@ export function ServicioPagoPage() {
 
           <button
             onClick={handlePagar}
-            disabled={saving || !montoValido}
+            disabled={saving || !formularioValido}
             className="w-full py-3.5 sm:py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ backgroundColor: ACCENT }}
+            title={!formularioValido ? "Completa todos los campos requeridos para registrar el pago" : "Registrar pago"}
           >
             <HugeiconsIcon icon={Money01Icon} size={16} />
             {saving ? "Registrando..." : "Registrar Pago"}

@@ -41,6 +41,8 @@ export function NuevaReservaPage() {
   const state = location.state as { fecha_reserva?: string; hora_inicio?: string; hora_fin?: string } | null
 
   const [aula, setAula] = useState<Aula | null>(null)
+  const [aulas, setAulas] = useState<Aula[]>([])
+  const [selectedAulaId, setSelectedAulaId] = useState<string>(aulaId || "")
   const [loading, setLoading] = useState(true)
   const [estadoOriginal, setEstadoOriginal] = useState<string>("reservado")
 
@@ -65,10 +67,14 @@ export function NuevaReservaPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    if (isEdit) {
-      if (!id) { navigate("/servicios/aulas"); return }
-      aulasService.getReserva(id)
-        .then(r => {
+    const init = async () => {
+      try {
+        const todas = await aulasService.getAulas()
+        setAulas(todas)
+
+        if (isEdit) {
+          if (!id) { navigate("/servicios/aulas"); return }
+          const r = await aulasService.getReserva(id)
           setEstadoOriginal(r.estado)
           setFechaReserva(r.fecha_reserva?.substring(0, 10) || new Date().toISOString().split("T")[0])
           setHoraInicio(r.hora_inicio?.substring(0, 5) || "08:00")
@@ -82,18 +88,27 @@ export function NuevaReservaPage() {
             setSelectedCliente(opt)
             setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
           }
-          return aulasService.getAula(r.aula_id)
-        })
-        .then(setAula)
-        .catch(() => { toast.error("Error al cargar reserva"); navigate("/servicios/aulas") })
-        .finally(() => setLoading(false))
-    } else {
-      if (!aulaId) { navigate("/servicios/aulas"); return }
-      aulasService.getAula(aulaId)
-        .then(setAula)
-        .catch(() => { toast.error("Error al cargar aula"); navigate("/servicios/aulas") })
-        .finally(() => setLoading(false))
+          const aulaReserva = todas.find(a => a.id === r.aula_id) || null
+          setAula(aulaReserva)
+          setSelectedAulaId(r.aula_id)
+        } else {
+          if (aulaId) {
+            setSelectedAulaId(aulaId)
+            const aulaSel = todas.find(a => a.id === aulaId) || null
+            setAula(aulaSel)
+          } else if (todas.length > 0) {
+            setSelectedAulaId(todas[0].id)
+            setAula(todas[0])
+          }
+        }
+      } catch {
+        toast.error("Error al cargar datos")
+        navigate("/servicios/aulas")
+      } finally {
+        setLoading(false)
+      }
     }
+    init()
   }, [isEdit, id, aulaId, navigate])
 
   useEffect(() => {
@@ -138,7 +153,7 @@ export function NuevaReservaPage() {
   }, [])
 
   useEffect(() => {
-    const aulaActual = isEdit ? aula?.id : aulaId || undefined
+    const aulaActual = aula?.id
     if (!aulaActual || !fechaReserva || !horaInicio || !horaFin || horaFin <= horaInicio) {
       setConflicto(null)
       return
@@ -164,6 +179,12 @@ export function NuevaReservaPage() {
     }, 400)
     return () => { active = false; clearTimeout(timer) }
   }, [isEdit, aula, aulaId, fechaReserva, horaInicio, horaFin, id])
+
+  const handleAulaChange = (newAulaId: string) => {
+    const nuevaAula = aulas.find(a => a.id === newAulaId) || null
+    setSelectedAulaId(newAulaId)
+    setAula(nuevaAula)
+  }
 
   const calcularPrecio = () => {
     if (!aula || !horaInicio || !horaFin) return 0
@@ -328,6 +349,26 @@ export function NuevaReservaPage() {
                 </span>
                 Fecha y horario
               </h2>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
+                  <HugeiconsIcon icon={Calendar03Icon} size={12} className="opacity-40" />
+                  Aula
+                </label>
+                <select
+                  value={selectedAulaId}
+                  onChange={e => handleAulaChange(e.target.value)}
+                  disabled={isEdit}
+                  className="w-full px-4 py-3.5 rounded-xl border-2 bg-white text-sm font-medium outline-none transition-all border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">Seleccionar aula...</option>
+                  {aulas.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.nombre} · {a.capacidad} PAX · ${Number(a.precio_hora).toFixed(2)}/hr
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">

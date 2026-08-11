@@ -105,6 +105,11 @@ export const radioService = {
     return data.data
   },
 
+  getReserva: async (id: string) => {
+    const { data } = await api.get<{ data: ReservaRadio }>(`/academic/servicios/reservas-radio/${id}`)
+    return data.data
+  },
+
   getDisponibles: async (fecha: string) => {
     const { data } = await api.get<{ data: BloqueDisponible[] }>("/academic/servicios/reservas-radio/disponibles", { params: { fecha } })
     return data.data

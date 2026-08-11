@@ -1,9 +1,11 @@
-import { useState, useEffect, Fragment } from "react"
+import { useState, useEffect, Fragment, useMemo } from "react"
+import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Money01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
+import type { MatriculaDetallada } from "@/services/cursos.service"
 import { toast } from "sonner"
 
 const ACCENT = COLORS.ACCENT
@@ -13,6 +15,8 @@ const BORDER = COLORS.BORDER_SUBTLE
 
 interface Props {
   cursoId: string
+  cursoNombre?: string
+  matriculas?: MatriculaDetallada[]
 }
 
 interface ModulePayData {
@@ -49,12 +53,22 @@ interface ModuloInfo {
   precio_base: number
 }
 
-export function CursoPagosSection({ cursoId }: Props) {
+export function CursoPagosSection({ cursoId, cursoNombre, matriculas }: Props) {
   const [loading, setLoading] = useState(true)
   const [estudiantes, setEstudiantes] = useState<EstudianteFinanciero[]>([])
   const [modulos, setModulos] = useState<ModuloInfo[]>([])
   const [totales, setTotales] = useState({ estudiantes: 0, modulos: 0, esperado_catalogo: 0, recaudado_real: 0 })
   const [expandido, setExpandido] = useState<string | null>(null)
+
+  const studentIdMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    if (matriculas) {
+      matriculas.forEach(m => {
+        if (m.estudiante?.id) map[m.id] = m.estudiante.id
+      })
+    }
+    return map
+  }, [matriculas])
   const load = async () => {
     if (!cursoId) return
     setLoading(true)
@@ -209,13 +223,22 @@ export function CursoPagosSection({ cursoId }: Props) {
                                   const abonado = md?.abonado ?? 0
                                   const saldo = md?.saldo ?? Math.max(0, precio - abonado)
                                   const estadoMod = md?.estado ?? "pendiente"
-                                   return (
-                                     <div key={mod.id} className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border" style={{ borderColor: BORDER }}>
-                                       <div className="flex items-center gap-3">
-                                         <span className="font-semibold text-sm" style={{ color: CHARCOAL }}>
-                                           M{mod.numero_orden ?? ""}: {mod.nombre}
-                                         </span>
-                                         <span className="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase"
+                                    return (
+                                      <div key={mod.id} className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border" style={{ borderColor: BORDER }}>
+                                        <div className="flex items-center gap-3">
+                                          <span className="font-semibold text-sm" style={{ color: CHARCOAL }}>
+                                            M{mod.numero_orden ?? ""}: {mod.nombre}
+                                          </span>
+                                          {saldo > 0 && studentIdMap[est.matricula_id] && (
+                                            <Link
+                                              to={`/estudiantes/${studentIdMap[est.matricula_id]}/academico/registrar-pago/${est.matricula_id}?curso=${encodeURIComponent(cursoNombre || "")}&nombre=${encodeURIComponent(est.nombre)}&cedula=${encodeURIComponent(est.cedula)}&volver=${encodeURIComponent(`/cursos/${cursoId}`)}`}
+                                              className="text-[10px] font-bold px-2 py-0.5 rounded-md transition-all hover:opacity-80"
+                                              style={{ color: "white", backgroundColor: ACCENT }}
+                                            >
+                                              Pagar
+                                            </Link>
+                                          )}
+                                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase"
                                            style={{
                                              backgroundColor: estadoMod === "pagado" ? "#d1fae5" : estadoMod === "pendiente" ? "#fef3c7" : "#fee2e2",
                                              color: estadoMod === "pagado" ? "#065f46" : estadoMod === "pendiente" ? "#92400e" : "#991b1b",

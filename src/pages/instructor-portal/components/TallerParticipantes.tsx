@@ -32,7 +32,7 @@ export function TallerParticipantes({ taller, inscripciones, loading }: Props) {
 
   const handleDescargarListado = async () => {
     try {
-      const data = await tallerService.getAsistenciaPDFData(taller.id)
+      const data = await tallerService.getAsistenciaPDFDataInstructor(taller.id)
       await generarListadoAsistenciaPDF({ ...data, tipo: "taller" })
       toast.success("Listado de asistencia descargado")
     } catch {

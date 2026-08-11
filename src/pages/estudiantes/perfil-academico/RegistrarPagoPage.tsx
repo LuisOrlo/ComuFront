@@ -26,6 +26,9 @@ export function RegistrarPagoPage() {
   const cursoNombre = searchParams.get("curso") || ""
   const estudianteNombre = searchParams.get("nombre") || ""
   const estudianteCedula = searchParams.get("cedula") || ""
+  const volverUrl = searchParams.get("volver") || ""
+  const defaultBackUrl = `/estudiantes/${estudianteId}/academico?tab=financiero`
+  const backUrl = volverUrl || defaultBackUrl
 
   const [montoPago, setMontoPago] = useState("")
   const [metodoPago, setMetodoPago] = useState("efectivo")
@@ -104,10 +107,11 @@ export function RegistrarPagoPage() {
       await api.post("/finanzas/pagos-iniciales", {
         matricula_id: matriculaId,
         pagos,
+        pago_unificado: pagos.length > 1,
       })
 
       toast.success("Pago registrado exitosamente")
-      navigate(`/estudiantes/${estudianteId}/academico?tab=financiero`)
+      navigate(backUrl)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje
       toast.error(msg || "Error al registrar pago")
@@ -149,11 +153,11 @@ export function RegistrarPagoPage() {
     <div className="min-h-[100dvh] md:min-h-0 md:p-6">
       <div className="px-4 py-3 md:p-0 mb-3 md:mb-6">
         <Link
-          to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
+          to={backUrl}
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-          Volver al perfil académico
+          {volverUrl ? "Volver al curso" : "Volver al perfil académico"}
         </Link>
       </div>
 
@@ -379,7 +383,7 @@ export function RegistrarPagoPage() {
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <Link
-                to={`/estudiantes/${estudianteId}/academico?tab=financiero`}
+                to={backUrl}
                 className="flex items-center justify-center px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 Cancelar

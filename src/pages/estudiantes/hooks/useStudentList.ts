@@ -23,6 +23,9 @@ interface UseStudentListReturn {
   setSearch: (value: string) => void
   paymentFilter: PaymentFilter
   setPaymentFilter: (value: PaymentFilter) => void
+  ciudadFilter: string
+  setCiudadFilter: (value: string) => void
+  ciudades: string[]
   stats: { todos: number; deudor: number; abonado: number; al_dia: number }
   meta: Meta | undefined
   selectedIds: Set<string>
@@ -42,6 +45,8 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todos")
+  const [ciudadFilter, setCiudadFilter] = useState("")
+  const [ciudades, setCiudades] = useState<string[]>([])
   const [stats, setStats] = useState({ todos: 0, deudor: 0, abonado: 0, al_dia: 0 })
   const [meta, setMeta] = useState<Meta | undefined>(undefined)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -55,6 +60,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       const params: Record<string, string | number | undefined> = {
         buscar: debouncedSearch || undefined,
         estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
+        ciudad: ciudadFilter || undefined,
         per_page: pageSize,
         page,
         ...extraFilters,
@@ -62,14 +68,15 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       const response = await estudiantesService.getEstudiantes(params)
       setEstudiantes(response.datos)
       setMeta(response.meta ?? undefined)
-      if (response.stats && paymentFilter === "todos" && !debouncedSearch) setStats(response.stats)
+      if (response.ciudades) setCiudades(response.ciudades)
+      if (response.stats && paymentFilter === "todos" && !debouncedSearch && !ciudadFilter) setStats(response.stats)
     } catch {
       toast.error("Error al cargar estudiantes")
     } finally {
       setLoading(false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, paymentFilter, extraFiltersKey, pageSize])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, paymentFilter, ciudadFilter, extraFiltersKey, pageSize])
 
   const handleSetSearch = useCallback((value: string) => {
     setSearch(value)
@@ -119,6 +126,9 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
     setSearch: handleSetSearch,
     paymentFilter,
     setPaymentFilter,
+    ciudadFilter,
+    setCiudadFilter,
+    ciudades,
     stats,
     meta,
     selectedIds,

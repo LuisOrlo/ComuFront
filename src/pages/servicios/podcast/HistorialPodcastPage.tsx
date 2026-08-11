@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
+import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -11,7 +12,9 @@ import {
   CheckmarkCircle04Icon,
   PackageIcon,
   Cancel01Icon,
-  Edit01Icon,
+  ArrowRight01Icon,
+  ArrowDown01Icon,
+  Search01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
@@ -40,23 +43,53 @@ const STRIP_COLORS: Record<string, string> = {
 
 export function HistorialPodcastPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [reservas, setReservas] = useState<ReservaPodcast[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtroEstado, setFiltroEstado] = useState("todos")
+  const [filtroEstado, setFiltroEstado] = useState(searchParams.get("estado") || "todos")
+  const [search, setSearch] = useState(searchParams.get("search") || "")
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     podcastService.getReservas()
-      .then(setReservas)
+      .then(data => {
+        setReservas(data)
+        const newExpanded = new Set<string>()
+        data.forEach((r: ReservaPodcast) => {
+          if (r.estado !== "completado" && r.estado !== "cancelado") newExpanded.add(r.id)
+        })
+        setExpanded(newExpanded)
+      })
       .catch(() => toast.error("Error al cargar historial"))
       .finally(() => setLoading(false))
   }, [])
 
+  const toggleExpand = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const filtered = useMemo(() => {
-    if (filtroEstado === "todos") return reservas
-    if (filtroEstado === "activos") return reservas.filter(r => r.estado === "pendiente" || r.estado === "confirmado" || r.estado === "en_progreso")
-    return reservas.filter(r => r.estado === filtroEstado)
-  }, [reservas, filtroEstado])
+    let list = reservas
+    if (filtroEstado === "activos") list = list.filter(r => r.estado === "pendiente" || r.estado === "confirmado" || r.estado === "en_progreso")
+    else if (filtroEstado !== "todos") list = list.filter(r => r.estado === filtroEstado)
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(r => {
+        const cliente = r.cliente_externo
+          ? `${r.cliente_externo.nombres} ${r.cliente_externo.apellidos || ""}`.toLowerCase()
+          : r.persona ? `${r.persona.nombres} ${r.persona.apellidos}`.toLowerCase() : ""
+        const titulo = (r.titulo || r.paquete?.nombre || "").toLowerCase()
+        return cliente.includes(q) || titulo.includes(q)
+      })
+    }
+    return list.sort((a, b) => new Date(b.fecha_reserva).getTime() - new Date(a.fecha_reserva).getTime())
+  }, [reservas, filtroEstado, search])
 
   const getCliente = (r: ReservaPodcast) => {
     if (r.persona) return `${r.persona.nombres} ${r.persona.apellidos}`
@@ -74,12 +107,27 @@ export function HistorialPodcastPage() {
     finally { setSavingMap(prev => ({ ...prev, [id]: false })) }
   }
 
+  const buildDetailHref = (r: ReservaPodcast) => {
+    const p = new URLSearchParams()
+    if (filtroEstado !== "todos") p.set("estado", filtroEstado)
+    if (search) p.set("search", search)
+    const qs = p.toString()
+    return `/servicios/podcast/reservas/${r.id}${qs ? `?${qs}` : ""}`
+  }
+
   const stats = {
     total: reservas.length,
-    pendientes: reservas.filter(r => r.estado === "pendiente" || r.estado === "confirmado").length,
+    pendientes: reservas.filter(r => r.estado === "pendiente" || r.estado === "confirmado" || r.estado === "en_progreso").length,
     completados: reservas.filter(r => r.estado === "completado").length,
     cancelados: reservas.filter(r => r.estado === "cancelado").length,
   }
+
+  const statCards = [
+    { key: "todos", label: "Total", value: stats.total, color: "bg-gray-100 text-gray-500", icon: Home02Icon },
+    { key: "activos", label: "Activos", value: stats.pendientes, color: "bg-amber-100 text-amber-600", icon: Clock01Icon },
+    { key: "completado", label: "Completados", value: stats.completados, color: "bg-green-100 text-green-600", icon: CheckmarkCircle04Icon },
+    { key: "cancelado", label: "Cancelados", value: stats.cancelados, color: "bg-red-100 text-red-600", icon: Cancel01Icon },
+  ]
 
   if (loading) {
     return (
@@ -119,64 +167,50 @@ export function HistorialPodcastPage() {
       </header>
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 py-6 space-y-6">
-
-          <div className="flex gap-1 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            {[
-              { key: "todos", label: "Todos", icon: PackageIcon },
-              { key: "activos", label: "Activos", icon: Clock01Icon },
-              { key: "completado", label: "Completados", icon: CheckmarkCircle04Icon },
-              { key: "cancelado", label: "Cancelados", icon: Cancel01Icon },
-            ].map(t => (
-              <button key={t.key} onClick={() => setFiltroEstado(t.key)}
-                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
-                style={{
-                  borderColor: filtroEstado === t.key ? COLORS.ACCENT : "transparent",
-                  color: filtroEstado === t.key ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
-                }}>
-                <HugeiconsIcon icon={t.icon} size={14} />
-                {t.label}
-              </button>
-            ))}
-          </div>
+        <div className="max-w-4xl mx-auto px-6 lg:px-8 py-6 space-y-5">
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                <HugeiconsIcon icon={Home02Icon} size={18} className="opacity-40" />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Total</p>
-                <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>{stats.total}</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className="size-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                <HugeiconsIcon icon={Clock01Icon} size={18} className="text-amber-600" />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Activos</p>
-                <p className="text-lg font-black text-amber-600">{stats.pendientes}</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className="size-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
-                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={18} className="text-green-600" />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Completados</p>
-                <p className="text-lg font-black text-green-600">{stats.completados}</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className="size-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                <HugeiconsIcon icon={Calendar03Icon} size={18} className="text-red-600" />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cancelados</p>
-                <p className="text-lg font-black text-red-600">{stats.cancelados}</p>
-              </div>
-            </div>
+            {statCards.map(card => {
+              const isActive = filtroEstado === card.key
+              return (
+                <button
+                  key={card.key}
+                  type="button"
+                  onClick={() => setFiltroEstado(isActive ? "todos" : card.key)}
+                  className={cn(
+                    "bg-white rounded-2xl border p-4 flex items-center gap-3 transition-all active:scale-[0.98] text-left cursor-pointer hover:border-orange-300 hover:shadow-md",
+                    isActive ? "shadow-sm" : ""
+                  )}
+                  style={{ borderColor: isActive ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }}
+                >
+                  <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", card.color.split(" ")[0])}>
+                    <HugeiconsIcon icon={card.icon} size={18} className={card.color.split(" ")[1]} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">{card.label}</p>
+                    <p className="text-lg font-black" style={{ color: isActive ? COLORS.ACCENT : COLORS.CHARCOAL }}>
+                      {card.value}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="relative max-w-sm">
+            <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
+            <input
+              type="text" value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar cliente o reserva..."
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20"
+              style={{ borderColor: COLORS.BORDER_SUBTLE }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-30 hover:opacity-100">
+                <HugeiconsIcon icon={Cancel01Icon} size={14} />
+              </button>
+            )}
           </div>
 
           {filtered.length === 0 ? (
@@ -188,94 +222,128 @@ export function HistorialPodcastPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.sort((a, b) => new Date(b.fecha_reserva).getTime() - new Date(a.fecha_reserva).getTime()).map(r => {
+              {filtered.map(r => {
+                const isExpanded = expanded.has(r.id)
+                const isCompleted = r.estado === "completado" || r.estado === "cancelado"
                 return (
                   <div key={r.id}
                     className="bg-white rounded-2xl border hover:shadow-sm transition-all overflow-hidden"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <div className={cn("h-1.5 w-full", STRIP_COLORS[r.estado] || "bg-gray-400")} />
 
-                    <div className="p-5 space-y-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={cn("size-9 rounded-xl flex items-center justify-center shrink-0",
-                            r.estado === "confirmado" ? "bg-amber-100" :
-                            r.estado === "completado" ? "bg-green-100" :
-                            r.estado === "en_progreso" ? "bg-indigo-100" :
-                            r.estado === "cancelado" ? "bg-red-100" :
-                            "bg-blue-100"
-                          )}>
-                            <HugeiconsIcon icon={Calendar03Icon} size={16}
-                              className={cn(
-                                r.estado === "confirmado" ? "text-amber-600" :
-                                r.estado === "completado" ? "text-green-600" :
-                                r.estado === "en_progreso" ? "text-indigo-600" :
-                                r.estado === "cancelado" ? "text-red-600" :
-                                "text-blue-600"
-                              )} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
-                              {r.titulo || r.paquete?.nombre || "Sin título"}
-                            </p>
-                            <p className="text-[10px] mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                              {new Date(r.fecha_reserva).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
-                              {" · "}{r.hora_inicio?.substring(0, 5)} – {r.hora_fin?.substring(0, 5)}
-                            </p>
-                          </div>
-                        </div>
+                    <div
+                      className={cn("px-5 py-4 flex items-start gap-3", isCompleted ? "cursor-pointer hover:bg-gray-50/50 transition-colors" : "border-b")}
+                      onClick={() => isCompleted && toggleExpand(r.id)}
+                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                    >
+                      <div className={cn("size-9 rounded-xl flex items-center justify-center shrink-0",
+                        r.estado === "confirmado" ? "bg-amber-100" :
+                        r.estado === "completado" ? "bg-green-100" :
+                        r.estado === "en_progreso" ? "bg-indigo-100" :
+                        r.estado === "cancelado" ? "bg-red-100" :
+                        "bg-blue-100"
+                      )}>
+                        <HugeiconsIcon icon={Calendar03Icon} size={16}
+                          className={cn(
+                            r.estado === "confirmado" ? "text-amber-600" :
+                            r.estado === "completado" ? "text-green-600" :
+                            r.estado === "en_progreso" ? "text-indigo-600" :
+                            r.estado === "cancelado" ? "text-red-600" :
+                            "text-blue-600"
+                          )} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
+                          {r.titulo || r.paquete?.nombre || "Sin título"}
+                        </p>
+                        <p className="text-[10px] opacity-40 mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span>{new Date(r.fecha_reserva).toLocaleDateString("es-ES", { day: "numeric", month: "long" })} · {r.hora_inicio?.substring(0, 5)} – {r.hora_fin?.substring(0, 5)}</span>
+                          <span className="opacity-30">·</span>
+                          <span className="font-medium opacity-60">{getCliente(r)}</span>
+                          <span className="opacity-30">·</span>
+                          <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${Number(r.precio_total).toFixed(2)}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
                         <select
                           value={r.estado}
-                          onChange={e => handleCambiarEstado(r.id, e.target.value)}
+                          onChange={e => { e.stopPropagation(); handleCambiarEstado(r.id, e.target.value) }}
                           disabled={savingMap[r.id]}
-                          className={cn("shrink-0 px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-opacity", savingMap[r.id] ? "opacity-50" : "", ESTADO_COLORS[r.estado] || "bg-gray-100")}
+                          className={cn("px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-opacity", savingMap[r.id] ? "opacity-50" : "", ESTADO_COLORS[r.estado] || "bg-gray-100")}
                         >
                           {Object.entries(ESTADO_LABELS).map(([val, label]) => (
                             <option key={val} value={val}>{label}</option>
                           ))}
                         </select>
-                        <button onClick={() => navigate("/servicios/podcast", { state: { editarReserva: r } })}
-                          className="size-7 flex items-center justify-center rounded-lg border transition-colors hover:bg-gray-50 shrink-0"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
-                          title="Editar reserva">
-                          <HugeiconsIcon icon={Edit01Icon} size={13} />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
-                          <div className="size-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                            <HugeiconsIcon icon={UserIcon} size={14} className="text-indigo-500" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
-                            <p className="text-xs font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
-                              {getCliente(r)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
-                          <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                            <HugeiconsIcon icon={Money01Icon} size={14} className="text-emerald-500" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio total</p>
-                            <p className="text-sm font-black" style={{ color: COLORS.ACCENT }}>
-                              ${Number(r.precio_total).toFixed(2)}
-                            </p>
-                          </div>
-                          {!r.pago_registrado && (
-                            <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, { state: { tipo: "podcast", servicioId: r.id, nombre: getCliente(r), montoTotal: Number(r.precio_total) || 0, montoSaldo: Number(r.precio_total) || 0, nombreServicio: r.titulo || r.paquete?.nombre || "Podcast" } })}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0"
-                              style={{ backgroundColor: COLORS.ACCENT }}>
-                              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                              Registrar pago
-                            </button>
-                          )}
-                        </div>
+                        {isCompleted && (
+                          <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            size={14}
+                            className="opacity-30 shrink-0 transition-transform"
+                            style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                          />
+                        )}
                       </div>
                     </div>
+
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-5 pb-5 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
+                                <div className="size-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                                  <HugeiconsIcon icon={UserIcon} size={14} className="text-indigo-500" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
+                                  <p className="text-xs font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
+                                    {getCliente(r)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
+                                <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                  <HugeiconsIcon icon={Money01Icon} size={14} className="text-emerald-500" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio total</p>
+                                  <p className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>
+                                    ${Number(r.precio_total).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {!r.pago_registrado && (
+                                <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, { state: { tipo: "podcast", servicioId: r.id, nombre: getCliente(r), montoTotal: Number(r.precio_total) || 0, montoSaldo: Number(r.precio_total) || 0, nombreServicio: r.titulo || r.paquete?.nombre || "Podcast" } })}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0"
+                                  style={{ backgroundColor: COLORS.ACCENT }}>
+                                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                  Registrar pago
+                                </button>
+                              )}
+                              {!isCompleted && (
+                                <button onClick={() => navigate(buildDetailHref(r))}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all hover:bg-gray-50 active:scale-95"
+                                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
+                                  <HugeiconsIcon icon={ArrowRight01Icon} size={11} />
+                                  Ver detalle completo
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )
               })}

@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Calendar03Icon, SearchIcon, UserIcon, Home02Icon,
-  Alert02Icon, ArrowLeft02Icon, CheckmarkCircle04Icon, Edit01Icon,
+  Alert02Icon, ArrowLeft02Icon, CheckmarkCircle04Icon,
+  Money01Icon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { equiposService, type AlquilerEquipo } from "@/services/equipos.service"
 import { toast } from "sonner"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 
 const ESTADO_COLORS: Record<string, string> = {
   pendiente: "bg-blue-100 text-blue-700 border-blue-200",
@@ -24,13 +26,19 @@ const ESTADO_LABELS: Record<string, string> = {
   pendiente: "Pendiente", activo: "Activo", entregado: "Entregado", devuelto: "Devuelto", vencido: "Vencido",
 }
 
+type SortField = "entrega" | "devolucion" | "precio"
+
 export function AlquileresListPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [alquileres, setAlquileres] = useState<AlquilerEquipo[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [filtroEstado, setFiltroEstado] = useState("")
+  const [search, setSearch] = useState(searchParams.get("search") || "")
+  const [filtroEstado, setFiltroEstado] = useState(searchParams.get("estado") || "")
   const [vencidos, setVencidos] = useState<AlquilerEquipo[]>([])
+
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedAlquiler, setSelectedAlquiler] = useState<AlquilerEquipo | null>(null)
@@ -39,6 +47,9 @@ export function AlquileresListPage() {
   const [devolverForm, setDevolverForm] = useState({ foto_retorno_url: "", observaciones: "" })
   const [fotoRetornoFile, setFotoRetornoFile] = useState<File | null>(null)
   const [fotoRetornoPreview, setFotoRetornoPreview] = useState<string | null>(null)
+
+  const [page, setPage] = useState(1)
+  const PER_PAGE = 15
 
   const loadData = async () => {
     try {
@@ -52,12 +63,12 @@ export function AlquileresListPage() {
       ])
       setAlquileres(data)
       setVencidos(venc)
+      setPage(1)
     } catch { toast.error("Error al cargar alquileres") }
     finally { setLoading(false) }
   }
 
   useEffect(() => {
-
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, filtroEstado])
@@ -97,6 +108,74 @@ export function AlquileresListPage() {
     return "—"
   }
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDir("asc")
+    }
+  }
+
+  const sorted = useMemo(() => {
+    if (!sortField) return alquileres
+    return [...alquileres].sort((a, b) => {
+      let va: number, vb: number
+      if (sortField === "entrega") {
+        va = new Date(a.fecha_entrega).getTime()
+        vb = new Date(b.fecha_entrega).getTime()
+      } else if (sortField === "devolucion") {
+        va = new Date(a.fecha_devolucion_esperada).getTime()
+        vb = new Date(b.fecha_devolucion_esperada).getTime()
+      } else {
+        va = Number(a.precio_total)
+        vb = Number(b.precio_total)
+      }
+      return sortDir === "asc" ? va - vb : vb - va
+    })
+  }, [alquileres, sortField, sortDir])
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PER_PAGE))
+  const paginated = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  const from = sorted.length === 0 ? 0 : (page - 1) * PER_PAGE + 1
+  const to = Math.min(page * PER_PAGE, sorted.length)
+
+  const stats = {
+    total: sorted.length,
+    activos: sorted.filter(a => a.estado === "activo").length,
+    vencidos: sorted.filter(a => a.estado === "vencido" || (a.estado === "activo" && new Date(a.fecha_devolucion_esperada) < new Date())).length,
+    ingresos: sorted.reduce((sum, a) => sum + Number(a.precio_total), 0),
+  }
+
+  const statCards = [
+    { label: "Total", value: stats.total, color: "bg-gray-100 text-gray-500", icon: Home02Icon },
+    { label: "Activos", value: stats.activos, color: "bg-amber-100 text-amber-600", icon: Clock01Icon },
+    { label: "Vencidos", value: stats.vencidos, color: "bg-red-100 text-red-600", icon: Alert02Icon },
+    { label: "Ingresos", value: `$${stats.ingresos.toFixed(0)}`, color: "bg-emerald-100 text-emerald-600", icon: Money01Icon },
+  ]
+
+  const needsAction = (a: AlquilerEquipo) => {
+    const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
+    const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
+    return a.estado === "entregado" && total - abonado > 0
+  }
+
+  const SortHeader = ({ field, label }: { field: SortField; label: string }) => (
+    <th
+      className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer select-none hover:opacity-70"
+      style={{ color: COLORS.CHARCOAL }}
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <span className="inline-flex flex-col leading-none ml-0.5">
+          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sortField === field && sortDir === "asc" ? "opacity-100" : "opacity-20"} />
+          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sortField === field && sortDir === "desc" ? "opacity-100" : "opacity-20"} />
+        </span>
+      </div>
+    </th>
+  )
+
   return (
     <div className="flex flex-col h-full bg-white">
       <header className="shrink-0 px-8 py-4 border-b bg-white sticky top-0 z-20 flex items-center gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -119,23 +198,39 @@ export function AlquileresListPage() {
         </div>
       )}
 
-      <div className="shrink-0 px-8 py-3 flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por equipo..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+      <div className="shrink-0 px-8 py-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          {statCards.map(card => (
+            <div key={card.label} className="bg-white rounded-2xl border p-3.5 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", card.color.split(" ")[0])}>
+                <HugeiconsIcon icon={card.icon} size={18} className={card.color.split(" ")[1]} />
+              </div>
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">{card.label}</p>
+                <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>{card.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
-        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="px-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <option value="">Todos los estados</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="entregado">Entregado</option>
-          <option value="activo">Activo</option>
-          <option value="devuelto">Devuelto</option>
-          <option value="vencido">Vencido</option>
-        </select>
-        <span className="text-[10px] font-bold opacity-40">{alquileres.length} alquiler{alquileres.length !== 1 ? "es" : ""}</span>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar equipo o cliente..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+          </div>
+          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="px-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="entregado">Entregado</option>
+            <option value="activo">Activo</option>
+            <option value="devuelto">Devuelto</option>
+            <option value="vencido">Vencido</option>
+          </select>
+          <span className="text-[10px] font-bold opacity-40">{alquileres.length} alquiler{alquileres.length !== 1 ? "es" : ""}</span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-8">
+      <div className="flex-1 overflow-auto px-8 pb-6">
         {loading ? (
           <div className="flex items-center justify-center py-32"><p className="text-sm font-medium opacity-30 animate-pulse">Cargando alquileres...</p></div>
         ) : alquileres.length === 0 ? (
@@ -148,52 +243,55 @@ export function AlquileresListPage() {
           <div className="space-y-2">
             <div className="overflow-x-auto border rounded-2xl bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <table className="w-full [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
-                <thead><tr className="bg-gray-50/80">{["Equipo", "Cliente", "Entrega", "Devolución esperada", "Estado", "Precio", "Acciones"].map(h => <th key={h} className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>{h}</th>)}</tr></thead>
+                <thead>
+                  <tr className="bg-gray-50/80">
+                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Equipo</th>
+                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cliente</th>
+                    <SortHeader field="entrega" label="Entrega" />
+                    <SortHeader field="devolucion" label="Devolución" />
+                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Estado</th>
+                    <SortHeader field="precio" label="Precio" />
+                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  {alquileres.map(a => {
+                  {paginated.map(a => {
                     const isOverdue = (a.estado === "activo" || a.estado === "entregado") && new Date(a.fecha_devolucion_esperada) < new Date()
                     const displayEstado = a.estado === "vencido" ? "vencido" : isOverdue ? "vencido" : a.estado
                     const clienteNombre = getResponsable(a)
+                    const needsAttn = needsAction(a)
                     return (
-                      <tr key={a.id} className="hover:bg-gray-50/60 transition-colors">
-                        <td className="p-3 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}><div className="flex items-center gap-2"><div className="size-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Home02Icon} size={14} className="text-amber-600" /></div><span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{a.equipo?.nombre || "—"}</span></div></td>
-                        <td className="p-3 text-xs font-medium opacity-70 max-w-[120px] truncate cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{clienteNombre}</td>
-                        <td className="p-3 text-xs font-mono opacity-60 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="p-3 text-xs font-mono opacity-60 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="p-3 cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span>
-                              {(() => {
-                                const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
-                                const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
-                                const saldo = total - abonado
-                                return (
-                                  <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", saldo <= 0 ? "bg-green-100 text-green-700 border-green-200" : "bg-amber-100 text-amber-700 border-amber-200")}>
-                                    {saldo <= 0 ? "Pago OK" : `Saldo $${saldo.toFixed(2)}`}
-                                  </span>
-                                )
-                              })()}
-                            </div>
-                          </td>
-                        <td className="p-3 text-xs font-bold cursor-pointer" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }} style={{ color: COLORS.CHARCOAL }}>${Number(a.precio_total).toFixed(2)}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-1.5">
-                            <button onClick={(e) => { e.stopPropagation(); navigate(`/servicios/equipos/alquileres/${a.id}/editar`) }}
-                              className="size-7 flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors" title="Editar alquiler">
-                              <HugeiconsIcon icon={Edit01Icon} size={13} style={{ color: COLORS.TEXT_MUTED }} />
-                            </button>
+                      <tr
+                        key={a.id}
+                        className={cn("transition-colors cursor-pointer", needsAttn ? "bg-amber-50/60 hover:bg-amber-100/60" : "hover:bg-gray-50/60")}
+                      >
+                        <td className="p-3" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}><div className="flex items-center gap-2"><div className="size-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Home02Icon} size={14} className="text-amber-600" /></div><span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{a.equipo?.nombre || "—"}</span></div></td>
+                        <td className="p-3 text-xs font-medium opacity-70 max-w-[120px] truncate" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{clienteNombre}</td>
+                        <td className="p-3 text-xs font-mono opacity-60" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="p-3 text-xs font-mono opacity-60" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                        <td onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>
+                          <div className="flex items-center gap-1.5 flex-wrap p-3">
+                            <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span>
                             {(() => {
                               const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
                               const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
                               const saldo = total - abonado
-                              if (saldo <= 0) return null
                               return (
-                                <button onClick={(e) => { e.stopPropagation(); navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: clienteNombre, montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${a.equipo?.nombre || "Equipo"}` } }) }} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap" style={{ backgroundColor: COLORS.ACCENT }}>
-                                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                                  Registrar pago
-                                </button>
+                                <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", saldo <= 0 ? "bg-green-100 text-green-700 border-green-200" : "bg-amber-100 text-amber-700 border-amber-200")}>
+                                  {saldo <= 0 ? "Pago OK" : `Saldo $${saldo.toFixed(2)}`}
+                                </span>
                               )
                             })()}
+                          </div>
+                        </td>
+                        <td className="p-3 text-xs font-bold" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }} style={{ color: COLORS.CHARCOAL }}>${Number(a.precio_total).toFixed(2)}</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={(e) => { e.stopPropagation(); const p = new URLSearchParams(); if (search) p.set("search", search); if (filtroEstado) p.set("estado", filtroEstado); const qs = p.toString(); navigate(`/servicios/equipos/alquileres/${a.id}${qs ? `?${qs}` : ""}`) }}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold opacity-50 hover:opacity-100 transition-opacity"
+                              style={{ color: COLORS.CHARCOAL }}>
+                              Ver detalle completo <HugeiconsIcon icon={ArrowRight01Icon} size={11} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -202,6 +300,50 @@ export function AlquileresListPage() {
                 </tbody>
               </table>
             </div>
+
+            {sorted.length > 0 && (
+              <div className="flex items-center justify-between gap-4 pt-2">
+                <span className="text-xs font-medium opacity-40">
+                  Mostrando {from} – {to} de {sorted.length} alquiler{sorted.length !== 1 ? "es" : ""}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  >
+                    Anterior
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const start = Math.max(1, Math.min(page - 2, totalPages - 4))
+                    const pageNum = start + i
+                    if (pageNum > totalPages) return null
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className="size-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all"
+                        style={{
+                          backgroundColor: page === pageNum ? COLORS.ACCENT : "transparent",
+                          color: page === pageNum ? "white" : COLORS.TEXT_MUTED,
+                        }}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

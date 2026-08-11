@@ -233,4 +233,25 @@ export const tallerService = {
     const res = await api.get<DatosAsistenciaPDF>(`${PREFIX}/talleres/${tallerId}/asistencia-pdf`)
     return res.data
   },
+
+  // Portal Instructor - Talleres
+  async listarAsistenciasInstructor(tallerId: string) {
+    const res = await api.get(`/instructor/talleres/${tallerId}/asistencias`)
+    return res.data
+  },
+
+  async listarAsistenciaEstudiantesInstructor(tallerId: string, asistenciaId: string) {
+    const res = await api.get(`/instructor/talleres/${tallerId}/asistencias/${asistenciaId}/estudiantes`)
+    return res.data
+  },
+
+  async actualizarAsistenciaInstructor(sesionId: string, data: Record<string, unknown>) {
+    const res = await api.put(`/instructor/talleres/asistencias/${sesionId}`, data)
+    return res.data
+  },
+
+  async getAsistenciaPDFDataInstructor(tallerId: string): Promise<DatosAsistenciaPDF> {
+    const res = await api.get<DatosAsistenciaPDF>(`/instructor/talleres/${tallerId}/asistencia-pdf`)
+    return res.data
+  },
 }
