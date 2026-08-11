@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router"
-import { Plus } from "lucide-react"
+import { Plus, Loader2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { toast } from "sonner"
@@ -61,12 +61,19 @@ export function ClientesPage() {
       <div className="flex-1 p-6 lg:p-8">
         <div className="bg-white rounded-xl border shadow-2xl shadow-black/5 flex flex-col min-h-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <ClientesFilters search={search} onSearchChange={handleSearch} />
-          <ClientesTable
-            clientes={clientes}
-            loading={loading}
-            search={search}
-            onSearchChange={handleSearch}
-          />
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-3">
+              <Loader2 size={32} className="animate-spin" style={{ color: COLORS.ACCENT }} />
+              <p className="text-sm font-medium opacity-50">Cargando clientes...</p>
+            </div>
+          ) : (
+            <ClientesTable
+              clientes={clientes}
+              loading={loading}
+              search={search}
+              onSearchChange={handleSearch}
+            />
+          )}
         </div>
       </div>
     </div>
