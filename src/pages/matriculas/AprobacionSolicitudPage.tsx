@@ -21,6 +21,7 @@ import { SolicitudDocumentoTab } from "./components/solicitudes/SolicitudDocumen
 import { ModalReconciliacionCurso } from "./components/ModalReconciliacionCurso"
 import { toast } from "sonner"
 import axios from "axios"
+import { Loader2 } from "lucide-react"
 
 type TabId = "resumen" | "estudiante" | "curso" | "pago" | "documento"
 
@@ -584,7 +585,7 @@ export function AprobacionSolicitudPage() {
       <div className="sticky bottom-0 bg-white border-t z-10" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-[900px] mx-auto px-6 py-4">
           <div className="flex gap-3">
-            <button onClick={() => setConfirmReject(true)} disabled={yaProcesada}
+            <button onClick={() => setConfirmReject(true)} disabled={actionLoading || yaProcesada}
               className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
               <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
@@ -593,7 +594,15 @@ export function AprobacionSolicitudPage() {
               disabled={actionLoading || !montoValido || yaProcesada}
               className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
               style={{ backgroundColor: COLORS.ACCENT }}>
-              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
+              {actionLoading ? (
+                <>
+                  <Loader2 size={16} className="inline mr-1.5 animate-spin" />Procesando...
+                </>
+              ) : (
+                <>
+                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
+                </>
+              )}
             </button>
           </div>
         </div>
