@@ -197,12 +197,12 @@ export function PagoDetallePage() {
       
 
       <button
-        onClick={() => navigate("/finanzas/pagos/historial")}
+        onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
         style={{ color: COLORS.CHARCOAL }}
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver al Historial
+        Volver
       </button>
 
       <motion.div

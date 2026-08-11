@@ -189,6 +189,26 @@ export const tallerService = {
     return res.data
   },
 
+  async deleteArchivo(id: string, campo: string) {
+    const res = await api.delete(`${PREFIX}/inscripciones-talleres/${id}/archivo`, {
+      data: { campo },
+    })
+    return res.data
+  },
+
+  async getAdjacent(id: string, params?: Record<string, unknown>) {
+    const res = await api.get(`${PREFIX}/inscripciones-talleres/${id}/adjacent`, { params })
+    return res.data as {
+      prev_id: string | null
+      next_id: string | null
+      first_id: string | null
+      position: number
+      total: number
+      stale: boolean
+      stale_estado?: string
+    }
+  },
+
   async exportarParticipantes(tallerId: string) {
     const res = await api.get(`${PREFIX}/talleres/${tallerId}/exportar`)
     return res.data

@@ -1,48 +1,57 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from "react"
-import { useParams, useNavigate } from "react-router"
+import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useParams, useNavigate, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  CheckmarkCircle04Icon,
-  Cancel01Icon,
-  ArrowLeft01Icon,
-  UserIcon,
-  BookOpenIcon,
-  PaymentIcon,
-  CalendarIcon,
-  MailIcon,
-  CallIcon,
-  SearchIcon,
-  Image01Icon,
-  Edit01Icon,
-  Upload05Icon,
-  Calendar03Icon,
-  Location01Icon,
+  CheckmarkCircle04Icon, Cancel01Icon, ArrowLeft01Icon, ArrowLeft02Icon, ArrowRight02Icon,
+  UserIcon, BookOpenIcon, PaymentIcon, Image01Icon, DashboardSquareIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { tallerService } from "@/services/taller.service"
-import { Section, SubCategory, InfoItem, EF } from "./AprobacionHelpers"
-import { fixImageUrl, validarImagen } from "./AprobacionUtils"
+import type { PagoTallerPreAprobacionRef } from "./PagoPreAprobacionTallerSection"
+import { validarImagen } from "./AprobacionUtils"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { RejectModal } from "@/components/RejectModal"
 import { ImageZoom } from "./ImageZoom"
+import { TallerParticipanteTab } from "./components/solicitudes/TallerParticipanteTab"
+import { TallerTallerTab } from "./components/solicitudes/TallerTallerTab"
+import { TallerPagoTab } from "./components/solicitudes/TallerPagoTab"
+import { TallerDocumentoTab } from "./components/solicitudes/TallerDocumentoTab"
 import { toast } from "sonner"
 
-type TabId = "participante" | "taller" | "pago" | "documento"
+type TabId = "resumen" | "participante" | "taller" | "pago" | "documento"
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
+  { id: "resumen", label: "Resumen", icon: DashboardSquareIcon },
   { id: "participante", label: "Participante", icon: UserIcon },
   { id: "taller", label: "Taller", icon: BookOpenIcon },
   { id: "pago", label: "Pago", icon: PaymentIcon },
-  { id: "documento", label: "Cedula", icon: Image01Icon },
+  { id: "documento", label: "C.Cédula", icon: Image01Icon },
 ]
 
 export function AprobacionTallerPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [ins, setIns] = useState<any>(null)
+  const [searchParams] = useSearchParams()
+
+  const filtros = useMemo(() => ({
+    estado: searchParams.get("estado") || "",
+    search: searchParams.get("search") || "",
+    pago_verificado: searchParams.get("pago_verificado") || "",
+    fecha_desde: searchParams.get("fecha_desde") || "",
+    fecha_hasta: searchParams.get("fecha_hasta") || "",
+  }), [searchParams])
+
+  const searchStr = searchParams.toString() ? `?${searchParams.toString()}` : ""
+
+  const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabId>("participante")
+  const [activeTab, setActiveTab] = useState<TabId>("resumen")
+
+  const [adjacent, setAdjacent] = useState<{
+    prev_id: string | null; next_id: string | null; first_id: string | null
+    position: number; total: number; stale: boolean; stale_estado?: string
+  }>({ prev_id: null, next_id: null, first_id: null, position: 1, total: 0, stale: false })
 
   const [editField, setEditField] = useState<string | null>(null)
   const [editVal, setEditVal] = useState("")
@@ -52,104 +61,61 @@ export function AprobacionTallerPage() {
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null)
   const [uploadingCedula, setUploadingCedula] = useState(false)
   const [uploadingComprobante, setUploadingComprobante] = useState(false)
+  const [deletingComprobante, setDeletingComprobante] = useState(false)
+  const [deletingCedula, setDeletingCedula] = useState(false)
+  const [deleteArchivoModal, setDeleteArchivoModal] = useState<{ type: "comprobante" | "cedula"; label: string } | null>(null)
   const cedulaRef = useRef<HTMLInputElement>(null)
   const comprobanteRef = useRef<HTMLInputElement>(null)
 
+  const pagoRef = useRef<PagoTallerPreAprobacionRef>(null)
   const [actionLoading, setActionLoading] = useState(false)
-
   const [confirmReject, setConfirmReject] = useState(false)
   const [confirmApprove, setConfirmApprove] = useState(false)
 
-  const [, forceUpdate] = useState(0)
-  const precioBase = Number(ins?.taller?.precio || 0)
-  const [precioAjustado, setPrecioAjustado] = useState(
-    ins?.pago_verificado && ins?.monto_pagado > 0 ? Number(ins?.monto_pagado) : precioBase
-  )
-  const [editingPrecio, setEditingPrecio] = useState(false)
-  const [precioInput, setPrecioInput] = useState("")
-  const [motivoAjuste, setMotivoAjuste] = useState("")
-  const [savingPrecio, setSavingPrecio] = useState(false)
+  const precioBase = Number(selected?.taller?.precio || 0)
 
-  const [tallerMonto, setTallerMonto] = useState(Number(ins?.monto_pagado || precioBase || 0))
-  const [editingMonto, setEditingMonto] = useState(false)
-  const [montoInput, setMontoInput] = useState("")
-  const [savingMonto, setSavingMonto] = useState(false)
-
-  useEffect(() => {
-    if (!id) return
-    const fetchInscripcion = async () => {
-      setLoading(true)
-      try {
-        const res = await tallerService.getInscripcionById(id)
-        const data = (res as any).data || res
-        setIns(data)
-        setPrecioAjustado(data.pago_verificado && data.monto_pagado > 0 ? Number(data.monto_pagado) : Number(data.taller?.precio || 0))
-        setTallerMonto(Number(data.monto_pagado || data.taller?.precio || 0))
-      } catch {
-        toast.error("Error al cargar inscripción")
-      } finally {
-        setLoading(false)
-      }
+  const fetchDetail = useCallback(async (targetId?: string) => {
+    const fetchId = targetId || id
+    if (!fetchId) return
+    setLoading(true)
+    try {
+      const res = await tallerService.getInscripcionById(fetchId)
+      setSelected((res as any).data || res)
+    } catch {
+      toast.error("Error al cargar inscripción")
+      if (targetId) navigate(`/matriculas${searchStr}`)
+    } finally {
+      setLoading(false)
     }
-    fetchInscripcion()
-  }, [id])
+  }, [id, navigate, searchStr])
 
-  const precioEfectivo = precioAjustado || precioBase
-  const tipoPagoActual = tallerMonto >= precioEfectivo ? "completo" : "abono"
-
-  const handleStartEditPrecio = () => {
-    setPrecioInput(String(precioEfectivo))
-    setMotivoAjuste("")
-    setEditingPrecio(true)
-  }
-
-  const handleConfirmAjuste = async () => {
-    if (!id) return
-    const nuevo = parseFloat(precioInput) || 0
-    const final = nuevo > 0 ? nuevo : precioBase
-    setSavingPrecio(true)
+  const fetchAdjacent = useCallback(async (targetId?: string) => {
+    const fetchId = targetId || id
+    if (!fetchId) return
     try {
-      await tallerService.actualizarInscripcion(id, {
-        metodo_pago: ins?.metodo_pago || "efectivo",
-        precio_ajustado: final,
-        motivo_ajuste: motivoAjuste,
-      })
-      setPrecioAjustado(final)
-      toast.success("Precio ajustado correctamente")
-      setEditingPrecio(false)
-    } catch { toast.error("Error al ajustar precio") }
-    finally { setSavingPrecio(false) }
-  }
+      const data = await tallerService.getAdjacent(fetchId, filtros)
+      setAdjacent(data)
+    } catch { /* silent */ }
+  }, [id, filtros])
 
-  const handleCancelEditPrecio = () => setEditingPrecio(false)
-
-  const handleStartEditMonto = () => {
-    setMontoInput(String(tallerMonto))
-    setEditingMonto(true)
-  }
-
-  const handleSaveMonto = async () => {
-    if (!id) return
-    const nuevoMonto = parseFloat(montoInput) || 0
-    const maxVal = precioEfectivo
-    const montoFinal = nuevoMonto > maxVal ? maxVal : nuevoMonto
-    const tipoFinal = montoFinal >= maxVal ? "completo" : "abono"
-    setSavingMonto(true)
+  const navigateTo = useCallback(async (targetId: string) => {
     try {
-      await tallerService.actualizarInscripcion(id, {
-        monto_pagado: montoFinal,
-        tipo_pago: tipoFinal,
-        metodo_pago: ins?.metodo_pago || "efectivo",
-        fecha_pago: new Date().toISOString().split("T")[0],
-      })
-      setTallerMonto(montoFinal)
-      toast.success("Monto actualizado")
-      setEditingMonto(false)
-    } catch { toast.error("Error al actualizar monto") }
-    finally { setSavingMonto(false) }
-  }
+      const [res, data] = await Promise.all([
+        tallerService.getInscripcionById(targetId),
+        tallerService.getAdjacent(targetId, filtros),
+      ])
+      setSelected((res as any).data || res)
+      setAdjacent(data)
+      setActiveTab("resumen")
+      window.history.replaceState(null, "", `/matriculas/aprobacion/taller/${targetId}${searchStr}`)
+    } catch {
+      toast.error("Error al cargar inscripción")
+    }
+  }, [filtros, searchStr])
 
-  const handleCancelEditMonto = () => setEditingMonto(false)
+  useEffect(() => { fetchDetail(); fetchAdjacent() }, [fetchDetail, fetchAdjacent])
+
+  const getTallerNombre = useCallback(() => selected?.taller?.nombre || "—", [selected])
 
   const startEdit = (field: string, value: string) => { setEditField(field); setEditVal(value) }
   const cancelEdit = () => { setEditField(null); setEditVal("") }
@@ -160,11 +126,13 @@ export function AprobacionTallerPage() {
     try {
       const data: any = { [editField]: editVal }
       await tallerService.actualizarInscripcion(id, data)
-      setIns((prev: any) => ({ ...prev, [editField]: editVal }))
+      setSelected((prev: any) => prev ? { ...prev, [editField]: editVal } : prev)
       toast.success("Dato actualizado correctamente")
       setEditField(null); setEditVal("")
-    } catch { toast.error("Error al actualizar") }
-    finally { setSavingEdit(false) }
+      fetchDetail()
+    } catch {
+      toast.error("Error al actualizar")
+    } finally { setSavingEdit(false) }
   }
 
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,9 +142,9 @@ export function AprobacionTallerPage() {
     if (error) { toast.error(error); return }
     setUploadingCedula(true)
     try {
-      await tallerService.subirCedula(id, file)
+      const res = await tallerService.subirCedula(id, file)
+      setSelected((prev: any) => ({ ...prev, cedula_url: (res as any).cedula_url }))
       toast.success("Cédula subida")
-      forceUpdate(n => n + 1)
     } catch { toast.error("Error al subir cédula") }
     finally { setUploadingCedula(false) }
   }
@@ -188,30 +156,70 @@ export function AprobacionTallerPage() {
     if (error) { toast.error(error); return }
     setUploadingComprobante(true)
     try {
-      await tallerService.subirComprobante(id, file)
+      const res = await tallerService.subirComprobante(id, file)
+      setSelected((prev: any) => ({ ...prev, comprobante_url: (res as any).comprobante_url }))
       toast.success("Comprobante subido")
-      forceUpdate(n => n + 1)
     } catch { toast.error("Error al subir comprobante") }
     finally { setUploadingComprobante(false) }
+  }
+
+  const handleDeleteComprobante = async () => {
+    setDeleteArchivoModal(null)
+    if (!id) return
+    setDeletingComprobante(true)
+    try {
+      await tallerService.deleteArchivo(id, "comprobante_url")
+      toast.success("Comprobante eliminado")
+      setSelected((prev: any) => ({ ...prev, comprobante_url: null, comprobante_purgado: true }))
+    } catch { toast.error("Error al eliminar comprobante") }
+    finally { setDeletingComprobante(false) }
+  }
+
+  const handleDeleteCedula = async () => {
+    setDeleteArchivoModal(null)
+    if (!id) return
+    setDeletingCedula(true)
+    try {
+      await tallerService.deleteArchivo(id, "cedula_url")
+      toast.success("Cédula eliminada")
+      setSelected((prev: any) => ({ ...prev, cedula_url: null }))
+    } catch { toast.error("Error al eliminar cédula") }
+    finally { setDeletingCedula(false) }
+  }
+
+  const advanceOrReturn = () => {
+    if (adjacent.next_id) navigateTo(adjacent.next_id)
+    else navigate(`/matriculas${searchStr}`)
   }
 
   const handleApprove = async () => {
     if (!id) return
     setActionLoading(true)
     try {
+      const pagoGuardado = await pagoRef.current?.submit()
+      if (pagoGuardado === false) {
+        setActionLoading(false)
+        toast.error("Error al guardar pago")
+        return
+      }
+      const montoPagado = pagoRef.current?.getMonto() || 0
+      const tipoPago = pagoRef.current?.getTipoPago() || "abono"
+      const metodoPago = pagoRef.current?.getMetodoPago() || "efectivo"
       await tallerService.verificarPago(id, {
-        precio_ajustado: precioAjustado,
-        monto_pagado: tallerMonto,
-        tipo_pago: tipoPagoActual,
-        metodo_pago: ins?.metodo_pago || "efectivo",
-        fecha_pago: new Date().toISOString().split("T")[0],
-        motivo_ajuste: motivoAjuste,
+        monto_pagado: montoPagado,
+        tipo_pago: tipoPago,
+        metodo_pago: metodoPago,
       })
-      toast.success("Inscripción aprobada")
-      navigate("/matriculas")
+      setSelected((prev: any) => prev ? { ...prev, pago_verificado: true } : prev)
+      toast.success("Inscripción aprobada exitosamente")
+      setActionLoading(false)
+      setConfirmApprove(false)
+      setTimeout(() => advanceOrReturn(), 0)
     } catch (err) {
-      toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al aprobar")
-    } finally { setActionLoading(false); setConfirmApprove(false) }
+      setActionLoading(false)
+      setConfirmApprove(false)
+      toast.error((err as any)?.response?.data?.mensaje || "Error al aprobar")
+    }
   }
 
   const handleReject = async () => {
@@ -220,18 +228,13 @@ export function AprobacionTallerPage() {
     try {
       await tallerService.cambiarEstadoInscripcion(id, "retirado")
       toast.success("Inscripción rechazada")
-      navigate("/matriculas")
+      setActionLoading(false)
+      advanceOrReturn()
     } catch {
+      setActionLoading(false)
       toast.error("Error al rechazar")
-    } finally { setActionLoading(false) }
+    }
   }
-
-  const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : "—"
-
-  const AZUL = "oklch(0.55 0.15 240)"
-  const VERDE = "oklch(0.55 0.15 160)"
-  const PURPURA = "oklch(0.55 0.12 300)"
-  const AMBAR = "oklch(0.65 0.15 75)"
 
   if (loading) {
     return (
@@ -253,7 +256,7 @@ export function AprobacionTallerPage() {
     )
   }
 
-  if (!ins) {
+  if (!selected) {
     return (
       <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
         <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -270,40 +273,70 @@ export function AprobacionTallerPage() {
     )
   }
 
-  const yaProcesadaTaller = ins.pago_verificado || ins.estado !== "activo"
+  const yaProcesada = selected.pago_verificado || selected.estado !== "activo"
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
       <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-[900px] mx-auto px-6 py-4">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/matriculas")} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors">
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} style={{ color: COLORS.CHARCOAL }} />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>
-                {ins.nombres} {ins.apellidos}
-              </h1>
-              <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                {ins.taller?.nombre || "Taller"} · {ins.cedula}
-              </p>
+        <div className="max-w-[900px] mx-auto px-6 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate(`/matriculas${searchStr}`)} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <HugeiconsIcon icon={ArrowLeft01Icon} size={18} style={{ color: COLORS.CHARCOAL }} />
+              </button>
+              <div>
+                <h1 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>
+                  {selected.nombres || "—"} {selected.apellidos || ""}
+                </h1>
+                <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{getTallerNombre()}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+              <span className="font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
+                Solicitud {adjacent.position} de {adjacent.total}
+              </span>
+              <div className="flex gap-1">
+                <button onClick={() => adjacent.prev_id && navigateTo(adjacent.prev_id)} disabled={!adjacent.prev_id}
+                  className="size-7 flex items-center justify-center rounded-lg border hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <HugeiconsIcon icon={ArrowLeft02Icon} size={14} style={{ color: COLORS.CHARCOAL }} />
+                </button>
+                <button onClick={() => adjacent.next_id && navigateTo(adjacent.next_id)} disabled={!adjacent.next_id}
+                  className="size-7 flex items-center justify-center rounded-lg border hover:bg-gray-100 disabled:opacity-30 transition-colors"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <HugeiconsIcon icon={ArrowRight02Icon} size={14} style={{ color: COLORS.CHARCOAL }} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {adjacent.stale && (
+        <div className="bg-amber-50 border-b" style={{ borderColor: "oklch(0.85 0.12 80)" }}>
+          <div className="max-w-[900px] mx-auto px-6 py-3 flex items-center justify-between">
+            <span className="text-sm font-medium" style={{ color: "oklch(0.5 0.1 70)" }}>
+              Esta inscripción ya fue procesada — Estado: <span className="font-bold capitalize">{adjacent.stale_estado?.replace(/_/g, " ") || "—"}</span>
+            </span>
+            {adjacent.first_id && (
+              <button onClick={() => navigateTo(adjacent.first_id!)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors hover:bg-amber-100"
+                style={{ borderColor: "oklch(0.85 0.12 80)", color: "oklch(0.5 0.1 70)" }}>
+                Ir a siguiente pendiente
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-[900px] mx-auto px-6">
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
-                style={{
-                  borderColor: activeTab === tab.id ? COLORS.ACCENT : "transparent",
-                  color: activeTab === tab.id ? COLORS.ACCENT : COLORS.TEXT_MUTED,
-                }}>
-                <HugeiconsIcon icon={tab.icon} size={14} />
-                {tab.label}
+                className="flex items-center gap-2 px-3 sm:px-4 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap shrink-0"
+                style={{ borderColor: activeTab === tab.id ? COLORS.ACCENT : "transparent", color: activeTab === tab.id ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
+                <HugeiconsIcon icon={tab.icon} size={14} /><span className="hidden sm:inline">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -311,244 +344,145 @@ export function AprobacionTallerPage() {
       </div>
 
       <div className="flex-1 max-w-[900px] mx-auto w-full px-6 py-6">
-        <div className="bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="p-6">
-            {activeTab === "participante" && (
-              <Section title="Datos del Participante" icon={UserIcon}>
-                <div className="space-y-3">
-                  <SubCategory title="Información Personal" color={AZUL}>
-                    <EF icon={UserIcon} label="Nombres" field="nombres" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
-                    <EF icon={UserIcon} label="Apellidos" field="apellidos" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
-                    <EF icon={SearchIcon} label="Cédula" field="cedula" data={ins} bold
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
-                    <EF icon={Calendar03Icon} label="Edad" field="edad" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} inputType="number" groupColor={AZUL} />
-                    <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
-                    <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={AZUL} />
-                  </SubCategory>
-                  <SubCategory title="Contacto" color={VERDE}>
-                    <EF icon={MailIcon} label="Correo" field="correo" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={VERDE} />
-                    <EF icon={CallIcon} label="Teléfono" field="telefono" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={VERDE} />
-                  </SubCategory>
-                  <SubCategory title="Ubicación" color={PURPURA}>
-                    <EF icon={Location01Icon} label="Dirección" field="direccion" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={PURPURA} />
-                    <EF icon={Location01Icon} label="Ciudad" field="ciudad" data={ins}
-                      editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} groupColor={PURPURA} />
-                  </SubCategory>
-                </div>
-              </Section>
-            )}
-
-            {activeTab === "taller" && (
-              <Section title="Taller" icon={BookOpenIcon}>
-                <div className="p-4 rounded-xl space-y-2" style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 6%, transparent)`, borderLeft: `3px solid ${COLORS.ACCENT}` }}>
-                  <InfoItem icon={BookOpenIcon} label="Taller" value={ins.taller?.nombre || "—"} bold groupColor={COLORS.ACCENT} />
-                  <InfoItem icon={CalendarIcon} label="Fecha" value={ins.taller?.fecha ? new Date(ins.taller.fecha).toLocaleDateString('es-ES') : "—"} groupColor={COLORS.ACCENT} />
-                  <InfoItem icon={PaymentIcon} label="Precio base" value={ins.taller?.precio ? `$${Number(ins.taller.precio).toFixed(2)}` : "—"} bold groupColor={COLORS.ACCENT} />
-                </div>
-              </Section>
-            )}
-
-            {activeTab === "pago" && (
-              <Section title="Pago" icon={PaymentIcon}>
+          <div className="bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="p-6">
+              {activeTab === "resumen" && (
                 <div className="space-y-4">
-                  <SubCategory title="Detalles del Precio" color={AMBAR}>
-                    <div className="flex items-center gap-2 text-sm group">
-                      <HugeiconsIcon icon={PaymentIcon} size={14} className="shrink-0" style={{ color: AMBAR }} />
-                      <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0 text-sm">Precio taller</span>
-                      <span className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>${precioEfectivo.toFixed(2)}</span>
-                      {precioAjustado !== precioBase && (
-                        <span className="text-xs line-through opacity-40">${precioBase.toFixed(2)}</span>
-                      )}
-                      <button type="button" onClick={handleStartEditPrecio}
-                        className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                        <HugeiconsIcon icon={Edit01Icon} size={14} />
-                      </button>
+                  <div className="flex items-center gap-2 mb-3">
+                    <HugeiconsIcon icon={DashboardSquareIcon} size={15} style={{ color: COLORS.ACCENT }} />
+                    <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de la inscripción</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeft: "3px solid oklch(0.55 0.15 240)" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <HugeiconsIcon icon={UserIcon} size={14} style={{ color: "oklch(0.55 0.15 240)" }} />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "oklch(0.55 0.15 240)" }}>Participante</span>
+                      </div>
+                      <div className="space-y-1.5 text-sm">
+                        <p className="font-bold" style={{ color: COLORS.CHARCOAL }}>{selected.nombres} {selected.apellidos}</p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Cédula: <span className="font-medium font-mono" style={{ color: COLORS.CHARCOAL }}>{selected.cedula || "—"}</span>
+                        </p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Edad: <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{selected.edad ? `${selected.edad} años` : "—"}</span>
+                        </p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Ciudad: <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>{selected.ciudad || "—"}</span>
+                        </p>
+                      </div>
                     </div>
-                    {editingPrecio && (
-                      <div className="p-3 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-                        <div>
-                          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                            Nuevo precio para este alumno
-                          </label>
-                          <div className="relative mt-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm" style={{ pointerEvents: "none" }}>$</span>
-                            <input type="number" min={0} step="0.01" value={precioInput} onChange={e => setPrecioInput(e.target.value)}
-                              onWheel={e => (e.target as HTMLElement).blur()} onKeyDown={e => e.stopPropagation()}
-                              disabled={savingPrecio} placeholder="0.00"
-                              className="w-full pl-8 pr-4 py-2 border rounded-xl text-sm font-mono outline-none bg-white"
-                              style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Motivo del ajuste</label>
-                          <input type="text" value={motivoAjuste} onChange={e => setMotivoAjuste(e.target.value)}
-                            disabled={savingPrecio} placeholder="Ej: descuento por pronto pago"
-                            className="w-full px-3 py-2 border rounded-xl text-sm outline-none mt-1 bg-white"
-                            style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={handleConfirmAjuste} disabled={savingPrecio}
-                            className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98]"
-                            style={{ backgroundColor: COLORS.ACCENT, opacity: savingPrecio ? 0.6 : 1 }}>
-                            {savingPrecio ? "..." : "Confirmar ajuste"}
-                          </button>
-                          <button onClick={handleCancelEditPrecio} disabled={savingPrecio}
-                            className="px-4 py-2 rounded-xl text-xs font-medium hover:text-gray-700 transition-colors"
-                            style={{ color: COLORS.TEXT_MUTED }}>
-                            Cancelar
-                          </button>
-                        </div>
+
+                    <div className="p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeft: "3px solid oklch(0.55 0.12 300)" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <HugeiconsIcon icon={BookOpenIcon} size={14} style={{ color: "oklch(0.55 0.12 300)" }} />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "oklch(0.55 0.12 300)" }}>Taller</span>
                       </div>
-                    )}
-                    {editingMonto ? (
-                      <div>
-                        <label className="text-xs font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
-                          Monto a cobrar
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm" style={{ pointerEvents: "none" }}>$</span>
-                          <input type="number" min={0} max={precioEfectivo || undefined} step="0.01"
-                            value={montoInput} onChange={e => setMontoInput(e.target.value)}
-                            onWheel={e => (e.target as HTMLElement).blur()} onKeyDown={e => e.stopPropagation()}
-                            placeholder="0.00" disabled={savingMonto}
-                            className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none bg-white"
-                            style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <button onClick={handleSaveMonto} disabled={savingMonto}
-                            className="text-xs font-medium px-3 py-1.5 rounded-lg text-white"
-                            style={{ backgroundColor: COLORS.ACCENT, opacity: savingMonto ? 0.6 : 1 }}>
-                            {savingMonto ? "..." : "Guardar"}
-                          </button>
-                          <button onClick={handleCancelEditMonto} disabled={savingMonto}
-                            className="text-xs px-3 py-1.5 rounded-lg hover:bg-gray-100 border"
-                            style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
-                            Cancelar
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm group">
-                        <HugeiconsIcon icon={PaymentIcon} size={14} className="shrink-0" style={{ color: AMBAR }} />
-                        <span style={{ color: COLORS.TEXT_MUTED }} className="shrink-0 text-sm">Monto a cobrar</span>
-                        {tallerMonto > 0 ? (
-                          <span className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>${tallerMonto.toFixed(2)}</span>
-                        ) : (
-                          <span className="italic text-sm opacity-50" style={{ color: COLORS.TEXT_MUTED }}>Por registrar</span>
+                      <div className="space-y-1.5 text-sm">
+                        <p className="font-bold" style={{ color: COLORS.CHARCOAL }}>{getTallerNombre()}</p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Fecha: <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>
+                            {selected.taller?.fecha ? new Date(selected.taller.fecha).toLocaleDateString('es-ES') : "—"}
+                          </span>
+                        </p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Precio: <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>${precioBase.toFixed(2)}</span>
+                        </p>
+                        {selected.taller?.modalidad && (
+                          <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                            {selected.taller.modalidad.charAt(0).toUpperCase() + selected.taller.modalidad.slice(1)}
+                          </p>
                         )}
-                        <button type="button" onClick={handleStartEditMonto}
-                          className="ml-auto shrink-0" style={{ color: COLORS.ACCENT }}>
-                          <HugeiconsIcon icon={Edit01Icon} size={14} />
-                        </button>
                       </div>
-                    )}
-                  </SubCategory>
-
-                  <SubCategory title="Información del Pago" color={AMBAR}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span style={{ color: COLORS.TEXT_MUTED }}>Tipo de pago</span>
-                      <span className="text-xs font-bold px-2 py-1 rounded-lg"
-                        style={{
-                          backgroundColor: tallerMonto === 0 ? "oklch(0.5 0 0 / 0.08)" : (tipoPagoActual === "completo" ? "oklch(0.55 0.15 150 / 0.12)" : "oklch(0.65 0.15 75 / 0.12)"),
-                          color: tallerMonto === 0 ? "oklch(0.5 0 0)" : (tipoPagoActual === "completo" ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)"),
-                        }}>
-                        {tallerMonto === 0 ? "AUN NO REGISTRADO" : (tipoPagoActual === "completo" ? "COMPLETO" : "ABONO")}
-                      </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span style={{ color: COLORS.TEXT_MUTED }}>Método de pago</span>
-                      <span className="text-xs font-bold px-2 py-1 rounded-lg"
-                        style={{ backgroundColor: "oklch(0.55 0.15 240 / 0.12)", color: "oklch(0.55 0.15 240)", boxShadow: "0 1px 2px oklch(0 0 0 / 0.06)" }}>
-                        {(ins.metodo_pago || "—").toUpperCase()}
-                      </span>
-                    </div>
-                    <InfoItem icon={CalendarIcon} label="Fecha de Pago" value={formatDate(ins.fecha_pago)} groupColor={AMBAR} />
-                  </SubCategory>
 
-                  <div className="space-y-2 pt-1">
-                    <div className="flex gap-2">
-                      <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleUploadComprobante} />
-                      <button onClick={() => comprobanteRef.current?.click()} disabled={uploadingComprobante}
-                        className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-semibold hover:bg-white transition-colors"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT, opacity: uploadingComprobante ? 0.6 : 1 }}>
-                        <HugeiconsIcon icon={Upload05Icon} size={16} />
-                        {uploadingComprobante ? "Subiendo..." : ins.comprobante_url ? "Cambiar comprobante" : "Subir comprobante"}
-                      </button>
-                      {ins.comprobante_url && (
-                        <button onClick={() => setExpandedComprobante(!expandedComprobante)}
-                          className="flex-1 p-3 rounded-xl border flex items-center justify-center gap-2 text-sm font-semibold hover:bg-white transition-colors"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                          <HugeiconsIcon icon={Image01Icon} size={16} />
-                          {expandedComprobante ? "Ocultar" : "Ver"}
-                        </button>
+                    <div className="p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeft: "3px solid oklch(0.65 0.15 75)" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <HugeiconsIcon icon={PaymentIcon} size={14} style={{ color: "oklch(0.65 0.15 75)" }} />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "oklch(0.65 0.15 75)" }}>Pago</span>
+                      </div>
+                      <div className="space-y-1.5 text-sm">
+                        <p className="text-xs">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                            style={{ backgroundColor: "oklch(0.55 0.15 240 / 0.12)", color: "oklch(0.55 0.15 240)" }}>
+                            {(selected.metodo_pago || "—").toUpperCase()}
+                          </span>
+                        </p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Fecha: <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>
+                            {selected.fecha_pago ? new Date(selected.fecha_pago).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : "—"}
+                          </span>
+                        </p>
+                        <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
+                          Monto: <span className="font-medium" style={{ color: COLORS.CHARCOAL }}>
+                            {Number(selected.monto_pagado) > 0 ? `$${Number(selected.monto_pagado).toFixed(2)}` : "Por registrar"}
+                          </span>
+                        </p>
+                        {selected.comprobante_url && (
+                          <button onClick={() => setExpandedImageUrl(selected.comprobante_url)}
+                            className="text-xs font-semibold hover:underline" style={{ color: COLORS.ACCENT }}>
+                            Ver comprobante
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE, borderLeft: "3px solid oklch(0.55 0.15 160)" }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <HugeiconsIcon icon={Image01Icon} size={14} style={{ color: "oklch(0.55 0.15 160)" }} />
+                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "oklch(0.55 0.15 160)" }}>Cédula</span>
+                      </div>
+                      {selected.cedula_url ? (
+                        <img src={selected.cedula_url} alt="Cédula"
+                          className="w-full object-contain max-h-[140px] rounded-lg border cursor-pointer hover:opacity-90 transition-opacity"
+                          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                          onClick={() => setExpandedImageUrl(selected.cedula_url)} />
+                      ) : (
+                        <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</span>
                       )}
                     </div>
-                    {expandedComprobante && ins.comprobante_url && (
-                      <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <img src={fixImageUrl(ins.comprobante_url)} alt="Comprobante"
-                          className="w-full object-contain max-h-[400px]"
-                          onClick={() => setExpandedImageUrl(fixImageUrl(ins.comprobante_url))} />
-                      </div>
-                    )}
                   </div>
                 </div>
-              </Section>
-            )}
-
-            {activeTab === "documento" && (
-              <Section title="Documento de Identidad" icon={Image01Icon}>
-                <div className="p-4 rounded-xl" style={{ backgroundColor: `color-mix(in srgb, ${PURPURA} 6%, transparent)`, borderLeft: `3px solid ${PURPURA}` }}>
-                  {ins.cedula_url ? (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium opacity-40">Imagen actual</span>
-                        <button onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                          className="flex items-center gap-1 text-xs font-semibold" style={{ color: COLORS.ACCENT }}>
-                          <HugeiconsIcon icon={Edit01Icon} size={12} />Cambiar
-                        </button>
-                      </div>
-                      <img src={fixImageUrl(ins.cedula_url)} alt="Cédula"
-                        className="w-full object-contain max-h-[400px] rounded-xl border cursor-pointer"
-                        style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                        onClick={() => setExpandedImageUrl(fixImageUrl(ins.cedula_url))} />
-                    </div>
-                  ) : (
-                    <div className="p-5 rounded-xl border border-dashed text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                      <p className="text-sm mb-3" style={{ color: COLORS.TEXT_MUTED }}>No se ha subido la foto de cédula</p>
-                      <button type="button" onClick={() => cedulaRef.current?.click()} disabled={uploadingCedula}
-                        className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.97]"
-                        style={{ backgroundColor: COLORS.ACCENT, opacity: uploadingCedula ? 0.6 : 1 }}>
-                        <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
-                        {uploadingCedula ? "Subiendo..." : "Subir foto de cédula"}
-                      </button>
-                    </div>
-                  )}
-                  <input ref={cedulaRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCedula} />
-                </div>
-              </Section>
-            )}
+              )}
+              {activeTab === "participante" && (
+                <TallerParticipanteTab selected={selected} editField={editField} editVal={editVal}
+                  startEdit={startEdit} setEditVal={setEditVal} saveEdit={saveEdit} cancelEdit={cancelEdit} savingEdit={savingEdit} />
+              )}
+              {activeTab === "taller" && (
+                <TallerTallerTab selected={selected} />
+              )}
+              {activeTab === "pago" && (
+                <TallerPagoTab selected={selected} yaProcesada={yaProcesada}
+                  editField={editField} editVal={editVal}
+                  startEdit={startEdit} setEditVal={setEditVal}
+                  saveEdit={saveEdit} cancelEdit={cancelEdit} savingEdit={savingEdit}
+                  comprobanteRef={comprobanteRef} handleUploadComprobante={handleUploadComprobante}
+                  uploadingComprobante={uploadingComprobante} expandedComprobante={expandedComprobante}
+                  setExpandedComprobante={setExpandedComprobante}
+                  setDeleteArchivoModal={setDeleteArchivoModal} deletingComprobante={deletingComprobante}
+                  setExpandedImageUrl={setExpandedImageUrl}
+                  pagoRef={pagoRef} precioBase={precioBase}
+                  getTallerNombre={getTallerNombre} />
+              )}
+              {activeTab === "documento" && (
+                <TallerDocumentoTab selected={selected} cedulaRef={cedulaRef}
+                  handleUploadCedula={handleUploadCedula} uploadingCedula={uploadingCedula}
+                  deletingCedula={deletingCedula} setDeleteArchivoModal={setDeleteArchivoModal}
+                  setExpandedImageUrl={setExpandedImageUrl} />
+              )}
+            </div>
           </div>
-        </div>
       </div>
 
       <div className="sticky bottom-0 bg-white border-t z-10" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-[900px] mx-auto px-6 py-4">
           <div className="flex gap-3">
-            <button onClick={() => setConfirmReject(true)}
-              className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97]"
+            <button onClick={() => setConfirmReject(true)} disabled={actionLoading || yaProcesada}
+              className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
               <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
             </button>
             <button onClick={() => setConfirmApprove(true)}
-              disabled={actionLoading || yaProcesadaTaller}
+              disabled={actionLoading || yaProcesada}
               className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
               style={{ backgroundColor: COLORS.ACCENT }}>
               <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
@@ -560,7 +494,7 @@ export function AprobacionTallerPage() {
       <ConfirmationModal
         isOpen={confirmApprove}
         title="Aprobar Inscripción a Taller"
-        message="Se aprobará la inscripción del participante en el taller."
+        message="Se aprobará la inscripción del participante y se verificará el pago."
         confirmText="Aprobar"
         cancelText="Cancelar"
         isLoading={actionLoading}
@@ -574,6 +508,18 @@ export function AprobacionTallerPage() {
         isLoading={actionLoading}
         onConfirm={handleReject}
         onCancel={() => setConfirmReject(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteArchivoModal !== null}
+        title="Eliminar archivo del almacenamiento"
+        message={`¿Eliminar la imagen de la ${deleteArchivoModal?.label} del almacenamiento? El registro se conservará como constancia histórica. Esta acción es irreversible.`}
+        confirmText="Eliminar archivo"
+        cancelText="Cancelar"
+        isLoading={deleteArchivoModal?.type === "comprobante" ? deletingComprobante : deletingCedula}
+        icon="danger"
+        onConfirm={() => deleteArchivoModal?.type === "comprobante" ? handleDeleteComprobante() : handleDeleteCedula()}
+        onCancel={() => setDeleteArchivoModal(null)}
       />
 
       {expandedImageUrl && (

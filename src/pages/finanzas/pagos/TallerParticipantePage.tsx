@@ -23,10 +23,13 @@ export function TallerParticipantePage() {
   const [data, setData] = useState<any>(null)
   const [modalImage, setModalImage] = useState<string | null>(null)
   const [montoPago, setMontoPago] = useState("")
+  const [montoError, setMontoError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
+  const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
   const [savingPago, setSavingPago] = useState(false)
   const comprobanteRef = useRef<HTMLInputElement>(null)
+  const previewUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -41,6 +44,9 @@ export function TallerParticipantePage() {
       }
     }
     load()
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    }
   }, [tallerId, participanteId])
 
   const recargarDatos = async () => {
@@ -51,9 +57,30 @@ export function TallerParticipantePage() {
     } catch { /* silent */ }
   }
 
+  const saldoPendiente = Number(data?.saldo || data?.saldo_pendiente || 0)
+
+  const handleMontoChange = (val: string) => {
+    setMontoPago(val)
+    setMontoError(null)
+  }
+
+  const validarMonto = (val: string): string | null => {
+    const m = parseFloat(val) || 0
+    if (val.trim() !== "" && m <= 0) return "El monto debe ser mayor a 0"
+    if (m > saldoPendiente) return `No puede exceder el saldo pendiente ($${saldoPendiente.toLocaleString()})`
+    return null
+  }
+
+  const handleMontoBlur = () => {
+    if (!montoPago.trim()) return
+    setMontoError(validarMonto(montoPago))
+  }
+
   const handleRegistrarPago = async () => {
+    const error = validarMonto(montoPago)
+    if (error) { setMontoError(error); return }
     const monto = parseFloat(montoPago) || 0
-    if (monto <= 0) { toast.error("Ingresa un monto válido"); return }
+    if (monto <= 0) { setMontoError("Ingresa un monto válido"); return }
     if (!data?.cuenta_id) { toast.error("No se encontró la cuenta del participante"); return }
     setSavingPago(true)
     try {
@@ -74,6 +101,9 @@ export function TallerParticipantePage() {
       toast.success("Pago registrado correctamente")
       setMontoPago("")
       setComprobanteFile(null)
+      setComprobantePreview(null)
+      previewUrlRef.current = null
+      if (comprobanteRef.current) comprobanteRef.current.value = ""
       await recargarDatos()
     } catch (err) {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al registrar pago")
@@ -85,7 +115,19 @@ export function TallerParticipantePage() {
     if (!file) return
     const err = validarComprobante(file)
     if (err) { toast.error(err); e.target.value = ""; return }
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    const url = URL.createObjectURL(file)
+    previewUrlRef.current = url
+    setComprobantePreview(url)
     setComprobanteFile(file)
+  }
+
+  const handleRemoveComprobante = () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    previewUrlRef.current = null
+    setComprobantePreview(null)
+    setComprobanteFile(null)
+    if (comprobanteRef.current) comprobanteRef.current.value = ""
   }
 
   const badgeEstado = (estado: string) => {
@@ -136,12 +178,12 @@ export function TallerParticipantePage() {
       
 
       <button
-        onClick={() => navigate(`/finanzas/pagos/cuentas/talleres/${tallerId}`)}
+        onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
         style={{ color: COLORS.CHARCOAL }}
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver al Taller
+        Volver
       </button>
 
       <motion.div
@@ -200,6 +242,121 @@ export function TallerParticipantePage() {
               <p className="text-lg font-black" style={{ color: (data.saldo || data.saldo_pendiente || 0) <= 0 ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)" }}>
                 {(data.saldo || data.saldo_pendiente || 0) <= 0 ? "Pagado" : "Pendiente"}
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="rounded-2xl border bg-white p-6"
+          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+        >
+          <h3 className="text-base font-black mb-6 flex items-center gap-2" style={{ color: COLORS.CHARCOAL }}>
+            <HugeiconsIcon icon={PaymentIcon} size={18} style={{ color: COLORS.ACCENT }} />
+            Registrar Nuevo Pago
+          </h3>
+
+          <div className="space-y-5 max-w-lg">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: COLORS.TEXT_MUTED }}>
+                Monto a pagar
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={montoPago}
+                  onChange={e => handleMontoChange(e.target.value)}
+                  onBlur={handleMontoBlur}
+                  onWheel={e => (e.target as HTMLElement).blur()}
+                  placeholder="0.00"
+                  disabled={savingPago}
+                  className="w-full pl-8 pr-4 py-3 border rounded-xl text-sm font-mono outline-none bg-white transition-colors"
+                  style={{
+                    borderColor: montoError ? "oklch(0.5 0.15 20)" : COLORS.BORDER_SUBTLE,
+                    MozAppearance: "textfield",
+                  }}
+                />
+              </div>
+              {montoError ? (
+                <p className="text-[10px] font-semibold mt-1 ml-1" style={{ color: "oklch(0.5 0.15 20)" }}>{montoError}</p>
+              ) : (
+                <p className="text-[10px] font-medium mt-1 ml-1" style={{ color: COLORS.TEXT_MUTED }}>
+                  Saldo pendiente: ${saldoPendiente.toLocaleString()}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: COLORS.TEXT_MUTED }}>
+                Método de pago
+              </label>
+              <select
+                value={metodoPago}
+                onChange={e => setMetodoPago(e.target.value)}
+                disabled={savingPago}
+                className="w-full px-3 py-3 border rounded-xl text-sm outline-none bg-white"
+                style={{ borderColor: COLORS.BORDER_SUBTLE }}
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia / Depósito</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider mb-1.5 block" style={{ color: COLORS.TEXT_MUTED }}>
+                Comprobante
+              </label>
+              <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleComprobanteChange} />
+              {comprobantePreview ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border overflow-hidden bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <img src={comprobantePreview} alt="Vista previa del comprobante"
+                      className="w-full object-contain max-h-[250px]" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => comprobanteRef.current?.click()}
+                      disabled={savingPago}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-100 border transition-colors"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}
+                    >
+                      <HugeiconsIcon icon={Upload05Icon} size={13} />
+                      Cambiar
+                    </button>
+                    <button
+                      onClick={handleRemoveComprobante}
+                      disabled={savingPago}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border hover:bg-red-50 transition-colors disabled:opacity-50"
+                      style={{ borderColor: "oklch(0.5 0.15 20 / 0.3)", color: "oklch(0.5 0.15 20)" }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => comprobanteRef.current?.click()}
+                  disabled={savingPago}
+                  className="w-full py-3 rounded-xl border-2 border-dashed text-xs font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
+                >
+                  <HugeiconsIcon icon={Upload05Icon} size={14} className="inline mr-1.5" />
+                  Subir comprobante
+                </button>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={handleRegistrarPago}
+                disabled={savingPago || !!montoError || !montoPago.trim()}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                {savingPago ? "Registrando..." : "Registrar Pago"}
+              </button>
             </div>
           </div>
         </div>
@@ -280,73 +437,6 @@ export function TallerParticipantePage() {
               </div>
             </div>
           )}
-        </div>
-
-        <div
-          className="rounded-2xl border bg-white p-6"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-        >
-          <h3 className="text-base font-black mb-4 flex items-center gap-2" style={{ color: COLORS.CHARCOAL }}>
-            <HugeiconsIcon icon={PaymentIcon} size={18} style={{ color: COLORS.ACCENT }} />
-            Registrar Nuevo Pago
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
-                Monto
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={montoPago}
-                  onChange={e => setMontoPago(e.target.value)}
-                  onWheel={e => (e.target as HTMLElement).blur()}
-                  placeholder="0.00"
-                  disabled={savingPago}
-                  className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none bg-white"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
-                Método de pago
-              </label>
-              <select
-                value={metodoPago}
-                onChange={e => setMetodoPago(e.target.value)}
-                disabled={savingPago}
-                className="w-full px-3 py-2.5 border rounded-xl text-sm outline-none bg-white"
-                style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia / Depósito</option>
-              </select>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
-            <input ref={comprobanteRef} type="file" accept="image/*" className="hidden" onChange={handleComprobanteChange} />
-            <button
-              onClick={() => comprobanteRef.current?.click()}
-              disabled={savingPago}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-semibold hover:bg-gray-50 transition-colors"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}
-            >
-              <HugeiconsIcon icon={Upload05Icon} size={14} />
-              {comprobanteFile ? comprobanteFile.name : "Subir comprobante"}
-            </button>
-            <button
-              onClick={handleRegistrarPago}
-              disabled={savingPago}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98]"
-              style={{ backgroundColor: COLORS.ACCENT, opacity: savingPago ? 0.6 : 1 }}
-            >
-              {savingPago ? "Registrando..." : "Registrar Pago"}
-            </button>
-          </div>
         </div>
       </motion.div>
 

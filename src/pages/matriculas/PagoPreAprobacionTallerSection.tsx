@@ -47,7 +47,6 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
         monto_pagado: montoNum,
         tipo_pago: tipoPago,
         metodo_pago: metodo,
-        fecha_pago: new Date().toISOString().split("T")[0],
       }
       await tallerService.actualizarInscripcion(inscripcionId, data as Record<string, unknown>)
       onSaved?.(data)

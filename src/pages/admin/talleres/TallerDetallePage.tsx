@@ -6,10 +6,9 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon, Edit01Icon, Delete01Icon, Download01Icon,
   UserGroupIcon, CalendarIcon, Money01Icon, CheckmarkCircle01Icon,
-  Image01Icon, Search01Icon, Download04Icon,
+  Search01Icon, Download04Icon, PaymentIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { getStorageUrl } from "@/lib/utils"
 import { tallerService, type Taller, type InscripcionTaller, type AsistenciaEstudiante } from "@/services/taller.service"
 import { generarListadoAsistenciaPDF, generarReporteAsistenciaPDF, generarListadoParticipantesPDF, type EstudianteReporte, type ParticipanteReporte } from "@/lib/generarAsistenciaPDF"
 import { ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
@@ -47,7 +46,6 @@ export function TallerDetallePage() {
   const [financieroData, setFinancieroData] = useState<any>(null)
   const [transacciones, setTransacciones] = useState<any[]>([])
   const [loadingPagos, setLoadingPagos] = useState(false)
-  const [comprobanteModalUrl, setComprobanteModalUrl] = useState<string | null>(null)
   const [detalleAsistencias, setDetalleAsistencias] = useState<Record<string, AsistenciaEstudiante[]>>({})
   const [cargandoDetalleAsistencia, setCargandoDetalleAsistencia] = useState(false)
   const [editandoSesionId, setEditandoSesionId] = useState<string | null>(null)
@@ -580,6 +578,51 @@ export function TallerDetallePage() {
   </div>
 </div>
 
+            {(financieroData?.participantes || []).filter((p: any) => Number(p.saldo_pendiente || 0) > 0).length > 0 && (
+              <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
+                <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
+                  <p className="text-xs font-semibold" style={{ color: CHARCOAL }}>Participantes con Saldo Pendiente</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b" style={{ borderColor: BORDER }}>
+                        <th className="text-left font-semibold px-5 py-3" style={{ color: TEXT_MUTED }}>Participante</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Abonado</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Saldo</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(financieroData?.participantes || []).filter((p: any) => Number(p.saldo_pendiente || 0) > 0).map((p: any) => (
+                        <tr key={p.id || p.participante_id} className="border-b" style={{ borderColor: BORDER }}>
+                          <td className="px-5 py-3 font-semibold" style={{ color: CHARCOAL }}>
+                            {p.estudiante_nombre || `${p.nombres || ""} ${p.apellidos || ""}`.trim() || "—"}
+                          </td>
+                          <td className="px-4 py-3 font-semibold" style={{ color: "oklch(0.45 0.12 140)" }}>
+                            ${Number(p.monto_abonado || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 font-semibold" style={{ color: "oklch(0.5 0.15 20)" }}>
+                            ${Number(p.saldo_pendiente || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => navigate(`/finanzas/pagos/cuentas/talleres/${id}/participante/${p.id || p.participante_id}`)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white"
+                              style={{ backgroundColor: ACCENT }}
+                            >
+                              <HugeiconsIcon icon={PaymentIcon} size={12} />
+                              Registrar Pago
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
               <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
                 <p className="text-xs font-semibold" style={{ color: CHARCOAL }}>Detalle de Pagos</p>
@@ -597,7 +640,7 @@ export function TallerDetallePage() {
                         <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Fecha</th>
                         <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Monto</th>
                         <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Método</th>
-                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Comprobante</th>
+                        <th className="text-left font-semibold px-4 py-3" style={{ color: TEXT_MUTED }}>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -605,17 +648,18 @@ export function TallerDetallePage() {
                         <tr key={t.id} className="border-b" style={{ borderColor: BORDER }}>
                           <td className="px-5 py-3 font-semibold" style={{ color: CHARCOAL }}>{t.participante_nombre}</td>
                           <td className="px-4 py-3" style={{ color: CHARCOAL }}>
-                            {t.fecha_pago ? formatFecha(t.fecha_pago.split(" ")[0]) : "—"}
+                            {t.fecha_pago ? formatFecha(t.fecha_pago) : "—"}
                           </td>
                           <td className="px-4 py-3 font-semibold" style={{ color: CHARCOAL }}>${Number(t.monto).toFixed(2)}</td>
                           <td className="px-4 py-3 capitalize" style={{ color: CHARCOAL }}>{t.metodo_pago}</td>
                           <td className="px-4 py-3">
-                            {t.comprobante_url ? (
-                              <button onClick={() => setComprobanteModalUrl(getStorageUrl(t.comprobante_url))}
-                                className="inline-flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: ACCENT }}>
-                                <HugeiconsIcon icon={Image01Icon} size={13} />Ver
-                              </button>
-                            ) : "—"}
+                            <button
+                              onClick={() => navigate(`/finanzas/pagos/historial/${t.id}`)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+                              style={{ color: ACCENT }}
+                            >
+                              Ver Detalle
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -624,20 +668,6 @@ export function TallerDetallePage() {
                 )}
               </div>
             </div>
-
-            {comprobanteModalUrl && (
-              <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
-                onClick={() => setComprobanteModalUrl(null)}>
-                <div className="relative flex items-center justify-center p-6" style={{ maxWidth: "min(90vw, 1200px)", maxHeight: "90vh" }}>
-                  <button onClick={(e) => { e.stopPropagation(); setComprobanteModalUrl(null); }}
-                    className="absolute -top-8 right-0 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors">
-                    Cerrar [X]
-                  </button>
-                  <img src={comprobanteModalUrl} alt="Comprobante"
-                    className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl" />
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -824,7 +854,7 @@ export function TallerDetallePage() {
                 <div className="p-12 text-center">
                   <p className="text-sm" style={{ color: TEXT_MUTED }}>No hay registros de asistencia</p>
                   <p className="text-xs mt-1" style={{ color: TEXT_MUTED }}>
-                    Registra la asistencia el día del evento
+                    Registra la asistencia de las sesiones del taller
                   </p>
                 </div>
               </div>
