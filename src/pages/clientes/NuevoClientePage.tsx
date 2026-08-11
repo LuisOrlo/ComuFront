@@ -4,6 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
+import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
 import { toast } from "sonner"
 
 interface FieldErrors {
@@ -258,9 +259,17 @@ export function NuevoClientePage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Ciudad</label>
-              <input value={ciudad} onChange={e => updateField("ciudad", e.target.value)} onBlur={() => blurField("ciudad")}
-                className={inputCls("ciudad")}
-                style={touched.ciudad && errors.ciudad ? undefined : { borderColor: COLORS.BORDER_SUBTLE }} />
+              <select value={ciudad} onChange={e => setCiudad(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg border text-sm font-medium outline-none focus:ring-2 bg-white"
+                style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <option value="">Seleccionar...</option>
+                {ciudad && !ECUADOR_CITIES.includes(ciudad) && (
+                  <option value={ciudad}>{ciudad}</option>
+                )}
+                {ECUADOR_CITIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">Ocupación</label>

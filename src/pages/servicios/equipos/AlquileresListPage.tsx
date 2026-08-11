@@ -28,6 +28,30 @@ const ESTADO_LABELS: Record<string, string> = {
 
 type SortField = "entrega" | "devolucion" | "precio"
 
+function SortHeader({ field, label, sortField, sortDir, onSort }: {
+  field: SortField
+  label: string
+  sortField: SortField | null
+  sortDir: "asc" | "desc"
+  onSort: (field: SortField) => void
+}) {
+  return (
+    <th
+      className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer select-none hover:opacity-70"
+      style={{ color: COLORS.CHARCOAL }}
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        <span className="inline-flex flex-col leading-none ml-0.5">
+          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sortField === field && sortDir === "asc" ? "opacity-100" : "opacity-20"} />
+          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sortField === field && sortDir === "desc" ? "opacity-100" : "opacity-20"} />
+        </span>
+      </div>
+    </th>
+  )
+}
+
 export function AlquileresListPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -160,22 +184,6 @@ export function AlquileresListPage() {
     return a.estado === "entregado" && total - abonado > 0
   }
 
-  const SortHeader = ({ field, label }: { field: SortField; label: string }) => (
-    <th
-      className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer select-none hover:opacity-70"
-      style={{ color: COLORS.CHARCOAL }}
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {label}
-        <span className="inline-flex flex-col leading-none ml-0.5">
-          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sortField === field && sortDir === "asc" ? "opacity-100" : "opacity-20"} />
-          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sortField === field && sortDir === "desc" ? "opacity-100" : "opacity-20"} />
-        </span>
-      </div>
-    </th>
-  )
-
   return (
     <div className="flex flex-col h-full bg-white">
       <header className="shrink-0 px-8 py-4 border-b bg-white sticky top-0 z-20 flex items-center gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -247,10 +255,10 @@ export function AlquileresListPage() {
                   <tr className="bg-gray-50/80">
                     <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Equipo</th>
                     <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cliente</th>
-                    <SortHeader field="entrega" label="Entrega" />
-                    <SortHeader field="devolucion" label="Devolución" />
+                    <SortHeader field="entrega" label="Entrega" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                    <SortHeader field="devolucion" label="Devolución" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Estado</th>
-                    <SortHeader field="precio" label="Precio" />
+                    <SortHeader field="precio" label="Precio" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
                   </tr>
                 </thead>

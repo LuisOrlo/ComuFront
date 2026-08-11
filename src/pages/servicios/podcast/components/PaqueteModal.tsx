@@ -21,8 +21,18 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
   const [form, setForm] = useState<Partial<PaquetePodcast>>(
     paquete ? { ...paquete } : { nombre: "", descripcion: "", precio_por_hora: 0, items: [], activo: true }
   )
+  const [precioText, setPrecioText] = useState(
+    paquete?.precio_por_hora != null ? String(paquete.precio_por_hora) : ""
+  )
   const [nuevoItemNombre, setNuevoItemNombre] = useState("")
   const [saving, setSaving] = useState(false)
+
+  const handlePrecioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    if (!/^\d*\.?\d*$/.test(raw)) return
+    setPrecioText(raw)
+    setForm({ ...form, precio_por_hora: raw === "" ? 0 : parseFloat(raw) || 0 })
+  }
 
   const addItem = () => {
     if (!nuevoItemNombre.trim()) return
@@ -40,12 +50,18 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
   const handleSave = async () => {
     try {
       if (!form.nombre?.trim()) { toast.error("El nombre del paquete es obligatorio"); return }
+      const precio = parseFloat(precioText)
+      if (precioText.trim() === "" || isNaN(precio) || precio < 0) {
+        toast.error("El precio por hora debe ser un número válido")
+        return
+      }
+      const payload = { ...form, precio_por_hora: precio }
       setSaving(true)
       if (form.id) {
-        await podcastService.updatePaquete(form.id, form)
+        await podcastService.updatePaquete(form.id, payload)
         toast.success("Paquete actualizado")
       } else {
-        await podcastService.createPaquete(form)
+        await podcastService.createPaquete(payload)
         toast.success("Paquete creado")
       }
       onSaved()
@@ -123,7 +139,7 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
                       </label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold opacity-30">$</span>
-                        <input type="number" value={form.precio_por_hora} onChange={e => setForm({ ...form, precio_por_hora: parseFloat(e.target.value) || 0 })}
+                        <input type="text" inputMode="decimal" value={precioText} onChange={handlePrecioChange}
                           className="w-full pl-8 pr-4 py-3.5 rounded-xl border-2 bg-gray-50/60 text-sm font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-500/10 transition-all"
                           style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder="0.00"
                         />

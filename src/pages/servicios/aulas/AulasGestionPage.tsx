@@ -14,6 +14,7 @@ export function AulasGestionPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [aulaForm, setAulaForm] = useState<Partial<Aula>>({ nombre: "", capacidad: 10, precio_hora: 0, caracteristicas: "" })
+  const [precioHoraText, setPrecioHoraText] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -31,23 +32,36 @@ export function AulasGestionPage() {
     load()
   }, [])
 
+  const handlePrecioHoraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    if (!/^\d*\.?\d*$/.test(raw)) return
+    setPrecioHoraText(raw)
+  }
+
   const handleSave = async () => {
     if (!aulaForm.nombre?.trim()) {
       toast.error("El nombre del aula es obligatorio")
       return
     }
+    const precio = parseFloat(precioHoraText)
+    if (precioHoraText.trim() === "" || isNaN(precio) || precio < 0) {
+      toast.error("El precio por hora debe ser un número válido")
+      return
+    }
+    const payload = { ...aulaForm, precio_hora: precio }
     setSaving(true)
     try {
       if (editingId) {
-        await aulasService.updateAula(editingId, aulaForm)
+        await aulasService.updateAula(editingId, payload)
         toast.success("Aula actualizada")
       } else {
-        await aulasService.createAula(aulaForm)
+        await aulasService.createAula(payload)
         toast.success("Aula creada")
       }
       setModalOpen(false)
       setEditingId(null)
       setAulaForm({ nombre: "", capacidad: 10, precio_hora: 0, caracteristicas: "" })
+      setPrecioHoraText("")
       load()
     } catch { toast.error("Error al guardar aula") }
     finally { setSaving(false) }
@@ -68,12 +82,14 @@ export function AulasGestionPage() {
   const openEdit = (aula: Aula) => {
     setEditingId(aula.id)
     setAulaForm({ ...aula })
+    setPrecioHoraText(aula.precio_hora != null ? String(aula.precio_hora) : "")
     setModalOpen(true)
   }
 
   const openCreate = () => {
     setEditingId(null)
     setAulaForm({ nombre: "", capacidad: 10, precio_hora: 0, caracteristicas: "" })
+    setPrecioHoraText("")
     setModalOpen(true)
   }
 
@@ -279,14 +295,13 @@ export function AulasGestionPage() {
                         <HugeiconsIcon icon={Money01Icon} size={18} />
                       </div>
                       <input
-                        type="number"
-                        value={aulaForm.precio_hora}
-                        onChange={e => setAulaForm({ ...aulaForm, precio_hora: parseFloat(e.target.value) || 0 })}
+                        type="text"
+                        inputMode="decimal"
+                        value={precioHoraText}
+                        onChange={handlePrecioHoraChange}
                         className="w-full pl-12 pr-5 py-4 rounded-2xl border bg-gray-50/50 text-sm font-semibold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500"
                         style={{ borderColor: COLORS.BORDER_SUBTLE }}
                         placeholder="0.00"
-                        min="0"
-                        step="0.01"
                       />
                     </div>
                   </div>

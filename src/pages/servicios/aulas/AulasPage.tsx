@@ -177,9 +177,7 @@ export function AulasPage() {
   }
 
   useEffect(() => {
-
     loadAulas()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const hours = Array.from({ length: 14 }, (_, i) => i + 7)
