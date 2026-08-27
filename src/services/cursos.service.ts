@@ -390,6 +390,9 @@ export const cursosService = {
     if (filters?.ciudad) {
       params.ciudad = filters.ciudad
     }
+    if (filters?.estado) {
+      params.estado = filters.estado
+    }
     if (filters?.catalogo_curso_id) {
       params.catalogo_curso_id = filters.catalogo_curso_id
     }

@@ -1,5 +1,6 @@
 import { COLORS } from "@/lib/constants"
 import { StatusBadge } from "./StatusBadge"
+import { CiudadBadge } from "./CiudadBadge"
 import type { Curso } from "@/services/cursos.service"
 
 export function CourseCard({ curso }: { curso: Curso }) {
@@ -46,7 +47,7 @@ export function CourseCard({ curso }: { curso: Curso }) {
       </div>
 
       <div className="p-4">
-        <div className="flex gap-1.5 mb-2.5">
+        <div className="flex items-center flex-wrap gap-1.5 mb-2.5">
           <span
             className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border"
             style={{
@@ -57,14 +58,7 @@ export function CourseCard({ curso }: { curso: Curso }) {
           >
             {curso.modalidad === "presencial" ? "Presencial" : "Virtual"}
           </span>
-          {curso.ciudad && (
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border"
-              style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}
-            >
-              {curso.ciudad}
-            </span>
-          )}
+          {curso.ciudad && <CiudadBadge ciudad={curso.ciudad} />}
         </div>
 
         <h3

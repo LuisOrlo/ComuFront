@@ -3,6 +3,7 @@ import { ViewIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { type CSSProperties } from "react"
 import { StatusBadge } from "./StatusBadge"
+import { CiudadBadge } from "./CiudadBadge"
 import type { Curso } from "@/services/cursos.service"
 
 export type { Curso }
@@ -52,14 +53,12 @@ export function CourseTable({ cursos, onView }: {
                   </td>
                  
                   <td className="py-3 px-4">
-                    <span className="text-sm" style={{ color: COLORS.CHARCOAL }}>
-                      {c.modalidad === "presencial" ? "Presencial" : "Virtual"}
-                    </span>
-                    {c.ciudad && (
-                      <span className="block text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>
-                        {c.ciudad}
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
+                        {c.modalidad === "presencial" ? "Presencial" : "Virtual"}
                       </span>
-                    )}
+                      {c.ciudad && <CiudadBadge ciudad={c.ciudad} />}
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-sm" style={{ color: COLORS.CHARCOAL }}>
                     {c.instructor}
