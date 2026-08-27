@@ -18,6 +18,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
 import { CursoEstudiantesTable } from "./CursoEstudiantesTable"
@@ -195,8 +196,8 @@ export function CursoDetailPage() {
               {/* Stats row */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 <StatCard icon={<HugeiconsIcon icon={CapIcon} size={18} />} label="Capacidad" value={`${curso.estudiantes}/${curso.capacidad}`} subtitle={progreso > 0 ? `${progreso}% ocupado` : undefined} />
-                <StatCard icon={<HugeiconsIcon icon={CalendarIcon} size={18} />} label="Inicio" value={curso.fechaInicio ? new Date(curso.fechaInicio + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
-                <StatCard icon={<HugeiconsIcon icon={CalendarIcon} size={18} />} label="Fin" value={curso.fechaFin ? new Date(curso.fechaFin + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
+                <StatCard icon={<HugeiconsIcon icon={CalendarIcon} size={18} />} label="Inicio" value={curso.fechaInicio ? parseLocalDate(curso.fechaInicio).toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
+                <StatCard icon={<HugeiconsIcon icon={CalendarIcon} size={18} />} label="Fin" value={curso.fechaFin ? parseLocalDate(curso.fechaFin).toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "—"} />
                 <StatCard icon={<HugeiconsIcon icon={ClockIcon} size={18} />} label="Horario" value={curso.horaInicio && curso.horaFin ? `${curso.horaInicio} - ${curso.horaFin}` : "—"} />
               </div>
 
@@ -320,13 +321,13 @@ export function CursoDetailPage() {
                            <div>
                              <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Fecha inicio</span>
                              <p className="text-sm font-medium mt-1" style={{ color: mod.fecha_inicio ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
-                               {mod.fecha_inicio ? new Date(mod.fecha_inicio + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "Sin definir"}
+                               {mod.fecha_inicio ? parseLocalDate(mod.fecha_inicio).toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "Sin definir"}
                              </p>
                            </div>
                            <div>
                              <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Fecha fin</span>
                              <p className="text-sm font-medium mt-1" style={{ color: mod.fecha_fin ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
-                               {mod.fecha_fin ? new Date(mod.fecha_fin + "T12:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "Sin definir"}
+                               {mod.fecha_fin ? parseLocalDate(mod.fecha_fin).toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" }) : "Sin definir"}
                              </p>
                            </div>
                            <div>
@@ -433,8 +434,8 @@ function calcularEstadoModulo(fechaInicio?: string, fechaFin?: string): string {
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
 
-  const inicio = new Date(fechaInicio + "T00:00:00")
-  const fin = new Date(fechaFin + "T23:59:59")
+  const inicio = parseLocalDate(fechaInicio)
+  const fin = parseLocalDate(fechaFin)
 
   if (hoy < inicio) return "pendiente"
   if (hoy > fin) return "completado"

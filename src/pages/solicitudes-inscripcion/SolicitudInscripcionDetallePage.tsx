@@ -9,6 +9,7 @@ import {
   Download02Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import { 
   solicitudesInscripcionService, 
   type SolicitudInscripcionDetallada 
@@ -277,13 +278,13 @@ export function SolicitudInscripcionDetallePage() {
                     <div>
                       <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Inicio</p>
                       <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
-                        {new Date(solicitud.cursoAbierto?.fecha_inicio || "").toLocaleDateString()}
+                        {parseLocalDate(solicitud.cursoAbierto?.fecha_inicio || "").toLocaleDateString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Fin Estimado</p>
                       <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
-                        {new Date(solicitud.cursoAbierto?.fecha_fin_estimada || "").toLocaleDateString()}
+                        {parseLocalDate(solicitud.cursoAbierto?.fecha_fin_estimada || "").toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -318,7 +319,7 @@ export function SolicitudInscripcionDetallePage() {
                     <div>
                       <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Fecha Pago</p>
                       <p className="text-sm mt-1" style={{ color: COLORS.CHARCOAL }}>
-                        {solicitud.fecha_pago_declarada ? new Date(solicitud.fecha_pago_declarada).toLocaleDateString() : "N/A"}
+                        {solicitud.fecha_pago_declarada ? parseLocalDate(solicitud.fecha_pago_declarada).toLocaleDateString() : "N/A"}
                       </p>
                     </div>
                   </div>

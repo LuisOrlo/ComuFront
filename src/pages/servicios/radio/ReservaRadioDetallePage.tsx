@@ -8,6 +8,7 @@ import {
   UserGroupIcon, Edit01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { radioService, type ReservaRadio } from "@/services/radio.service"
 import { toast } from "sonner"
@@ -26,7 +27,7 @@ const ESTADO_LABELS: Record<string, string> = {
 
 function formatFechaLarga(f?: string) {
   if (!f) return "—"
-  return new Date(f).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+  return parseLocalDate(f).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
 }
 
 export function ReservaRadioDetallePage() {

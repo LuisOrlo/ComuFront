@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Search, Plus, Trash2 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, MapPinIcon, Cancel01Icon, CheckmarkCircle01Icon, Loading02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import { ValidatedInput } from "@/components/form"
 import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services/cursos.service"
 import { iconMap } from "@/pages/catalogos/components/catalog-icons"
@@ -111,8 +112,8 @@ export function CursoFormPage() {
 
   const calcularFechasModulos = (numModulos: number, fechaInicio: string, fechaFin: string) => {
     if (!fechaInicio || !fechaFin || numModulos === 0) return []
-    const inicio = new Date(fechaInicio)
-    const fin = new Date(fechaFin)
+    const inicio = parseLocalDate(fechaInicio)
+    const fin = parseLocalDate(fechaFin)
     const totalDias = Math.floor((fin.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24))
     const totalSemanas = Math.ceil(totalDias / 7)
     const semanasModulo = Math.floor(totalSemanas / numModulos)
@@ -247,14 +248,14 @@ export function CursoFormPage() {
       for (let j = moduloIndex + 1; j < updated.length; j++) {
         const prevFechaFin = updated[j - 1].fecha_fin
         if (prevFechaFin) {
-          const nextStart = new Date(prevFechaFin)
+          const nextStart = parseLocalDate(prevFechaFin)
           nextStart.setDate(nextStart.getDate() + 1)
           const nextStartStr = nextStart.toISOString().split('T')[0]
           if (j === updated.length - 1) {
             updated[j] = { ...updated[j], fecha_inicio: nextStartStr, fecha_fin: prev.fecha_fin }
           } else {
-            const originalInicio = new Date(updated[j].fecha_inicio)
-            const originalFin = new Date(updated[j].fecha_fin)
+            const originalInicio = parseLocalDate(updated[j].fecha_inicio)
+            const originalFin = parseLocalDate(updated[j].fecha_fin)
             const duracionOriginal = !isNaN(originalInicio.getTime()) && !isNaN(originalFin.getTime())
               ? Math.max(1, Math.ceil((originalFin.getTime() - originalInicio.getTime()) / (1000 * 60 * 60 * 24)) + 1)
               : 7
@@ -305,7 +306,7 @@ export function CursoFormPage() {
       if (!form.nombre_instancia.trim()) newErrors.nombre_instancia = "El nombre es obligatorio"
       if (!form.fecha_inicio) newErrors.fecha_inicio = "La fecha de inicio es obligatoria"
       if (!form.fecha_fin) newErrors.fecha_fin = "La fecha de fin es obligatoria"
-      if (form.fecha_inicio && form.fecha_fin && new Date(form.fecha_fin) <= new Date(form.fecha_inicio)) {
+      if (form.fecha_inicio && form.fecha_fin && parseLocalDate(form.fecha_fin) <= parseLocalDate(form.fecha_inicio)) {
         newErrors.fecha_fin = "La fecha de fin debe ser posterior a la de inicio"
       }
       if (!form.hora_inicio) newErrors.hora_inicio = "La hora de inicio es obligatoria"
@@ -787,7 +788,7 @@ export function CursoFormPage() {
                             className={inputC} style={{ ...borderS, borderColor: BORDER }} />
                         </div>
                         <div className="mt-3 p-2 rounded text-xs" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 5%, white)`, color: TEXT_MUTED }}>
-                          Duración: {mod.fecha_inicio && mod.fecha_fin ? Math.ceil((new Date(mod.fecha_fin).getTime() - new Date(mod.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24) + 1) : "?"} días
+                          Duración: {mod.fecha_inicio && mod.fecha_fin ? Math.ceil((parseLocalDate(mod.fecha_fin).getTime() - parseLocalDate(mod.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24) + 1) : "?"} días
                           {i === form.modulos.length - 1 && <span className="ml-2"> · Anclado a fin del curso: {form.fecha_fin}</span>}
                         </div>
                       </div>

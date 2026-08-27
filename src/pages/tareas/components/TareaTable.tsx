@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon, Delete01Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import { tareasService, type TareaStaff } from "@/services/tareas.service"
 import { toast } from "sonner"
 
@@ -128,7 +129,7 @@ function StatusBadge({ estado, tareaId, onTareaUpdate }: { estado: string; tarea
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "—"
-  const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T12:00:00")
+  const d = dateStr.includes("T") ? new Date(dateStr) : parseLocalDate(dateStr)
   if (isNaN(d.getTime())) return "—"
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })
 }

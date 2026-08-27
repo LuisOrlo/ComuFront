@@ -5,9 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function parseLocalDate(fecha: string): Date | null {
+export function parseLocalDate(fecha?: string | null): Date {
+  if (!fecha) return new Date(NaN)
   const parts = fecha.slice(0, 10).split("-").map(Number)
-  if (parts.length < 3 || parts.some((n) => isNaN(n))) return null
+  if (parts.length < 3 || parts.some((n) => isNaN(n))) return new Date(NaN)
   const [y, m, d] = parts
   return new Date(y, m - 1, d)
 }

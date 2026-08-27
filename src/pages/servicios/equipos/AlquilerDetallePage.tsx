@@ -8,6 +8,7 @@ import {
   Mail01Icon, CallIcon, IdentificationIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { equiposService, type AlquilerEquipo } from "@/services/equipos.service"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
@@ -27,7 +28,7 @@ const ESTADO_LABELS: Record<string, string> = {
 
 function formatFechaLarga(f?: string) {
   if (!f) return "—"
-  return new Date(f).toLocaleDateString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+  return parseLocalDate(f).toLocaleDateString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
 }
 
 export function AlquilerDetallePage() {

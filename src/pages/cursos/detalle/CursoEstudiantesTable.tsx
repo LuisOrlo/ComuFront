@@ -19,6 +19,7 @@ import {
   ArrowLeft01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { parseLocalDate } from "@/lib/utils"
 import type { MatriculaDetallada } from "@/services/cursos.service"
 
 interface Props {
@@ -32,7 +33,7 @@ const ACCENT = COLORS.ACCENT
 
 function formatDate(d?: string) {
   if (!d) return "—"
-  return new Date(d).toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" })
+  return parseLocalDate(d).toLocaleDateString("es-EC", { day: "2-digit", month: "short", year: "numeric" })
 }
 
 function getStudentName(row: MatriculaDetallada) {
