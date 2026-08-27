@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from "react"
 import axios from "axios"
-import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  Edit01Icon,
-} from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
 import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
@@ -136,24 +132,6 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           motivo: actual?.motivo ?? "",
         },
       }
-    })
-  }
-
-  const confirmarAjuste = (moduloId: string) => {
-    setAjustes(prev => {
-      const a = prev[moduloId]
-      if (!a) return prev
-      return { ...prev, [moduloId]: { ...a, expandido: false } }
-    })
-    setMontos(prev => {
-      const mod = modulos.find((m: any) => m.id === moduloId)
-      const a = ajustes[moduloId]
-      const nuevoPrecio = a ? parseFloat(a.nuevoPrecio || "0") : getPrecioEfectivo(mod)
-      const montoActual = parseFloat(prev[moduloId] || "0")
-      if (montoActual > nuevoPrecio && nuevoPrecio > 0) {
-        return { ...prev, [moduloId]: String(nuevoPrecio) }
-      }
-      return prev
     })
   }
 
