@@ -67,14 +67,10 @@ export function TallerPagoTab({ selected, yaProcesada, editField, editVal,
             editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal}
             onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit}
             inputType="date" validator={() => null} />
-          <div className="flex items-center justify-between text-sm">
-            <span style={{ color: COLORS.TEXT_MUTED }}>Monto declarado</span>
-            {monto > 0 ? (
-              <span className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>${monto.toLocaleString()}</span>
-            ) : (
-              <span className="italic text-sm opacity-50" style={{ color: COLORS.TEXT_MUTED }}>No especificado</span>
-            )}
-          </div>
+          <EF icon={PaymentIcon} label="Monto pagado" field="monto_pagado" data={selected}
+            editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal}
+            onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit}
+            inputType="number" validator={() => null} />
         </SubCategory>
 
         <div className="space-y-2">
@@ -143,13 +139,21 @@ export function TallerPagoTab({ selected, yaProcesada, editField, editVal,
           <div className="p-4 rounded-xl border space-y-3 bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pago del Taller</span>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full border" style={{
-                backgroundColor: monto >= precioBase ? "oklch(0.55 0.15 150 / 0.08)" : "oklch(0.65 0.15 75 / 0.08)",
-                color: monto >= precioBase ? "oklch(0.40 0.16 150)" : "oklch(0.40 0.16 75)",
-                borderColor: monto >= precioBase ? "oklch(0.55 0.15 150 / 0.2)" : "oklch(0.65 0.15 75 / 0.2)"
-              }}>
-                {monto >= precioBase ? "Taller pagado completo" : "Pago parcial"}
-              </span>
+              <div className="flex items-center gap-3">
+                <button onClick={() => startEdit("monto_pagado", String(monto))}
+                  className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border hover:bg-gray-100 transition-all shadow-sm"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
+                  <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
+                  <span>Editar Pago</span>
+                </button>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full border" style={{
+                  backgroundColor: monto >= precioBase ? "oklch(0.55 0.15 150 / 0.08)" : "oklch(0.65 0.15 75 / 0.08)",
+                  color: monto >= precioBase ? "oklch(0.40 0.16 150)" : "oklch(0.40 0.16 75)",
+                  borderColor: monto >= precioBase ? "oklch(0.55 0.15 150 / 0.2)" : "oklch(0.65 0.15 75 / 0.2)"
+                }}>
+                  {monto >= precioBase ? "Taller pagado completo" : "Pago parcial"}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 text-[10px] font-bold uppercase tracking-wider pb-2 border-b" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>

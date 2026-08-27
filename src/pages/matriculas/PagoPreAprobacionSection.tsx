@@ -382,10 +382,19 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         </div>
 
         {incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 && (
-          <div className="flex items-center justify-between text-sm pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <span className="font-medium" style={{ color: COLORS.TEXT_MUTED }}>Inscripción / Matrícula</span>
-            <span className="font-bold text-base font-mono" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
-          </div>
+          <>
+            <div className="flex items-center justify-between text-sm pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <span className="font-medium" style={{ color: COLORS.TEXT_MUTED }}>Inscripción / Matrícula</span>
+              <span className="font-bold text-base font-mono" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-sm pt-2 border-t font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <span style={{ color: COLORS.CHARCOAL }}>Total Valor Solicitud (Curso + Inscripción)</span>
+              <span className="font-extrabold text-base font-mono" style={{ color: COLORS.ACCENT }}>
+                ${(totalPrecio + (parseFloat(precioInscripcionManual) || 0)).toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </>
         )}
 
         <div className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm" style={{ backgroundColor: "oklch(0.55 0.15 150 / 0.08)", borderColor: "oklch(0.55 0.15 150 / 0.25)" }}>
