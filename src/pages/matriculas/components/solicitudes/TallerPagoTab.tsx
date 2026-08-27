@@ -139,16 +139,20 @@ export function TallerPagoTab({ selected, yaProcesada, editField, editVal,
           </div>
         )}
 
-        {yaProcesada && monto > 0 && (
-          <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pagos</span>
-              <span className="text-xs font-bold" style={{ color: COLORS.ACCENT }}>
-                {monto >= precioBase ? "1/1 pagado" : "0/1 pagado"}
+        {yaProcesada && (
+          <div className="p-4 rounded-xl border space-y-3 bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pago del Taller</span>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full border" style={{
+                backgroundColor: monto >= precioBase ? "oklch(0.55 0.15 150 / 0.08)" : "oklch(0.65 0.15 75 / 0.08)",
+                color: monto >= precioBase ? "oklch(0.40 0.16 150)" : "oklch(0.40 0.16 75)",
+                borderColor: monto >= precioBase ? "oklch(0.55 0.15 150 / 0.2)" : "oklch(0.65 0.15 75 / 0.2)"
+              }}>
+                {monto >= precioBase ? "Taller pagado completo" : "Pago parcial"}
               </span>
             </div>
 
-            <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 text-[10px] font-bold uppercase tracking-wider pb-1 border-b" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 text-[10px] font-bold uppercase tracking-wider pb-2 border-b" style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
               <span>Concepto</span>
               <span className="text-right">Precio</span>
               <span className="text-right">Pagado</span>
@@ -156,29 +160,36 @@ export function TallerPagoTab({ selected, yaProcesada, editField, editVal,
               <span className="text-right">Estado</span>
             </div>
 
-            <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 items-center text-sm py-1">
-              <span className="truncate font-medium" style={{ color: COLORS.CHARCOAL }}>{getTallerNombre()}</span>
-              <span className="text-right" style={{ color: COLORS.CHARCOAL }}>${precioBase.toLocaleString()}</span>
+            <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 items-center text-sm py-1.5 font-mono">
+              <span className="truncate font-medium font-sans" style={{ color: COLORS.CHARCOAL }}>{getTallerNombre()}</span>
+              <span className="text-right" style={{ color: COLORS.CHARCOAL }}>${precioBase.toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
               <div className="flex items-center gap-0.5 justify-end">
                 <span className="text-right font-medium" style={{ color: monto > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
-                  ${monto.toLocaleString()}
+                  ${monto.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <span className="text-right font-medium" style={{ color: precioBase - monto > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
-                {precioBase - monto > 0 ? `$${(precioBase - monto).toLocaleString()}` : "—"}
+                {precioBase - monto > 0 ? `$${(precioBase - monto).toLocaleString("es-EC", { minimumFractionDigits: 2 })}` : "—"}
               </span>
-              <div className="flex justify-end">
-                <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
+              <div className="flex justify-end font-sans">
+                <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full transition-colors",
                   monto >= precioBase ? "bg-green-100 text-green-700" :
                   monto > 0 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
                 )}>{monto >= precioBase ? "Pagado" : monto > 0 ? "Parcial" : "Pendiente"}</span>
               </div>
             </div>
 
-            <div className="border-t pt-2 flex justify-between text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <span style={{ color: COLORS.CHARCOAL }}>Total abonado</span>
-              <span style={{ color: "oklch(0.55 0.15 150)" }}>
-                ${monto.toLocaleString()} de ${precioBase.toLocaleString()}
+            <div className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm" style={{ backgroundColor: "oklch(0.55 0.15 150 / 0.08)", borderColor: "oklch(0.55 0.15 150 / 0.25)" }}>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider block" style={{ color: "oklch(0.40 0.16 150)" }}>
+                  Total Ingresado
+                </span>
+                <span className="text-xs font-medium opacity-80 block mt-0.5" style={{ color: "oklch(0.35 0.14 150)" }}>
+                  {monto >= precioBase ? "Cobro completo del taller" : `Cobro parcial · Saldo pendiente $${(precioBase - monto).toFixed(2)}`}
+                </span>
+              </div>
+              <span className="text-xl font-black font-mono" style={{ color: "oklch(0.35 0.18 150)" }}>
+                ${monto.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>
