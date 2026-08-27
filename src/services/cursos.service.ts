@@ -771,7 +771,10 @@ export const cursosService = {
     return response.data
   },
 
-  async actualizarLineasPago(id: string, lineas: { id: string; monto_abonado: number }[]): Promise<Record<string, unknown>> {
+  async actualizarLineasPago(
+    id: string,
+    lineas: { id: string; monto_abonado: number; monto_ajustado?: number; motivo_ajuste?: string }[]
+  ): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-lineas-pago`, { lineas })
     return response.data
   },

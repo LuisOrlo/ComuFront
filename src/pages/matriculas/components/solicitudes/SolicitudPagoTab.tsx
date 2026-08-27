@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PaymentIcon, CalendarIcon, Upload05Icon, Image01Icon, PencilEdit01Icon, CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { Section, SubCategory, EF } from "../../AprobacionHelpers"
 import { fixImageUrl } from "../../AprobacionUtils"
 import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "../../PagoPreAprobacionSection"
+import { AjustePrecioPanel } from "./AjustePrecioPanel"
 
 interface SolicitudPagoTabProps {
   selected: any
@@ -34,9 +35,12 @@ interface SolicitudPagoTabProps {
   setSelected: (updater: (prev: any) => any) => void
   editandoMontos: boolean
   editMontosValues: Record<string, string>
+  editPreciosValues?: Record<string, string>
+  editMotivosValues?: Record<string, string>
   onStartEditMontos: () => void
   onCancelMontos: () => void
   onEditMontoChange: (lineaId: string, val: string) => void
+  onEditPrecioChange?: (lineaId: string, nuevoPrecio: string, motivo: string) => void
   onSaveMontos: () => void
   savingMontos: boolean
 }
@@ -47,8 +51,11 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
     expandedComprobante, setExpandedComprobante, setDeleteArchivoModal,
     deletingComprobante, setExpandedImageUrl, pagoRef, getCursoNombre,
     setMontoValido, setTotalPrecioModulos, handleApprove, setSelected,
-    editandoMontos, editMontosValues, onStartEditMontos, onCancelMontos,
-    onEditMontoChange, onSaveMontos, savingMontos } = props
+    editandoMontos, editMontosValues, editPreciosValues = {}, editMotivosValues = {},
+    onStartEditMontos, onCancelMontos,
+    onEditMontoChange, onEditPrecioChange, onSaveMontos, savingMontos } = props
+
+  const [expandedAjustes, setExpandedAjustes] = useState<Record<string, boolean>>({})
 
   return (
     <Section title="Pago" icon={PaymentIcon}>
@@ -199,7 +206,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
 
             <div className={cn(
               "grid gap-3 text-[10px] font-bold uppercase tracking-wider pb-2 border-b",
-              editandoMontos ? "grid-cols-[1.5fr_0.8fr_1.3fr_0.8fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]"
+              editandoMontos ? "grid-cols-[1.2fr_1.3fr_1.1fr_0.7fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]"
             )} style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
               <span>Concepto</span>
               <span className="text-right">Precio</span>
@@ -210,9 +217,15 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
 
             {lineas.map((lp) => {
               const editVal = editMontosValues[lp.id]
+              const editPrecioVal = editPreciosValues[lp.id]
               const abonadoLive = editandoMontos ? (parseFloat(editVal ?? String(lp.monto_abonado)) || 0) : lp.monto_abonado
-              const precioLive = lp.monto_ajustado || 0
-              const changed = editandoMontos && editVal !== undefined && parseFloat(editVal) !== lp.monto_abonado
+              const precioOriginal = (lp as any).monto_original || lp.monto_ajustado || 0
+              const precioLive = editandoMontos && editPrecioVal !== undefined ? (parseFloat(editPrecioVal) || 0) : lp.monto_ajustado
+
+              const changed = editandoMontos && (
+                (editVal !== undefined && parseFloat(editVal) !== lp.monto_abonado) ||
+                (editPrecioVal !== undefined && Math.abs(parseFloat(editPrecioVal) - lp.monto_ajustado) > 0.001)
+              )
               const saldoLive = editandoMontos ? (precioLive - abonadoLive) : 0
               const saldoSaved = (lp.monto_ajustado || 0) - (lp.monto_abonado || 0)
 
@@ -230,15 +243,39 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
 
               return (
                 <div key={lp.id} className={cn(
-                  "grid gap-3 items-center text-sm py-1.5 transition-colors",
-                  editandoMontos ? "grid-cols-[1.5fr_0.8fr_1.3fr_0.8fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]",
+                  "grid gap-3 items-center text-sm py-2 transition-colors",
+                  editandoMontos ? "grid-cols-[1.2fr_1.3fr_1.1fr_0.7fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]",
                   changed && "border-l-2 pl-2 -ml-[10px] rounded"
                 )} style={changed ? {
                   borderLeftColor: COLORS.ACCENT,
                   backgroundColor: "oklch(0.65 0.15 45 / 0.04)",
                 } : undefined}>
                   <span className="truncate font-medium self-center" style={{ color: COLORS.CHARCOAL }}>{lp.nombre}</span>
-                  <span className="text-right font-mono self-center" style={{ color: COLORS.CHARCOAL }}>${lp.monto_ajustado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
+
+                  {editandoMontos ? (
+                    <div className="flex justify-end self-center">
+                      <AjustePrecioPanel
+                        precioOriginal={precioOriginal}
+                        precioActual={precioLive}
+                        motivoActual={editMotivosValues[lp.id] ?? ""}
+                        expandido={Boolean(expandedAjustes[lp.id])}
+                        onConfirmar={(nuevoPrecio, motivo) => {
+                          onEditPrecioChange?.(lp.id, String(nuevoPrecio), motivo)
+                          setExpandedAjustes(prev => ({ ...prev, [lp.id]: false }))
+                        }}
+                        onCancelar={() => {
+                          setExpandedAjustes(prev => ({ ...prev, [lp.id]: false }))
+                        }}
+                        onToggleExpandir={() => {
+                          setExpandedAjustes(prev => ({ ...prev, [lp.id]: !prev[lp.id] }))
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-right font-mono self-center" style={{ color: COLORS.CHARCOAL }}>
+                      ${lp.monto_ajustado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
 
                   {editandoMontos ? (
                     <div className="flex flex-col gap-0.5 items-end">

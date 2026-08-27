@@ -91,6 +91,8 @@ export function AprobacionSolicitudPage() {
 
   const [editandoMontos, setEditandoMontos] = useState(false)
   const [editMontosValues, setEditMontosValues] = useState<Record<string, string>>({})
+  const [editPreciosValues, setEditPreciosValues] = useState<Record<string, string>>({})
+  const [editMotivosValues, setEditMotivosValues] = useState<Record<string, string>>({})
   const [savingMontos, setSavingMontos] = useState(false)
 
   const [modalReconciliacionOpen, setModalReconciliacionOpen] = useState(false)
@@ -374,19 +376,28 @@ export function AprobacionSolicitudPage() {
   }
 
   const startEditMontos = () => {
-    const values: Record<string, string> = {}
+    const montosValues: Record<string, string> = {}
+    const preciosValues: Record<string, string> = {}
+    const motivosValues: Record<string, string> = {}
     selected.lineas_pago?.modulos?.forEach((lp: any) => {
-      values[lp.id] = String(lp.monto_abonado)
+      montosValues[lp.id] = String(lp.monto_abonado)
+      preciosValues[lp.id] = String(lp.monto_ajustado)
     })
     if (selected.lineas_pago?.inscripcion) {
-      values[selected.lineas_pago.inscripcion.id] = String(selected.lineas_pago.inscripcion.monto_abonado)
+      const ins = selected.lineas_pago.inscripcion
+      montosValues[ins.id] = String(ins.monto_abonado)
+      preciosValues[ins.id] = String(ins.monto_ajustado)
     }
-    setEditMontosValues(values)
+    setEditMontosValues(montosValues)
+    setEditPreciosValues(preciosValues)
+    setEditMotivosValues(motivosValues)
     setEditandoMontos(true)
   }
 
   const cancelEditMontos = () => {
     setEditMontosValues({})
+    setEditPreciosValues({})
+    setEditMotivosValues({})
     setEditandoMontos(false)
   }
 
@@ -394,21 +405,51 @@ export function AprobacionSolicitudPage() {
     setEditMontosValues(prev => ({ ...prev, [lineaId]: val }))
   }
 
+  const editPrecioChange = (lineaId: string, nuevoPrecio: string, motivo: string) => {
+    setEditPreciosValues(prev => ({ ...prev, [lineaId]: nuevoPrecio }))
+    setEditMotivosValues(prev => ({ ...prev, [lineaId]: motivo }))
+
+    // Si el monto abonado actual excede el nuevo precio, ajustarlo automáticamente
+    const precioNum = parseFloat(nuevoPrecio) || 0
+    setEditMontosValues(prev => {
+      const abonadoActual = parseFloat(prev[lineaId] || "0")
+      if (abonadoActual > precioNum && precioNum > 0) {
+        return { ...prev, [lineaId]: String(precioNum) }
+      }
+      return prev
+    })
+  }
+
   const saveEditMontos = async () => {
     if (!id) return
     setSavingMontos(true)
     try {
-      const originalValues: Record<string, number> = {}
+      const originalValues: Record<string, { abonado: number; precio: number }> = {}
       selected.lineas_pago?.modulos?.forEach((lp: any) => {
-        originalValues[lp.id] = lp.monto_abonado
+        originalValues[lp.id] = { abonado: lp.monto_abonado, precio: lp.monto_ajustado }
       })
       if (selected.lineas_pago?.inscripcion) {
-        originalValues[selected.lineas_pago.inscripcion.id] = selected.lineas_pago.inscripcion.monto_abonado
+        const ins = selected.lineas_pago.inscripcion
+        originalValues[ins.id] = { abonado: ins.monto_abonado, precio: ins.monto_ajustado }
       }
 
-      const changedLines = Object.entries(editMontosValues)
-        .filter(([lineaId, val]) => parseFloat(val) !== originalValues[lineaId])
-        .map(([lineaId, val]) => ({ id: lineaId, monto_abonado: parseFloat(val) || 0 }))
+      const allIds = Array.from(new Set([...Object.keys(editMontosValues), ...Object.keys(editPreciosValues)]))
+      const changedLines = allIds
+        .filter(lineaId => {
+          const orig = originalValues[lineaId] || { abonado: 0, precio: 0 }
+          const curAbonado = parseFloat(editMontosValues[lineaId] ?? String(orig.abonado)) || 0
+          const curPrecio = parseFloat(editPreciosValues[lineaId] ?? String(orig.precio)) || 0
+          return Math.abs(curAbonado - orig.abonado) > 0.001 || Math.abs(curPrecio - orig.precio) > 0.001
+        })
+        .map(lineaId => {
+          const orig = originalValues[lineaId] || { abonado: 0, precio: 0 }
+          return {
+            id: lineaId,
+            monto_abonado: parseFloat(editMontosValues[lineaId] ?? String(orig.abonado)) || 0,
+            monto_ajustado: editPreciosValues[lineaId] !== undefined ? (parseFloat(editPreciosValues[lineaId]) || 0) : orig.precio,
+            motivo_ajuste: editMotivosValues[lineaId] || undefined,
+          }
+        })
 
       if (changedLines.length === 0) {
         toast.info("No hay cambios que guardar")
@@ -417,7 +458,7 @@ export function AprobacionSolicitudPage() {
       }
 
       await cursosService.actualizarLineasPago(id, changedLines)
-      toast.success(`${changedLines.length} monto${changedLines.length > 1 ? "s" : ""} actualizado${changedLines.length > 1 ? "s" : ""} correctamente`)
+      toast.success(`${changedLines.length} línea${changedLines.length > 1 ? "s" : ""} de pago actualizada${changedLines.length > 1 ? "s" : ""} correctamente`)
       cancelEditMontos()
       fetchDetail(id)
     } catch (err) {
@@ -569,8 +610,10 @@ export function AprobacionSolicitudPage() {
                   setMontoValido={setMontoValido}
                   setTotalPrecioModulos={setTotalPrecioModulos} handleApprove={handleApprove} setSelected={setSelected}
                   editandoMontos={editandoMontos} editMontosValues={editMontosValues}
+                  editPreciosValues={editPreciosValues} editMotivosValues={editMotivosValues}
                   onStartEditMontos={startEditMontos} onCancelMontos={cancelEditMontos}
-                  onEditMontoChange={editMontoChange} onSaveMontos={saveEditMontos}
+                  onEditMontoChange={editMontoChange} onEditPrecioChange={editPrecioChange}
+                  onSaveMontos={saveEditMontos}
                   savingMontos={savingMontos} />
               )}
               {activeTab === "documento" && (
