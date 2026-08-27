@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react"
-import { instructorService, type InstructorCurso, type EstudianteCurso } from "@/services/instructor.service"
+import { useEffect, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { instructorService, type InstructorCurso, type EstudianteCurso, type CursoDashboard } from "@/services/instructor.service"
 import { toast } from "sonner"
 
 export interface ClaseConCurso {
@@ -94,81 +95,56 @@ function cursoTieneClaseEnFecha(curso: InstructorCurso, dateStr: string): boolea
 }
 
 export function useInstructorDashboardData() {
-  const [cursos, setCursos] = useState<InstructorCurso[]>([])
-  const [estudiantesMap, setEstudiantesMap] = useState<Record<string, EstudianteCurso[]>>({})
-  const [clasesList, setClasesList] = useState<ClaseConCurso[]>([])
-  const [loading, setLoading] = useState(true)
+  const dashboardQuery = useQuery<CursoDashboard[]>({
+    queryKey: ["instructor", "dashboard"],
+    queryFn: instructorService.getDashboard,
+    staleTime: 5 * 60 * 1000,
+  })
 
-  useEffect(() => {
-    let cancelled = false
+  const cursos = useMemo(() => dashboardQuery.data ?? [], [dashboardQuery.data])
 
-    async function load() {
-      try {
-        const misCursos = await instructorService.getMisCursos()
-        if (cancelled) return
-        setCursos(misCursos)
+  const activos = useMemo(
+    () => cursos.filter(
+      (c) => c.estado === "activo" || c.estado === "en_progreso" || c.estado === "pendiente"
+    ),
+    [cursos]
+  )
 
-        const activos = misCursos.filter(
-          (c) => c.estado === "activo" || c.estado === "en_progreso" || c.estado === "pendiente"
-        )
+  const estudiantesMap = useMemo(() => {
+    const map: Record<string, EstudianteCurso[]> = {}
+    for (const c of cursos) {
+      map[c.id] = c.estudiantes || []
+    }
+    return map
+  }, [cursos])
 
-        const [estudiantesResults, clasesResults] = await Promise.all([
-          Promise.all(
-            misCursos.map(async (c) => {
-              const est = await instructorService.getEstudiantesCurso(c.id)
-              return { cursoId: c.id, estudiantes: est }
-            })
-          ),
-          Promise.all(
-            activos.flatMap((c) =>
-              (c.modulos || []).map(async (m) => {
-                try {
-                  const clases = await instructorService.getClasesModulo(m.id)
-                  return { cursoId: c.id, moduloNombre: m.nombre_modulo, clases }
-                } catch {
-                  return { cursoId: c.id, moduloNombre: m.nombre_modulo, clases: [] }
-                }
-              })
-            )
-          ),
-        ])
-
-        if (cancelled) return
-
-        const eMap: Record<string, EstudianteCurso[]> = {}
-        for (const r of estudiantesResults) {
-          eMap[r.cursoId] = r.estudiantes
-        }
-        setEstudiantesMap(eMap)
-
-        const allClases: ClaseConCurso[] = []
-        for (const r of clasesResults) {
-          const curso = misCursos.find((c) => c.id === r.cursoId)
-          const cursoNombre = curso?.nombre_instancia || curso?.catalogo?.nombre || "Curso"
-          for (const cl of r.clases) {
-            allClases.push({
-              id: cl.id,
-              cursoId: r.cursoId,
-              cursoNombre,
-              moduloNombre: r.moduloNombre,
-              fecha: cl.fecha_clase.split("T")[0],
-              horaInicio: cl.hora_inicio?.substring(0, 5) || "",
-              horaFin: cl.hora_fin?.substring(0, 5) || "",
-              asistenciaRegistrada: cl.asistencia_registrada,
-            })
-          }
-        }
-        setClasesList(allClases)
-      } catch {
-        toast.error("Error al cargar datos del dashboard")
-      } finally {
-        if (!cancelled) setLoading(false)
+  const clasesList = useMemo<ClaseConCurso[]>(() => {
+    const all: ClaseConCurso[] = []
+    for (const c of cursos) {
+      const cursoNombre = c.nombre_instancia || c.catalogo?.nombre || "Curso"
+      for (const cl of c.clases || []) {
+        all.push({
+          id: cl.id,
+          cursoId: c.id,
+          cursoNombre,
+          moduloNombre: cl.modulo_nombre,
+          fecha: (cl.fecha_clase || "").split("T")[0],
+          horaInicio: cl.hora_inicio?.substring(0, 5) || "",
+          horaFin: cl.hora_fin?.substring(0, 5) || "",
+          asistenciaRegistrada: cl.asistencia_registrada,
+        })
       }
     }
+    return all
+  }, [cursos])
 
-    load()
-    return () => { cancelled = true }
-  }, [])
+  const loading = dashboardQuery.isLoading
+
+  const someError = dashboardQuery.isError
+
+  useEffect(() => {
+    if (someError) toast.error("Error al cargar datos del dashboard")
+  }, [someError])
 
   const data: DashboardData | null = useMemo(() => {
     if (loading) return null
@@ -176,10 +152,6 @@ export function useInstructorDashboardData() {
     const now = new Date()
     const todayStr = toDateStr(now)
     const { start: weekStart, end: weekEnd } = getWeekBounds()
-
-    const activos = cursos.filter(
-      (c) => c.estado === "activo" || c.estado === "en_progreso" || c.estado === "pendiente"
-    )
 
     const totalEstudiantes = activos.reduce((acc, c) => {
       const est = estudiantesMap[c.id] || []
@@ -328,7 +300,7 @@ export function useInstructorDashboardData() {
       clasesPendientesSemana,
       observacionesPendientes,
     }
-  }, [cursos, estudiantesMap, clasesList, loading])
+  }, [estudiantesMap, clasesList, loading, activos])
 
   return { data, loading }
 }

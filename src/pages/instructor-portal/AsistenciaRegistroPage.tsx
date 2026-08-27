@@ -9,7 +9,7 @@ import {
   Calendar03Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { dateLocal } from "@/lib/utils"
+import { parseLocalDate } from "@/lib/utils"
 import {
   instructorService,
   type InstructorCurso,
@@ -192,7 +192,7 @@ export function AsistenciaRegistroPage() {
               >
                 <HugeiconsIcon icon={Calendar03Icon} size={16} />
                 <span className="font-medium">
-                  {dateLocal(clase.fecha_clase)?.toLocaleDateString("es", {
+                  {parseLocalDate(clase.fecha_clase)?.toLocaleDateString("es", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",

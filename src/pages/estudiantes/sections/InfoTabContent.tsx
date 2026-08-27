@@ -60,6 +60,7 @@ export function InfoTabContent({ data, academicData, loading, onRefresh }: InfoT
     { label: "Edad", value: perfil?.edad != null ? String(perfil.edad) : "—" },
     { label: "Ocupacion", value: perfil?.ocupacion || "—" },
     { label: "Estado Civil", value: perfil?.estado_civil || "—" },
+    { label: "Nivel Educativo", value: perfil?.nivel_educativo || "—" },
     { label: "Direccion", value: perfil?.direccion || "—" },
     { label: "Ciudad", value: data.ciudad?.nombre || perfil?.ciudad || "—" },
   ]

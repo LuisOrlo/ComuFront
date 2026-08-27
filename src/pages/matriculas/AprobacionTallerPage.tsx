@@ -18,6 +18,7 @@ import { TallerTallerTab } from "./components/solicitudes/TallerTallerTab"
 import { TallerPagoTab } from "./components/solicitudes/TallerPagoTab"
 import { TallerDocumentoTab } from "./components/solicitudes/TallerDocumentoTab"
 import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 
 type TabId = "resumen" | "participante" | "taller" | "pago" | "documento"
 
@@ -33,6 +34,7 @@ export function AprobacionTallerPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
 
   const filtros = useMemo(() => ({
     estado: searchParams.get("estado") || "",
@@ -187,11 +189,6 @@ export function AprobacionTallerPage() {
     finally { setDeletingCedula(false) }
   }
 
-  const advanceOrReturn = () => {
-    if (adjacent.next_id) navigateTo(adjacent.next_id)
-    else navigate(`/matriculas${searchStr}`)
-  }
-
   const handleApprove = async () => {
     if (!id) return
     setActionLoading(true)
@@ -214,7 +211,8 @@ export function AprobacionTallerPage() {
       toast.success("Inscripción aprobada exitosamente")
       setActionLoading(false)
       setConfirmApprove(false)
-      setTimeout(() => advanceOrReturn(), 0)
+      queryClient.invalidateQueries({ queryKey: ["talleres-inscripciones-pendientes"] })
+      navigate("/matriculas?tab=talleres&status=aprobados")
     } catch (err) {
       setActionLoading(false)
       setConfirmApprove(false)
@@ -229,7 +227,8 @@ export function AprobacionTallerPage() {
       await tallerService.cambiarEstadoInscripcion(id, "retirado")
       toast.success("Inscripción rechazada")
       setActionLoading(false)
-      advanceOrReturn()
+      queryClient.invalidateQueries({ queryKey: ["talleres-inscripciones-pendientes"] })
+      navigate("/matriculas?tab=talleres&status=rechazados")
     } catch {
       setActionLoading(false)
       toast.error("Error al rechazar")

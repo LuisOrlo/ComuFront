@@ -32,7 +32,17 @@ interface EstudianteData {
   ciudad: string
   estado_civil: string
   edad: string
+  nivel_educativo: string
 }
+
+const nivelesEducativos = [
+  { value: "educacion inicial", label: "Educación Inicial" },
+  { value: "general basica", label: "Educación General Básica" },
+  { value: "bachillerato", label: "Bachillerato" },
+  { value: "tecnico/tecnologico", label: "Técnico / Tecnológico" },
+  { value: "superior", label: "Superior" },
+  { value: "otro", label: "Otro" },
+]
 
 
 const pasos = [
@@ -58,7 +68,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const [estudiante, setEstudiante] = useState<EstudianteData>({
     tipo_id: "cedula",
     nombres: "", apellidos: "", cedula: "", telefono: "", correo: "",
-    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", edad: "",
+    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", edad: "", nivel_educativo: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -133,7 +143,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const esTaller = !!tallerSel && !curso
 
   const step1CanProceed = useMemo(() => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"]
     const allFilled = fields.every(f => estudiante[f]?.trim())
     return allFilled && !!cedulaFile && Object.keys(errors).length === 0
   }, [estudiante, cedulaFile, errors])
@@ -160,6 +170,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (campo === "cedula") return valor.slice(0, 20).toUpperCase()
     if (campo === "correo") return valor
     if (campo === "estado_civil") return valor
+    if (campo === "nivel_educativo") return valor
     if (campo === "nombres" || campo === "apellidos") return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "").toUpperCase()
     return valor.toUpperCase()
   }
@@ -189,7 +200,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   }
 
   const validateStep1 = (): boolean => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"]
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach(f => {
@@ -227,9 +238,9 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       cedula: estudiante.tipo_id === "cedula" ? "Cédula" : "DNI",
       nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo",
       ocupacion: "Ocupación", direccion: "Dirección", ciudad: "Residencia",
-      estado_civil: "Estado Civil",
+      estado_civil: "Estado Civil", nivel_educativo: "Nivel Educativo",
     }
-    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"].includes(campo) && !valor.trim()) {
+    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
     if (campo === "cedula") {
@@ -281,6 +292,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
         formData.append("edad", estudiante.edad)
+        formData.append("nivel_educativo", estudiante.nivel_educativo)
         formData.append("tipo_pago", "abono")
         formData.append("monto_pagado", "0")
         formData.append("metodo_pago", metodoPago)
@@ -306,6 +318,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
         formData.append("edad", estudiante.edad)
+        formData.append("nivel_educativo", estudiante.nivel_educativo)
         formData.append("monto_solicitado", "0")
         if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
         if (cedulaFile) formData.append("archivo_cedula", cedulaFile)
@@ -480,6 +493,16 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
                 className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none"
                 style={{ borderColor: touched.edad && errors.edad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
               {touched.edad && errors.edad && <p className="text-[11px] mt-1 text-red-500">{errors.edad}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1.5">Nivel Educativo</label>
+              <select value={estudiante.nivel_educativo} onChange={e => updateEstudiante("nivel_educativo", e.target.value)} onBlur={() => blurEstudiante("nivel_educativo")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.nivel_educativo && errors.nivel_educativo ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
+                <option value="">Seleccionar...</option>
+                {nivelesEducativos.map(n => (
+                  <option key={n.value} value={n.value}>{n.label}</option>
+                ))}
+              </select>
+              {touched.nivel_educativo && errors.nivel_educativo && <p className="text-[11px] mt-1 text-red-500">{errors.nivel_educativo}</p>}
             </div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>

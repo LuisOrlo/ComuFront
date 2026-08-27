@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useSearchParams } from "react-router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   CheckmarkCircle04Icon,
@@ -17,14 +18,39 @@ import { toast } from "sonner"
 
 export function AprobacionMatriculasPage() {
   const navigate = useNavigate()
-  const [solicitudes, setSolicitudes] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [mainTab, setMainTab] = useState<"cursos" | "personalizados" | "talleres">("cursos")
-  const [statusFilter, setStatusFilter] = useState<"pendientes" | "aprobados" | "rechazados">("pendientes")
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
 
-  const [tallerInscripciones, setTallerInscripciones] = useState<any[]>([])
-  const [loadingTalleres, setLoadingTalleres] = useState(false)
+  const solicitudesQuery = useQuery({
+    queryKey: ["solicitudes-inscripcion"],
+    queryFn: async () => {
+      const res = await cursosService.getSolicitudesInscripcion({ per_page: 200 })
+      return ((res as Record<string, unknown>).data as Record<string, unknown>[]) || []
+    },
+  })
+
+  const talleresQuery = useQuery({
+    queryKey: ["talleres-inscripciones-pendientes"],
+    queryFn: async () => {
+      const res = await tallerService.listarInscripcionesPendientes({ per_page: 200 })
+      return ((res as Record<string, unknown>).data || (res as Record<string, unknown>).datos || []) as any[]
+    },
+  })
+
+  const solicitudes: any[] = useMemo(() => solicitudesQuery.data ?? [], [solicitudesQuery.data])
+  const loading = solicitudesQuery.isLoading
+  const tallerInscripciones: any[] = useMemo(() => talleresQuery.data ?? [], [talleresQuery.data])
+  const loadingTalleres = talleresQuery.isLoading
+
+  const [mainTab, setMainTab] = useState<"cursos" | "personalizados" | "talleres">(() => {
+    const tab = searchParams.get("tab")
+    return tab === "personalizados" || tab === "talleres" ? tab : "cursos"
+  })
+  const [statusFilter, setStatusFilter] = useState<"pendientes" | "aprobados" | "rechazados">(() => {
+    const status = searchParams.get("status")
+    return status === "aprobados" || status === "rechazados" ? status : "pendientes"
+  })
+  const [searchTerm, setSearchTerm] = useState("")
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; nombre: string; origen: "curso" | "taller" } | null>(null)
   const [deletingRejected, setDeletingRejected] = useState(false)
@@ -38,44 +64,16 @@ export function AprobacionMatriculasPage() {
   const [ventanaActual, setVentanaActual] = useState(1)
   const [tallerVentanaActual, setTallerVentanaActual] = useState(1)
 
-  const cargarSolicitudes = async (fechaDesde?: string, fechaHasta?: string) => {
-    setLoading(true)
-    try {
-      const params: Record<string, unknown> = { per_page: 200 }
-      if (fechaDesde) params.fecha_desde = fechaDesde
-      if (fechaHasta) params.fecha_hasta = fechaHasta
-      const res = await cursosService.getSolicitudesInscripcion(params)
-      setSolicitudes(((res as Record<string, unknown>).data as Record<string, unknown>[]) || [])
-    } catch { toast.error("Error al cargar solicitudes") }
-    finally { setLoading(false) }
-  }
-
-  const cargarTallerInscripciones = async (fechaDesde?: string, fechaHasta?: string) => {
-    setLoadingTalleres(true)
-    try {
-      const params: Record<string, unknown> = { per_page: 200 }
-      if (fechaDesde) params.fecha_desde = fechaDesde
-      if (fechaHasta) params.fecha_hasta = fechaHasta
-      const res = await tallerService.listarInscripcionesPendientes(params)
-      setTallerInscripciones((res as any).data || [])
-    } catch { setTallerInscripciones([]) }
-    finally { setLoadingTalleres(false) }
-  }
-
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (mainTab !== "cursos") params.set("tab", mainTab)
+    if (statusFilter !== "pendientes") params.set("status", statusFilter)
+    setSearchParams(params, { replace: true })
+  }, [mainTab, statusFilter, setSearchParams])
 
   useEffect(() => {
-    cargarSolicitudes()
-    cargarTallerInscripciones()
-  }, [])
-
-  useEffect(() => {
-    if (mainTab === "talleres") {
-      setTallerVentanaActual(1)
-      cargarTallerInscripciones()
-    } else {
-      setVentanaActual(1)
-      cargarSolicitudes()
-    }
+    if (mainTab === "talleres") setTallerVentanaActual(1)
+    else setVentanaActual(1)
   }, [mainTab])
 
 
@@ -224,11 +222,11 @@ export function AprobacionMatriculasPage() {
       if (deleteTarget.origen === "taller") {
         await tallerService.eliminarInscripcion(deleteTarget.id)
         toast.success("Inscripción eliminada correctamente")
-        cargarTallerInscripciones()
+        queryClient.invalidateQueries({ queryKey: ["talleres-inscripciones-pendientes"] })
       } else {
         await cursosService.eliminarSolicitud(deleteTarget.id)
         toast.success("Solicitud eliminada correctamente")
-        cargarSolicitudes()
+        queryClient.invalidateQueries({ queryKey: ["solicitudes-inscripcion"] })
       }
       setDeleteTarget(null)
     } catch {

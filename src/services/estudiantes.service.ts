@@ -25,6 +25,7 @@ export interface Estudiante {
     ciudad?: string
     estado_civil?: string
     edad?: number
+    nivel_educativo?: string
   } | null
   creado_en?: string
   actualizado_en?: string
@@ -300,6 +301,7 @@ export const estudiantesService = {
     direccion?: string
     estado_civil?: string
     edad?: number
+    nivel_educativo?: string
   }): Promise<Estudiante> {
     const response = await api.post("/personas/estudiantes", data)
     return response.data.datos
@@ -317,6 +319,7 @@ export const estudiantesService = {
     direccion?: string
     estado_civil?: string
     edad?: number
+    nivel_educativo?: string
   }) {
     const response = await api.put(`/personas/estudiantes/${id}`, data)
     return response.data

@@ -16,7 +16,7 @@ import {
   NextIcon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { dateLocal } from "@/lib/utils"
+import { parseLocalDate } from "@/lib/utils"
 import {
   instructorService,
   type EstudianteCurso,
@@ -54,7 +54,7 @@ const COLORS_ESTADO: Record<string, { bg: string; text: string }> = {
 }
 
 function formatMes(fecha: string): string {
-  const d = dateLocal(fecha)
+  const d = parseLocalDate(fecha)
   return d ? d.toLocaleDateString("es", {
     month: "long",
     year: "numeric",
@@ -62,7 +62,7 @@ function formatMes(fecha: string): string {
 }
 
 function normalizeFechaBusqueda(fecha: string): string {
-  const d = dateLocal(fecha)
+  const d = parseLocalDate(fecha)
   if (!d || isNaN(d.getTime())) return String(fecha).toLowerCase()
   const diaSemana = d.toLocaleDateString("es", { weekday: "long" })
   const mes = d.toLocaleDateString("es", { month: "long" })
@@ -796,15 +796,15 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                                   style={{ backgroundColor: clase.asistencia_registrada ? "oklch(0.5 0.12 150)" : COLORS.ACCENT }}
                                 >
                                   <span className="text-[9px] font-bold uppercase">
-                                    {dateLocal(clase.fecha_clase)?.toLocaleString("es", { month: "short" })}
+                                    {parseLocalDate(clase.fecha_clase)?.toLocaleString("es", { month: "short" })}
                                   </span>
                                   <span className="text-lg font-black leading-none">
-                                    {dateLocal(clase.fecha_clase)?.getDate()}
+                                    {parseLocalDate(clase.fecha_clase)?.getDate()}
                                   </span>
                                 </div>
                                 <div>
                                   <h3 className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>
-                                    {dateLocal(clase.fecha_clase)?.toLocaleDateString("es", {
+                                    {parseLocalDate(clase.fecha_clase)?.toLocaleDateString("es", {
                                       weekday: "long",
                                       year: "numeric",
                                       month: "long",
@@ -900,7 +900,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               >
                 <HugeiconsIcon icon={Calendar03Icon} size={16} />
                 <span className="font-medium">
-                  {dateLocal(selectedClase.fecha_clase)?.toLocaleDateString("es", {
+                  {parseLocalDate(selectedClase.fecha_clase)?.toLocaleDateString("es", {
                     weekday: "long",
                     year: "numeric",
                     month: "long",
@@ -1236,7 +1236,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <h3 className="text-base font-bold mb-4" style={{ color: COLORS.CHARCOAL }}>Cambiar día y hora</h3>
             <p className="text-xs mb-4" style={{ color: COLORS.TEXT_MUTED }}>
-              {dateLocal(editClase.fecha_clase)?.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
+              {parseLocalDate(editClase.fecha_clase)?.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <div className="space-y-3">
               <div>

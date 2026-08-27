@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios"
+import { toast } from "sonner"
 
 const commonHeaders = {
   Accept: "application/json",
@@ -70,6 +71,40 @@ apiMultipart.interceptors.request.use((config) => {
   }
   return config
 })
+
+let sessionExpiredHandled = false
+
+function handleUnauthorized(): void {
+  const token = localStorage.getItem("auth_token")
+  if (!token || sessionExpiredHandled) return
+
+  sessionExpiredHandled = true
+  localStorage.removeItem("auth_token")
+  localStorage.removeItem("user_persona_id")
+
+  toast.error("Sesión expirada", {
+    description: "Tu sesión ha expirado o no es válida. Inicia sesión nuevamente.",
+  })
+  window.location.href = "/login"
+}
+
+const unauthorizedInterceptor = (error: unknown) => {
+  const axiosError = error as { response?: { status?: number }; config?: { url?: string } }
+  const status = axiosError.response?.status
+  const url = axiosError.config?.url || ""
+
+  if (
+    status === 401 &&
+    !url.includes("/auth/iniciar-sesion") &&
+    !url.includes("/auth/cerrar-sesion")
+  ) {
+    handleUnauthorized()
+  }
+  return Promise.reject(error)
+}
+
+api.interceptors.response.use((response) => response, unauthorizedInterceptor)
+apiMultipart.interceptors.response.use((response) => response, unauthorizedInterceptor)
 
 export interface LoginResponse {
   mensaje: string

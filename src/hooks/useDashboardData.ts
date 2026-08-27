@@ -104,7 +104,7 @@ export function useDashboardData() {
     alertasPagos,
     ocupacionCursos,
     agendaDelDia: agenda,
-    actividadReciente: notificaciones?.recientes ?? [],
+    actividadReciente: Array.isArray(notificaciones?.recientes) ? notificaciones.recientes : [],
     pendientes: notificaciones?.pendientes ?? 0,
     loading,
     error,

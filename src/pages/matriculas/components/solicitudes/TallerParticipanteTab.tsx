@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { UserIcon, SearchIcon, Calendar03Icon, MailIcon, CallIcon, Location01Icon } from "@hugeicons/core-free-icons"
+import { UserIcon, SearchIcon, Calendar03Icon, MailIcon, CallIcon, Location01Icon, GraduationCapIcon } from "@hugeicons/core-free-icons"
 import { Section, SubCategory, EF } from "../../AprobacionHelpers"
 
 interface TallerParticipanteTabProps {
@@ -29,6 +29,8 @@ export function TallerParticipanteTab({ selected, editField, editVal, startEdit,
           <EF icon={UserIcon} label="Ocupación" field="ocupacion" data={selected}
             editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
           <EF icon={UserIcon} label="Estado Civil" field="estado_civil" data={selected}
+            editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
+          <EF icon={GraduationCapIcon} label="Nivel Educativo" field="nivel_educativo" data={selected}
             editField={editField} editVal={editVal} onEdit={startEdit} onChange={setEditVal} onSave={saveEdit} onCancel={cancelEdit} saving={savingEdit} />
         </SubCategory>
         <SubCategory title="Contacto">

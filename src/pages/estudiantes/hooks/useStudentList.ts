@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query"
 import { estudiantesService, type Estudiante } from "@/services/estudiantes.service"
+import { queryClient } from "@/lib/queryClient"
 import { toast } from "sonner"
 
 type PaymentFilter = "todos" | "deudor" | "abonado" | "al_dia"
@@ -40,23 +42,32 @@ interface UseStudentListReturn {
 export function useStudentList(options: UseStudentListOptions = {}): UseStudentListReturn {
   const { extraFilters = {}, pageSize = 500 } = options
 
-  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todos")
   const [ciudadFilter, setCiudadFilter] = useState("")
-  const [ciudades, setCiudades] = useState<string[]>([])
-  const [stats, setStats] = useState({ todos: 0, deudor: 0, abonado: 0, al_dia: 0 })
-  const [meta, setMeta] = useState<Meta | undefined>(undefined)
+  const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [stats, setStats] = useState({ todos: 0, deudor: 0, abonado: 0, al_dia: 0 })
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const extraFiltersKey = useMemo(() => JSON.stringify(extraFilters), [extraFilters])
 
-  const loadData = useCallback(async (page = 1) => {
-    setLoading(true)
-    try {
+  const queryKey = [
+    "estudiantes",
+    "lista",
+    {
+      buscar: debouncedSearch,
+      estado_pago: paymentFilter,
+      ciudad: ciudadFilter,
+      page,
+      extra: extraFiltersKey,
+    },
+  ]
+
+  const query = useQuery({
+    queryKey,
+    queryFn: () => {
       const params: Record<string, string | number | undefined> = {
         buscar: debouncedSearch || undefined,
         estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
@@ -65,29 +76,45 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
         page,
         ...extraFilters,
       }
-      const response = await estudiantesService.getEstudiantes(params)
-      setEstudiantes(response.datos)
-      setMeta(response.meta ?? undefined)
-      if (response.ciudades) setCiudades(response.ciudades)
-      if (response.stats && paymentFilter === "todos" && !debouncedSearch && !ciudadFilter) setStats(response.stats)
-    } catch {
-      toast.error("Error al cargar estudiantes")
-    } finally {
-      setLoading(false)
+      return estudiantesService.getEstudiantes(params)
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const estudiantes = useMemo(() => query.data?.datos ?? [], [query.data])
+  const meta = query.data?.meta
+  const ciudades = query.data?.ciudades ?? []
+  const loading = query.isLoading
+
+  useEffect(() => {
+    if (query.data?.stats && paymentFilter === "todos" && !debouncedSearch && !ciudadFilter) {
+      setStats(query.data.stats)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, paymentFilter, ciudadFilter, extraFiltersKey, pageSize])
+  }, [query.data, paymentFilter, debouncedSearch, ciudadFilter])
+
+  useEffect(() => {
+    setPage(1)
+  }, [extraFiltersKey])
 
   const handleSetSearch = useCallback((value: string) => {
     setSearch(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300)
+    debounceRef.current = setTimeout(() => {
+      setPage(1)
+      setDebouncedSearch(value)
+    }, 300)
   }, [])
 
-  useEffect(() => {
+  const handleSetPaymentFilter = useCallback((value: PaymentFilter) => {
+    setPage(1)
+    setPaymentFilter(value)
+  }, [])
 
-    loadData()
-  }, [loadData])
+  const handleSetCiudadFilter = useCallback((value: string) => {
+    setPage(1)
+    setCiudadFilter(value)
+  }, [])
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -108,16 +135,30 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
 
-  const deleteStudents = useCallback(async (ids: string[]) => {
-    try {
-      await Promise.all(ids.map(id => estudiantesService.deleteStudent(id)))
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => estudiantesService.deleteStudent(id)))
+    },
+    onSuccess: (_data, ids) => {
       toast.success(`${ids.length} estudiante(s) eliminado(s)`)
       clearSelection()
-      loadData()
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+    },
+    onError: () => {
       toast.error("Error al eliminar estudiantes")
-    }
-  }, [clearSelection, loadData])
+    },
+  })
+
+  const deleteStudents = useCallback(
+    (ids: string[]) => deleteMutation.mutateAsync(ids),
+    [deleteMutation]
+  )
+
+  const loadPage = useCallback((p: number) => setPage(p), [])
+
+  const refreshData = useCallback(async () => {
+    await query.refetch()
+  }, [query])
 
   return {
     estudiantes,
@@ -125,9 +166,9 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
     search,
     setSearch: handleSetSearch,
     paymentFilter,
-    setPaymentFilter,
+    setPaymentFilter: handleSetPaymentFilter,
     ciudadFilter,
-    setCiudadFilter,
+    setCiudadFilter: handleSetCiudadFilter,
     ciudades,
     stats,
     meta,
@@ -135,8 +176,8 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
     toggleSelect,
     toggleSelectAll,
     clearSelection,
-    loadPage: loadData,
+    loadPage,
     deleteStudents,
-    refreshData: () => loadData(),
+    refreshData,
   }
 }

@@ -1,28 +1,18 @@
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { secretariaService, type DashboardDataCompleto } from "@/services/secretaria.service"
 import { toast } from "sonner"
 
 export function useSecretariaDashboardData() {
-  const [data, setData] = useState<DashboardDataCompleto | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading, isError } = useQuery<DashboardDataCompleto>({
+    queryKey: ["secretaria", "dashboard"],
+    queryFn: secretariaService.getDashboardCompleto,
+    staleTime: 5 * 60 * 1000,
+  })
 
   useEffect(() => {
-    let cancelled = false
+    if (isError) toast.error("Error al cargar datos del dashboard")
+  }, [isError])
 
-    async function load() {
-      try {
-        const result = await secretariaService.getDashboardCompleto()
-        if (!cancelled) setData(result)
-      } catch {
-        if (!cancelled) toast.error("Error al cargar datos del dashboard")
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [])
-
-  return { data, loading }
+  return { data: data ?? null, loading: isLoading }
 }

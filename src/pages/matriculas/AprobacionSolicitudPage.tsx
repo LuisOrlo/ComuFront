@@ -21,6 +21,7 @@ import { SolicitudDocumentoTab } from "./components/solicitudes/SolicitudDocumen
 import { ModalReconciliacionCurso } from "./components/ModalReconciliacionCurso"
 import { toast } from "sonner"
 import axios from "axios"
+import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 
 type TabId = "resumen" | "estudiante" | "curso" | "pago" | "documento"
@@ -37,6 +38,7 @@ export function AprobacionSolicitudPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
 
   const filtros = useMemo(() => ({
     estado: searchParams.get("estado") || "",
@@ -338,11 +340,6 @@ export function AprobacionSolicitudPage() {
     finally { setDeletingCedula(false) }
   }
 
-  const advanceOrReturn = () => {
-    if (adjacent.next_id) navigateTo(adjacent.next_id)
-    else navigate(`/matriculas${searchStr}`)
-  }
-
   const handleApprove = async (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => {
     if (!id) return
     setActionLoading(true)
@@ -353,7 +350,8 @@ export function AprobacionSolicitudPage() {
       setSelected((prev: any) => prev ? { ...prev, estado: { valor: "matricula_creada", descripcion: "Matrícula creada" } } : prev)
       setActionLoading(false)
       toast.success("Matrícula aprobada exitosamente")
-      setTimeout(() => advanceOrReturn(), 0)
+      queryClient.invalidateQueries({ queryKey: ["solicitudes-inscripcion"] })
+      navigate("/matriculas?tab=cursos&status=aprobados")
     } catch (err) {
       setActionLoading(false)
       toast.error((err as any)?.response?.data?.mensaje || "Error al aprobar")
@@ -366,10 +364,13 @@ export function AprobacionSolicitudPage() {
     try {
       await cursosService.rechazarSolicitudInscripcion(id, motivo)
       toast.success("Solicitud rechazada")
-      advanceOrReturn()
+      setActionLoading(false)
+      queryClient.invalidateQueries({ queryKey: ["solicitudes-inscripcion"] })
+      navigate("/matriculas?tab=cursos&status=rechazados")
     } catch (err) {
       toast.error((err as any)?.response?.data?.mensaje || "Error al rechazar")
-    } finally { setActionLoading(false) }
+      setActionLoading(false)
+    }
   }
 
   const startEditMontos = () => {

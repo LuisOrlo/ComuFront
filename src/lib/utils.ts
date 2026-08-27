@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function dateLocal(fecha: string): Date | null {
+export function parseLocalDate(fecha: string): Date | null {
   const parts = fecha.slice(0, 10).split("-").map(Number)
   if (parts.length < 3 || parts.some((n) => isNaN(n))) return null
   const [y, m, d] = parts

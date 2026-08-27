@@ -111,7 +111,28 @@ export interface EstudianteUnificado {
   estado: string
 }
 
+export interface CursoDashboardClase {
+  id: string
+  modulo_id: string
+  modulo_nombre: string
+  fecha_clase: string
+  hora_inicio: string
+  hora_fin: string
+  asistencia_registrada: boolean
+  observaciones?: string
+}
+
+export interface CursoDashboard extends InstructorCurso {
+  estudiantes: EstudianteCurso[]
+  clases: CursoDashboardClase[]
+}
+
 export const instructorService = {
+  async getDashboard(): Promise<CursoDashboard[]> {
+    const response = await api.get("/instructor/dashboard")
+    return response.data.datos
+  },
+
   async getMisCursos(): Promise<InstructorCurso[]> {
     const response = await api.get("/instructor/mis-cursos")
     return response.data.datos

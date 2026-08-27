@@ -26,7 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const response = await authService.getProfile()
           setUser(response.datos)
         } catch {
-          authService.logout()
+          localStorage.removeItem("auth_token")
+          localStorage.removeItem("user_persona_id")
           setUser(null)
         }
       }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AddCircleIcon, UserGroupIcon, GraduationCapIcon, BookOpenIcon } from "@hugeicons/core-free-icons"
@@ -15,25 +16,21 @@ export function EstudiantesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabFromUrl = searchParams.get("tab") as Tab | null
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && ["todos", "cursos", "talleres"].includes(tabFromUrl) ? tabFromUrl : "todos")
-  const [tabCounts, setTabCounts] = useState({ todos: 0, cursos: 0, talleres: 0 })
 
-  const loadCounts = useCallback(async () => {
-    try {
-      const stats = await estudiantesService.getStudentStats()
-      setTabCounts({
-        todos: stats.total_estudiantes,
-        cursos: stats.cursos_count,
-        talleres: stats.talleres_count,
-      })
-    } catch {
-      // silent
-    }
-  }, [])
+  const { data: statsData } = useQuery({
+    queryKey: ["estudiantes", "stats"],
+    queryFn: estudiantesService.getStudentStats,
+    staleTime: 5 * 60 * 1000,
+  })
 
-  useEffect(() => {
-
-    loadCounts()
-  }, [loadCounts])
+  const tabCounts = useMemo(
+    () => ({
+      todos: statsData?.total_estudiantes ?? 0,
+      cursos: statsData?.cursos_count ?? 0,
+      talleres: statsData?.talleres_count ?? 0,
+    }),
+    [statsData]
+  )
 
   const tabs: { id: Tab; label: string; icon: IconSvgElement }[] = [
     { id: "todos", label: "Por estudiante", icon: UserGroupIcon },

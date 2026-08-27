@@ -758,7 +758,7 @@ export const cursosService = {
   /**
    * Actualizar datos del estudiante/participante externo de una solicitud
    */
-  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; ciudad?: string; edad?: number }): Promise<Record<string, unknown>> {
+  async actualizarEstudiante(id: string, datos: { nombres?: string; apellidos?: string; correo?: string; celular?: string; cedula?: string; ocupacion?: string; direccion?: string; estado_civil?: string; ciudad?: string; edad?: number; nivel_educativo?: string }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-estudiante`, datos)
     return response.data
   },
@@ -817,7 +817,11 @@ export const cursosService = {
 
   async getNotificaciones(): Promise<NotificacionesResponse> {
     const response = await api.get<NotificacionesResponse>("/academic/notificaciones")
-    return response.data
+    const data = (response.data ?? {}) as Partial<NotificacionesResponse>
+    return {
+      pendientes: typeof data.pendientes === "number" ? data.pendientes : 0,
+      recientes: Array.isArray(data.recientes) ? data.recientes : [],
+    }
   },
 
   async getAsistenciaPDFData(cursoAbiertoId: string): Promise<DatosAsistenciaPDF> {
