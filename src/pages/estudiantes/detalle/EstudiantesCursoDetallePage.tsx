@@ -86,6 +86,23 @@ export function EstudiantesCursoDetallePage() {
 
     const estudianteRecord = cedula ? estudiantesMap.get(cedula) : undefined
 
+    const rawCiudad =
+      (est as any)?.ciudad?.nombre ||
+      (est as any)?.ciudad ||
+      est?.perfil_estudiante?.ciudad ||
+      (solEst as any)?.ciudad?.nombre ||
+      (solEst as any)?.ciudad ||
+      (solEst as any)?.perfil_estudiante?.ciudad ||
+      (ext as any)?.ciudad?.nombre ||
+      (ext as any)?.ciudad ||
+      (typeof estudianteRecord?.ciudad === "object" ? estudianteRecord?.ciudad?.nombre : estudianteRecord?.ciudad) ||
+      estudianteRecord?.perfil_estudiante?.ciudad ||
+      (curso as any)?.ciudad?.nombre ||
+      (curso as any)?.ciudad ||
+      undefined
+
+    const ciudad = typeof rawCiudad === "string" ? rawCiudad : undefined
+
     return {
       id: estudianteRecord?.id || est?.id || `mat-${idx}`,
       nombres,
@@ -94,6 +111,7 @@ export function EstudiantesCursoDetallePage() {
       correo,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       telefono: est?.celular || (ext as any)?.celular || (solEst as any)?.celular || estudianteRecord?.celular,
+      ciudad,
       estado_pago: estudianteRecord?.estado_pago || "ninguno",
       total_cursos: estudianteRecord?.total_cursos ?? 0,
       saldo_pendiente: estudianteRecord?.saldo_pendiente ?? 0,
