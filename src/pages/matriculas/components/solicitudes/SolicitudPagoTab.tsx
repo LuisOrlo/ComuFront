@@ -165,30 +165,31 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             : selected.lineas_pago.total_abonado
 
           return (
-          <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
+          <div className="p-4 rounded-xl border space-y-3 bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {editandoMontos ? (
-              <div className="flex items-center justify-between px-3 py-2 -mx-1 rounded-lg" style={{ backgroundColor: COLORS.ACCENT }}>
-                <span className="text-xs font-bold text-white">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border" style={{ backgroundColor: "oklch(0.55 0.15 240 / 0.08)", borderColor: "oklch(0.55 0.15 240 / 0.2)" }}>
+                <span className="text-xs font-bold" style={{ color: "oklch(0.40 0.16 240)" }}>
                   Editando montos{cambiosCount > 0 ? ` — ${cambiosCount} cambio${cambiosCount > 1 ? "s" : ""} sin guardar` : ""}
                 </span>
                 <button onClick={onCancelMontos}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border border-white/30 text-white hover:bg-white/10 transition-colors">
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border bg-white hover:bg-gray-100 transition-colors"
+                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
                   Cancelar
                 </button>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Resumen de pagos</span>
                 <div className="flex items-center gap-3">
                   {yaProcesada && (
                     <button onClick={onStartEditMontos}
-                      className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-lg hover:bg-gray-200 transition-colors"
-                      style={{ color: COLORS.ACCENT }}>
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg border hover:bg-gray-100 transition-all shadow-sm"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
                       <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
-                      Editar Pago
+                      <span>Editar Pago</span>
                     </button>
                   )}
-                  <span className="text-xs font-bold" style={{ color: COLORS.ACCENT }}>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full border" style={{ backgroundColor: "oklch(0.55 0.15 150 / 0.08)", color: "oklch(0.40 0.16 150)", borderColor: "oklch(0.55 0.15 150 / 0.2)" }}>
                     {selected.lineas_pago.modulos_pagados}/{selected.lineas_pago.modulos_count} módulos pagados
                   </span>
                 </div>
@@ -196,10 +197,10 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             )}
 
             <div className={cn(
-              "grid gap-3 text-[10px] font-bold uppercase tracking-wider pb-1 border-b",
-              editandoMontos ? "grid-cols-[1.8fr_0.8fr_1.2fr_0.8fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]"
+              "grid gap-3 text-[10px] font-bold uppercase tracking-wider pb-2 border-b",
+              editandoMontos ? "grid-cols-[1.5fr_0.8fr_1.3fr_0.8fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]"
             )} style={{ color: COLORS.TEXT_MUTED, borderColor: COLORS.BORDER_SUBTLE }}>
-              <span>Módulo</span>
+              <span>Concepto</span>
               <span className="text-right">Precio</span>
               <span className="text-right">Pagado</span>
               {!editandoMontos && <span className="text-right">Saldo</span>}
@@ -208,25 +209,39 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
 
             {lineas.map((lp) => {
               const editVal = editMontosValues[lp.id]
+              const abonadoLive = editandoMontos ? (parseFloat(editVal ?? String(lp.monto_abonado)) || 0) : lp.monto_abonado
+              const precioLive = lp.monto_ajustado || 0
               const changed = editandoMontos && editVal !== undefined && parseFloat(editVal) !== lp.monto_abonado
-              const saldoLive = editandoMontos ? (lp.monto_ajustado || 0) - (parseFloat(editVal) || 0) : 0
+              const saldoLive = editandoMontos ? (precioLive - abonadoLive) : 0
               const saldoSaved = (lp.monto_ajustado || 0) - (lp.monto_abonado || 0)
+
+              // Estado dinámico en vivo
+              let estadoLive = lp.estado
+              if (editandoMontos) {
+                if (abonadoLive >= precioLive && precioLive > 0) {
+                  estadoLive = "pagado"
+                } else if (abonadoLive > 0) {
+                  estadoLive = "abonado"
+                } else {
+                  estadoLive = "pendiente"
+                }
+              }
 
               return (
                 <div key={lp.id} className={cn(
-                  "grid gap-3 items-center text-sm py-1",
-                  editandoMontos ? "grid-cols-[1.8fr_0.8fr_1.2fr_0.8fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]",
+                  "grid gap-3 items-center text-sm py-1.5 transition-colors",
+                  editandoMontos ? "grid-cols-[1.5fr_0.8fr_1.3fr_0.8fr]" : "grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr]",
                   changed && "border-l-2 pl-2 -ml-[10px] rounded"
                 )} style={changed ? {
                   borderLeftColor: COLORS.ACCENT,
                   backgroundColor: "oklch(0.65 0.15 45 / 0.04)",
                 } : undefined}>
                   <span className="truncate font-medium self-center" style={{ color: COLORS.CHARCOAL }}>{lp.nombre}</span>
-                  <span className="text-right self-center" style={{ color: COLORS.CHARCOAL }}>${lp.monto_ajustado.toLocaleString()}</span>
+                  <span className="text-right font-mono self-center" style={{ color: COLORS.CHARCOAL }}>${lp.monto_ajustado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
 
                   {editandoMontos ? (
                     <div className="flex flex-col gap-0.5 items-end">
-                      <div className="relative w-[110px]">
+                      <div className="relative w-full max-w-[110px]">
                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-mono pointer-events-none" style={{ color: COLORS.TEXT_MUTED }}>$</span>
                         <input
                           type="text" inputMode="decimal"
@@ -234,69 +249,77 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                           onChange={e => {
                             const val = e.target.value.replace(/[^0-9.]/g, "")
                             if ((val.match(/\./g) || []).length <= 1) {
-                              onEditMontoChange(lp.id, val)
+                              const numVal = parseFloat(val) || 0
+                              if (numVal > precioLive && precioLive > 0) {
+                                onEditMontoChange(lp.id, String(precioLive))
+                                toast.warning(`El pago abonado no puede exceder el precio ($${precioLive.toLocaleString("es-EC", { minimumFractionDigits: 2 })})`)
+                              } else {
+                                onEditMontoChange(lp.id, val)
+                              }
                             }
                           }}
                           onWheel={e => (e.target as HTMLElement).blur()}
-                          className="w-full pl-7 pr-2 py-1 text-right text-sm font-mono outline-none bg-white rounded-md border"
+                          className="w-full pl-7 pr-2 py-1 text-right text-sm font-mono outline-none bg-white rounded-lg border transition-all focus:border-blue-500"
                           style={{ borderColor: COLORS.BORDER_SUBTLE }}
                         />
                       </div>
-                      <span className="text-[10px] leading-tight" style={{ color: saldoLive < 0 ? "oklch(0.5 0.15 20)" : saldoLive > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
-                        {saldoLive < 0 ? `excede en $${Math.abs(saldoLive).toLocaleString()}` : `saldo: $${saldoLive.toLocaleString()}`}
+                      <span className="text-[10px] leading-tight font-mono" style={{ color: saldoLive < 0 ? "oklch(0.5 0.15 20)" : saldoLive > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
+                        {saldoLive < 0 ? `excede: $${Math.abs(saldoLive).toFixed(2)}` : `saldo: $${saldoLive.toFixed(2)}`}
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-0.5 justify-end self-center">
+                    <div className="flex items-center gap-0.5 justify-end self-center font-mono">
                       <span className="text-right font-medium" style={{ color: lp.monto_abonado > 0 ? "oklch(0.55 0.15 150)" : "oklch(0.5 0.15 20)" }}>
-                        ${lp.monto_abonado.toLocaleString()}
+                        ${lp.monto_abonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
                   )}
 
                   {!editandoMontos && (
-                    <span className="text-right font-medium self-center" style={{ color: saldoSaved > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
-                      {saldoSaved > 0 ? `$${saldoSaved.toLocaleString()}` : "—"}
+                    <span className="text-right font-medium font-mono self-center" style={{ color: saldoSaved > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.55 0.15 150)" }}>
+                      {saldoSaved > 0 ? `$${saldoSaved.toLocaleString("es-EC", { minimumFractionDigits: 2 })}` : "—"}
                     </span>
                   )}
 
                   <div className="flex justify-end self-center">
-                    <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full",
-                      lp.estado === "pagado" ? "bg-green-100 text-green-700" :
-                      lp.estado === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                    )}>{lp.estado === "pagado" ? "Pagado" : lp.estado === "abonado" ? "Parcial" : "Pendiente"}</span>
+                    <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full transition-colors",
+                      estadoLive === "pagado" ? "bg-green-100 text-green-700" :
+                      estadoLive === "abonado" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                    )}>
+                      {estadoLive === "pagado" ? "Pagado" : estadoLive === "abonado" ? "Parcial" : "Pendiente"}
+                    </span>
                   </div>
                 </div>
               )
             })}
 
             {editandoMontos ? (
-              <div className="border-t pt-3 flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="border-t pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Total abonado después de guardar</span>
-                  <span className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                    ${nuevoTotalAbonado.toLocaleString()} de ${selected.lineas_pago.total_esperado.toLocaleString()}
+                  <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Total abonado después de guardar</span>
+                  <span className="text-base font-black font-mono" style={{ color: COLORS.CHARCOAL }}>
+                    ${nuevoTotalAbonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-end">
                   <button onClick={onCancelMontos}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors hover:bg-gray-100"
+                    className="inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-semibold border transition-colors hover:bg-gray-100"
                     style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
                     Cancelar
                   </button>
                   <button onClick={onSaveMontos} disabled={savingMontos || cambiosCount === 0}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ backgroundColor: COLORS.ACCENT }}>
                     <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
-                    Guardar{cambiosCount > 0 ? ` ${cambiosCount} cambio${cambiosCount > 1 ? "s" : ""}` : ""}
+                    <span>Guardar{cambiosCount > 0 ? ` ${cambiosCount} cambio${cambiosCount > 1 ? "s" : ""}` : ""}</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="border-t pt-2 flex justify-between text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="border-t pt-3 flex items-center justify-between text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <span style={{ color: COLORS.CHARCOAL }}>Total abonado</span>
-                <span style={{ color: "oklch(0.55 0.15 150)" }}>
-                  ${selected.lineas_pago.total_abonado.toLocaleString()} de ${selected.lineas_pago.total_esperado.toLocaleString()}
+                <span className="font-mono text-base font-black" style={{ color: "oklch(0.55 0.15 150)" }}>
+                  ${selected.lineas_pago.total_abonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             )}

@@ -7,6 +7,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
+import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
 
 interface PagoPreAprobacionSectionProps {
   cursoAbiertoId: string
@@ -206,14 +207,15 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }
 
   return (
-    <div className="pt-4 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="pt-4 space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {sorted.map((modulo: any, idx: number) => {
         if (!modulo) return null
         const monto = parseFloat(montos[modulo.id] || "0")
+        const precioOriginal = Number(modulo.precio_base ?? modulo.precio ?? 0)
         const precioEfectivo = getPrecioEfectivo(modulo)
         const a = ajustes[modulo.id]
-        const tieneAjuste = a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== (modulo.precio_base ?? 0)
+        const tieneAjuste = a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== precioOriginal
         const pagado = monto > 0 && monto >= precioEfectivo
         const abonado = monto > 0 && monto < precioEfectivo
 
@@ -222,12 +224,12 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo"
         } else if (abonado) {
           const saldo = Math.max(0, precioEfectivo - monto)
-          lineaEstado = "Abono · Saldo pendiente: $" + saldo.toLocaleString()
+          lineaEstado = "Abono · Saldo pendiente: $" + saldo.toLocaleString("es-EC", { minimumFractionDigits: 2 })
         }
 
         return (
           <div key={modulo.id} className="p-4 rounded-xl border space-y-3 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
                   Módulo {modulo.numero_orden || (idx + 1)}
@@ -236,55 +238,41 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                   {modulo.nombre_modulo || modulo.nombre || "—"}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 text-right">
-                {a?.expandido ? (
-                  <span className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${precioEfectivo.toLocaleString()}</span>
-                ) : (
-                  <>
-                    {tieneAjuste && <span className="text-xs line-through opacity-40">${(modulo.precio_base ?? 0).toLocaleString()}</span>}
-                    <span className="text-sm font-black" style={{ color: tieneAjuste ? "oklch(0.65 0.15 75)" : COLORS.CHARCOAL }}>
-                      ${precioEfectivo.toLocaleString()}
-                    </span>
-                  </>
-                )}
-                <button type="button" onClick={() => toggleAjuste(modulo.id)}
-                  className="ml-1 size-6 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                  style={{ color: COLORS.TEXT_MUTED }}>
-                  <HugeiconsIcon icon={Edit01Icon} size={12} />
-                </button>
-              </div>
+
+              <AjustePrecioPanel
+                precioOriginal={precioOriginal}
+                precioActual={precioEfectivo}
+                motivoActual={a?.motivo ?? ""}
+                expandido={Boolean(a?.expandido)}
+                onConfirmar={(nuevoPrecio, motivo) => {
+                  setAjustes(prev => ({
+                    ...prev,
+                    [modulo.id]: { expandido: false, nuevoPrecio: String(nuevoPrecio), motivo }
+                  }))
+                  setMontos(prev => {
+                    const montoActual = parseFloat(prev[modulo.id] || "0")
+                    if (montoActual > nuevoPrecio && nuevoPrecio > 0) {
+                      return { ...prev, [modulo.id]: String(nuevoPrecio) }
+                    }
+                    return prev
+                  })
+                }}
+                onCancelar={() => {
+                  setAjustes(prev => {
+                    const actual = prev[modulo.id]
+                    if (!actual) return prev
+                    return { ...prev, [modulo.id]: { ...actual, expandido: false } }
+                  })
+                }}
+                onToggleExpandir={() => toggleAjuste(modulo.id)}
+              />
             </div>
 
-            {a?.expandido && (
-              <div className="p-3 rounded-xl border space-y-2" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Nuevo precio</label>
-                  <input type="number" min="0" step="0.01" value={a.nuevoPrecio}
-                    onChange={e => setAjustes(prev => ({ ...prev, [modulo.id]: { ...a, nuevoPrecio: e.target.value } }))}
-                    onWheel={e => (e.target as HTMLElement).blur()}
-                    className="w-full px-3 py-2 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 mt-1 bg-white"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Motivo del ajuste</label>
-                  <input type="text" value={a.motivo}
-                    onChange={e => setAjustes(prev => ({ ...prev, [modulo.id]: { ...a, motivo: e.target.value.toUpperCase() } }))}
-                    className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:border-blue-500 mt-1 bg-white uppercase"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} placeholder="EJ: DESCUENTO POR PRONTO PAGO" />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={() => confirmarAjuste(modulo.id)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.98]"
-                    style={{ backgroundColor: COLORS.ACCENT }}>Confirmar ajuste</button>
-                  <button type="button" onClick={() => toggleAjuste(modulo.id)}
-                    className="px-4 py-2 rounded-xl text-xs font-medium hover:text-gray-700 transition-colors"
-                    style={{ color: COLORS.TEXT_MUTED }}>Cancelar</button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 items-center">
-              <div className="relative flex-1">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">
+                Monto a cobrar ahora
+              </label>
+              <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
                 <input type="number" min="0" step="0.01" placeholder="0.00"
                   value={montos[modulo.id] || ""}
@@ -296,7 +284,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
             </div>
 
             {lineaEstado && (
-              <p className="text-[10px] font-medium" style={{ color: pagado ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)" }}>
+              <p className="text-[11px] font-semibold" style={{ color: pagado ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)" }}>
                 {lineaEstado}
               </p>
             )}
@@ -408,40 +396,33 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         </div>
       )}
 
-      <div className="px-4 py-3 rounded-xl border space-y-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}>
-        <div className="flex items-center justify-between text-xs">
-          <span style={{ color: COLORS.TEXT_MUTED }}>Total del curso</span>
-          <span className="font-semibold" style={{ color: COLORS.CHARCOAL }}>${totalPrecio.toLocaleString()}</span>
+      {/* Resumen Total */}
+      <div className="p-4 rounded-xl border space-y-3 bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium" style={{ color: COLORS.TEXT_MUTED }}>Total del curso</span>
+          <span className="font-bold text-base font-mono" style={{ color: COLORS.CHARCOAL }}>${totalPrecio.toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
         </div>
+
         {incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 && (
-          <>
-            <div className="flex items-center justify-between text-xs">
-              <span style={{ color: COLORS.TEXT_MUTED }}>Inscripción</span>
-              <span className="font-semibold" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs pt-1" style={{ borderTopWidth: 1, borderTopColor: COLORS.BORDER_SUBTLE }}>
-              <span style={{ color: COLORS.TEXT_MUTED }}>Total a pagar</span>
-              <span className="font-semibold" style={{ color: COLORS.ACCENT }}>${(totalPrecio + parseFloat(precioInscripcionManual || "0")).toLocaleString()}</span>
-            </div>
-          </>
-        )}
-        {inscripcionCubierta > 0 && (
-          <div className="flex items-center justify-between text-xs pt-1">
-            <span style={{ color: COLORS.TEXT_MUTED }}>Pago de inscripción</span>
-            <span className="font-semibold" style={{ color: "oklch(0.55 0.15 150)" }}>
-              ${inscripcionCubierta.toLocaleString()} de ${inscripcionVal.toLocaleString()}
-            </span>
+          <div className="flex items-center justify-between text-sm pt-2 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <span className="font-medium" style={{ color: COLORS.TEXT_MUTED }}>Inscripción / Matrícula</span>
+            <span className="font-bold text-base font-mono" style={{ color: "oklch(0.65 0.15 75)" }}>${parseFloat(precioInscripcionManual).toLocaleString("es-EC", { minimumFractionDigits: 2 })}</span>
           </div>
         )}
-        <div className="flex items-center justify-between text-xs pt-1" style={{ borderTopColor: COLORS.BORDER_SUBTLE, borderTopWidth: incluirInscripcion && parseFloat(precioInscripcionManual || "0") > 0 ? 0 : 1 }}>
-          <span style={{ color: COLORS.TEXT_MUTED }}>Total ingresado</span>
-          <span className="font-semibold" style={{ color: "oklch(0.55 0.15 150)" }}>
-            ${totalIngresado.toLocaleString()}{" "}
-            <span className="font-normal opacity-50">
-              ({incluirInscripcion && inscripcionCubierta > 0
-                ? `${modulosCubiertos}/${sorted.length} módulos + inscripción`
-                : `${modulosCubiertos}/${sorted.length} módulos`})
+
+        <div className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm" style={{ backgroundColor: "oklch(0.55 0.15 150 / 0.08)", borderColor: "oklch(0.55 0.15 150 / 0.25)" }}>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider block" style={{ color: "oklch(0.40 0.16 150)" }}>
+              Total Ingresado en esta transacción
             </span>
+            <span className="text-xs font-medium opacity-80 block mt-0.5" style={{ color: "oklch(0.35 0.14 150)" }}>
+              {incluirInscripcion && inscripcionCubierta > 0
+                ? `${modulosCubiertos}/${sorted.length} módulos cubiertos + inscripción`
+                : `${modulosCubiertos}/${sorted.length} módulos cubiertos`}
+            </span>
+          </div>
+          <span className="text-xl font-black font-mono" style={{ color: "oklch(0.35 0.18 150)" }}>
+            ${totalIngresado.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
       </div>
