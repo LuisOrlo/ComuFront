@@ -28,7 +28,17 @@ interface EstudianteData {
   ciudad: string
   estado_civil: string
   edad: string
+  nivel_educativo: string
 }
+
+const nivelesEducativos = [
+  { value: "educacion inicial", label: "Educación Inicial" },
+  { value: "general basica", label: "Educación General Básica" },
+  { value: "bachillerato", label: "Bachillerato" },
+  { value: "tecnico/tecnologico", label: "Técnico / Tecnológico" },
+  { value: "superior", label: "Superior" },
+  { value: "otro", label: "Otro" },
+]
 
 
 const pasos = [
@@ -59,7 +69,7 @@ export function NuevoEstudiantePage() {
   const [estudiante, setEstudiante] = useState<EstudianteData>({
     tipo_id: "cedula",
     nombres: "", apellidos: "", cedula: "", telefono: "", correo: "",
-    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", edad: "",
+    ocupacion: "", direccion: "", ciudad: "", estado_civil: "", edad: "", nivel_educativo: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -209,7 +219,7 @@ export function NuevoEstudiantePage() {
     if (campo === "cedula" && estudiante.tipo_id === "cedula") return valor.replace(/[^0-9]/g, "").slice(0, 10)
     if (campo === "cedula") return valor.slice(0, 20).toUpperCase()
     if (campo === "correo") return valor
-    if (campo === "estado_civil") return valor
+    if (campo === "estado_civil" || campo === "nivel_educativo") return valor
     if (campo === "nombres" || campo === "apellidos") return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "").toUpperCase()
     return valor.toUpperCase()
   }
@@ -219,9 +229,9 @@ export function NuevoEstudiantePage() {
       cedula: estudiante.tipo_id === "cedula" ? "Cédula" : "DNI",
       nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo",
       ocupacion: "Ocupación", direccion: "Dirección", ciudad: "Residencia",
-      estado_civil: "Estado Civil",
+      estado_civil: "Estado Civil", nivel_educativo: "Nivel Educativo",
     }
-    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"].includes(campo) && !valor.trim()) {
+    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
     if (campo === "cedula") {
@@ -268,7 +278,7 @@ export function NuevoEstudiantePage() {
   }
 
   const validateStep1 = (): boolean => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"]
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach(f => {
@@ -331,6 +341,7 @@ export function NuevoEstudiantePage() {
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
         formData.append("edad", estudiante.edad)
+        formData.append("nivel_educativo", estudiante.nivel_educativo)
         formData.append("tipo_pago", "abono")
         formData.append("monto_pagado", "0")
         formData.append("metodo_pago", metodoPago)
@@ -356,6 +367,7 @@ export function NuevoEstudiantePage() {
         formData.append("ciudad", estudiante.ciudad)
         formData.append("estado_civil", estudiante.estado_civil)
         formData.append("edad", estudiante.edad)
+        formData.append("nivel_educativo", estudiante.nivel_educativo)
         formData.append("monto_solicitado", "0")
         if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
         if (cedulaFile) formData.append("archivo_cedula", cedulaFile)
@@ -457,6 +469,7 @@ export function NuevoEstudiantePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 min-w-0">
             <div><label className="block text-xs font-medium mb-1.5">Ocupación</label><input type="text" value={estudiante.ocupacion} onChange={e => updateEstudiante("ocupacion", e.target.value)} onBlur={() => blurEstudiante("ocupacion")} placeholder="Ej: Estudiante, Ingeniero..." className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.ocupacion && errors.ocupacion ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.ocupacion && errors.ocupacion && <p className="text-[11px] mt-1 text-red-500">{errors.ocupacion}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Estado Civil</label><select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option><option value="soltero">Soltero</option><option value="casado">Casado</option><option value="otro">Otro</option></select>{touched.estado_civil && errors.estado_civil && <p className="text-[11px] mt-1 text-red-500">{errors.estado_civil}</p>}</div>
+            <div><label className="block text-xs font-medium mb-1.5">Nivel Educativo</label><select value={estudiante.nivel_educativo} onChange={e => updateEstudiante("nivel_educativo", e.target.value)} onBlur={() => blurEstudiante("nivel_educativo")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.nivel_educativo && errors.nivel_educativo ? "#ef4444" : COLORS.BORDER_SUBTLE }}><option value="">Seleccionar...</option>{nivelesEducativos.map(n => (<option key={n.value} value={n.value}>{n.label}</option>))}</select>{touched.nivel_educativo && errors.nivel_educativo && <p className="text-[11px] mt-1 text-red-500">{errors.nivel_educativo}</p>}</div>
             <div><label className="block text-xs font-medium mb-1.5">Edad</label><input type="number" min="10" max="120" value={estudiante.edad} onChange={e => updateEstudiante("edad", e.target.value)} onBlur={() => blurEstudiante("edad")} placeholder="Ej: 25" className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.edad && errors.edad ? "#ef4444" : COLORS.BORDER_SUBTLE }} />{touched.edad && errors.edad && <p className="text-[11px] mt-1 text-red-500">{errors.edad}</p>}</div>
             <div className="relative">
               <label className="block text-xs font-medium mb-1.5">Ciudad</label>
