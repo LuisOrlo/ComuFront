@@ -9,8 +9,39 @@ import { fixImageUrl } from "../../AprobacionUtils"
 import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "../../PagoPreAprobacionSection"
 import { AjustePrecioPanel } from "./AjustePrecioPanel"
 
+interface ModuloLineaPago {
+  id: string
+  modulo_nombre: string
+  monto_ajustado: number
+  monto_abonado: number
+  monto_original?: number
+  estado: string
+}
+
+interface SolicitudSeleccionada {
+  pago?: {
+    tipo_pago?: string
+    monto_solicitado?: number
+    comprobante?: {
+      tipo?: string
+      url?: string
+      fecha_pago_declarada?: string
+      comprobante_purgado?: boolean
+    }
+  }
+  curso?: { id?: string; nombre?: string }
+  lineas_pago?: {
+    modulos?: ModuloLineaPago[]
+    inscripcion?: { id: string; monto_ajustado: number; monto_abonado: number; estado: string }
+    total_abonado: number
+    total_esperado: number
+    modulos_pagados: number
+    modulos_count: number
+  }
+}
+
 interface SolicitudPagoTabProps {
-  selected: any
+  selected: SolicitudSeleccionada
   yaProcesada: boolean
   editPagoField: string | null
   editPagoVal: string
@@ -31,8 +62,8 @@ interface SolicitudPagoTabProps {
   getCursoNombre: () => string
   setMontoValido: (val: boolean) => void
   setTotalPrecioModulos: (val: number) => void
-  handleApprove: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
-  setSelected: (updater: (prev: any) => any) => void
+  handleApprove: (pagos: Record<string, unknown>[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
+  setSelected: (updater: (prev: SolicitudSeleccionada) => SolicitudSeleccionada) => void
   editandoMontos: boolean
   editMontosValues: Record<string, string>
   editPreciosValues?: Record<string, string>
@@ -86,7 +117,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
           <div className="flex items-center justify-between text-sm">
             <span style={{ color: COLORS.TEXT_MUTED }}>Monto declarado</span>
             {Number(selected.pago?.monto_solicitado) > 0 ? (
-              <span className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>${Number(selected.pago.monto_solicitado).toLocaleString()}</span>
+              <span className="font-bold text-sm" style={{ color: COLORS.CHARCOAL }}>${Number(selected.pago!.monto_solicitado).toLocaleString()}</span>
             ) : (
               <span className="italic text-sm opacity-50" style={{ color: COLORS.TEXT_MUTED }}>No especificado</span>
             )}
@@ -122,8 +153,8 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             <div className="rounded-xl border overflow-hidden bg-gray-50 cursor-pointer" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <img src={fixImageUrl(selected.pago.comprobante.url)} alt="Comprobante"
                 className="w-full object-contain max-h-[400px]"
-                onError={() => setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, comprobante_purgado: true } } }))}
-                onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago.comprobante.url))} />
+                onError={() => setSelected((prev) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, comprobante_purgado: true } } }))}
+                onClick={() => setExpandedImageUrl(fixImageUrl(selected.pago!.comprobante!.url!))} />
             </div>
           )}
           {selected.pago?.comprobante?.comprobante_purgado && (
@@ -156,11 +187,11 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
           </div>
         )}
 
-        {(selected?.lineas_pago?.modulos?.length > 0 || selected?.lineas_pago?.inscripcion) && (() => {
-          const modulos = selected.lineas_pago.modulos || []
-          const inscripcion = selected.lineas_pago.inscripcion || null
-          const lineas: { id: string; nombre: string; monto_ajustado: number; monto_abonado: number; estado: string }[] = [
-            ...modulos.map((m: any) => ({ id: m.id, nombre: m.modulo_nombre, monto_ajustado: m.monto_ajustado, monto_abonado: m.monto_abonado, estado: m.estado })),
+        {((selected?.lineas_pago?.modulos?.length ?? 0) > 0 || selected?.lineas_pago?.inscripcion) && (() => {
+          const modulos = selected.lineas_pago!.modulos || []
+          const inscripcion = selected.lineas_pago!.inscripcion || null
+          const lineas: { id: string; nombre: string; monto_ajustado: number; monto_abonado: number; monto_original?: number; estado: string }[] = [
+            ...modulos.map((m: ModuloLineaPago) => ({ id: m.id, nombre: m.modulo_nombre, monto_ajustado: m.monto_ajustado, monto_abonado: m.monto_abonado, monto_original: m.monto_original, estado: m.estado })),
             ...(inscripcion ? [{ id: inscripcion.id, nombre: "Inscripción", monto_ajustado: inscripcion.monto_ajustado, monto_abonado: inscripcion.monto_abonado, estado: inscripcion.estado }] : []),
           ]
 
@@ -170,7 +201,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
 
           const nuevoTotalAbonado = editandoMontos
             ? lineas.reduce((sum, lp) => sum + (parseFloat(editMontosValues[lp.id]) || 0), 0)
-            : selected.lineas_pago.total_abonado
+            : selected.lineas_pago!.total_abonado
 
           return (
           <div className="p-4 rounded-xl border space-y-3 bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -198,7 +229,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                     </button>
                   )}
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full border" style={{ backgroundColor: "oklch(0.55 0.15 150 / 0.08)", color: "oklch(0.40 0.16 150)", borderColor: "oklch(0.55 0.15 150 / 0.2)" }}>
-                    {selected.lineas_pago.modulos_pagados}/{selected.lineas_pago.modulos_count} módulos pagados
+                    {selected.lineas_pago!.modulos_pagados}/{selected.lineas_pago!.modulos_count} módulos pagados
                   </span>
                 </div>
               </div>
@@ -219,7 +250,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
               const editVal = editMontosValues[lp.id]
               const editPrecioVal = editPreciosValues[lp.id]
               const abonadoLive = editandoMontos ? (parseFloat(editVal ?? String(lp.monto_abonado)) || 0) : lp.monto_abonado
-              const precioOriginal = (lp as any).monto_original || lp.monto_ajustado || 0
+              const precioOriginal = lp.monto_original || lp.monto_ajustado || 0
               const precioLive = editandoMontos && editPrecioVal !== undefined ? (parseFloat(editPrecioVal) || 0) : lp.monto_ajustado
 
               const changed = editandoMontos && (
@@ -336,7 +367,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Total abonado después de guardar</span>
                   <span className="text-base font-black font-mono" style={{ color: COLORS.CHARCOAL }}>
-                    ${nuevoTotalAbonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                    ${nuevoTotalAbonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago!.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 justify-end">
@@ -357,7 +388,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
               <div className="border-t pt-3 flex items-center justify-between text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <span style={{ color: COLORS.CHARCOAL }}>Total abonado</span>
                 <span className="font-mono text-base font-black" style={{ color: "oklch(0.55 0.15 150)" }}>
-                  ${selected.lineas_pago.total_abonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                  ${selected.lineas_pago!.total_abonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago!.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             )}

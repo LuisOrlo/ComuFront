@@ -209,8 +209,9 @@ function AppLayout() {
             <Route path="/matriculas/aprobacion/taller/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionTallerPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudesInscripcionPage /></RoleGuard>} />
             <Route path="/solicitudes-inscripcion/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SolicitudInscripcionDetallePage /></RoleGuard>} />
-            <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasPage /></RoleGuard>} />
+            <Route path="/servicios/aulas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialAulasPage /></RoleGuard>} />
             <Route path="/servicios/aulas/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialAulasPage /></RoleGuard>} />
+            <Route path="/servicios/aulas/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasPage /></RoleGuard>} />
             <Route path="/servicios/aulas/gestion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AulasGestionPage /></RoleGuard>} />
             <Route path="/servicios/aulas/nueva-reserva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
             <Route path="/servicios/aulas/nueva-reserva/:aulaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
@@ -223,18 +224,21 @@ function AppLayout() {
             <Route path="/servicios/equipos/alquileres/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquilerDetallePage /></RoleGuard>} />
             <Route path="/servicios/equipos/alquileres/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoAlquilerPage /></RoleGuard>} />
             <Route path="/servicios/equipos/:id/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEquipoPage /></RoleGuard>} />
-            <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PodcastPage /></RoleGuard>} />
+            <Route path="/servicios/podcast" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPodcastPage /></RoleGuard>} />
             <Route path="/servicios/podcast/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPodcastPage /></RoleGuard>} />
+            <Route path="/servicios/podcast/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PodcastPage /></RoleGuard>} />
             <Route path="/servicios/podcast/nueva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaPage /></RoleGuard>} />
             <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PaquetesPage /></RoleGuard>} />
             <Route path="/servicios/podcast/reservas/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ReservaPodcastDetallePage /></RoleGuard>} />
-            <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoPage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEdicionVideoPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEdicionVideoPage /></RoleGuard>} />
+            <Route path="/servicios/edicion-video/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoFormPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoDetallePage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoFormPage /></RoleGuard>} />
-            <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioPage /></RoleGuard>} />
+            <Route path="/servicios/radio" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioHistorialPage /></RoleGuard>} />
             <Route path="/servicios/radio/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioHistorialPage /></RoleGuard>} />
+            <Route path="/servicios/radio/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioPage /></RoleGuard>} />
             <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioTarifasPage /></RoleGuard>} />
             <Route path="/servicios/radio/reservas/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ReservaRadioDetallePage /></RoleGuard>} />
             <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><FinancePagosPage /></RoleGuard>}>

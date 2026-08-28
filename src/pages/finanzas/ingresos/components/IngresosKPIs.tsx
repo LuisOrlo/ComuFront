@@ -1,13 +1,11 @@
 import { COLORS } from "@/lib/constants"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MoneyIcon, GraduationCapIcon, AiFolderIcon, SchoolIcon, InvoiceIcon } from "@hugeicons/core-free-icons"
+import { GraduationCapIcon, AiFolderIcon, SchoolIcon, InvoiceIcon } from "@hugeicons/core-free-icons"
 
 const BORDER = COLORS.BORDER_SUBTLE
 
 interface KPIData {
   total: number
-  egresos?: number
-  balance?: number
   cursos: number
   servicios: number
   otros: number
@@ -30,19 +28,14 @@ function Variacion({ actual, previo }: { actual: number; previo?: number }) {
 }
 
 export function IngresosKPIs({ totales }: { totales: KPIData }) {
-  const balance = totales.balance ?? totales.total
-  const egresos = totales.egresos ?? 0
   const items = [
-    { label: "Balance Neto", value: balance, color: "oklch(0.55 0.15 150)", bg: "oklch(0.55 0.15 150 / 0.1)", icon: MoneyIcon },
     { label: "Total ingresado", value: totales.total, previo: totales.previo_total, color: "#059669", bg: "oklch(0.55 0.15 150 / 0.06)", icon: InvoiceIcon },
-    { label: "Egresos", value: egresos, color: "#dc2626", bg: "oklch(0.55 0.15 30 / 0.08)", icon: InvoiceIcon },
     { label: "Cursos", value: totales.cursos, previo: totales.previo_cursos, color: "#059669", bg: "oklch(0.55 0.15 150 / 0.08)", icon: GraduationCapIcon },
     { label: "Servicios", value: totales.servicios, previo: totales.previo_servicios, color: "#7c3aed", bg: "oklch(0.5 0.15 280 / 0.08)", icon: AiFolderIcon },
     { label: "Talleres", value: totales.talleres ?? 0, color: "#0891b2", bg: "oklch(0.6 0.15 200 / 0.08)", icon: SchoolIcon },
   ]
 
-  function KpiCard({ item, idx }: { item: typeof items[number]; idx: number }) {
-    const displayValue = idx === 2 ? -Math.abs(item.value) : item.value
+  function KpiCard({ item }: { item: typeof items[number] }) {
     return (
       <div className="rounded-2xl border bg-white p-4 relative overflow-hidden" style={{ borderColor: BORDER }}>
         <div className="absolute top-0 right-0 size-16 rounded-bl-full opacity-10" style={{ backgroundColor: item.color }} />
@@ -52,7 +45,7 @@ export function IngresosKPIs({ totales }: { totales: KPIData }) {
         </div>
         <div className="flex items-baseline gap-1 relative z-10">
           <p className="text-xl font-black" style={{ color: item.color }}>
-            {idx === 2 ? "-$" : "$"}{Math.abs(displayValue || 0).toLocaleString()}
+            ${(item.value || 0).toLocaleString()}
           </p>
           {item.previo !== undefined && <Variacion actual={item.value} previo={item.previo} />}
         </div>
@@ -61,13 +54,9 @@ export function IngresosKPIs({ totales }: { totales: KPIData }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {items.slice(0, 3).map((item, i) => <KpiCard key={i} item={item} idx={i} />)}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {items.slice(3).map((item, i) => <KpiCard key={i + 3} item={item} idx={i + 3} />)}
-      </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {items.map((item, i) => <KpiCard key={i} item={item} />)}
     </div>
   )
 }
+

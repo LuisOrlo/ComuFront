@@ -57,7 +57,7 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
     setSaving(true)
     try {
       const montoNum = parseFloat(monto) || 0
-      const data: Record<string, unknown> = {
+      const data: { monto_pagado: number; tipo_pago: string; metodo_pago: string; monto_ajustado?: number; motivo_ajuste?: string } = {
         monto_pagado: montoNum,
         tipo_pago: tipoPago,
         metodo_pago: metodo,
@@ -67,7 +67,7 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
         data.motivo_ajuste = ajuste.motivo
       }
       await tallerService.actualizarInscripcion(inscripcionId, data)
-      onSaved?.(data as any)
+      onSaved?.({ monto_pagado: data.monto_pagado, tipo_pago: data.tipo_pago, metodo_pago: data.metodo_pago })
       return true
     } catch {
       return false

@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { Link, useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, Clock01Icon, ArrowDown01Icon, Search01Icon, Cancel01Icon, CheckmarkCircle04Icon, Edit01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
-import { Plus } from "lucide-react"
+import { PackageIcon, Calendar03Icon, MatrixIcon, ArrowLeft02Icon, ArrowRight02Icon, ArrowLeft01Icon, Clock01Icon, ArrowDown01Icon, Search01Icon, Cancel01Icon, CheckmarkCircle04Icon, Edit01Icon, Delete01Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 import { podcastService, type ReservaPodcast, type PaquetePodcast } from "@/services/podcast.service"
@@ -149,30 +148,30 @@ export function PodcastPage() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
-      <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="space-y-1">
-            
-            <h1 className="text-3xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-              Reservas de Podcast
+      <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-35" style={{ color: COLORS.CHARCOAL }}>Podcast / Agenda</p>
+            <h1 className="text-2xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
+              Agenda de Reservas
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link
               to="/servicios/podcast/paquetes"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
-              style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.95 0 0)" }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.97] border"
+              style={{ color: COLORS.CHARCOAL, borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}
             >
               <HugeiconsIcon icon={PackageIcon} size={14} />
-              Gestiona tus paquetes
+              Paquetes
             </Link>
             <button
-              onClick={() => navigate("/servicios/podcast/nueva")}
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-violet-500/20"
-              style={{ backgroundColor: COLORS.ACCENT }}
+              onClick={() => navigate("/servicios/podcast")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
             >
-              <Plus size={18} strokeWidth={2.5} color="white" />
-              Nueva Reserva
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+              Historial
             </button>
           </div>
         </div>

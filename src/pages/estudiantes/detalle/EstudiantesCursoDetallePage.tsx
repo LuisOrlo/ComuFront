@@ -12,6 +12,14 @@ import { estudiantesService, type Estudiante } from "@/services/estudiantes.serv
 import { toast } from "sonner"
 import { generarListadoEstudiantesPDF, type EstudiantePDF } from "@/lib/generarEstudiantesPDF"
 
+type CiudadValor = string | { nombre?: string } | null | undefined
+
+function resolverCiudad(c: CiudadValor): string | undefined {
+  if (!c) return undefined
+  if (typeof c === "string") return c
+  return c.nombre
+}
+
 export function EstudiantesCursoDetallePage() {
   const { cursoId } = useParams<{ cursoId: string }>()
   const navigate = useNavigate()
@@ -87,18 +95,14 @@ export function EstudiantesCursoDetallePage() {
     const estudianteRecord = cedula ? estudiantesMap.get(cedula) : undefined
 
     const rawCiudad =
-      (est as any)?.ciudad?.nombre ||
-      (est as any)?.ciudad ||
-      est?.perfil_estudiante?.ciudad ||
-      (solEst as any)?.ciudad?.nombre ||
-      (solEst as any)?.ciudad ||
-      (solEst as any)?.perfil_estudiante?.ciudad ||
-      (ext as any)?.ciudad?.nombre ||
-      (ext as any)?.ciudad ||
-      (typeof estudianteRecord?.ciudad === "object" ? estudianteRecord?.ciudad?.nombre : estudianteRecord?.ciudad) ||
+      resolverCiudad(est?.ciudad) ||
+      resolverCiudad((est?.perfil_estudiante as { ciudad?: CiudadValor } | null | undefined)?.ciudad) ||
+      resolverCiudad(solEst?.ciudad) ||
+      resolverCiudad((solEst?.perfil_estudiante as { ciudad?: CiudadValor } | null | undefined)?.ciudad) ||
+      resolverCiudad(ext?.ciudad) ||
+      resolverCiudad(typeof estudianteRecord?.ciudad === "object" ? (estudianteRecord.ciudad as { nombre?: string }).nombre : estudianteRecord?.ciudad) ||
       estudianteRecord?.perfil_estudiante?.ciudad ||
-      (curso as any)?.ciudad?.nombre ||
-      (curso as any)?.ciudad ||
+      resolverCiudad(curso?.ciudad) ||
       undefined
 
     const ciudad = typeof rawCiudad === "string" ? rawCiudad : undefined

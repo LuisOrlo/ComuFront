@@ -1,12 +1,13 @@
 import { useState, useEffect, Fragment, useMemo } from "react"
 import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Money01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
+import { Money01Icon, UserGroupIcon, Download01Icon } from "@hugeicons/core-free-icons"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
-import type { MatriculaDetallada } from "@/services/cursos.service"
+import type { MatriculaDetallada, Curso } from "@/services/cursos.service"
 import { toast } from "sonner"
+import { generarReportePagosCursoPDF } from "@/lib/generarPagosPDF"
 
 const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
@@ -16,6 +17,7 @@ const BORDER = COLORS.BORDER_SUBTLE
 interface Props {
   cursoId: string
   cursoNombre?: string
+  curso?: Curso | null
   matriculas?: MatriculaDetallada[]
 }
 
@@ -53,12 +55,13 @@ interface ModuloInfo {
   precio_base: number
 }
 
-export function CursoPagosSection({ cursoId, cursoNombre, matriculas }: Props) {
+export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: Props) {
   const [loading, setLoading] = useState(true)
   const [estudiantes, setEstudiantes] = useState<EstudianteFinanciero[]>([])
   const [modulos, setModulos] = useState<ModuloInfo[]>([])
   const [totales, setTotales] = useState({ estudiantes: 0, modulos: 0, esperado_catalogo: 0, recaudado_real: 0 })
   const [expandido, setExpandido] = useState<string | null>(null)
+  const [generatingPDF, setGeneratingPDF] = useState(false)
 
   const studentIdMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -69,6 +72,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, matriculas }: Props) {
     }
     return map
   }, [matriculas])
+
   const load = async () => {
     if (!cursoId) return
     setLoading(true)
@@ -86,10 +90,57 @@ export function CursoPagosSection({ cursoId, cursoNombre, matriculas }: Props) {
   }
 
   useEffect(() => {
-
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursoId])
+
+  const handleDownloadPDF = async () => {
+    if (!estudiantes || estudiantes.length === 0) {
+      toast.error("No hay datos de estudiantes para generar el reporte")
+      return
+    }
+    setGeneratingPDF(true)
+    try {
+      // Mapear estudiantes organizando apellidos y nombres separados si es posible
+      const pdfEstudiantes = estudiantes.map(e => {
+        const mat = matriculas?.find(m => m.id === e.matricula_id)
+        const estData = mat?.estudiante || mat?.cliente_externo
+        const nombres = estData?.nombres || e.nombre.split(" ").slice(0, 2).join(" ")
+        const apellidos = estData?.apellidos || e.nombre.split(" ").slice(2).join(" ") || ""
+        const ciudad = (estData as any)?.ciudad?.nombre || (estData as any)?.ciudad || (mat as any)?.ciudad || e.ciudad || "—"
+
+        return {
+          nombres: nombres || e.nombre,
+          apellidos: apellidos || "",
+          ciudad,
+          totalPagar: Number(e.total_esperado || 0),
+          totalAbonado: Number(e.total_pagado || 0),
+        }
+      })
+
+      const horarioStr = curso?.horaInicio && curso?.horaFin 
+        ? `${curso.horaInicio} - ${curso.horaFin}` 
+        : "—"
+
+      await generarReportePagosCursoPDF({
+        info: {
+          nombre: cursoNombre || curso?.nombre || "Curso",
+          ciudad: curso?.ciudad || pdfEstudiantes[0]?.ciudad || "—",
+          instructor: curso?.instructor || "—",
+          horario: horarioStr,
+          fecha_inicio: curso?.fechaInicio || undefined,
+          fecha_fin: curso?.fechaFin || undefined,
+        },
+        estudiantes: pdfEstudiantes,
+      })
+      toast.success("Reporte de pagos descargado correctamente")
+    } catch (err) {
+      console.error(err)
+      toast.error("Error al generar el PDF de pagos")
+    } finally {
+      setGeneratingPDF(false)
+    }
+  }
 
   const recaudado = totales.recaudado_real ?? 0
   const esperado = totales.esperado_catalogo ?? 0
@@ -155,9 +206,18 @@ export function CursoPagosSection({ cursoId, cursoNombre, matriculas }: Props) {
 
       {/* Student table */}
       <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
-        <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
+        <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: BORDER }}>
           <p className="text-xs font-semibold" style={{ color: CHARCOAL }}>Detalle por Estudiante</p>
+          <button
+            onClick={handleDownloadPDF}
+            disabled={generatingPDF || estudiantes.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white border border-emerald-600 transition-all duration-200 hover:bg-emerald-700 hover:border-emerald-700 hover:shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <HugeiconsIcon icon={Download01Icon} size={14} />
+            <span>{generatingPDF ? "Generando..." : "Descargar Reporte PDF"}</span>
+          </button>
         </div>
+
         <div className="overflow-x-auto">
           {estudiantes.length === 0 ? (
             <div className="p-12 text-center text-sm" style={{ color: TEXT_MUTED }}>Sin estudiantes matriculados</div>

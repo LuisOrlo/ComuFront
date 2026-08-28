@@ -10,6 +10,7 @@ import {
   UserIcon,
   ArrowLeft02Icon,
   ArrowRight02Icon,
+  ArrowLeft01Icon,
   MatrixIcon,
   Home02Icon,
   Clock01Icon,
@@ -185,23 +186,32 @@ export function AulasPage() {
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
       {/* Header */}
-      <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="space-y-1">
-
-            <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-              Alquiler de Aulas
+      <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-35" style={{ color: COLORS.CHARCOAL }}>Aulas / Agenda</p>
+            <h1 className="text-2xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
+              Agenda de Reservas
             </h1>
           </div>
-
-          <Link
-            to="/servicios/aulas/gestion"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all active:scale-[0.97]"
-            style={{ color: COLORS.CHARCOAL, backgroundColor: "oklch(0.95 0 0)" }}
-          >
-            <HugeiconsIcon icon={PackageIcon} size={14} />
-            Revisa tus aulas
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/servicios/aulas/gestion"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.97] border"
+              style={{ color: COLORS.CHARCOAL, borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.97 0 0)" }}
+            >
+              <HugeiconsIcon icon={PackageIcon} size={14} />
+              Gestión de Aulas
+            </Link>
+            <button
+              onClick={() => navigate("/servicios/aulas")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+              Historial
+            </button>
+          </div>
         </div>
       </header>
 
@@ -372,7 +382,7 @@ export function AulasPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Link to="/servicios/aulas/historial"
+              <Link to="/servicios/aulas"
                 className="flex items-center gap-2 px-4 py-2 rounded-[10px] text-xs font-bold border transition-all hover:bg-gray-50"
                 style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
                 <HugeiconsIcon icon={Clock01Icon} size={14} />

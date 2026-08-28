@@ -65,7 +65,7 @@ export function EF({ icon, label, field, data, editField, editVal, onEdit, onCha
 }) {
   const [error, setError] = useState<string | null>(null)
 
-  const raw = data?.perfil_estudiante?.[field] ?? data?.[field]
+  const raw = data?.perfil_estudiante?.[field] ?? data?.[field] ?? (field === "correo" ? (data?.perfil_estudiante?.email ?? data?.email) : field === "email" ? (data?.perfil_estudiante?.correo ?? data?.correo) : undefined)
   const displayRaw = inputType === "date" && typeof raw === "string" && raw.includes("T") ? raw.split("T")[0] : raw
   const value = displayRaw ?? "—"
 

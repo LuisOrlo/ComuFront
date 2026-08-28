@@ -157,6 +157,7 @@ export interface FinancialProfile {
   transacciones: Array<{
     id: string
     cuenta_id: string
+    linea_pago_modulo_id?: string
     concepto: string
     monto: number
     metodo_pago: string

@@ -401,6 +401,7 @@ export function CursoDetailPage() {
             <CursoPagosSection
               cursoId={id!}
               cursoNombre={curso.nombre}
+              curso={curso}
               matriculas={matriculas}
             />
           )}

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { HugeiconsIcon } from "@hugeicons/react"
-import { PaymentIcon, CalendarIcon, Upload05Icon, Image01Icon } from "@hugeicons/core-free-icons"
+import { PaymentIcon, CalendarIcon, Upload05Icon, Image01Icon, PencilEdit01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { Section, SubCategory, EF } from "../../AprobacionHelpers"

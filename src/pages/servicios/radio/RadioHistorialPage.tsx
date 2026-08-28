@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  ArrowLeft01Icon, ArrowRight02Icon,
+  ArrowRight02Icon,
   Calendar03Icon, UserIcon, Clock01Icon, Money01Icon,
   CheckmarkCircle04Icon, Cancel01Icon, RadioIcon,
   ArrowDown01Icon, Search01Icon,
@@ -145,20 +145,29 @@ export function RadioHistorialPage() {
   return (
     <div className="flex flex-col h-full bg-white">
       <header className="shrink-0 border-b bg-white sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 py-5">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/servicios/radio")}
-              className="size-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-all active:scale-95">
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} style={{ color: COLORS.TEXT_MUTED }} />
-            </button>
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="size-11 rounded-2xl flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: COLORS.ACCENT }}>
-                <HugeiconsIcon icon={RadioIcon} size={20} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>Historial de Radio</h1>
-                <p className="text-xs mt-0.5 truncate" style={{ color: COLORS.TEXT_MUTED }}>Todas las reservas de radio</p>
-              </div>
+        <div className="px-6 lg:px-8 py-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest opacity-35" style={{ color: COLORS.CHARCOAL }}>Servicios</p>
+              <h1 className="text-2xl font-black tracking-tight" style={{ color: COLORS.CHARCOAL }}>Radio</h1>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => navigate("/servicios/radio/tarifas")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              >
+                <HugeiconsIcon icon={Money01Icon} size={14} />
+                Tarifas
+              </button>
+              <button
+                onClick={() => navigate("/servicios/radio/agenda")}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                <HugeiconsIcon icon={Calendar03Icon} size={14} />
+                Agenda
+              </button>
             </div>
           </div>
         </div>

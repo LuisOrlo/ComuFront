@@ -22,26 +22,58 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
   const [imagenExpandida, setImagenExpandida] = useState<string | null>(null)
   const [expandedCursos, setExpandedCursos] = useState<Set<string>>(new Set())
   const [showFullHistorial, setShowFullHistorial] = useState(false)
-  const [editModal, setEditModal] = useState<{ id: string; monto: number; metodo: string } | null>(null)
+  const [editModal, setEditModal] = useState<{ isGroup: boolean; id: string; ids: string[]; monto: number; metodo: string } | null>(null)
   const [editMonto, setEditMonto] = useState("")
   const [editMetodo, setEditMetodo] = useState("")
+  const [editMontosValues, setEditMontosValues] = useState<Record<string, string>>({})
+  const [editFile, setEditFile] = useState<File | null>(null)
   const [savingEdit, setSavingEdit] = useState(false)
 
   const handleSaveEdit = useCallback(async () => {
     if (!editModal) return
-    const monto = parseFloat(editMonto)
-    if (!monto || monto <= 0) { toast.error("Ingresa un monto vlido"); return }
     setSavingEdit(true)
     try {
-      await financeService.updateTransaccion(editModal.id, { monto, metodo_pago: editMetodo })
+      if (editModal.isGroup) {
+        const promises = editModal.ids.map(txId => {
+          const m = parseFloat(editMontosValues[txId])
+          if (!m || m <= 0) throw new Error("Ingresa montos válidos")
+          
+          let dto: any
+          if (editFile) {
+            dto = new FormData()
+            dto.append("monto", String(m))
+            dto.append("metodo_pago", editMetodo)
+            dto.append("comprobante", editFile)
+          } else {
+            dto = { monto: m, metodo_pago: editMetodo }
+          }
+          return financeService.updateTransaccion(txId, dto)
+        })
+        await Promise.all(promises)
+      } else {
+        const monto = parseFloat(editMonto)
+        if (!monto || monto <= 0) { throw new Error("Ingresa un monto válido") }
+        
+        let dto: any
+        if (editFile) {
+          dto = new FormData()
+          dto.append("monto", String(monto))
+          dto.append("metodo_pago", editMetodo)
+          dto.append("comprobante", editFile)
+        } else {
+          dto = { monto, metodo_pago: editMetodo }
+        }
+        await financeService.updateTransaccion(editModal.id, dto)
+      }
       toast.success("Pago actualizado correctamente")
       setEditModal(null)
+      setEditFile(null)
       onRefresh()
     } catch (err) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      toast.error((err as any)?.response?.data?.mensaje || "Error al actualizar")
+      toast.error((err as any)?.message || (err as any)?.response?.data?.mensaje || "Error al actualizar")
     } finally { setSavingEdit(false) }
-  }, [editModal, editMonto, editMetodo, onRefresh])
+  }, [editModal, editMonto, editMetodo, editMontosValues, editFile, onRefresh])
 
   if (loading) {
     return (
@@ -281,13 +313,29 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
       )}
 
       {data.transacciones.length > 0 && (() => {
+        const groupedMap = new Map<string, typeof data.transacciones[0] & { count: number, ids: string[] }>()
+        for (const t of data.transacciones) {
+          const key = `${t.fecha_pago}_${t.concepto}_${t.metodo_pago}_${t.comprobante_url}_${t.estado_verificacion}`
+          if (groupedMap.has(key)) {
+            const existing = groupedMap.get(key)!
+            if (!existing.ids.includes(t.id)) {
+              existing.monto += t.monto
+              existing.count++
+              existing.ids.push(t.id)
+            }
+          } else {
+            groupedMap.set(key, { ...t, count: 1, ids: [t.id] })
+          }
+        }
+        const groupedTransacciones = Array.from(groupedMap.values()).sort((a, b) => new Date(b.fecha_pago).getTime() - new Date(a.fecha_pago).getTime())
+        
         const transaccionesMostradas = showFullHistorial
-          ? data.transacciones
-          : data.transacciones.slice(0, 10)
+          ? groupedTransacciones
+          : groupedTransacciones.slice(0, 10)
         return (
         <div>
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-            Historial de Pagos ({data.transacciones.length})
+            Historial de Pagos ({groupedTransacciones.length})
           </h3>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-left text-sm">
@@ -329,9 +377,22 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
                       <td className="px-5 py-3 whitespace-nowrap">
                         {t.estado_verificacion === 'aprobado' && (
                           <button onClick={() => {
-                            setEditModal({ id: t.id, monto: t.monto, metodo: t.metodo_pago })
-                            setEditMonto(String(t.monto))
                             setEditMetodo(t.metodo_pago)
+                            setEditFile(null)
+                            if (t.count > 1) {
+                              const m: Record<string, string> = {}
+                              t.ids.forEach(id => {
+                                const original = data.transacciones.find(tr => tr.id === id)
+                                if (original) {
+                                  m[id] = String(original.monto)
+                                }
+                              })
+                              setEditMontosValues(m)
+                              setEditModal({ isGroup: true, id: t.id, ids: t.ids, monto: t.monto, metodo: t.metodo_pago })
+                            } else {
+                              setEditModal({ isGroup: false, id: t.id, ids: [t.id], monto: t.monto, metodo: t.metodo_pago })
+                              setEditMonto(String(t.monto))
+                            }
                           }}
                             className="inline-flex items-center gap-1 text-[10px] font-medium hover:underline transition-colors"
                             style={{ color: COLORS.TEXT_MUTED }}>
@@ -346,13 +407,13 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
               </tbody>
             </table>
           </div>
-          {data.transacciones.length > 10 && !showFullHistorial && (
+          {groupedTransacciones.length > 10 && !showFullHistorial && (
             <button
               onClick={() => setShowFullHistorial(true)}
               className="mt-3 text-xs font-bold hover:underline"
               style={{ color: COLORS.ACCENT }}
             >
-              Ver historial completo ({data.transacciones.length} pagos)
+              Ver historial completo ({groupedTransacciones.length} pagos)
             </button>
           )}
         </div>
@@ -361,32 +422,85 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
       {editModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/40" onClick={() => setEditModal(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 z-10 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 z-10 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="px-6 py-4 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <h3 className="text-sm font-black text-gray-900">Editar pago</h3>
             </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Monto</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">$</span>
-                  <input type="number" min="0.01" step="0.01" value={editMonto}
-                    onChange={e => setEditMonto(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/10"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+            <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+              {editModal.isGroup ? (
+                <div className="space-y-3">
+                  {editModal.ids.map((txId, i) => {
+                    const original = data?.transacciones?.find(tr => tr.id === txId)
+                    let lineaNombre = `Línea de pago ${i + 1}`
+                    
+                    if (original && original.linea_pago_modulo_id && data?.matriculas) {
+                      for (const m of data.matriculas) {
+                        const lp = m.lineas_pago?.find(l => l.id === original.linea_pago_modulo_id)
+                        if (lp) {
+                          lineaNombre = lp.modulo?.nombre || (lp.tipo === 'inscripcion' ? 'Inscripción / Matrícula' : 'Módulo')
+                          break
+                        }
+                      }
+                    } else if (original && original.concepto) {
+                      const partes = original.concepto.split(' - ')
+                      if (partes.length > 1) {
+                        lineaNombre = partes[partes.length - 1].trim()
+                      } else {
+                        lineaNombre = original.concepto
+                      }
+                    }
+
+                    return (
+                      <div key={txId} className="p-3 border rounded-lg bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <div className="text-xs font-bold text-gray-700 mb-2">{lineaNombre} {original ? `(Original: $${original.monto.toLocaleString()})` : ''}</div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Monto asignado</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">$</span>
+                            <input type="number" min="0.01" step="0.01" value={editMontosValues[txId] || ''}
+                              onChange={e => setEditMontosValues(prev => ({ ...prev, [txId]: e.target.value }))}
+                              className="w-full pl-7 pr-3 py-1.5 border rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/10 bg-white"
+                              style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Mtodo</label>
-                <select value={editMetodo} onChange={e => setEditMetodo(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="deposito">Depsito</option>
-                  <option value="tarjeta">Tarjeta</option>
-                  <option value="otro">Otro</option>
-                </select>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Monto</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-mono">$</span>
+                    <input type="number" min="0.01" step="0.01" value={editMonto}
+                      onChange={e => setEditMonto(e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/10"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                  </div>
+                </div>
+              )}
+              
+              <div className="pt-2 border-t mt-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Método de Pago Global</label>
+                    <select value={editMetodo} onChange={e => setEditMetodo(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg text-sm outline-none bg-white"
+                      style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                      <option value="efectivo">Efectivo</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="deposito">Depósito</option>
+                      <option value="tarjeta">Tarjeta</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Nuevo Comprobante (Opcional)</label>
+                    <input type="file" accept="image/*,.pdf"
+                      onChange={e => setEditFile(e.target.files?.[0] || null)}
+                      className="w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                  </div>
+                </div>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-end gap-2" style={{ borderColor: COLORS.BORDER_SUBTLE }}>

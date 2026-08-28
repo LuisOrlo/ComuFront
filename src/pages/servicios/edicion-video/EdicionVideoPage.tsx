@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Link, useNavigate } from "react-router"
+import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   VideoIcon, Edit01Icon, SearchIcon, Tick02Icon,
-  Calendar03Icon, Alert02Icon, Clock01Icon,
+  Calendar03Icon, Alert02Icon, Clock01Icon, ArrowLeft01Icon,
 } from "@hugeicons/core-free-icons"
 import { Trash2, Plus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
@@ -124,15 +124,16 @@ export function EdicionVideoPage() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50/30">
-      <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-              Edición de Videos
+      <header className="shrink-0 px-8 py-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-35" style={{ color: COLORS.CHARCOAL }}>Edición de Video / Tablero</p>
+            <h1 className="text-2xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
+              Tablero de Producción
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
               <input
@@ -140,25 +141,25 @@ export function EdicionVideoPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar trabajo..."
-                className="w-52 pl-9 pr-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                className="w-48 pl-9 pr-4 py-2 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20"
                 style={{ borderColor: COLORS.BORDER_SUBTLE }}
               />
             </div>
-            <Link
-              to="/servicios/edicion-video/historial"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold border transition-all active:scale-[0.97] hover:bg-gray-50"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-            >
-              <HugeiconsIcon icon={Calendar03Icon} size={14} />
-              Historial
-            </Link>
             <button
               onClick={() => navigate("/servicios/edicion-video/nuevo")}
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-blue-500/20"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
               style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}
             >
-              <Plus size={18} strokeWidth={2.5} color="white" />
+              <Plus size={14} strokeWidth={2.5} color="white" />
               Nuevo Trabajo
+            </button>
+            <button
+              onClick={() => navigate("/servicios/edicion-video")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
+              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+              Historial
             </button>
           </div>
         </div>

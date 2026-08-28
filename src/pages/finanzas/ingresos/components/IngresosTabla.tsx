@@ -41,7 +41,7 @@ const CAT_TEXT: Record<string, string> = {
 
 interface IngresoRow {
   id: string
-  tipo_movimiento: "ingreso" | "egreso"
+  tipo_movimiento?: "ingreso"
   fecha_pago: string
   concepto?: string
   estudiante_nombre?: string
@@ -86,12 +86,10 @@ export function IngresosTabla({ data, loading }: Props) {
       header: "Concepto",
       cell: ({ row }) => {
         const item = row.original
-        const esEgreso = item.tipo_movimiento === "egreso"
         return (
           <span className="text-xs truncate max-w-[160px] block" style={{ color: CHARCOAL }}>
-            {esEgreso && <span className="px-1.5 py-0.5 mr-1.5 rounded-full text-[7px] font-bold uppercase bg-red-100 text-red-700">Egreso</span>}
             {item.concepto || "—"}
-            {!esEgreso && item.modulos_count && item.modulos_count > 1 && (
+            {item.modulos_count && item.modulos_count > 1 && (
               <span className="block text-[9px] opacity-50 truncate mt-0.5">
                 {item.modulos_detalle?.map(m => m.modulo_nombre).join(" · ")}
               </span>
@@ -114,12 +112,11 @@ export function IngresosTabla({ data, loading }: Props) {
       header: "Categoría",
       cell: ({ row }) => {
         const item = row.original
-        const esEgreso = item.tipo_movimiento === "egreso"
         return (
           <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
             style={{
-              backgroundColor: esEgreso ? "oklch(0.55 0.15 30 / 0.1)" : (CAT_COLORS[item.categoria || ""] || "oklch(0.4 0.02 0 / 0.12)"),
-              color: esEgreso ? "#dc2626" : (CAT_TEXT[item.categoria || ""] || "#6b7280"),
+              backgroundColor: CAT_COLORS[item.categoria || ""] || "oklch(0.4 0.02 0 / 0.12)",
+              color: CAT_TEXT[item.categoria || ""] || "#6b7280",
             }}>
             {item.categoria || "—"}
           </span>
@@ -133,10 +130,9 @@ export function IngresosTabla({ data, loading }: Props) {
       header: "Monto",
       cell: ({ row }) => {
         const item = row.original
-        const esEgreso = item.tipo_movimiento === "egreso"
         return (
-          <span className="text-xs font-bold" style={{ color: esEgreso ? "#dc2626" : "oklch(0.55 0.15 150)" }}>
-            {esEgreso ? "-" : "+"}${Number(item.monto || 0).toLocaleString()}
+          <span className="text-xs font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>
+            +${Number(item.monto || 0).toLocaleString()}
           </span>
         )
       },

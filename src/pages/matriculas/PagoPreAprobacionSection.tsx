@@ -193,7 +193,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         const precioOriginal = Number(modulo.precio_base ?? modulo.precio ?? 0)
         const precioEfectivo = getPrecioEfectivo(modulo)
         const a = ajustes[modulo.id]
-        const tieneAjuste = a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== precioOriginal
+
         const pagado = monto > 0 && monto >= precioEfectivo
         const abonado = monto > 0 && monto < precioEfectivo
 

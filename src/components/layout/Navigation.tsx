@@ -186,6 +186,16 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
       ],
     },
     {
+      label: "Servicios",
+      items: [
+        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+        { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
+        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
+        { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
+      ],
+    },
+    {
       label: "Operaciones",
       items: [
         { icon: CalendarDaysIcon, label: "Agenda", path: "/agenda" },
@@ -200,16 +210,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
         { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
       ],
     },
-    {
-      label: "Servicios",
-      items: [
-        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
-        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
-        { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
-        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
-        { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
-      ],
-    },
+    
   )
 }
 
@@ -224,6 +225,16 @@ if (isAdmin) {
         { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
         { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
         { icon: AiFolderIcon, label: "Categorías", path: "/catalogos" },
+      ],
+    },
+    {
+      label: "Servicios",
+      items: [
+        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+        { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
+        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
+        { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
       ],
     },
     {
@@ -251,16 +262,7 @@ if (isAdmin) {
         { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },
       ],
     },
-    {
-      label: "Servicios",
-      items: [
-        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
-        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
-        { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
-        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
-        { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
-      ],
-    },
+    
   )
 }
 

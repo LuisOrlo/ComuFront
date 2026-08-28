@@ -92,9 +92,17 @@ export const financeService = {
     return response.data
   },
 
-  async updateTransaccion(id: string, dto: { monto?: number; metodo_pago?: string; observaciones?: string }) {
-    const response = await api.patch(`/finanzas/transacciones/${id}`, dto)
-    return response.data
+  async updateTransaccion(id: string, dto: { monto?: number; metodo_pago?: string; observaciones?: string } | FormData) {
+    if (dto instanceof FormData) {
+      dto.append("_method", "PATCH")
+      const response = await api.post(`/finanzas/transacciones/${id}`, dto, {
+        headers: { "Content-Type": "multipart/form-data" }
+      })
+      return response.data
+    } else {
+      const response = await api.patch(`/finanzas/transacciones/${id}`, dto)
+      return response.data
+    }
   },
 
   async getResumen() {
