@@ -17,6 +17,9 @@ export interface ReservaAula {
   hora_inicio: string
   hora_fin: string
   precio_total: number
+  precio_original?: number | null
+  monto_descuento?: number
+  motivo_descuento?: string | null
   estado: "reservado" | "confirmado" | "en_progreso" | "completado" | "cancelado"
   observaciones?: string
   aula?: Aula

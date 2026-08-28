@@ -7,7 +7,6 @@ import { COLORS } from "@/lib/constants"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import api from "@/services/auth.service"
 import { validarComprobante } from "@/lib/file-validators"
 
 const ACCENT = COLORS.ACCENT
@@ -145,11 +144,8 @@ export function ServicioPagoPage() {
     try {
       const fd = new FormData()
       fd.append("archivo", comprobanteFile)
-      const token = localStorage.getItem("auth_token")
-      const res = await api.post("/finanzas/pagos-iniciales/comprobante", fd, {
-        headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      })
-      const comprobanteUrl = res.data.data?.url || res.data.url || ""
+      const res = await financeService.uploadComprobantePago(fd)
+      const comprobanteUrl = res.data?.url || res.url || ""
       if (esPagoDirecto) {
         await financeService.pagarServicio(state.tipo, state.servicioId, {
           monto: montoNum,

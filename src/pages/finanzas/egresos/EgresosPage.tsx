@@ -25,12 +25,14 @@ export function EgresosPage() {
   const [graficoProveedores, setGraficoProveedores] = useState<any[]>([])
   const [categorias, setCategorias] = useState<any[]>([])
   const [filtros, setFiltros] = useState({ categoria: "", search: "", fecha_desde: "", fecha_hasta: "" })
+  const [page, setPage] = useState(1)
+  const [lastPage, setLastPage] = useState(1)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = { per_page: 500 }
+      const params: any = { per_page: 25, page }
       if (filtros.categoria) params.categoria = filtros.categoria
       if (filtros.search) params.search = filtros.search
       if (filtros.fecha_desde) params.fecha_desde = filtros.fecha_desde
@@ -41,15 +43,17 @@ export function EgresosPage() {
       setGrafico(res.grafico || [])
       setGraficoCategorias(res.grafico_categorias || [])
       setGraficoProveedores(res.grafico_proveedores || [])
+      setLastPage(res.last_page || 1)
     } catch { toast.error("Error al cargar egresos") }
     finally { setLoading(false) }
-  }, [filtros])
+  }, [filtros, page])
 
   useEffect(() => {
     financeService.getEgresoCategorias().then(r => setCategorias(r.data || []))
 
     load()
   }, [load])
+  useEffect(() => { setPage(1) }, [filtros])
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -103,7 +107,7 @@ export function EgresosPage() {
         <EgresosKPIs totales={totales} />
         <EgresosGraficos grafico={grafico} graficoCategorias={graficoCategorias} graficoProveedores={graficoProveedores} />
         <EgresosFiltros filtros={filtros} categorias={categorias} onChange={setFiltros} />
-        <EgresosTabla data={data} loading={loading} onDelete={(id) => setDeleteId(id)} />
+        <EgresosTabla data={data} loading={loading} page={page} lastPage={lastPage} onPageChange={setPage} onDelete={(id) => setDeleteId(id)} />
       </div>
       {deleteId && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">

@@ -32,6 +32,9 @@ export interface ReservaPodcast {
   hora_inicio: string
   hora_fin: string
   precio_total: number
+  precio_original?: number | null
+  monto_descuento?: number
+  motivo_descuento?: string | null
   pago_registrado: boolean
   estado: "pendiente" | "confirmado" | "en_progreso" | "completado" | "cancelado"
   notas?: string

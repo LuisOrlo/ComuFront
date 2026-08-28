@@ -65,6 +65,9 @@ export function HistorialPage() {
         if (fechaDesde) params.fecha_desde = fechaDesde
         if (fechaHasta) params.fecha_hasta = fechaHasta
         if (search) params.search = search
+        if (metodoFilter !== "todos") params.metodo_pago = metodoFilter
+        if (estadoFilter !== "todos") params.estado_verificacion = estadoFilter
+        if (tipoFilter !== "todos") params.tipo_movimiento = tipoFilter
         const res = await financeService.getHistorial(params)
         if (controller.signal.aborted) return
         
@@ -81,7 +84,7 @@ export function HistorialPage() {
     }
     run()
     return () => controller.abort()
-  }, [page, fechaDesde, fechaHasta, search])
+  }, [page, fechaDesde, fechaHasta, search, metodoFilter, estadoFilter, tipoFilter])
 
   // Debounce search
   useEffect(() => {
@@ -92,7 +95,7 @@ export function HistorialPage() {
   // Reset pagination on filter changes
   useEffect(() => {
     setPage(1)
-  }, [fechaDesde, fechaHasta, search])
+  }, [fechaDesde, fechaHasta, search, metodoFilter, estadoFilter, tipoFilter])
 
   // Clear selections when multi-select mode is disabled
   useEffect(() => {

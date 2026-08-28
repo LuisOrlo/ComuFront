@@ -24,12 +24,14 @@ export function IngresosPage() {
   const [graficoCategorias, setGraficoCategorias] = useState<any[]>([])
   const [pdfModalOpen, setPdfModalOpen] = useState(false)
   const [analytics, setAnalytics] = useState<any>(null)
+  const [page, setPage] = useState(1)
+  const [lastPage, setLastPage] = useState(1)
   const [filtros, setFiltros] = useState({ categoria: "", metodo_pago: "", search: "", fecha_desde: "", fecha_hasta: "" })
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = { per_page: 500 }
+      const params: any = { per_page: 25, page }
       if (filtros.categoria) params.categoria = filtros.categoria
       if (filtros.metodo_pago) params.metodo_pago = filtros.metodo_pago
       if (filtros.search) params.search = filtros.search
@@ -42,11 +44,13 @@ export function IngresosPage() {
       setGraficoMetodo(res.grafico_metodo || [])
       setGraficoCategorias(res.grafico_categorias || [])
       setAnalytics(res.analytics || null)
+      setLastPage(res.last_page || 1)
     } catch { toast.error("Error al cargar ingresos") }
     finally { setLoading(false) }
-  }, [filtros])
+  }, [filtros, page])
 
 
+  useEffect(() => { setPage(1) }, [filtros])
   useEffect(() => { load() }, [load])
 
   return (
@@ -64,7 +68,7 @@ export function IngresosPage() {
         <IngresosGraficos grafico={grafico} graficoMetodo={graficoMetodo} graficoCategorias={graficoCategorias} />
         <IngresosAnalisis analytics={analytics} />
         <IngresosFiltros filtros={filtros} onChange={setFiltros} />
-        <IngresosTabla data={data} loading={loading} />
+        <IngresosTabla data={data} loading={loading} page={page} lastPage={lastPage} onPageChange={setPage} />
         <ExportPDFModal isOpen={pdfModalOpen} onClose={() => setPdfModalOpen(false)}
           data={data} totales={totales} grafico={grafico} graficoCategorias={graficoCategorias} filtros={filtros} />
       </div>

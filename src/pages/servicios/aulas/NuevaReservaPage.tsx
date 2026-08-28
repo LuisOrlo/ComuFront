@@ -60,6 +60,12 @@ export function NuevaReservaPage() {
 
   const [saving, setSaving] = useState(false)
 
+  // Descuentos
+  const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [descuentoValor, setDescuentoValor] = useState<string>("")
+  const [motivoDescuento, setMotivoDescuento] = useState<string>("")
+  const [showDescuento, setShowDescuento] = useState(false)
+
   const [conflicto, setConflicto] = useState<ReservaAula | null>(null)
   const [verificandoConflicto, setVerificandoConflicto] = useState(false)
 
@@ -87,6 +93,12 @@ export function NuevaReservaPage() {
             const opt: ClienteOption = { tipo: "cliente_externo", id: r.cliente_externo_id, nombres: r.cliente_externo?.nombres || "", apellidos: r.cliente_externo?.apellidos || "", cedula: r.cliente_externo?.cedula, correo: r.cliente_externo?.correo }
             setSelectedCliente(opt)
             setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
+          }
+          if (r.monto_descuento && r.monto_descuento > 0) {
+            setShowDescuento(true)
+            setDescuentoTipo("fijo")
+            setDescuentoValor(r.monto_descuento.toString())
+            setMotivoDescuento(r.motivo_descuento || "")
           }
           const aulaReserva = todas.find(a => a.id === r.aula_id) || null
           setAula(aulaReserva)
@@ -194,7 +206,16 @@ export function NuevaReservaPage() {
     return hours > 0 ? Math.round(hours * Number(aula.precio_hora) * 100) / 100 : 0
   }
 
-  const precioTotal = calcularPrecio()
+  const precioOriginal = calcularPrecio()
+  let montoDescuento = 0
+  if (showDescuento && descuentoValor) {
+    if (descuentoTipo === "fijo") {
+      montoDescuento = Number(descuentoValor) || 0
+    } else {
+      montoDescuento = (precioOriginal * (Number(descuentoValor) || 0)) / 100
+    }
+  }
+  const precioTotal = Math.max(0, precioOriginal - montoDescuento)
 
   const selectCliente = (opt: ClienteOption) => {
     setSelectedCliente(opt)
@@ -245,6 +266,9 @@ export function NuevaReservaPage() {
         hora_inicio: horaInicio,
         hora_fin: horaFin,
         precio_total: precioTotal,
+        precio_original: showDescuento ? precioOriginal : null,
+        monto_descuento: showDescuento ? montoDescuento : 0,
+        motivo_descuento: showDescuento ? motivoDescuento : null,
       }
       if (isEdit) {
         payload.estado = estadoOriginal
@@ -430,23 +454,70 @@ export function NuevaReservaPage() {
                 </div>
               )}
 
-              {precioTotal > 0 && (
-                <div className="flex items-center justify-between px-5 py-4 rounded-2xl border bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.03 270)" }}>
-                      <HugeiconsIcon icon={Money01Icon} size={16} style={{ color: "#7c3aed" }} />
+              {precioOriginal > 0 && (
+                <div className="flex flex-col gap-3 px-5 py-4 rounded-2xl border bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="size-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.03 270)" }}>
+                        <HugeiconsIcon icon={Money01Icon} size={16} style={{ color: "#7c3aed" }} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Precio estimado</p>
+                        <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
+                          ${Number(aula.precio_hora).toFixed(2)}/hora
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Precio estimado</p>
-                      <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
-                        ${Number(aula.precio_hora).toFixed(2)}/hora
-                      </p>
+                    <div className="text-right flex flex-col items-end">
+                      {showDescuento && montoDescuento > 0 && (
+                        <p className="text-xs font-medium text-gray-400 line-through mb-0.5">${precioOriginal.toFixed(2)}</p>
+                      )}
+                      <div className="flex items-end gap-2">
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-50 mb-1.5">Total</p>
+                        <p className="text-3xl font-black tracking-tighter" style={{ color: COLORS.CHARCOAL }}>${precioTotal.toFixed(2)}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Total</p>
-                    <p className="text-3xl font-black tracking-tighter" style={{ color: COLORS.CHARCOAL }}>${precioTotal.toFixed(2)}</p>
-                  </div>
+
+                  {!showDescuento ? (
+                    <button type="button" onClick={() => setShowDescuento(true)} className="text-xs font-medium text-violet-600 hover:text-violet-700 text-left mt-1 self-start">
+                      + Aplicar descuento
+                    </button>
+                  ) : (
+                    <div className="mt-2 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex gap-2">
+                        <select 
+                          value={descuentoTipo} 
+                          onChange={(e) => setDescuentoTipo(e.target.value as "fijo" | "porcentaje")}
+                          className="px-3 py-2 rounded-lg border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-violet-400 w-24 shrink-0"
+                        >
+                          <option value="fijo">$ Fijo</option>
+                          <option value="porcentaje">% Porc</option>
+                        </select>
+                        <input 
+                          type="number" 
+                          min="0"
+                          step="0.01"
+                          placeholder={descuentoTipo === "fijo" ? "Monto a descontar" : "Porcentaje (ej: 10)"}
+                          value={descuentoValor}
+                          onChange={(e) => setDescuentoValor(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-violet-400"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Motivo (ej: Estudiante VIP)"
+                          value={motivoDescuento}
+                          onChange={(e) => setMotivoDescuento(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-violet-400"
+                        />
+                        <button type="button" onClick={() => { setShowDescuento(false); setDescuentoValor(""); setMotivoDescuento(""); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

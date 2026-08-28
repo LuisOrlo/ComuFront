@@ -247,3 +247,20 @@
     scrollbar-width: none;
   }
 }
+
+@layer utilities {
+  .animate-fade-slide-down {
+    animation: fadeSlideDown 260ms ease-out forwards;
+  }
+
+  @keyframes fadeSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

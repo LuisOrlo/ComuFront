@@ -14,7 +14,6 @@ import {
   type PaginationState,
 } from "@tanstack/react-table"
 import { COLORS } from "@/lib/constants"
-import { PaginationControls } from "@/components/table/PaginationControls"
 
 const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
@@ -55,13 +54,16 @@ interface IngresoRow {
 interface Props {
   data: IngresoRow[]
   loading: boolean
+  page: number
+  lastPage: number
+  onPageChange: (page: number) => void
 }
 
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
 }
 
-export function IngresosTabla({ data, loading }: Props) {
+export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: Props) {
   const navigate = useNavigate()
   const [sorting, setSorting] = useState<SortingState>([{ id: "fecha_pago", desc: true }])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
@@ -241,7 +243,13 @@ export function IngresosTabla({ data, loading }: Props) {
       </table>
       {data.length > 0 && (
         <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
-          <PaginationControls table={table} />
+          <div className="flex items-center justify-between text-xs font-medium opacity-70">
+            <span>Página {page} de {lastPage}</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="px-3 py-1 rounded-lg border disabled:opacity-30">Anterior</button>
+              <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= lastPage || loading} className="px-3 py-1 rounded-lg border disabled:opacity-30">Siguiente</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

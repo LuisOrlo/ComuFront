@@ -5,7 +5,6 @@ import { ArrowLeft01Icon, UploadIcon, UserIcon, AiFolderIcon, PackageIcon, Setti
 import { COLORS } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import api from "@/services/auth.service"
 import { cn } from "@/lib/utils"
 
 const CHARCOAL = COLORS.CHARCOAL
@@ -65,8 +64,8 @@ export function EgresoFormPage() {
   useEffect(() => {
     financeService.getPersonalDisponible().then(setPersonal).catch(() => {})
     if (isEdit) {
-      financeService.getEgresos({}).then((r: { data?: Array<Record<string, unknown>> }) => {
-        const item = (r.data || []).find((e: Record<string, unknown>) => e.id === id)
+      financeService.getEgreso(id!).then((r: { data?: Record<string, unknown> }) => {
+        const item = r.data
         if (item) setForm({
           categoria: String(item.categoria || item.categoria_nombre || ""), descripcion: String(item.descripcion || ""),
           monto: String(item.monto || ""), proveedor_beneficiario: String(item.proveedor_beneficiario || ""),
@@ -103,11 +102,8 @@ export function EgresoFormPage() {
     if (!file) return form.comprobante_url
     const fd = new FormData()
     fd.append("archivo", file)
-    const token = localStorage.getItem("auth_token")
-    const res = await api.post("/finanzas/pagos-iniciales/comprobante", fd, {
-      headers: { "Content-Type": "multipart/form-data", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    })
-    return res.data.data?.url || res.data.url || ""
+    const res = await financeService.uploadComprobantePago(fd)
+    return res.data?.url || res.url || ""
   }
 
   const handleSubmit = async () => {

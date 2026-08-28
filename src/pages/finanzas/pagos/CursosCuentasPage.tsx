@@ -41,6 +41,7 @@ export function CursosCuentasPage() {
       try {
         const params: any = { origen: "curso", per_page: 50 }
         if (modalidad !== "todos") params.modalidad = modalidad
+        if (search) params.search = search
         const [resumenData, cuentasData] = await Promise.all([
           financeService.getResumen(),
           financeService.getCuentas(params),
@@ -61,7 +62,7 @@ export function CursosCuentasPage() {
       }
     }
     load()
-  }, [modalidad])
+  }, [modalidad, search])
 
   const grouped = useMemo(() => {
     const groups: Record<string, any> = {}

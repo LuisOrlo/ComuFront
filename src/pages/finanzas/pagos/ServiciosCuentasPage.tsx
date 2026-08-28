@@ -166,7 +166,7 @@ export function ServiciosCuentasPage() {
 
   useEffect(() => {
     Promise.all([
-      financeService.getCuentas({ per_page: 200, origen: "servicio" }),
+      financeService.getCuentas({ per_page: 100, origen: "servicio", search }),
       financeService.getResumen(),
     ])
       .then(([cuentasData, resumenData]) => {
@@ -175,7 +175,7 @@ export function ServiciosCuentasPage() {
       })
       .catch(() => toast.error("Error al cargar cuentas de servicios"))
       .finally(() => setLoading(false))
-  }, [])
+  }, [search])
 
   const rows = useMemo(() => {
     const list: ServicioRow[] = []
