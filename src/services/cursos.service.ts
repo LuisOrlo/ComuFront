@@ -369,6 +369,16 @@ function mapEstadoCurso(
 // ============================================================================
 
 export const cursosService = {
+  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; curso_abierto_id: string; pagos: Record<string, unknown>[]; metodo_pago: string }) {
+    const response = await api.post("/academic/matriculas/inscribir-desde-perfil", data)
+    return response.data
+  },
+
+  async getCursosAbiertosParaInscripcion(params?: Record<string, string | number | boolean>) {
+    const response = await api.get("/cursos-abiertos", { params })
+    return response.data
+  },
+
   /**
    * Obtener lista de cursos abiertos con filtros y paginación
    */
@@ -692,6 +702,10 @@ export const cursosService = {
     return response.data.data || []
   },
 
+  async getModulosPorCurso(cursoAbiertoId: string): Promise<Record<string, unknown>[]> {
+    return this.getModulosCurso(cursoAbiertoId)
+  },
+
   /**
    * PUT /api/academic/modulos/{id}
    * Actualizar módulo
@@ -714,6 +728,13 @@ export const cursosService = {
     form.append('archivo', file)
     const response = await apiMultipart.post('/upload/comprobante', form)
     return response.data.data
+  },
+
+  async uploadSolicitudArchivo(id: string, tipo: "cedula" | "comprobante", file: File) {
+    const form = new FormData()
+    form.append("archivo", file)
+    const response = await apiMultipart.post(`/academic/solicitudes-inscripcion/${id}/${tipo}`, form)
+    return response.data
   },
 
   /**

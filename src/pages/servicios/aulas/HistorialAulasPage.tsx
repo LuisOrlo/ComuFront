@@ -166,9 +166,10 @@ export function HistorialAulasPage() {
       state: {
         tipo: "aula",
         servicioId: r.id,
+        cuentaId: r.cuenta_por_cobrar?.id,
         nombre: clienteNombre,
         montoTotal: Number(r.precio_total) || 0,
-        montoSaldo: Number(r.precio_total) || 0,
+        montoSaldo: r.cuenta_por_cobrar ? Number(r.cuenta_por_cobrar.saldo_pendiente) : Number(r.precio_total) || 0,
         nombreServicio: `Alquiler de Aula ${aulaNombre}`,
       },
     })
@@ -396,12 +397,20 @@ export function HistorialAulasPage() {
                                         <span>Editar</span>
                                       </button>
 
-                                      <button onClick={() => handlePago(r)}
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                                        style={{ backgroundColor: COLORS.ACCENT }}>
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                                        <span className="hidden sm:inline">Registrar pago</span>
-                                      </button>
+                                      {r.cuenta_por_cobrar?.estado === 'pagado' || Number(r.cuenta_por_cobrar?.saldo_pendiente ?? (r.precio_total - (r.cuenta_por_cobrar?.monto_abonado ?? 0))) <= 0 ? (
+                                        <button onClick={() => handlePago(r)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition-all hover:bg-emerald-100 active:scale-95">
+                                          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                          <span className="hidden sm:inline">Ver pagos</span>
+                                        </button>
+                                      ) : (
+                                        <button onClick={() => handlePago(r)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                                          style={{ backgroundColor: COLORS.ACCENT }}>
+                                          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                          <span className="hidden sm:inline">Registrar pago</span>
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
                                 )

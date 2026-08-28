@@ -201,7 +201,7 @@ export async function generarReportePagosCursoPDF(data: DatosPagosCursoPDF) {
     alternateRowStyles: {
       fillColor: GRAY_ROW_RGB,
     },
-    didDrawPage: (hookData: any) => {
+    didDrawPage: (hookData: { pageNumber: number }) => {
       // Pie de página
       const pageCount = doc.internal.getNumberOfPages()
       const currentPage = hookData.pageNumber

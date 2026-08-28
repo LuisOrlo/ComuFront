@@ -421,11 +421,16 @@ export function HistorialEquipoPage() {
                                     ${Number(a.precio_total).toFixed(2)}
                                   </p>
                                 </div>
-                                {saldo > 0 && (
-                                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, nombre: getResponsable(a), montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${equipo.nombre}` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 whitespace-nowrap shrink-0 border"
-                                    style={{ borderColor: COLORS.ACCENT, color: COLORS.ACCENT }}>
+                                {saldo > 0 ? (
+                                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, cuentaId: a.cuenta_por_cobrar?.id, nombre: getResponsable(a), montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${equipo.nombre}` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all active:scale-95 whitespace-nowrap shrink-0 border"
+                                    style={{ backgroundColor: COLORS.ACCENT, borderColor: COLORS.ACCENT }}>
                                     <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
                                     Registrar pago
+                                  </button>
+                                ) : (
+                                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, { state: { tipo: "equipo", servicioId: a.id, cuentaId: a.cuenta_por_cobrar?.id, nombre: getResponsable(a), montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${equipo.nombre}` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition-all hover:bg-emerald-100 active:scale-95 whitespace-nowrap shrink-0">
+                                    <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                    Ver pagos
                                   </button>
                                 )}
                               </div>

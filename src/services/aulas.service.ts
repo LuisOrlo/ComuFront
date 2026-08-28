@@ -18,10 +18,12 @@ export interface ReservaAula {
   hora_fin: string
   precio_total: number
   estado: "reservado" | "confirmado" | "en_progreso" | "completado" | "cancelado"
+  observaciones?: string
   aula?: Aula
   persona?: {
     nombres?: string
     apellidos?: string
+    cedula?: string
     correo?: string
     celular?: string
   }
@@ -31,6 +33,13 @@ export interface ReservaAula {
     cedula?: string
     correo?: string
     celular?: string
+  }
+  cuenta_por_cobrar?: {
+    id: string
+    monto_total: number
+    monto_abonado: number
+    saldo_pendiente: number
+    estado: string
   }
 }
 

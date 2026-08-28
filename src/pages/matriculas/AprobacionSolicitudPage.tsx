@@ -20,7 +20,6 @@ import { SolicitudPagoTab } from "./components/solicitudes/SolicitudPagoTab"
 import { SolicitudDocumentoTab } from "./components/solicitudes/SolicitudDocumentoTab"
 import { ModalReconciliacionCurso } from "./components/ModalReconciliacionCurso"
 import { toast } from "sonner"
-import axios from "axios"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 
@@ -107,14 +106,8 @@ export function AprobacionSolicitudPage() {
     if (!modalReconciliacionOpen || !cursoIdPropuesto) return
     const loadModulos = async () => {
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/academic/cursos-abiertos/${cursoIdPropuesto}/modulos`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` } }
-        )
-        const rawModulos = (res.data?.data || []) as any[]
-        const precioInscripcion = Number(res.data?.precio_inscripcion)
-          || montoInscripcion
-          || 0
+        const rawModulos = await cursosService.getModulosPorCurso(cursoIdPropuesto) as any[]
+        const precioInscripcion = montoInscripcion || 0
         if (precioInscripcion > 0) {
           rawModulos.push({
             id: null,
@@ -291,11 +284,8 @@ export function AprobacionSolicitudPage() {
     if (error) { toast.error(error); return }
     setUploadingCedula(true)
     try {
-      const form = new FormData(); form.append("archivo", file)
-      const token = localStorage.getItem("auth_token")
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/academic/solicitudes-inscripcion/${id}/cedula`, form,
-        { headers: { Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" } })
-      setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_url: res.data.data.cedula_url } } }))
+      const res = await cursosService.uploadSolicitudArchivo(id, "cedula", file)
+      setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_url: res.data?.cedula_url || res.cedula_url } } }))
       toast.success("Cédula subida")
     } catch { toast.error("Error al subir cédula") }
     finally { setUploadingCedula(false) }
@@ -308,11 +298,8 @@ export function AprobacionSolicitudPage() {
     if (error) { toast.error(error); return }
     setUploadingComprobante(true)
     try {
-      const form = new FormData(); form.append("archivo", file)
-      const token = localStorage.getItem("auth_token")
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/academic/solicitudes-inscripcion/${id}/comprobante`, form,
-        { headers: { Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" } })
-      setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, url: res.data.data.comprobante_url } } }))
+      const res = await cursosService.uploadSolicitudArchivo(id, "comprobante", file)
+      setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, url: res.data?.comprobante_url || res.comprobante_url } } }))
       toast.success("Comprobante subido")
     } catch { toast.error("Error al subir comprobante") }
     finally { setUploadingComprobante(false) }

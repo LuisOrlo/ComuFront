@@ -6,7 +6,7 @@ import { ArrowLeft01Icon, Delete01Icon, MapPinIcon, Cancel01Icon, CheckmarkCircl
 import { COLORS } from "@/lib/constants"
 import { tallerService, type HorarioTaller } from "@/services/taller.service"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
-import axios from "axios"
+import { personasService } from "@/services/personas.service"
 import { toast } from "sonner"
 
 const ACCENT = COLORS.ACCENT
@@ -172,15 +172,10 @@ export function TallerFormPage() {
     setInstructorQuery(q)
     setSearchingInstructor(true)
     try {
-      const token = localStorage.getItem("auth_token")
-      const base = import.meta.env.VITE_API_URL
       const params: Record<string, string | number> = { tipo: "instructor", per_page: 25 }
       if (q.trim()) params.buscar = q
-      const res = await axios.get(`${base}/academic/personas`, {
-        params,
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
-      })
-      setInstructores((res.data as any).data || [])
+      const res = await personasService.getPersonas(params)
+      setInstructores(res.data)
     } catch { setInstructores([]) }
     finally { setSearchingInstructor(false) }
   }

@@ -47,6 +47,11 @@ function mapPersona(raw: Record<string, unknown>): Persona {
 }
 
 export const personasService = {
+  async buscarInstructores(buscar?: string, per_page = 25): Promise<Persona[]> {
+    const response = await this.getPersonas({ tipo: "instructor", buscar, per_page })
+    return response.data
+  },
+
   async getPersonas(filters?: {
     tipo?: string
     buscar?: string

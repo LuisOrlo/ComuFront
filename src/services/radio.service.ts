@@ -29,6 +29,13 @@ export interface ReservaRadio {
   operador?: { id: string; nombres: string; apellidos: string }
   created_at?: string
   updated_at?: string
+  cuenta_por_cobrar?: {
+    id: string
+    monto_total: number
+    monto_abonado: number
+    saldo_pendiente: number
+    estado: string
+  }
 }
 
 export interface BloqueDisponible {

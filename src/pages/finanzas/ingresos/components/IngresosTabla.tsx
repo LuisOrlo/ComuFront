@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
-import { Eye, Pencil } from "lucide-react"
+import { Eye } from "lucide-react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -150,22 +150,13 @@ export function IngresosTabla({ data, loading }: Props) {
       header: "",
       cell: ({ row }) => {
         const item = row.original
-        const esEgreso = item.tipo_movimiento === "egreso"
         return (
           <div className="flex items-center justify-center">
-            {esEgreso ? (
-              <button onClick={() => navigate(`/finanzas/egresos/${item.id}/editar`)}
-                className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                title="Editar">
-                <Pencil size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-amber-600 transition-colors" />
-              </button>
-            ) : (
-              <button onClick={() => navigate(`/finanzas/ingresos/${item.id}`)}
-                className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                title="Ver detalle">
-                <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
-              </button>
-            )}
+            <button onClick={() => navigate(`/finanzas/ingresos/${item.id}`)}
+              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              title="Ver detalle">
+              <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
+            </button>
           </div>
         )
       },

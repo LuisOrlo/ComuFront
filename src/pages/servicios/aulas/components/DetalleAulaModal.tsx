@@ -162,16 +162,22 @@ export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPag
                   Editar
                 </button>
               )}
-              {onPago && (
-                <button
-                  onClick={() => { onClose(); onPago() }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                  style={{ backgroundColor: COLORS.ACCENT }}
-                >
-                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                  Registrar Pago
-                </button>
-              )}
+              {onPago && (() => {
+                const esPagado = reserva.cuenta_por_cobrar?.estado === 'pagado' || Number(reserva.cuenta_por_cobrar?.saldo_pendiente ?? (reserva.precio_total - (reserva.cuenta_por_cobrar?.monto_abonado ?? 0))) <= 0
+                return (
+                  <button
+                    onClick={() => { onClose(); onPago() }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95",
+                      esPagado ? "text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100" : "text-white hover:opacity-90"
+                    )}
+                    style={esPagado ? {} : { backgroundColor: COLORS.ACCENT }}
+                  >
+                    <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                    {esPagado ? "Ver pagos" : "Registrar Pago"}
+                  </button>
+                )
+              })()}
             </div>
           </motion.div>
         </div>

@@ -21,6 +21,13 @@ export interface TrabajoEdicion {
   cobro_registrado: boolean
   notas?: string
   created_at?: string
+  cuenta_por_cobrar?: {
+    id: string
+    monto_total: number
+    monto_abonado: number
+    saldo_pendiente: number
+    estado: string
+  }
 }
 
 export const ESTADO_TRABAJO_LABELS: Record<EstadoTrabajo, string> = {

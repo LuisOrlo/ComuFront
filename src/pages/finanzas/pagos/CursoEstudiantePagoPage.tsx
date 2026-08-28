@@ -16,7 +16,6 @@ import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { validarComprobante } from "@/lib/file-validators"
 import { useParams, useNavigate } from "react-router"
-import axios from "axios"
 
 export function CursoEstudiantePagoPage() {
   const { cursoId, matriculaId } = useParams<{ cursoId: string; matriculaId: string }>()
@@ -99,21 +98,12 @@ export function CursoEstudiantePagoPage() {
       const form = new FormData()
       form.append("archivo", comprobanteFile)
 
-      const token = localStorage.getItem("auth_token")
-      const base = import.meta.env.VITE_API_URL
+      const uploadRes = await financeService.uploadComprobantePago(form)
+      const comprobanteUrl = uploadRes?.data?.url || uploadRes?.url || ""
 
-      const uploadRes = await axios.post(`${base}/finanzas/pagos-iniciales/comprobante`, form, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      const comprobanteUrl = uploadRes.data?.data?.url || uploadRes.data?.url || ""
-
-      await axios.post(`${base}/finanzas/pagos-iniciales`, {
+      await financeService.registrarPagosIniciales({
         matricula_id: matriculaId,
         pagos: pagos.map(p => ({ ...p, comprobante_url: comprobanteUrl })),
-        metodo_pago: metodoPago,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
       })
 
       toast.success("Pago registrado correctamente")

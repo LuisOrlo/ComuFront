@@ -38,12 +38,13 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
           const m = parseFloat(editMontosValues[txId])
           if (!m || m <= 0) throw new Error("Ingresa montos válidos")
           
-          let dto: any
+          let dto: FormData | { monto: number; metodo_pago: string }
           if (editFile) {
-            dto = new FormData()
-            dto.append("monto", String(m))
-            dto.append("metodo_pago", editMetodo)
-            dto.append("comprobante", editFile)
+            const fd = new FormData()
+            fd.append("monto", String(m))
+            fd.append("metodo_pago", editMetodo)
+            fd.append("comprobante", editFile)
+            dto = fd
           } else {
             dto = { monto: m, metodo_pago: editMetodo }
           }
@@ -54,12 +55,13 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
         const monto = parseFloat(editMonto)
         if (!monto || monto <= 0) { throw new Error("Ingresa un monto válido") }
         
-        let dto: any
+        let dto: FormData | { monto: number; metodo_pago: string }
         if (editFile) {
-          dto = new FormData()
-          dto.append("monto", String(monto))
-          dto.append("metodo_pago", editMetodo)
-          dto.append("comprobante", editFile)
+          const fd = new FormData()
+          fd.append("monto", String(monto))
+          fd.append("metodo_pago", editMetodo)
+          fd.append("comprobante", editFile)
+          dto = fd
         } else {
           dto = { monto, metodo_pago: editMetodo }
         }

@@ -30,7 +30,7 @@ export interface AlquilerEquipo {
   equipo?: Equipo
   persona?: { id: string; nombres: string; apellidos: string; correo?: string }
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
-  cuenta_por_cobrar?: { id: string; estado: string; monto_total: number; monto_abonado: number }
+  cuenta_por_cobrar?: { id: string; estado: string; monto_total: number; monto_abonado: number; saldo_pendiente?: number }
 }
 
 export const equiposService = {

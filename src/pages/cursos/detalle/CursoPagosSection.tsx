@@ -104,10 +104,14 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
       // Mapear estudiantes organizando apellidos y nombres separados si es posible
       const pdfEstudiantes = estudiantes.map(e => {
         const mat = matriculas?.find(m => m.id === e.matricula_id)
-        const estData = mat?.estudiante || mat?.cliente_externo
+        const estData = mat?.estudiante || mat?.solicitud_inscripcion?.participante_externo
         const nombres = estData?.nombres || e.nombre.split(" ").slice(0, 2).join(" ")
         const apellidos = estData?.apellidos || e.nombre.split(" ").slice(2).join(" ") || ""
-        const ciudad = (estData as any)?.ciudad?.nombre || (estData as any)?.ciudad || (mat as any)?.ciudad || e.ciudad || "—"
+        const estDataTyped = estData as { ciudad?: { nombre?: string } | string } | undefined
+        const matTyped = mat as { ciudad?: string } | undefined
+        const ciudad = (estDataTyped?.ciudad && typeof estDataTyped.ciudad === "object"
+          ? estDataTyped.ciudad.nombre 
+          : (estDataTyped?.ciudad as string) || matTyped?.ciudad || e.ciudad || "—") as string
 
         return {
           nombres: nombres || e.nombre,

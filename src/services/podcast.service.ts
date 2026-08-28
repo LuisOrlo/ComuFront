@@ -40,6 +40,13 @@ export interface ReservaPodcast {
   persona?: { id: string; nombres: string; apellidos: string; correo?: string }
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
   created_at?: string
+  cuenta_por_cobrar?: {
+    id: string
+    monto_total: number
+    monto_abonado: number
+    saldo_pendiente: number
+    estado: string
+  }
 }
 
 export const podcastService = {

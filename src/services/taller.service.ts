@@ -95,6 +95,11 @@ export interface TallerStats {
 }
 
 export const tallerService = {
+  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; taller_id: string; monto_pagado: number; metodo_pago: string }) {
+    const response = await api.post("/academic/inscripciones-talleres/inscribir-desde-perfil", data)
+    return response.data
+  },
+
   // Talleres CRUD (admin - usa prefijo /academic)
   async listar(params?: Record<string, unknown>) {
     const res = await api.get(`${PREFIX}/talleres`, { params })

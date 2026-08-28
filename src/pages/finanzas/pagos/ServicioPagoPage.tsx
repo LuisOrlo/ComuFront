@@ -22,7 +22,7 @@ export function ServicioPagoPage() {
   const esPagoDirecto = state?.tipo && state?.servicioId
   const esPagoPorCuenta = state?.cuentaId
 
-  const [monto, setMonto] = useState(state?.montoSaldo?.toString() || "0")
+  const [monto, setMonto] = useState("")
   const [metodoPago, setMetodoPago] = useState("efectivo")
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0])
   const [saving, setSaving] = useState(false)
@@ -235,41 +235,121 @@ export function ServicioPagoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-2 space-y-4 sm:space-y-5">
-          <div className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4 sm:space-y-5" style={{ borderColor: BORDER }}>
-            <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: COLORS.TEXT_MUTED }}>
-              <HugeiconsIcon icon={Money01Icon} size={14} />
-              Registrar Pago
-            </h3>
+      {saldoActual <= 0 ? (
+        <div className="space-y-4 sm:space-y-6">
+          <div className="rounded-2xl border bg-emerald-50/50 border-emerald-100 p-6 flex flex-col items-center justify-center text-center space-y-3">
+            <div className="size-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <HugeiconsIcon icon={Tick02Icon} size={24} />
+            </div>
+            <h3 className="text-base font-black text-emerald-800">Servicio Pagado por Completo</h3>
+            <p className="text-xs text-emerald-600 max-w-sm">No existen saldos pendientes para este servicio. A continuación puedes ver el historial completo de pagos y comprobantes asociados.</p>
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                Monto a pagar
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold" style={{ color: COLORS.TEXT_MUTED }}>$</span>
-                <input
-                  type="number"
-                  value={monto}
-                  onChange={e => setMonto(e.target.value)}
-                  onBlur={() => {
-                    const v = parseFloat(monto)
-                    if (!isNaN(v)) {
-                      if (v < 0) setMonto("0")
-                      else if (v > saldoActual) setMonto(saldoActual.toString())
-                    }
-                  }}
-                  min={0}
-                  max={saldoActual}
-                  step="0.01"
-                  placeholder={`0.00 (máx $${saldoActual.toLocaleString()})`}
-                  className="w-full pl-10 pr-4 py-3.5 rounded-xl border text-base sm:text-lg font-bold font-mono outline-none transition-all bg-white"
+          <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
+            <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5" style={{ color: COLORS.TEXT_MUTED }}>
+              Historial de Pagos ({transacciones.length})
+            </h3>
+            {transacciones.length > 0 ? (
+              <div className="space-y-3">
+                {transacciones.map((t: any, idx: number) => (
+                  <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
+                    <div
+                      className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor:
+                          t.estado_verificacion === "aprobado" ? "oklch(0.9 0.1 150 / 0.3)" :
+                          t.estado_verificacion === "rechazado" ? "oklch(0.9 0.1 20 / 0.3)" :
+                          "oklch(0.9 0.1 75 / 0.3)",
+                      }}
+                    >
+                      <HugeiconsIcon
+                        icon={Money01Icon}
+                        size={16}
+                        style={{
+                          color:
+                            t.estado_verificacion === "aprobado" ? "oklch(0.5 0.15 150)" :
+                            t.estado_verificacion === "rechazado" ? "oklch(0.5 0.15 20)" :
+                            "oklch(0.65 0.15 75)",
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-black" style={{ color: CHARCOAL }}>
+                          ${Number(t.monto || 0).toLocaleString()}
+                        </span>
+                        <span className={cn(
+                          "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
+                          t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
+                          t.estado_verificacion === "rechazado" ? "bg-red-100 text-red-700" :
+                          "bg-amber-100 text-amber-700"
+                        )}>
+                          {t.estado_verificacion === "aprobado" ? "Verificado" :
+                           t.estado_verificacion === "rechazado" ? "Rechazado" : "Pendiente"}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                        {t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                        {t.metodo_pago ? ` · ${t.metodo_pago}` : ""}
+                      </p>
+                    </div>
+                    {t.comprobante_url && (
+                      <button
+                        onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold shrink-0 hover:underline"
+                        style={{ color: ACCENT }}
+                      >
+                        <HugeiconsIcon icon={Tick02Icon} size={12} />
+                        Ver comp.
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-center opacity-40 py-4">No hay transacciones registradas.</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-5">
+            <div className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4 sm:space-y-5" style={{ borderColor: BORDER }}>
+              <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: COLORS.TEXT_MUTED }}>
+                <HugeiconsIcon icon={Money01Icon} size={14} />
+                Registrar Pago
+              </h3>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                  Monto a pagar
+                </label>
+                <div className="relative flex items-center border rounded-xl bg-white px-4 py-3.5"
                   style={{
                     borderColor: monto && !montoValido ? "#dc2626" : BORDER,
-                    MozAppearance: "textfield",
-                  }}
-                />
+                  }}>
+                  <span className="text-lg font-bold font-mono mr-2 select-none" style={{ color: COLORS.TEXT_MUTED }}>$</span>
+                  <input
+                    type="number"
+                    value={monto}
+                    onChange={e => setMonto(e.target.value)}
+                    onBlur={() => {
+                      const v = parseFloat(monto)
+                      if (!isNaN(v)) {
+                        if (v < 0) setMonto("0")
+                        else if (v > saldoActual) setMonto(saldoActual.toString())
+                      }
+                    }}
+                    min={0}
+                    max={saldoActual}
+                    step="0.01"
+                    placeholder={`0.00 (máx $${saldoActual.toLocaleString()})`}
+                    className="w-full text-base sm:text-lg font-bold font-mono outline-none p-0 border-0"
+                    style={{
+                      MozAppearance: "textfield",
+                    }}
+                  />
+                </div>
                 {monto && !montoValido && (
                   <p className="text-[11px] text-red-600 mt-1.5 font-medium">
                     {montoNum <= 0
@@ -280,228 +360,211 @@ export function ServicioPagoPage() {
                   </p>
                 )}
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                Fecha de pago
-              </label>
-              <input
-                type="date"
-                value={fechaPago}
-                onChange={e => setFechaPago(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all bg-white"
-                style={{ borderColor: BORDER }}
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                  Fecha de pago
+                </label>
+                <input
+                  type="date"
+                  value={fechaPago}
+                  onChange={e => setFechaPago(e.target.value)}
+                  className="w-full px-4 py-3 sm:py-3.5 rounded-xl border text-sm outline-none transition-all focus:border-charcoal bg-white"
+                  style={{ borderColor: BORDER }}
+                />
+              </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                Método de pago
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {["efectivo", "transferencia"].map((metodo) => (
-                  <button
-                    key={metodo}
-                    type="button"
-                    onClick={() => setMetodoPago(metodo)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-semibold transition-all text-left"
-                    style={{
-                      borderColor: metodoPago === metodo ? ACCENT : BORDER,
-                      backgroundColor: metodoPago === metodo ? "oklch(0.95 0.02 45 / 0.3)" : "white",
-                      color: CHARCOAL,
-                    }}
-                  >
-                    <div
-                      className="size-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{
-                        backgroundColor: metodoPago === metodo ? ACCENT : "oklch(0.97 0 0)",
-                      }}
-                    >
-                      <HugeiconsIcon
-                        icon={Money01Icon}
-                        size={14}
-                        style={{ color: metodoPago === metodo ? "white" : COLORS.TEXT_MUTED }}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                  Método de pago
+                </label>
+                <select
+                  value={metodoPago}
+                  onChange={e => setMetodoPago(e.target.value)}
+                  className="w-full px-4 py-3 sm:py-3.5 rounded-xl border text-sm outline-none transition-all focus:border-charcoal bg-white"
+                  style={{ borderColor: BORDER }}
+                >
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="deposito">Depósito</option>
+                  <option value="tarjeta">Tarjeta</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                  Comprobante de pago (Requerido)
+                </label>
+                <input
+                  type="file"
+                  ref={fileRef}
+                  onChange={handleFileSelect}
+                  accept="image/*,.pdf"
+                  className="hidden"
+                />
+                {previewUrl ? (
+                  <div className="space-y-2">
+                    <div className="relative rounded-xl overflow-hidden border" style={{ borderColor: BORDER }}>
+                      <img
+                        src={previewUrl}
+                        alt="Vista previa del comprobante"
+                        className="w-full max-h-40 sm:max-h-48 object-contain bg-gray-50"
                       />
                     </div>
-                    <span>
-                      {metodo === "efectivo" ? "Efectivo" : "Transferencia / Depósito"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <HugeiconsIcon icon={Tick02Icon} size={14} style={{ color: "oklch(0.5 0.15 150)" }} />
+                      <span className="text-xs font-medium" style={{ color: "oklch(0.5 0.15 150)" }}>
+                        {comprobanteFile?.name}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setComprobanteFile(null)
+                          if (previewUrl) URL.revokeObjectURL(previewUrl)
+                          setPreviewUrl(null)
+                          if (fileRef.current) fileRef.current.value = ""
+                        }}
+                        className="ml-auto text-[10px] font-bold opacity-40 hover:opacity-100 transition-all"
+                        style={{ color: CHARCOAL }}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="w-full py-3.5 sm:py-4 rounded-xl border-2 border-dashed text-sm font-semibold transition-all hover:bg-gray-50 flex items-center justify-center gap-2"
+                    style={{ borderColor: BORDER, color: COLORS.TEXT_MUTED }}
+                  >
+                    <HugeiconsIcon icon={UploadIcon} size={16} />
+                    Subir comprobante
                   </button>
-                ))}
+                )}
+                {!comprobanteValido && montoValido && (
+                  <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                    El comprobante es obligatorio *
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                Comprobante
-              </label>
-              <input
-                type="file"
-                ref={fileRef}
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-              {previewUrl ? (
-                <div className="space-y-2">
-                  <div className="relative rounded-xl overflow-hidden border" style={{ borderColor: BORDER }}>
-                    <img
-                      src={previewUrl}
-                      alt="Vista previa del comprobante"
-                      className="w-full max-h-40 sm:max-h-48 object-contain bg-gray-50"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <HugeiconsIcon icon={Tick02Icon} size={14} style={{ color: "oklch(0.5 0.15 150)" }} />
-                    <span className="text-xs font-medium" style={{ color: "oklch(0.5 0.15 150)" }}>
-                      {comprobanteFile?.name}
-                    </span>
-                    <button
-                      onClick={() => {
-                        setComprobanteFile(null)
-                        if (previewUrl) URL.revokeObjectURL(previewUrl)
-                        setPreviewUrl(null)
-                        if (fileRef.current) fileRef.current.value = ""
-                      }}
-                      className="ml-auto text-[10px] font-bold opacity-40 hover:opacity-100 transition-all"
-                      style={{ color: CHARCOAL }}
-                    >
-                      Quitar
-                    </button>
-                  </div>
+            {esPagoPorCuenta && transacciones.length > 0 && (
+              <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5" style={{ color: COLORS.TEXT_MUTED }}>
+                  Historial de Pagos
+                </h3>
+                <div className="space-y-3">
+                  {transacciones.map((t: any, idx: number) => (
+                    <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
+                      <div
+                        className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          backgroundColor:
+                            t.estado_verificacion === "aprobado" ? "oklch(0.9 0.1 150 / 0.3)" :
+                            t.estado_verificacion === "rechazado" ? "oklch(0.9 0.1 20 / 0.3)" :
+                            "oklch(0.9 0.1 75 / 0.3)",
+                        }}
+                      >
+                        <HugeiconsIcon
+                          icon={Money01Icon}
+                          size={16}
+                          style={{
+                            color:
+                              t.estado_verificacion === "aprobado" ? "oklch(0.5 0.15 150)" :
+                              t.estado_verificacion === "rechazado" ? "oklch(0.5 0.15 20)" :
+                              "oklch(0.65 0.15 75)",
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-black" style={{ color: CHARCOAL }}>
+                            ${Number(t.monto || 0).toLocaleString()}
+                          </span>
+                          <span className={cn(
+                            "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
+                            t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
+                            t.estado_verificacion === "rechazado" ? "bg-red-100 text-red-700" :
+                            "bg-amber-100 text-amber-700"
+                          )}>
+                            {t.estado_verificacion === "aprobado" ? "Verificado" :
+                             t.estado_verificacion === "rechazado" ? "Rechazado" : "Pendiente"}
+                          </span>
+                        </div>
+                        <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+                          {t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                          {t.metodo_pago ? ` · ${t.metodo_pago}` : ""}
+                        </p>
+                      </div>
+                      {t.comprobante_url && (
+                        <button
+                          onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold shrink-0 hover:underline"
+                          style={{ color: ACCENT }}
+                        >
+                          <HugeiconsIcon icon={Tick02Icon} size={12} />
+                          Ver comp.
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full py-3.5 sm:py-4 rounded-xl border-2 border-dashed text-sm font-semibold transition-all hover:bg-gray-50 flex items-center justify-center gap-2"
-                  style={{ borderColor: BORDER, color: COLORS.TEXT_MUTED }}
-                >
-                  <HugeiconsIcon icon={UploadIcon} size={16} />
-                  Subir comprobante
-                </button>
-              )}
-              {!comprobanteValido && montoValido && (
-                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
-                  El comprobante es obligatorio *
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4 sm:space-y-5">
+            <div className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4 h-fit" style={{ borderColor: BORDER }}>
+              <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                Resumen
+              </h3>
+
+              <div className="p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                  Monto a pagar
                 </p>
-              )}
-            </div>
-          </div>
-        </div>
+                <p className="text-xl sm:text-2xl font-black mt-1" style={{ color: ACCENT }}>
+                  ${montoNum > 0 ? montoNum.toFixed(2) : "0.00"}
+                </p>
+              </div>
 
-        <div className="rounded-2xl border bg-white p-4 sm:p-6 space-y-4 h-fit" style={{ borderColor: BORDER }}>
-          <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-            Resumen
-          </h3>
+              <div className="p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+                  Saldo restante
+                </p>
+                <p className="text-xl sm:text-2xl font-black mt-1" style={{ color: saldoRestante > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.5 0.15 150)" }}>
+                  {saldoRestante > 0 ? `$${saldoRestante.toFixed(2)}` : "$0.00"}
+                </p>
+              </div>
 
-          <div className="p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-              Monto a pagar
-            </p>
-            <p className="text-xl sm:text-2xl font-black mt-1" style={{ color: ACCENT }}>
-              ${montoNum > 0 ? montoNum.toFixed(2) : "0.00"}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl" style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-              Saldo restante
-            </p>
-            <p className="text-xl sm:text-2xl font-black mt-1" style={{ color: saldoRestante > 0 ? "oklch(0.5 0.15 20)" : "oklch(0.5 0.15 150)" }}>
-              {saldoRestante > 0 ? `$${saldoRestante.toFixed(2)}` : "$0.00"}
-            </p>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span style={{ color: COLORS.TEXT_MUTED }}>Progreso</span>
-              <span className="font-bold" style={{ color: CHARCOAL }}>{pctPagado}%</span>
-            </div>
-            <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "oklch(0.92 0 0)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${pctPagado}%`,
-                  backgroundColor: pctPagado >= 100 ? "oklch(0.5 0.15 150)" : ACCENT,
-                }}
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handlePagar}
-            disabled={saving || !formularioValido}
-            className="w-full py-3.5 sm:py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40 flex items-center justify-center gap-2"
-            style={{ backgroundColor: ACCENT }}
-            title={!formularioValido ? "Completa todos los campos requeridos para registrar el pago" : "Registrar pago"}
-          >
-            <HugeiconsIcon icon={Money01Icon} size={16} />
-            {saving ? "Registrando..." : "Registrar Pago"}
-          </button>
-        </div>
-      </div>
-
-      {esPagoPorCuenta && transacciones.length > 0 && (
-        <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
-          <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5" style={{ color: COLORS.TEXT_MUTED }}>
-            Historial de Pagos
-          </h3>
-          <div className="space-y-3">
-            {transacciones.map((t: any, idx: number) => (
-              <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
-                <div
-                  className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    backgroundColor:
-                      t.estado_verificacion === "aprobado" ? "oklch(0.9 0.1 150 / 0.3)" :
-                      t.estado_verificacion === "rechazado" ? "oklch(0.9 0.1 20 / 0.3)" :
-                      "oklch(0.9 0.1 75 / 0.3)",
-                  }}
-                >
-                  <HugeiconsIcon
-                    icon={Money01Icon}
-                    size={16}
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span style={{ color: COLORS.TEXT_MUTED }}>Progreso</span>
+                  <span className="font-bold" style={{ color: CHARCOAL }}>{pctPagado}%</span>
+                </div>
+                <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "oklch(0.92 0 0)" }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
                     style={{
-                      color:
-                        t.estado_verificacion === "aprobado" ? "oklch(0.5 0.15 150)" :
-                        t.estado_verificacion === "rechazado" ? "oklch(0.5 0.15 20)" :
-                        "oklch(0.65 0.15 75)",
+                      width: `${pctPagado}%`,
+                      backgroundColor: pctPagado >= 100 ? "oklch(0.5 0.15 150)" : ACCENT,
                     }}
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-black" style={{ color: CHARCOAL }}>
-                      ${Number(t.monto || 0).toLocaleString()}
-                    </span>
-                    <span className={cn(
-                      "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
-                      t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
-                      t.estado_verificacion === "rechazado" ? "bg-red-100 text-red-700" :
-                      "bg-amber-100 text-amber-700"
-                    )}>
-                      {t.estado_verificacion === "aprobado" ? "Verificado" :
-                       t.estado_verificacion === "rechazado" ? "Rechazado" : "Pendiente"}
-                    </span>
-                  </div>
-                  <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                    {t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" }) : "—"}
-                    {t.metodo_pago ? ` · ${t.metodo_pago}` : ""}
-                  </p>
-                </div>
-                {t.comprobante_url && (
-                  <button
-                    onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold shrink-0 hover:underline"
-                    style={{ color: ACCENT }}
-                  >
-                    <HugeiconsIcon icon={Tick02Icon} size={12} />
-                    Ver comp.
-                  </button>
-                )}
               </div>
-            ))}
+
+              <button
+                onClick={handlePagar}
+                disabled={saving || !formularioValido}
+                className="w-full py-3.5 sm:py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40 flex items-center justify-center gap-2"
+                style={{ backgroundColor: ACCENT }}
+                title={!formularioValido ? "Completa todos los campos requeridos para registrar el pago" : "Registrar pago"}
+              >
+                <HugeiconsIcon icon={Money01Icon} size={16} />
+                {saving ? "Registrando..." : "Registrar Pago"}
+              </button>
+            </div>
           </div>
         </div>
       )}

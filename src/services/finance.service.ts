@@ -17,11 +17,14 @@ interface PagosInicialesDto {
   matricula_id?: string
   inscripcion_taller_id?: string
   solicitud_inscripcion_id?: string
-  monto_total: number
-  monto_inicial: number
-  fecha_pago: string
-  metodo_pago: string
-  cuotas: number
+  pagos: Array<{
+    linea_pago_modulo_id: string
+    monto: number
+    metodo_pago: string
+    fecha_pago?: string
+    comprobante_url?: string | null
+  }>
+  pago_unificado?: boolean
   observaciones?: string
 }
 

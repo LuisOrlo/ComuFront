@@ -122,6 +122,7 @@ export interface FinancialAccount {
 
 export interface LineaPagoModulo {
   id: string
+  tipo?: string
   modulo: {
     id: string | null
     nombre: string

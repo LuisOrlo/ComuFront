@@ -196,11 +196,20 @@ export function HistorialEdicionVideoPage() {
                         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
                           <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Money01Icon} size={14} className="text-emerald-500" /></div>
                           <div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio</p><p className="text-sm font-black" style={{ color: COLORS.ACCENT }}>${Number(t.precio_cobrado || 0).toFixed(2)}</p></div>
-                          {!t.cobro_registrado && (
-                            <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${t.id}`, { state: { tipo: "edicion", servicioId: t.id, nombre: getCliente(t), montoTotal: Number(t.precio_cobrado) || 0, montoSaldo: Number(t.precio_cobrado) || 0, nombreServicio: t.titulo || "Edición de Video" } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0" style={{ backgroundColor: COLORS.ACCENT }}>
-                              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />Registrar pago
-                            </button>
-                          )}
+                          {(() => {
+                            const esPagado = t.cuenta_por_cobrar?.estado === 'pagado' || Number(t.cuenta_por_cobrar?.saldo_pendiente ?? (Number(t.precio_cobrado || 0) - (t.cuenta_por_cobrar?.monto_abonado ?? 0))) <= 0
+                            return (
+                              <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${t.id}`, { state: { tipo: "edicion", servicioId: t.id, cuentaId: t.cuenta_por_cobrar?.id, nombre: getCliente(t), montoTotal: Number(t.precio_cobrado) || 0, montoSaldo: t.cuenta_por_cobrar ? Number(t.cuenta_por_cobrar.saldo_pendiente) : Number(t.precio_cobrado) || 0, nombreServicio: t.titulo || "Edición de Video" } })}
+                                className={cn(
+                                  "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 whitespace-nowrap shrink-0",
+                                  esPagado ? "text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100" : "text-white hover:opacity-90"
+                                )}
+                                style={esPagado ? {} : { backgroundColor: COLORS.ACCENT }}>
+                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                {esPagado ? "Ver pagos" : "Registrar pago"}
+                              </button>
+                            )
+                          })()}
                         </div>
                       </div>
                     </div>

@@ -8,8 +8,8 @@ import { tallerService } from "@/services/taller.service"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "@/pages/matriculas/PagoPreAprobacionSection"
 import { toast } from "sonner"
-import axios from "axios"
 import api from "@/services/auth.service"
+import { cursosService } from "@/services/cursos.service"
 
 type TipoInscripcion = "curso" | "taller"
 
@@ -72,15 +72,11 @@ export function InscribirEstudiantePage() {
     if (!selectedCurso || !id) return
     setSaving(true)
     try {
-      const token = localStorage.getItem("auth_token")
-      const base = import.meta.env.VITE_API_URL
-      await axios.post(`${base}/academic/matriculas/inscribir-desde-perfil`, {
+      await cursosService.inscribirEstudianteDesdePerfil({
         estudiante_id: id,
         curso_abierto_id: selectedCurso,
         pagos,
         metodo_pago: metodoPago,
-      }, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
       })
       toast.success("Estudiante inscrito exitosamente")
       navigate(`/estudiantes/${id}/academico`)
@@ -95,15 +91,11 @@ export function InscribirEstudiantePage() {
     if (!selectedTaller || !id) return
     setSaving(true)
     try {
-      const token = localStorage.getItem("auth_token")
-      const base = import.meta.env.VITE_API_URL
-      await axios.post(`${base}/academic/inscripciones-talleres/inscribir-desde-perfil`, {
+      await tallerService.inscribirEstudianteDesdePerfil({
         estudiante_id: id,
         taller_id: selectedTaller,
         monto_pagado: parseFloat(montoTaller) || 0,
         metodo_pago: metodoTaller,
-      }, {
-        headers: { Authorization: token ? `Bearer ${token}` : "" },
       })
       toast.success("Estudiante inscrito al taller exitosamente")
       navigate(`/estudiantes/${id}/academico`)

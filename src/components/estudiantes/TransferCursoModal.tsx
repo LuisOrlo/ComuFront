@@ -16,7 +16,7 @@ import { financeService } from "@/services/finance.service"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import axios from "axios"
+import { cursosService } from "@/services/cursos.service"
 
 interface MatriculaResumen {
   id: string
@@ -121,18 +121,11 @@ export function TransferCursoModal({
     setLoadingReconciliacion(true)
 
     Promise.all([
-      axios.get(
-        `${import.meta.env.VITE_API_URL}/academic/cursos-abiertos/${selectedId}/modulos`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-          },
-        }
-      ),
+      cursosService.getModulosPorCurso(selectedId),
       financeService.getLineasPagoPorMatricula(matricula.id),
     ])
       .then(([modRes, lpRes]) => {
-        const rawModulos = (modRes.data?.data || []) as any[]
+        const rawModulos = modRes as any[]
 
         const lineas =
           (lpRes as any)?.data ||

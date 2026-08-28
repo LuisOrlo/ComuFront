@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useCallback, useImperativeHandle, forwardRef } from "react"
-import axios from "axios"
+import { cursosService } from "@/services/cursos.service"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
 import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
@@ -34,11 +34,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/academic/cursos-abiertos/${cursoAbiertoId}/modulos`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` } }
-        )
-        const data = res.data.data || res.data.datos || res.data || []
+        const data = await cursosService.getModulosPorCurso(cursoAbiertoId)
         setModulos(Array.isArray(data) ? data : [])
       } catch {
         setModulos([])

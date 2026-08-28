@@ -317,11 +317,20 @@ export function RadioHistorialPage() {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {!r.pago_registrado && (
-                                <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, { state: { tipo: "radio", servicioId: r.id, nombre: getCliente(r), montoTotal: Number(r.precio_total) || 0, montoSaldo: Number(r.precio_total) || 0, nombreServicio: `Reserva de Radio` } })} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap shrink-0" style={{ backgroundColor: COLORS.ACCENT }}>
-                                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />Registrar pago
-                                </button>
-                              )}
+                              {(() => {
+                                const esPagado = r.cuenta_por_cobrar?.estado === 'pagado' || Number(r.cuenta_por_cobrar?.saldo_pendiente ?? (r.precio_total - (r.cuenta_por_cobrar?.monto_abonado ?? 0))) <= 0
+                                return (
+                                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, { state: { tipo: "radio", servicioId: r.id, cuentaId: r.cuenta_por_cobrar?.id, nombre: getCliente(r), montoTotal: Number(r.precio_total) || 0, montoSaldo: r.cuenta_por_cobrar ? Number(r.cuenta_por_cobrar.saldo_pendiente) : Number(r.precio_total) || 0, nombreServicio: `Reserva de Radio` } })}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 whitespace-nowrap shrink-0",
+                                      esPagado ? "text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100" : "text-white hover:opacity-90"
+                                    )}
+                                    style={esPagado ? {} : { backgroundColor: COLORS.ACCENT }}>
+                                    <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                                    {esPagado ? "Ver pagos" : "Registrar pago"}
+                                  </button>
+                                )
+                              })()}
                               {!isCompleted && (
                                 <button onClick={() => navigate(buildDetailHref(r))}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all hover:bg-gray-50 active:scale-95"
