@@ -177,7 +177,19 @@ export function AlquilerDetallePage() {
                 <HugeiconsIcon icon={Money01Icon} size={11} />
                 Precio
               </p>
-              <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>${Number(alquiler.precio_total).toFixed(2)}</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>${Number(alquiler.precio_total).toFixed(2)}</p>
+                {alquiler.monto_descuento && Number(alquiler.monto_descuento) > 0 && (
+                  <span className="text-xs text-gray-400 line-through font-semibold">
+                    ${(Number(alquiler.precio_original || Number(alquiler.precio_total) + Number(alquiler.monto_descuento))).toFixed(2)}
+                  </span>
+                )}
+              </div>
+              {alquiler.motivo_descuento && (
+                <p className="text-[11px] text-amber-600 font-medium truncate" title={alquiler.motivo_descuento}>
+                  Motivo: "{alquiler.motivo_descuento}"
+                </p>
+              )}
             </div>
           </div>
 

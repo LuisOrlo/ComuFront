@@ -36,6 +36,9 @@ export function CatalogoFormPage() {
 
   const isEditing = !!id
 
+  const canSubmit = isEditing
+    || (form.nombre.trim().length > 0 && (form.imagen?.length ?? 0) > 0)
+
   useEffect(() => {
     if (!id) return
 
@@ -270,7 +273,7 @@ export function CatalogoFormPage() {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={!canSubmit || saving}
                 className="flex-[2] py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-60"
                 style={{ backgroundColor: COLORS.ACCENT }}
               >

@@ -163,6 +163,20 @@ export function DetalleReservaModal({
               </div>
             </div>
           )}
+
+          {reserva.monto_descuento && Number(reserva.monto_descuento) > 0 && (
+            <div className="mt-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1">
+              <div className="flex items-center justify-between font-bold text-amber-900">
+                <span>Descuento Aplicado:</span>
+                <span>-${Number(reserva.monto_descuento).toFixed(2)}</span>
+              </div>
+              {reserva.motivo_descuento && (
+                <p className="text-amber-800 font-medium">
+                  <span className="font-bold">Motivo:</span> "{reserva.motivo_descuento}"
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -176,6 +190,9 @@ interface ReservaRadio {
   hora_inicio: string
   hora_fin: string
   precio_total: number
+  precio_original?: number | null
+  monto_descuento?: number
+  motivo_descuento?: string | null
   observaciones?: string
   incluye_operador: boolean
   tarifa?: { nombre: string; precio_por_hora: number }

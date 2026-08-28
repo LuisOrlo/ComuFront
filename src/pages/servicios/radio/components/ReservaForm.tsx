@@ -48,6 +48,12 @@ export function ReservaForm({
   const [observaciones, setObservaciones] = useState("")
   const [saving, setSaving] = useState(false)
 
+  // Descuento
+  const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [descuentoValor, setDescuentoValor] = useState<string>("")
+  const [motivoDescuento, setMotivoDescuento] = useState<string>("")
+  const [showDescuento, setShowDescuento] = useState(false)
+
   const [clienteId, setClienteId] = useState("")
   const [clienteTipo, setClienteTipo] = useState<"persona" | "cliente_externo" | "">("")
   const [clienteSearch, setClienteSearch] = useState("")
@@ -158,7 +164,7 @@ export function ReservaForm({
 
     if (!isOpen) return
     if (editingReserva) {
-      setTarifaId(editingReserva.tarifa_id)
+      setTarifaId(String(editingReserva.tarifa_id))
       setFecha(editingReserva.fecha_reserva)
       setHoraInicio(editingReserva.hora_inicio.substring(0, 5))
       const inicio = editingReserva.hora_inicio.split(":").map(Number)
@@ -184,7 +190,7 @@ export function ReservaForm({
         setClienteSearch("")
       }
     } else {
-      setTarifaId(tarifas[0]?.id || "")
+      setTarifaId(tarifas[0]?.id ? String(tarifas[0].id) : "")
       setFecha(fechaPreseleccionada || new Date().toISOString().split("T")[0])
       setHoraInicio(horaPreseleccionada || "08:00")
       setDuracionInput("60")
@@ -218,7 +224,7 @@ export function ReservaForm({
   }, [isOpen])
 
   const tarifaSeleccionada = useMemo(
-    () => tarifas.find(t => t.id === tarifaId),
+    () => tarifas.find(t => String(t.id) === String(tarifaId)),
     [tarifaId, tarifas]
   )
 
@@ -241,6 +247,17 @@ export function ReservaForm({
     return Math.round(horas * tarifaSeleccionada.precio_por_hora * 100) / 100
   }, [tarifaSeleccionada, duracionMinutos])
 
+  const precioOriginal = precioCalculado
+  let montoDescuentoCalculado = 0
+  if (showDescuento && descuentoValor) {
+    if (descuentoTipo === "fijo") {
+      montoDescuentoCalculado = Number(descuentoValor) || 0
+    } else {
+      montoDescuentoCalculado = (precioOriginal * (Number(descuentoValor) || 0)) / 100
+    }
+  }
+  const precioFinal = Math.max(0, precioOriginal - montoDescuentoCalculado)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!tarifaId || !fecha || !horaInicio) {
@@ -262,6 +279,10 @@ export function ReservaForm({
         fecha_reserva: fecha,
         hora_inicio: normalizarHora(horaInicio),
         hora_fin: normalizarHora(horaFin),
+        precio_total: precioFinal,
+        precio_original: showDescuento && montoDescuentoCalculado > 0 ? precioOriginal : null,
+        monto_descuento: showDescuento && montoDescuentoCalculado > 0 ? montoDescuentoCalculado : 0,
+        motivo_descuento: showDescuento && montoDescuentoCalculado > 0 && motivoDescuento.trim() ? motivoDescuento.trim() : null,
         incluye_operador: incluyeOperador,
         operador_id: incluyeOperador ? operadorId : null,
         observaciones: observaciones || null,
@@ -369,7 +390,7 @@ export function ReservaForm({
               type="number"
               min={15}
               max={480}
-              step={15}
+              step={1}
               value={duracionInput}
               onChange={e => setDuracionInput(e.target.value)}
               onBlur={() => {
@@ -514,8 +535,56 @@ export function ReservaForm({
             )}
             <div className="border-t pt-3 flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <span className="text-xs font-bold">Total estimado</span>
-              <span className="text-lg font-bold" style={{ color: COLORS.ACCENT }}>${precioCalculado.toFixed(2)}</span>
+              <div className="text-right">
+                {showDescuento && montoDescuentoCalculado > 0 && (
+                  <p className="text-xs font-medium text-gray-400 line-through">${precioOriginal.toFixed(2)}</p>
+                )}
+                <span className="text-lg font-bold" style={{ color: COLORS.ACCENT }}>${precioFinal.toFixed(2)}</span>
+              </div>
             </div>
+
+            {!showDescuento ? (
+              <button type="button" onClick={() => setShowDescuento(true)} className="text-xs font-bold text-orange-600 hover:underline pt-1 block">
+                + Aplicar descuento
+              </button>
+            ) : (
+              <div className="mt-2 p-3.5 rounded-xl bg-orange-50/60 border border-orange-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-orange-900">Descuento a la Reserva</span>
+                  <button type="button" onClick={() => { setShowDescuento(false); setDescuentoValor(""); setMotivoDescuento(""); }} className="text-gray-400 hover:text-gray-600">
+                    <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex gap-2">
+                    <select 
+                      value={descuentoTipo} 
+                      onChange={(e) => setDescuentoTipo(e.target.value as "fijo" | "porcentaje")}
+                      className="px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-gray-200 focus:ring-2 focus:ring-orange-300 w-24 shrink-0"
+                    >
+                      <option value="fijo">$ Fijo</option>
+                      <option value="porcentaje">% Porc</option>
+                    </select>
+                    <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      placeholder={descuentoTipo === "fijo" ? "Monto" : "Porcentaje"}
+                      value={descuentoValor}
+                      onChange={(e) => setDescuentoValor(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-gray-200 focus:ring-2 focus:ring-orange-300"
+                    />
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Motivo (ej: Descuento cliente VIP)"
+                    value={motivoDescuento}
+                    onChange={(e) => setMotivoDescuento(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-gray-200 focus:ring-2 focus:ring-orange-300"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

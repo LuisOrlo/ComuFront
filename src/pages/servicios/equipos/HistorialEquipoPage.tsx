@@ -74,9 +74,9 @@ export function HistorialEquipoPage() {
   const [fotoRetornoFile, setFotoRetornoFile] = useState<File | null>(null)
   const [fotoRetornoPreview, setFotoRetornoPreview] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     if (!id) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const params: { equipo_id: string; page: number; per_page: number; cedula?: string; estado?: string } = {
         equipo_id: id,
@@ -99,7 +99,7 @@ export function HistorialEquipoPage() {
       })
       setExpanded(newExpanded)
     } catch { toast.error("Error al cargar historial") }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [id, page, cedula, filtroEstado])
 
   useEffect(() => {
@@ -130,12 +130,17 @@ export function HistorialEquipoPage() {
     setDevolverOpen(true)
   }
 
-  const handleEntregar = async (id: string) => {
+  const handleEntregar = async (alquilerId: string) => {
     try {
-      await equiposService.entregarEquipo(id)
+      setAlquileres(prev => prev.map(a => a.id === alquilerId ? { ...a, estado: "entregado" } : a))
+      setEquipo(prev => prev ? { ...prev, estado: "alquilado" } : null)
+      await equiposService.entregarEquipo(alquilerId)
       toast.success("Equipo marcado como entregado")
-      loadData()
-    } catch { toast.error("Error al registrar entrega") }
+      loadData(true)
+    } catch {
+      toast.error("Error al registrar entrega")
+      loadData(true)
+    }
   }
 
   const handleDevolver = async () => {
@@ -147,14 +152,19 @@ export function HistorialEquipoPage() {
         if (devolverForm.observaciones) fd.append("observaciones", devolverForm.observaciones)
         return fd
       })() : devolverForm
+      setAlquileres(prev => prev.map(a => a.id === alquilerADevolver.id ? { ...a, estado: "devuelto" } : a))
+      setEquipo(prev => prev ? { ...prev, estado: "disponible" } : null)
       await equiposService.devolverEquipo(alquilerADevolver.id, payload)
       toast.success("Equipo devuelto correctamente")
       setDevolverOpen(false)
       setAlquilerADevolver(null)
       setFotoRetornoFile(null)
       setFotoRetornoPreview(null)
-      loadData()
-    } catch { toast.error("Error al registrar devolución") }
+      loadData(true)
+    } catch {
+      toast.error("Error al registrar devolución")
+      loadData(true)
+    }
   }
 
   const handleSearch = () => { setPage(1) }

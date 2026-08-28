@@ -148,7 +148,19 @@ export function ReservaPodcastDetallePage() {
               <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 flex items-center gap-1.5">
                 <HugeiconsIcon icon={Money01Icon} size={11} /> Precio
               </p>
-              <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>${Number(reserva.precio_total).toFixed(2)}</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>${Number(reserva.precio_total).toFixed(2)}</p>
+                {reserva.monto_descuento && Number(reserva.monto_descuento) > 0 && (
+                  <span className="text-xs text-gray-400 line-through font-semibold">
+                    ${(Number(reserva.precio_original || Number(reserva.precio_total) + Number(reserva.monto_descuento))).toFixed(2)}
+                  </span>
+                )}
+              </div>
+              {reserva.motivo_descuento && (
+                <p className="text-[11px] text-violet-600 font-medium truncate" title={reserva.motivo_descuento}>
+                  Motivo: "{reserva.motivo_descuento}"
+                </p>
+              )}
             </div>
           </div>
 

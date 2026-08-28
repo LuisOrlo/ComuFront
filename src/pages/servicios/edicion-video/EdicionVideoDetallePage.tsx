@@ -194,9 +194,21 @@ export function EdicionVideoDetallePage() {
             {trabajo.precio_cobrado != null && (
               <div className="p-5 rounded-2xl bg-white border space-y-1" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio</p>
-                <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                  ${Number(trabajo.precio_cobrado).toFixed(2)}
-                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
+                    ${Number(trabajo.precio_cobrado).toFixed(2)}
+                  </p>
+                  {trabajo.monto_descuento && Number(trabajo.monto_descuento) > 0 && (
+                    <span className="text-xs text-gray-400 line-through font-semibold">
+                      ${(Number(trabajo.precio_original || Number(trabajo.precio_cobrado) + Number(trabajo.monto_descuento))).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                {trabajo.motivo_descuento && (
+                  <p className="text-[11px] text-blue-600 font-medium truncate" title={trabajo.motivo_descuento}>
+                    Motivo: "{trabajo.motivo_descuento}"
+                  </p>
+                )}
               </div>
             )}
           </div>

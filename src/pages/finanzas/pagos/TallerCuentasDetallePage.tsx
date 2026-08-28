@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo, useRef, Fragment } from "react"
+import { useState, useEffect, useMemo, Fragment } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -31,8 +31,7 @@ import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
-import html2canvas from "html2canvas-pro"
-import { jsPDF } from "jspdf"
+import { generarCuentaTallerPDF } from "@/lib/generarPagosCuentaPDF"
 import { PaginationControls } from "@/components/table/PaginationControls"
 import { HealthBar } from "./sections/HealthBar"
 
@@ -72,7 +71,6 @@ export function TallerCuentasDetallePage() {
   const [filtroPago, setFiltroPago] = useState("todos")
   const [sorting, setSorting] = useState<SortingState>([{ id: "saldo", desc: true }])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
-  const tablaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -237,36 +235,10 @@ export function TallerCuentasDetallePage() {
     getPaginationRowModel: getPaginationRowModel(),
   })
 
-  const handleExportPDF = async () => {
-    if (!tablaRef.current) return
+  const handleExportPDF = () => {
     setExportando(true)
     try {
-      const el = tablaRef.current
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        logging: false,
-      })
-      const imgData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const margin = 8
-      pdf.setFontSize(14)
-      pdf.setFont("helvetica", "bold")
-      pdf.text(taller.nombre || "Taller", pageWidth / 2, margin + 8, { align: "center" })
-      pdf.setFontSize(9)
-      pdf.setFont("helvetica", "normal")
-      pdf.text(`Fecha: ${new Date().toLocaleDateString("es-ES")}`, pageWidth / 2, margin + 15, { align: "center" })
-      const imgY = margin + 20
-      const availableWidth = pageWidth - margin * 2
-      const availableHeight = pdf.internal.pageSize.getHeight() - imgY - margin
-      const ratio = canvas.height / canvas.width
-      let imgWidth = availableWidth
-      let imgHeight = imgWidth * ratio
-      if (imgHeight > availableHeight) { imgHeight = availableHeight; imgWidth = imgHeight / ratio }
-      pdf.addImage(imgData, "PNG", margin, imgY, imgWidth, imgHeight)
-      pdf.save(`cuentas-${taller.nombre || "taller"}.pdf`)
+      generarCuentaTallerPDF(data)
       toast.success("PDF exportado")
     } catch { toast.error("Error al exportar PDF") }
     finally { setExportando(false) }
@@ -421,7 +393,7 @@ export function TallerCuentasDetallePage() {
             </span>
           </div>
 
-          <div className="overflow-x-auto" ref={tablaRef}>
+          <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[700px] [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
               <thead>
                 {table.getHeaderGroups().map((hg) => (

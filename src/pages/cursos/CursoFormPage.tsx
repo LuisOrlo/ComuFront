@@ -678,8 +678,8 @@ export function CursoFormPage() {
                   {Number(form.precio_base) > 0
                     ? <>Total del curso: <strong>${(form.modulos.length * Number(form.precio_base)).toLocaleString()}</strong> ({form.modulos.length} módulo{form.modulos.length !== 1 ? "s" : ""}).</>
                     : selectedCatalogo && form.modulos.length > 0
-                      ? <>El precio base se aplicar a cada uno de los <strong>{form.modulos.length} mdulos</strong>. La suma total del curso se calcular automticamente.</>
-                      : "El precio ingresado ser el valor que cada mdulo costar. La suma se calcular automticamente para el total de mdulos."}
+                      ? <>El precio base se aplicar a cada uno de los <strong>{form.modulos.length} módulos</strong>. La suma total del curso se calcular automticamente.</>
+                      : "El precio ingresado ser el valor que cada módulo costar. La suma se calcular automticamente para el total de módulos."}
                   </p>
                 </div>
               </div>

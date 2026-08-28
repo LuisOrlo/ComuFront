@@ -6,11 +6,12 @@ import {
   ArrowRight02Icon,
   Calendar03Icon, UserIcon, Clock01Icon, Money01Icon,
   CheckmarkCircle04Icon, Cancel01Icon, RadioIcon,
-  ArrowDown01Icon, Search01Icon,
+  ArrowDown01Icon, Search01Icon, Add01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
-import { radioService, type ReservaRadio } from "@/services/radio.service"
+import { radioService, type ReservaRadio, type TarifaRadio } from "@/services/radio.service"
+import { ReservaForm } from "./components/ReservaForm"
 import { toast } from "sonner"
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -33,6 +34,8 @@ export function RadioHistorialPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [reservas, setReservas] = useState<ReservaRadio[]>([])
+  const [tarifas, setTarifas] = useState<TarifaRadio[]>([])
+  const [reservaModalOpen, setReservaModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 })
@@ -65,6 +68,7 @@ export function RadioHistorialPage() {
 
   useEffect(() => {
     loadHistorial()
+    radioService.getTarifas().then(setTarifas).catch(() => {})
   }, [loadHistorial])
 
   const toggleExpand = (id: string) => {
@@ -152,6 +156,14 @@ export function RadioHistorialPage() {
               <h1 className="text-2xl font-black tracking-tight" style={{ color: COLORS.CHARCOAL }}>Radio</h1>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setReservaModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
+                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+              >
+                <HugeiconsIcon icon={Add01Icon} size={14} />
+                Nueva Reserva
+              </button>
               <button
                 onClick={() => navigate("/servicios/radio/tarifas")}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
@@ -363,6 +375,13 @@ export function RadioHistorialPage() {
           )}
         </div>
       </div>
+
+      <ReservaForm
+        isOpen={reservaModalOpen}
+        onClose={() => setReservaModalOpen(false)}
+        tarifas={tarifas}
+        onSaved={() => { setReservaModalOpen(false); loadHistorial(); }}
+      />
     </div>
   )
 }

@@ -14,13 +14,13 @@ import {
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
-import { edicionVideoService, type TrabajoEdicion } from "@/services/edicion-video.service"
+import { edicionVideoService, type TrabajoEdicion, type EstadoTrabajo, ESTADO_TRABAJO_LABELS } from "@/services/edicion-video.service"
 import { toast } from "sonner"
 
 const ESTADO_COLORS: Record<string, string> = {
   recibido: "bg-blue-100 text-blue-700 border-blue-200",
   en_proceso: "bg-amber-100 text-amber-700 border-amber-200",
-  revision: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  revision: "bg-purple-100 text-purple-700 border-purple-200",
   entregado: "bg-green-100 text-green-700 border-green-200",
 }
 
@@ -31,7 +31,7 @@ const ESTADO_LABELS: Record<string, string> = {
 const STRIP_COLORS: Record<string, string> = {
   recibido: "bg-blue-500",
   en_proceso: "bg-amber-500",
-  revision: "bg-indigo-500",
+  revision: "bg-purple-500",
   entregado: "bg-green-500",
 }
 
@@ -41,10 +41,20 @@ export function HistorialEdicionVideoPage() {
   const [loading, setLoading] = useState(true)
   const [filtroEstado, setFiltroEstado] = useState("todos")
 
+  const changeEstado = async (id: string, nuevoEstado: EstadoTrabajo) => {
+    try {
+      setTrabajos(prev => prev.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t))
+      await edicionVideoService.updateTrabajo(id, { estado: nuevoEstado })
+      toast.success(`Trabajo movido a ${ESTADO_TRABAJO_LABELS[nuevoEstado] || nuevoEstado}`)
+    } catch {
+      toast.error("Error al actualizar estado")
+      edicionVideoService.getTrabajos().then(res => setTrabajos(res.data))
+    }
+  }
+
   useEffect(() => {
     edicionVideoService.getTrabajos()
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .then(res => setTrabajos((res as any)?.data || res || []))
+      .then(res => setTrabajos(res.data))
       .catch(() => toast.error("Error al cargar historial"))
       .finally(() => setLoading(false))
   }, [])
@@ -183,9 +193,18 @@ export function HistorialEdicionVideoPage() {
                             </p>
                           </div>
                         </div>
-                        <span className={cn("shrink-0 px-2.5 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[t.estado] || "bg-gray-100")}>
-                          {ESTADO_LABELS[t.estado] || t.estado}
-                        </span>
+                        <select
+                          value={t.estado}
+                          onChange={(e) => changeEstado(t.id, e.target.value as EstadoTrabajo)}
+                          className={cn(
+                            "shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all hover:opacity-90",
+                            ESTADO_COLORS[t.estado] || "bg-gray-100"
+                          )}
+                        >
+                          {Object.entries(ESTADO_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -195,7 +214,22 @@ export function HistorialEdicionVideoPage() {
                         </div>
                         <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
                           <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Money01Icon} size={14} className="text-emerald-500" /></div>
-                          <div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio</p><p className="text-sm font-black" style={{ color: COLORS.ACCENT }}>${Number(t.precio_cobrado || 0).toFixed(2)}</p></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio</p>
+                            <div className="flex items-baseline gap-1.5">
+                              <p className="text-sm font-black" style={{ color: COLORS.ACCENT }}>${Number(t.precio_cobrado || 0).toFixed(2)}</p>
+                              {t.monto_descuento && Number(t.monto_descuento) > 0 && (
+                                <span className="text-[10px] text-gray-400 line-through font-semibold">
+                                  ${(Number(t.precio_original || Number(t.precio_cobrado || 0) + Number(t.monto_descuento))).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            {t.motivo_descuento && (
+                              <p className="text-[10px] text-blue-600 font-medium truncate" title={t.motivo_descuento}>
+                                Motivo: "{t.motivo_descuento}"
+                              </p>
+                            )}
+                          </div>
                           {(() => {
                             const esPagado = t.cuenta_por_cobrar?.estado === 'pagado' || Number(t.cuenta_por_cobrar?.saldo_pendiente ?? (Number(t.precio_cobrado || 0) - (t.cuenta_por_cobrar?.monto_abonado ?? 0))) <= 0
                             return (

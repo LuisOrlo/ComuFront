@@ -75,9 +75,9 @@ export function AlquileresListPage() {
   const [page, setPage] = useState(1)
   const PER_PAGE = 15
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const params: { search?: string; estado?: string } = {}
       if (search) params.search = search
       if (filtroEstado) params.estado = filtroEstado
@@ -87,9 +87,9 @@ export function AlquileresListPage() {
       ])
       setAlquileres(data)
       setVencidos(venc)
-      setPage(1)
+      if (!silent) setPage(1)
     } catch { toast.error("Error al cargar alquileres") }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }
 
   useEffect(() => {
@@ -100,11 +100,15 @@ export function AlquileresListPage() {
   const handleEntregar = async () => {
     if (!selectedAlquiler) return
     try {
+      setAlquileres(prev => prev.map(a => a.id === selectedAlquiler.id ? { ...a, estado: "entregado" } : a))
       await equiposService.entregarEquipo(selectedAlquiler.id)
       toast.success("Equipo marcado como entregado")
       setDetailOpen(false)
-      loadData()
-    } catch { toast.error("Error al registrar entrega") }
+      loadData(true)
+    } catch {
+      toast.error("Error al registrar entrega")
+      loadData(true)
+    }
   }
 
   const handleDevolver = async () => {
@@ -116,14 +120,18 @@ export function AlquileresListPage() {
         if (devolverForm.observaciones) fd.append("observaciones", devolverForm.observaciones)
         return fd
       })() : devolverForm
+      setAlquileres(prev => prev.map(a => a.id === selectedAlquiler.id ? { ...a, estado: "devuelto" } : a))
       await equiposService.devolverEquipo(selectedAlquiler.id, payload)
       toast.success("Equipo devuelto correctamente")
       setDevolverOpen(false)
       setDetailOpen(false)
       setFotoRetornoFile(null)
       setFotoRetornoPreview(null)
-      loadData()
-    } catch { toast.error("Error al registrar devolución") }
+      loadData(true)
+    } catch {
+      toast.error("Error al registrar devolución")
+      loadData(true)
+    }
   }
 
   const getResponsable = (a: AlquilerEquipo) => {

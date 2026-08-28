@@ -125,9 +125,11 @@ export function CuentasPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    {["Persona", "Tipo", "Usuario", "admin", "staff"].map((h, i) => (
-                      <th key={`${h}-${i}`} className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>{i < 3 ? h : ""}</th>
-                    ))}
+                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Persona</th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Tipo</th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Usuario</th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
+                    <th className="py-3 px-4 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
@@ -162,7 +164,13 @@ export function CuentasPage() {
                             <span className="text-sm">Sin cuenta</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: COLORS.TEXT_MUTED }}>—</td>
+                        <td className="px-4 py-3 text-xs">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            p.es_activo !== false ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"
+                          }`}>
+                            {p.es_activo !== false ? "Activo" : "Inactivo"}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-right">
                           {p.cuentaSistema ? (
                             <button onClick={() => openEdit(p)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80 active:scale-[0.97]" style={{ backgroundColor: "oklch(0.55 0.18 260 / 0.10)", color: "oklch(0.55 0.18 260)" }}>

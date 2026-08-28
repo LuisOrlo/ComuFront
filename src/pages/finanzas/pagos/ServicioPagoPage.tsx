@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft02Icon, Money01Icon, UserIcon, UploadIcon, Tick02Icon } from "@hugeicons/core-free-icons"
@@ -34,6 +34,41 @@ export function ServicioPagoPage() {
   const [saldoActual, setSaldoActual] = useState(state?.montoSaldo ?? 0)
   const [montoTotalCuenta, setMontoTotalCuenta] = useState(state?.montoTotal ?? 0)
 
+  const transaccionesAgrupadas = useMemo(() => {
+    if (!transacciones || transacciones.length === 0) return []
+
+    const groups: Record<string, any> = {}
+
+    transacciones.forEach((t: any) => {
+      const compKey = t.comprobante_url ? String(t.comprobante_url).trim() : null
+      const createdKey = t.created_at ? String(t.created_at).substring(0, 16) : ""
+      const key = compKey
+        ? `comp_${compKey}`
+        : `tx_${t.fecha_pago || ''}_${t.metodo_pago || ''}_${createdKey}`
+
+      if (!groups[key]) {
+        groups[key] = {
+          id: t.id,
+          monto: 0,
+          metodo_pago: t.metodo_pago,
+          comprobante_url: t.comprobante_url,
+          fecha_pago: t.fecha_pago,
+          estado_verificacion: t.estado_verificacion,
+          observaciones: t.observaciones,
+          count: 0,
+        }
+      }
+
+      groups[key].monto += Number(t.monto || 0)
+      groups[key].count += 1
+      if (t.estado_verificacion === "aprobado") {
+        groups[key].estado_verificacion = "aprobado"
+      }
+    })
+
+    return Object.values(groups)
+  }, [transacciones])
+
   useEffect(() => {
     if (esPagoPorCuenta && state?.cuentaId) {
       let cancelled = false
@@ -44,13 +79,20 @@ export function ServicioPagoPage() {
           const d = (res as any)?.datos
           setSaldoActual(Number(d?.saldo_pendiente ?? 0))
           setMontoTotalCuenta(Number(d?.monto_total ?? 0))
+          if (Array.isArray((res as any)?.transacciones)) {
+            setTransacciones((res as any).transacciones)
+          }
           setCuentaValida(true)
         } catch {
           if (!cancelled) setCuentaValida(false)
         }
       })()
       financeService.getTransacciones({ cuenta_cobrar_id: state.cuentaId, per_page: 50 })
-        .then((res: any) => { if (!cancelled) setTransacciones(res.data || []) })
+        .then((res: any) => {
+          if (!cancelled && Array.isArray(res.data) && res.data.length > 0) {
+            setTransacciones(res.data)
+          }
+        })
         .catch(() => {})
       return () => { cancelled = true }
     } else if (esPagoDirecto) {
@@ -126,12 +168,19 @@ export function ServicioPagoPage() {
   const handleFileSelect = () => {
     const file = fileRef.current?.files?.[0]
     if (!file) return
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo se permiten archivos de imagen (JPG, PNG, WEBP)")
+      if (fileRef.current) fileRef.current.value = ""
+      return
+    }
     const err = validarComprobante(file)
     if (err) { toast.error(err); if (fileRef.current) fileRef.current.value = ""; return }
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setComprobanteFile(file)
     setPreviewUrl(URL.createObjectURL(file))
   }
+
+
 
   const handlePagar = async () => {
     const montoNum = parseFloat(monto)
@@ -243,11 +292,11 @@ export function ServicioPagoPage() {
 
           <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
             <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5" style={{ color: COLORS.TEXT_MUTED }}>
-              Historial de Pagos ({transacciones.length})
+              Historial de Pagos ({transaccionesAgrupadas.length})
             </h3>
-            {transacciones.length > 0 ? (
+            {transaccionesAgrupadas.length > 0 ? (
               <div className="space-y-3">
-                {transacciones.map((t: any, idx: number) => (
+                {transaccionesAgrupadas.map((t: any, idx: number) => (
                   <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
                     <div
                       className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
@@ -272,8 +321,13 @@ export function ServicioPagoPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-black" style={{ color: CHARCOAL }}>
-                          ${Number(t.monto || 0).toLocaleString()}
+                          ${Number(t.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                         </span>
+                        {t.count > 1 && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                            {t.count} ítems
+                          </span>
+                        )}
                         <span className={cn(
                           "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
                           t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
@@ -396,7 +450,7 @@ export function ServicioPagoPage() {
                   type="file"
                   ref={fileRef}
                   onChange={handleFileSelect}
-                  accept="image/*,.pdf"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
                   className="hidden"
                 />
                 {previewUrl ? (
@@ -445,13 +499,13 @@ export function ServicioPagoPage() {
               </div>
             </div>
 
-            {esPagoPorCuenta && transacciones.length > 0 && (
+            {esPagoPorCuenta && transaccionesAgrupadas.length > 0 && (
               <div className="rounded-2xl border bg-white p-4 sm:p-6" style={{ borderColor: BORDER }}>
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5" style={{ color: COLORS.TEXT_MUTED }}>
-                  Historial de Pagos
+                  Historial de Pagos ({transaccionesAgrupadas.length})
                 </h3>
                 <div className="space-y-3">
-                  {transacciones.map((t: any, idx: number) => (
+                  {transaccionesAgrupadas.map((t: any, idx: number) => (
                     <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
                       <div
                         className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
@@ -476,8 +530,13 @@ export function ServicioPagoPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-black" style={{ color: CHARCOAL }}>
-                            ${Number(t.monto || 0).toLocaleString()}
+                            ${Number(t.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                           </span>
+                          {t.count > 1 && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">
+                              {t.count} ítems
+                            </span>
+                          )}
                           <span className={cn(
                             "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
                             t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :

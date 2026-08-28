@@ -45,6 +45,12 @@ export function NuevoAlquilerPage() {
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Descuentos
+  const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [descuentoValor, setDescuentoValor] = useState<string>("")
+  const [motivoDescuento, setMotivoDescuento] = useState<string>("")
+  const [showDescuento, setShowDescuento] = useState(false)
+
   const [clienteId, setClienteId] = useState("")
   const [clienteTipo, setClienteTipo] = useState<"persona" | "cliente_externo" | "">("")
   const [selectedCliente, setSelectedCliente] = useState<ClienteOption | null>(null)
@@ -71,6 +77,13 @@ export function NuevoAlquilerPage() {
           if (alquiler.fecha_entrega) setFechaEntrega(alquiler.fecha_entrega.slice(0, 16))
           if (alquiler.fecha_devolucion_esperada) setFechaDevolucion(alquiler.fecha_devolucion_esperada.slice(0, 16))
           setObservaciones(alquiler.observaciones || "")
+
+          if (alquiler.monto_descuento && alquiler.monto_descuento > 0) {
+            setShowDescuento(true)
+            setDescuentoTipo("fijo")
+            setDescuentoValor(alquiler.monto_descuento.toString())
+            setMotivoDescuento(alquiler.motivo_descuento || "")
+          }
 
           if (alquiler.persona_id) {
             const nombres = alquiler.persona?.nombres || ""
@@ -186,7 +199,16 @@ export function NuevoAlquilerPage() {
   }
 
   const dias = calcularDias()
-  const precioTotal = equipo ? Math.round(dias * equipo.precio_diario * 100) / 100 : 0
+  const precioOriginal = equipo ? Math.round(dias * equipo.precio_diario * 100) / 100 : 0
+  let montoDescuento = 0
+  if (showDescuento && descuentoValor) {
+    if (descuentoTipo === "fijo") {
+      montoDescuento = Number(descuentoValor) || 0
+    } else {
+      montoDescuento = (precioOriginal * (Number(descuentoValor) || 0)) / 100
+    }
+  }
+  const precioTotal = Math.max(0, precioOriginal - montoDescuento)
 
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -222,6 +244,13 @@ export function NuevoAlquilerPage() {
       form.append("fecha_entrega", new Date(fechaEntrega).toISOString())
       form.append("fecha_devolucion_esperada", new Date(fechaDevolucion).toISOString())
       form.append("precio_total", String(precioTotal))
+      if (showDescuento && montoDescuento > 0) {
+        form.append("precio_original", String(precioOriginal))
+        form.append("monto_descuento", String(montoDescuento))
+        if (motivoDescuento.trim()) {
+          form.append("motivo_descuento", motivoDescuento.trim())
+        }
+      }
       if (observaciones.trim()) form.append("observaciones", observaciones.trim())
       if (fotoFile) form.append("foto_salida", fotoFile)
       if (clienteTipo === "persona") {
@@ -351,25 +380,69 @@ export function NuevoAlquilerPage() {
                 </div>
               </div>
 
-              {fechaEntrega && fechaDevolucion && precioTotal > 0 && (
-                <div className="flex items-center justify-between px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-700 text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-xl bg-white/15 flex items-center justify-center">
-                      <HugeiconsIcon icon={Money01Icon} size={16} />
+              {fechaEntrega && fechaDevolucion && precioOriginal > 0 && (
+                <div className="flex flex-col gap-3 px-5 py-4 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-700 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="size-9 rounded-xl bg-white/15 flex items-center justify-center">
+                        <HugeiconsIcon icon={Money01Icon} size={16} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Precio estimado</p>
+                        <p className="text-sm font-medium opacity-90 flex items-center gap-1.5">
+                          <span className="shrink-0">{dias} día{dias !== 1 ? "s" : ""}</span>
+                          <span className="text-white/40">•</span>
+                          <span className="shrink-0">${Number(equipo.precio_diario).toFixed(2)}/día</span>
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Precio estimado</p>
-                      <p className="text-sm font-medium opacity-90 flex items-center gap-1.5">
-                        <span className="shrink-0">{dias} día{dias !== 1 ? "s" : ""}</span>
-                        <span className="text-white/40">•</span>
-                        <span className="shrink-0">${Number(equipo.precio_diario).toFixed(2)}/día</span>
-                      </p>
+                    <div className="text-right flex flex-col items-end">
+                      {showDescuento && montoDescuento > 0 && (
+                        <p className="text-xs font-medium text-amber-200 line-through mb-0.5">${precioOriginal.toFixed(2)}</p>
+                      )}
+                      <p className="text-3xl font-black tracking-tighter">${precioTotal.toFixed(2)}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">Total</p>
-                    <p className="text-3xl font-black tracking-tighter">${precioTotal.toFixed(2)}</p>
-                  </div>
+
+                  {!showDescuento ? (
+                    <button type="button" onClick={() => setShowDescuento(true)} className="text-xs font-bold text-amber-100 hover:text-white text-left mt-1 self-start underline underline-offset-2">
+                      + Aplicar descuento
+                    </button>
+                  ) : (
+                    <div className="mt-2 pt-3 border-t border-white/20 grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-800">
+                      <div className="flex gap-2">
+                        <select 
+                          value={descuentoTipo} 
+                          onChange={(e) => setDescuentoTipo(e.target.value as "fijo" | "porcentaje")}
+                          className="px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-transparent focus:ring-2 focus:ring-amber-300 w-24 shrink-0"
+                        >
+                          <option value="fijo">$ Fijo</option>
+                          <option value="porcentaje">% Porc</option>
+                        </select>
+                        <input 
+                          type="number" 
+                          min="0"
+                          step="0.01"
+                          placeholder={descuentoTipo === "fijo" ? "Monto a descontar" : "Porcentaje (ej: 10)"}
+                          value={descuentoValor}
+                          onChange={(e) => setDescuentoValor(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-transparent focus:ring-2 focus:ring-amber-300"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Motivo (ej: Descuento estudiante)"
+                          value={motivoDescuento}
+                          onChange={(e) => setMotivoDescuento(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-transparent focus:ring-2 focus:ring-amber-300"
+                        />
+                        <button type="button" onClick={() => { setShowDescuento(false); setDescuentoValor(""); setMotivoDescuento(""); }} className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors shrink-0">
+                          <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

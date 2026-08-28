@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo, useRef, Fragment } from "react"
+import { useState, useEffect, useMemo, Fragment } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -17,8 +17,7 @@ import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
-import html2canvas from "html2canvas-pro"
-import { jsPDF } from "jspdf"
+import { generarCuentaCursoPDF } from "@/lib/generarPagosCuentaPDF"
 
 export function CursoCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -29,7 +28,6 @@ export function CursoCuentasDetallePage() {
   const [selectedModulo, setSelectedModulo] = useState<string>("todos")
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null)
   const [exportando, setExportando] = useState(false)
-  const tablaRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -92,12 +90,13 @@ export function CursoCuentasDetallePage() {
     return mods.reduce((sum: number, m: any) => sum + Number(m.abonado || m.monto_abonado || 0), 0)
   }
 
-  const totalRecaudado = estudiantes.reduce((sum, e) => sum + getTotalPagado(e), 0)
+  const totalRecaudado = Number(data?.totales?.recaudado_real ?? estudiantes.reduce((sum, e) => sum + getTotalPagado(e), 0))
 
-  const totalEsperado = estudiantes.reduce((sum, e) => {
+  const totalEsperadoCalculado = estudiantes.reduce((sum, e) => {
     const mods = toArray(e.modulos || e.lineas_pago_modulo)
-    return sum + mods.reduce((s: number, m: any) => s + Number(m.precio || m.monto_ajustado || m.monto_original || 0), 0)
+    return sum + mods.reduce((s: number, m: any) => s + Number(m.precio || m.monto_ajustado || m.monto_original || 0), 0) + Number(e.inscripcion?.monto_ajustado || 0)
   }, 0)
+  const totalEsperado = Number(data?.totales?.esperado_catalogo ?? totalEsperadoCalculado)
 
   const getStudentAdjustments = (e: any) => {
     const mods = toArray(e.modulos || e.lineas_pago_modulo)
@@ -117,40 +116,10 @@ export function CursoCuentasDetallePage() {
       .filter(Boolean)
   }
 
-  const handleExportPDF = async () => {
-    if (!tablaRef.current) return
+  const handleExportPDF = () => {
     setExportando(true)
     try {
-      const el = tablaRef.current
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        logging: false,
-        onclone: (doc) => {
-          const ths = doc.querySelectorAll("th:last-child, td:last-child")
-          ths.forEach(c => ((c as HTMLElement).style.display = "none"))
-        },
-      })
-      const imgData = canvas.toDataURL("image/png")
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const margin = 8
-      pdf.setFontSize(14)
-      pdf.setFont("helvetica", "bold")
-      pdf.text(curso.nombre_instancia || curso.nombre || "Curso", pageWidth / 2, margin + 8, { align: "center" })
-      pdf.setFontSize(9)
-      pdf.setFont("helvetica", "normal")
-      pdf.text(`Fecha: ${new Date().toLocaleDateString("es-ES")}`, pageWidth / 2, margin + 15, { align: "center" })
-      const imgY = margin + 20
-      const availableWidth = pageWidth - margin * 2
-      const availableHeight = pdf.internal.pageSize.getHeight() - imgY - margin
-      const ratio = canvas.height / canvas.width
-      let imgWidth = availableWidth
-      let imgHeight = imgWidth * ratio
-      if (imgHeight > availableHeight) { imgHeight = availableHeight; imgWidth = imgHeight / ratio }
-      pdf.addImage(imgData, "PNG", margin, imgY, imgWidth, imgHeight)
-      pdf.save(`cuentas-${curso.nombre_instancia || "curso"}.pdf`)
+      generarCuentaCursoPDF(data)
       toast.success("PDF exportado")
     } catch { toast.error("Error al exportar PDF") }
     finally { setExportando(false) }
@@ -253,7 +222,7 @@ export function CursoCuentasDetallePage() {
                 )}
               </div>
 
-          <div className="overflow-x-auto" ref={tablaRef}>
+          <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[800px] [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
               <thead>
                 <tr style={{ backgroundColor: "oklch(0.97 0 0)" }}>

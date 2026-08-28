@@ -18,6 +18,9 @@ export interface TrabajoEdicion {
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
   reserva_podcast_id?: string
   precio_cobrado?: number | null
+  precio_original?: number | null
+  monto_descuento?: number
+  motivo_descuento?: string | null
   cobro_registrado: boolean
   notas?: string
   created_at?: string

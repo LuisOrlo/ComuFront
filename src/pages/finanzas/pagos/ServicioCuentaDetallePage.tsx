@@ -23,6 +23,7 @@ import { COLORS } from "@/lib/constants"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { toast } from "sonner"
 import { financeService } from "@/services/finance.service"
+import { generarCuentaServicioPDF } from "@/lib/generarPagosCuentaPDF"
 import { HealthBar } from "./sections/HealthBar"
 
 const ACCENT = COLORS.ACCENT
@@ -172,6 +173,15 @@ export function ServicioCuentaDetallePage() {
     }
   }
 
+  const handleExportPDF = () => {
+    try {
+      generarCuentaServicioPDF({ nombre: nombreServicio, cliente, total, cobrado, saldo, transacciones })
+      toast.success("PDF exportado")
+    } catch {
+      toast.error("Error al exportar PDF")
+    }
+  }
+
   const itemsContacto = [
     { label: "Teléfono", value: contacto.telefono, icon: CallIcon },
     { label: "Correo electrónico", value: contacto.email, icon: Mail01Icon },
@@ -225,7 +235,7 @@ export function ServicioCuentaDetallePage() {
 
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => toast.info("Exportación PDF no implementada aún")}
+                onClick={handleExportPDF}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
                 style={{ color: ACCENT, backgroundColor: `${ACCENT}15` }}
               >

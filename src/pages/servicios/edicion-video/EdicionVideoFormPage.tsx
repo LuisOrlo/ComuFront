@@ -63,6 +63,12 @@ export function EdicionVideoFormPage() {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(isEdit)
+
+  // Descuentos
+  const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [descuentoValor, setDescuentoValor] = useState<string>("")
+  const [motivoDescuento, setMotivoDescuento] = useState<string>("")
+  const [showDescuento, setShowDescuento] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
@@ -89,6 +95,12 @@ export function EdicionVideoFormPage() {
       setFechaRecibo(t.fecha_recibo)
       setFechaLimite(t.fecha_limite)
       setPrecioCobrado(t.precio_cobrado != null ? String(t.precio_cobrado) : "")
+      if (t.monto_descuento && t.monto_descuento > 0) {
+        setShowDescuento(true)
+        setDescuentoTipo("fijo")
+        setDescuentoValor(t.monto_descuento.toString())
+        setMotivoDescuento(t.motivo_descuento || "")
+      }
       setNotas(t.notas || "")
       setEditorIds(t.editor_ids || [])
       if (t.persona_id) {
@@ -243,6 +255,17 @@ export function EdicionVideoFormPage() {
     return valid
   }
 
+  const precioOriginalNum = precioCobrado ? Number(precioCobrado) : 0
+  let montoDescuentoCalculado = 0
+  if (showDescuento && descuentoValor) {
+    if (descuentoTipo === "fijo") {
+      montoDescuentoCalculado = Number(descuentoValor) || 0
+    } else {
+      montoDescuentoCalculado = (precioOriginalNum * (Number(descuentoValor) || 0)) / 100
+    }
+  }
+  const precioCobradoFinal = Math.max(0, precioOriginalNum - montoDescuentoCalculado)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateAll()) return
@@ -256,7 +279,10 @@ export function EdicionVideoFormPage() {
         persona_id: clienteTipo === "persona" ? clienteId : undefined,
         cliente_externo_id: clienteTipo === "cliente_externo" ? clienteId : undefined,
         editor_ids: editorIds,
-        precio_cobrado: precioCobrado ? Number(precioCobrado) : null,
+        precio_cobrado: precioCobrado ? precioCobradoFinal : null,
+        precio_original: showDescuento && montoDescuentoCalculado > 0 ? precioOriginalNum : null,
+        monto_descuento: showDescuento && montoDescuentoCalculado > 0 ? montoDescuentoCalculado : 0,
+        motivo_descuento: showDescuento && montoDescuentoCalculado > 0 && motivoDescuento.trim() ? motivoDescuento.trim() : null,
         notas: notas.trim() || undefined,
       }
 
@@ -546,7 +572,58 @@ export function EdicionVideoFormPage() {
                       placeholder="0.00"
                       className="w-full pl-14 pr-4 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10" />
                   </div>
-                  <p className="text-[10px] opacity-30 px-1">Precio acordado por el servicio de edición</p>
+                  <div className="flex items-center justify-between text-[10px] px-1">
+                    <p className="opacity-40">Precio acordado por el servicio de edición</p>
+                    {precioOriginalNum > 0 && showDescuento && montoDescuentoCalculado > 0 && (
+                      <div className="flex items-baseline gap-1.5 font-bold">
+                        <span className="text-gray-400 line-through">${precioOriginalNum.toFixed(2)}</span>
+                        <span className="text-blue-600">Total con desc: ${precioCobradoFinal.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {!showDescuento ? (
+                    <button type="button" onClick={() => setShowDescuento(true)} className="text-xs font-bold text-blue-600 hover:underline pt-1 block">
+                      + Aplicar descuento
+                    </button>
+                  ) : (
+                    <div className="mt-2 p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-blue-900">Descuento al Trabajo</span>
+                        <button type="button" onClick={() => { setShowDescuento(false); setDescuentoValor(""); setMotivoDescuento(""); }} className="text-gray-400 hover:text-gray-600">
+                          <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex gap-2">
+                          <select 
+                            value={descuentoTipo} 
+                            onChange={(e) => setDescuentoTipo(e.target.value as "fijo" | "porcentaje")}
+                            className="px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-gray-200 focus:ring-2 focus:ring-blue-300 w-24 shrink-0"
+                          >
+                            <option value="fijo">$ Fijo</option>
+                            <option value="porcentaje">% Porc</option>
+                          </select>
+                          <input 
+                            type="number" 
+                            min="0"
+                            step="0.01"
+                            placeholder={descuentoTipo === "fijo" ? "Monto" : "Porcentaje"}
+                            value={descuentoValor}
+                            onChange={(e) => setDescuentoValor(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-gray-200 focus:ring-2 focus:ring-blue-300"
+                          />
+                        </div>
+                        <input 
+                          type="text" 
+                          placeholder="Motivo (ej: Descuento cliente frecuente)"
+                          value={motivoDescuento}
+                          onChange={(e) => setMotivoDescuento(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-bold outline-none bg-white border border-gray-200 focus:ring-2 focus:ring-blue-300"
+                        />
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
 

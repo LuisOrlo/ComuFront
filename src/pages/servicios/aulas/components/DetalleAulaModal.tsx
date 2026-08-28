@@ -133,12 +133,35 @@ export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPag
               </div>
 
               {/* Detalle Financiero */}
-              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Monto Total</p>
-                  <p className="text-2xl font-black text-emerald-700">${Number(reserva.precio_total || 0).toLocaleString()}</p>
+              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-700">Monto Total</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-black text-emerald-700">${Number(reserva.precio_total || 0).toLocaleString("es-EC", { minimumFractionDigits: 2 })}</p>
+                      {reserva.monto_descuento && Number(reserva.monto_descuento) > 0 && (
+                        <span className="text-xs text-gray-400 line-through font-semibold">
+                          ${(Number(reserva.precio_original || Number(reserva.precio_total) + Number(reserva.monto_descuento))).toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <HugeiconsIcon icon={Money01Icon} size={32} className="text-emerald-500 opacity-40 shrink-0" />
                 </div>
-                <HugeiconsIcon icon={Money01Icon} size={32} className="text-emerald-500 opacity-40" />
+
+                {reserva.monto_descuento && Number(reserva.monto_descuento) > 0 && (
+                  <div className="pt-2 border-t border-emerald-200/60 text-xs space-y-0.5">
+                    <p className="font-bold text-emerald-800 flex items-center justify-between">
+                      <span>Descuento aplicado:</span>
+                      <span>-${Number(reserva.monto_descuento).toFixed(2)}</span>
+                    </p>
+                    {reserva.motivo_descuento && (
+                      <p className="text-emerald-700 font-medium opacity-90">
+                        <span className="font-bold">Motivo:</span> "{reserva.motivo_descuento}"
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Observaciones si existen */}

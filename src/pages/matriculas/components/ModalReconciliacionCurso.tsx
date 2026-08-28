@@ -44,7 +44,7 @@ export function ModalReconciliacionCurso({
       result[i] = String(Math.min(viejo, m.monto_ajustado))
     })
 
-    // Paso 2: distribuir excedente a mdulos con espacio disponible
+    // Paso 2: distribuir excedente a módulos con espacio disponible
     const asignado = Object.values(result).reduce((s, v) => s + parseFloat(v), 0)
     let restante = totalAbonadoActual - asignado
 

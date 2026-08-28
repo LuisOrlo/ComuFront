@@ -24,6 +24,9 @@ export interface AlquilerEquipo {
   foto_retorno_url?: string
   observaciones?: string
   precio_total: number
+  precio_original?: number | null
+  monto_descuento?: number
+  motivo_descuento?: string | null
   estado: "activo" | "devuelto" | "vencido" | "pendiente" | "entregado"
   created_at?: string
   updated_at?: string

@@ -196,12 +196,30 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
           ]
 
           const cambiosCount = editandoMontos
-            ? lineas.filter(lp => parseFloat(editMontosValues[lp.id] ?? "") !== lp.monto_abonado).length
+            ? lineas.filter(lp => {
+                const editVal = editMontosValues[lp.id]
+                const editPrecioVal = editPreciosValues[lp.id]
+                const abonadoChanged = editVal !== undefined && Math.abs((parseFloat(editVal) || 0) - lp.monto_abonado) > 0.001
+                const precioChanged = editPrecioVal !== undefined && Math.abs((parseFloat(editPrecioVal) || 0) - lp.monto_ajustado) > 0.001
+                return abonadoChanged || precioChanged
+              }).length
             : 0
 
           const nuevoTotalAbonado = editandoMontos
-            ? lineas.reduce((sum, lp) => sum + (parseFloat(editMontosValues[lp.id]) || 0), 0)
+            ? lineas.reduce((sum, lp) => {
+                const editVal = editMontosValues[lp.id]
+                const abonadoLive = editVal !== undefined ? (parseFloat(editVal) || 0) : lp.monto_abonado
+                return sum + abonadoLive
+              }, 0)
             : selected.lineas_pago!.total_abonado
+
+          const nuevoTotalEsperado = editandoMontos
+            ? lineas.reduce((sum, lp) => {
+                const editPrecioVal = editPreciosValues[lp.id]
+                const precioLive = editPrecioVal !== undefined ? (parseFloat(editPrecioVal) || 0) : lp.monto_ajustado
+                return sum + precioLive
+              }, 0)
+            : selected.lineas_pago!.total_esperado
 
           return (
           <div className="p-4 rounded-xl border space-y-3 bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -367,7 +385,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Total abonado después de guardar</span>
                   <span className="text-base font-black font-mono" style={{ color: COLORS.CHARCOAL }}>
-                    ${nuevoTotalAbonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${selected.lineas_pago!.total_esperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                    ${nuevoTotalAbonado.toLocaleString("es-EC", { minimumFractionDigits: 2 })} de ${nuevoTotalEsperado.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 justify-end">

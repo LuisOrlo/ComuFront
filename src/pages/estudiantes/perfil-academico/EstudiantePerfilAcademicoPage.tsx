@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router"
+import { useParams, Link } from "react-router"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, AddCircleIcon, ImageIcon, Delete02Icon, UserIcon, DashboardSquareIcon, GraduationCapIcon, MoneyIcon } from "@hugeicons/core-free-icons"
@@ -24,7 +24,6 @@ const tabs = [
 
 export function EstudiantePerfilAcademicoPage() {
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [cedulaPurgado, setCedulaPurgado] = useState(false)
@@ -120,14 +119,19 @@ export function EstudiantePerfilAcademicoPage() {
           <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
           Volver a listado de estudiantes
         </Link>
-        <button
-          onClick={() => id && navigate(`/estudiantes/${id}/inscribir`)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.97]"
-          style={{ backgroundColor: COLORS.ACCENT }}
-        >
-          <HugeiconsIcon icon={AddCircleIcon} size={16} />
-          Inscribir a nuevo curso/taller
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium" style={{ color: COLORS.TEXT_MUTED }}>
+            Por confirmación de proceso
+          </span>
+          <button
+            disabled
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all cursor-not-allowed opacity-60"
+            style={{ backgroundColor: COLORS.ACCENT }}
+          >
+            <HugeiconsIcon icon={AddCircleIcon} size={16} />
+            Inscribir a nuevo curso/taller
+          </button>
+        </div>
       </div>
 
       <ProfileHeader
