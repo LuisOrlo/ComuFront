@@ -3,6 +3,7 @@ import { COLORS } from "@/lib/constants"
 import { Download04Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { exportarEstadisticasPDF } from "@/hooks/useExportPdf"
+import type { EstadisticasResponse } from "@/types/estadisticas"
 
 const BORDER = COLORS.BORDER_SUBTLE
 const ACCENT = COLORS.ACCENT
@@ -34,12 +35,11 @@ interface Props {
   customHasta: string
   setCustomHasta: (d: string) => void
   onApply: (desde: string, hasta: string) => void
-  seccionesRef: React.MutableRefObject<Map<string, HTMLDivElement>>
   loading: boolean
-  data: unknown | null
+  data: EstadisticasResponse | null | undefined
 }
 
-export function PeriodoSelector({ periodo, setPeriodo, customDesde, setCustomDesde, customHasta, setCustomHasta, onApply, seccionesRef, loading, data }: Props) {
+export function PeriodoSelector({ periodo, setPeriodo, customDesde, setCustomDesde, customHasta, setCustomHasta, onApply, loading, data }: Props) {
   const [debounceDesde, setDebounceDesde] = useState(customDesde)
   const [debounceHasta, setDebounceHasta] = useState(customHasta)
 
@@ -56,8 +56,8 @@ export function PeriodoSelector({ periodo, setPeriodo, customDesde, setCustomDes
 
   const handleExport = useCallback(async () => {
     if (loading || !data) return
-    await exportarEstadisticasPDF(seccionesRef)
-  }, [loading, data, seccionesRef])
+    await exportarEstadisticasPDF(data)
+  }, [loading, data])
 
   const r = getRange(periodo, customDesde, customHasta)
 

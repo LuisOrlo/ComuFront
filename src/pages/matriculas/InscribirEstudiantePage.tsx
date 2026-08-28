@@ -8,7 +8,6 @@ import { tallerService } from "@/services/taller.service"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "@/pages/matriculas/PagoPreAprobacionSection"
 import { toast } from "sonner"
-import api from "@/services/auth.service"
 import { cursosService } from "@/services/cursos.service"
 
 type TipoInscripcion = "curso" | "taller"
@@ -48,8 +47,8 @@ export function InscribirEstudiantePage() {
     setSelectedCurso(null)
     setSelectedTaller(null)
     if (tipo === "curso") {
-      api.get("/cursos-abiertos", { params: { per_page: 100, no_iniciados: "true" } })
-        .then((res) => setCursos(res.data.data || []))
+      cursosService.getCursosAbiertosParaInscripcion({ per_page: 100, no_iniciados: true })
+        .then((res) => setCursos((res as { data?: CursoAbierto[] }).data || []))
         .catch(() => setCursos([]))
         .finally(() => setLoadingOpciones(false))
     } else {
@@ -89,12 +88,18 @@ export function InscribirEstudiantePage() {
 
   async function handleSubmitTaller() {
     if (!selectedTaller || !id) return
+    const precio = Number(selectedTallerData?.precio || 0)
+    const monto = Number(montoTaller || 0)
+    if (precio > 0 && monto <= 0) {
+      toast.error("Ingresa un monto mayor a $0 o selecciona un taller gratuito")
+      return
+    }
     setSaving(true)
     try {
       await tallerService.inscribirEstudianteDesdePerfil({
         estudiante_id: id,
         taller_id: selectedTaller,
-        monto_pagado: parseFloat(montoTaller) || 0,
+        monto_pagado: monto,
         metodo_pago: metodoTaller,
       })
       toast.success("Estudiante inscrito al taller exitosamente")

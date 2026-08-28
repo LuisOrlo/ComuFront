@@ -16,6 +16,7 @@ interface StudentFiltersProps {
   ciudadFilter: string
   onCiudadFilterChange: (value: string) => void
   ciudades: string[]
+  segmentActive?: boolean
 }
 
 const filters = [
@@ -41,10 +42,16 @@ export function StudentFilters({
   ciudadFilter,
   onCiudadFilterChange,
   ciudades,
+  segmentActive = false,
 }: StudentFiltersProps) {
   return (
     <>
-        <div className="flex items-center gap-3 mb-4">
+        {segmentActive && (
+          <div role="status" className="mb-4 rounded-lg border px-3 py-2 text-xs font-medium text-blue-800 bg-blue-50 border-blue-100">
+            Mostrando estudiantes del segmento seleccionado.
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="relative max-w-sm flex-1">
             <HugeiconsIcon
               icon={Search01Icon}
@@ -55,6 +62,7 @@ export function StudentFilters({
             <input
               type="text"
               placeholder="Buscar por nombre o cedula..."
+              aria-label="Buscar estudiante por nombre o cédula"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all duration-180 ease-out"
@@ -81,6 +89,7 @@ export function StudentFilters({
             />
             <select
               value={ciudadFilter}
+              aria-label="Filtrar estudiantes por ciudad"
               onChange={(e) => onCiudadFilterChange(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg outline-none bg-white transition-all duration-180 ease-out appearance-none"
               style={{

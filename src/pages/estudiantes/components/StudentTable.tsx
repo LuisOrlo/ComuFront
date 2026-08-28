@@ -38,6 +38,8 @@ interface StudentTableProps {
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
   variant?: "estudiantes" | "participantes"
+  meta?: { actual: number; ultima_pagina: number; total: number; per_page: number }
+  onPageChange?: (page: number) => void
 }
 
 const BORDER = COLORS.BORDER_SUBTLE
@@ -108,7 +110,7 @@ function getAlignment(columnId: string): "center" | "right" | undefined {
   return COLUMN_ALIGN[columnId]
 }
 
-export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect, onToggleSelectAll, variant = "estudiantes" }: StudentTableProps) {
+export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect, onToggleSelectAll, variant = "estudiantes", meta, onPageChange }: StudentTableProps) {
   const isEstudiantes = variant === "estudiantes"
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 })
@@ -128,6 +130,7 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
           checked={estudiantes.length > 0 && selectedIds.size === estudiantes.length}
           onChange={onToggleSelectAll}
           className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          aria-label="Seleccionar todos los estudiantes visibles"
         />
       ),
       cell: ({ row }) => (
@@ -136,6 +139,7 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
           checked={selectedIds.has(row.original.id)}
           onChange={() => onToggleSelect(row.original.id)}
           className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          aria-label={`Seleccionar ${row.original.nombres} ${row.original.apellidos}`}
         />
       ),
       enableSorting: false,
@@ -239,13 +243,13 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
   const table = useReactTable({
     data: estudiantes,
     columns,
-    state: { sorting, pagination },
+    state: { sorting, ...(meta ? {} : { pagination }) },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
+    onPaginationChange: meta ? undefined : setPagination,
     getRowId: (row, index) => row.id || `student-${index}`,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(meta ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     autoResetAll: false,
   })
 
@@ -262,8 +266,7 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
                   const align = getAlignment(header.id)
                   return (
                     <th key={header.id}
-                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                      className={canSort ? "cursor-pointer select-none" : ""}
+                      aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none"}
                       style={{
                         width: header.getSize() !== 150 ? header.getSize() : undefined,
                         padding: "12px 16px",
@@ -274,7 +277,7 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
                         whiteSpace: "nowrap",
                         color: TEXT_MUTED,
                       }}>
-                      <div className="flex items-center gap-1"
+                      <button type="button" onClick={canSort ? header.column.getToggleSortingHandler() : undefined} disabled={!canSort} className={`flex items-center gap-1 ${canSort ? "cursor-pointer" : "cursor-default"}`}
                         style={{ justifyContent: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start" }}>
                         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                         {canSort && (
@@ -283,7 +286,7 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
                             <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "" : "opacity-40"} />
                           </span>
                         )}
-                      </div>
+                      </button>
                     </th>
                   )
                 })}
@@ -342,7 +345,18 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
         </table>
       </div>
 
-      {!loading && table.getRowModel().rows.length > 0 && (
+      {!loading && table.getRowModel().rows.length > 0 && meta && onPageChange && (
+        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between text-sm" style={{ color: TEXT_MUTED }}>
+            <span>{meta.total} estudiante{meta.total !== 1 ? "s" : ""} · Página {meta.actual} de {meta.ultima_pagina}</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => onPageChange(meta.actual - 1)} disabled={meta.actual <= 1} className="px-3 py-1.5 border rounded-lg disabled:opacity-40" style={{ borderColor: BORDER }}>Anterior</button>
+              <button type="button" onClick={() => onPageChange(meta.actual + 1)} disabled={meta.actual >= meta.ultima_pagina} className="px-3 py-1.5 border rounded-lg disabled:opacity-40" style={{ borderColor: BORDER }}>Siguiente</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {!loading && table.getRowModel().rows.length > 0 && !meta && (
         <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
           <PaginationControls table={table} />
         </div>

@@ -14,6 +14,8 @@ interface UseStudentProfileReturn {
   academicData: AcademicProfile | null
   financialData: FinancialProfile | null
   loading: boolean
+  academicLoading: boolean
+  financialLoading: boolean
   notFound: boolean
   activeTab: ProfileTab
   setActiveTab: (tab: ProfileTab) => void
@@ -27,6 +29,8 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
   const [academicData, setAcademicData] = useState<AcademicProfile | null>(null)
   const [financialData, setFinancialData] = useState<FinancialProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [academicLoading, setAcademicLoading] = useState(false)
+  const [financialLoading, setFinancialLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<ProfileTab>("informacion")
@@ -36,36 +40,64 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
     setLoading(true)
     setNotFound(false)
     try {
-      const [estudiante, academic, financial] = await Promise.allSettled([
-        estudiantesService.getStudentById(id),
-        estudiantesService.getAcademicProfile(id),
-        estudiantesService.getFinancialProfile(id),
-      ])
-      if (estudiante.status === 'fulfilled') {
-        setStudentData(estudiante.value)
-      } else {
-        setStudentData(null)
-        if ((estudiante.reason as { response?: { status?: number } })?.response?.status === 404) {
-          setNotFound(true)
-        }
-      }
-      if (academic.status === 'fulfilled') setAcademicData(academic.value)
-      else setAcademicData(null)
-      if (financial.status === 'fulfilled') setFinancialData(financial.value)
-      else setFinancialData(null)
-    } catch {
+      const estudiante = await estudiantesService.getStudentById(id)
+      setStudentData(estudiante)
+    } catch (error) {
       setStudentData(null)
-      setAcademicData(null)
-      setFinancialData(null)
+      if ((error as { response?: { status?: number } })?.response?.status === 404) setNotFound(true)
     } finally {
       setLoading(false)
     }
   }, [id])
 
+  const loadAcademicData = useCallback(async () => {
+    if (!id || academicData || academicLoading) return
+    setAcademicLoading(true)
+    try { setAcademicData(await estudiantesService.getAcademicProfile(id)) }
+    catch { setAcademicData(null) }
+    finally { setAcademicLoading(false) }
+  }, [id, academicData, academicLoading])
+
+  const loadFinancialData = useCallback(async () => {
+    if (!id || financialData || financialLoading) return
+    setFinancialLoading(true)
+    try { setFinancialData(await estudiantesService.getFinancialProfile(id)) }
+    catch { setFinancialData(null) }
+    finally { setFinancialLoading(false) }
+  }, [id, financialData, financialLoading])
+
+  useEffect(() => {
+    if (activeTab === "academico") void loadAcademicData()
+    if (activeTab === "financiero") void loadFinancialData()
+    if (activeTab === "resumen") {
+      void loadAcademicData()
+      void loadFinancialData()
+    }
+  }, [activeTab, loadAcademicData, loadFinancialData])
+
   useEffect(() => {
     if (id) {
+      setAcademicData(null)
+      setFinancialData(null)
+      void loadData()
+    }
+  }, [id, loadData])
 
-      loadData()
+  const refreshData = useCallback(async () => {
+    if (!id) return
+    setAcademicLoading(true)
+    setFinancialLoading(true)
+    try {
+      const [, academic, financial] = await Promise.all([
+        loadData(),
+        estudiantesService.getAcademicProfile(id),
+        estudiantesService.getFinancialProfile(id),
+      ])
+      setAcademicData(academic)
+      setFinancialData(financial)
+    } finally {
+      setAcademicLoading(false)
+      setFinancialLoading(false)
     }
   }, [id, loadData])
 
@@ -88,10 +120,12 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
     academicData,
     financialData,
     loading,
+    academicLoading,
+    financialLoading,
     notFound,
     activeTab,
     setActiveTab,
-    refreshData: loadData,
+    refreshData,
     updateStudentInfo,
     saving,
   }

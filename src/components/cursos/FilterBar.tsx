@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { FilterIcon, SearchIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -26,6 +26,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     estado: "",
   })
   const [cargando, setCargando] = useState(true)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Cargar ciudades al montar el componente
   useEffect(() => {
@@ -62,15 +63,20 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
   // Manejar cambios en búsqueda
   const handleSearchChange = (value: string) => {
     setSearch(value)
-    if (onFilterChange) {
-      onFilterChange({
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      onFilterChange?.({
         ciudad: filtros.ciudad || undefined,
         modalidad: filtros.modalidad || undefined,
         estado: filtros.estado || undefined,
         search: value || undefined,
       })
-    }
+    }, 300)
   }
+
+  useEffect(() => () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+  }, [])
 
   // Limpiar todos los filtros
   const limpiarFiltros = () => {
@@ -103,6 +109,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
       <div className="relative">
         <select
           value={filtros.ciudad}
+          aria-label="Filtrar cursos por ciudad"
           onChange={(e) => handleFilterChange("ciudad", e.target.value)}
           className={selectClasses}
           style={{
@@ -136,6 +143,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
       <div className="relative">
         <select
           value={filtros.modalidad}
+          aria-label="Filtrar cursos por modalidad"
           onChange={(e) => handleFilterChange("modalidad", e.target.value)}
           className={selectClasses}
           style={{
@@ -163,6 +171,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
       <div className="relative">
         <select
           value={filtros.estado}
+          aria-label="Filtrar cursos por estado"
           onChange={(e) => handleFilterChange("estado", e.target.value)}
           className={selectClasses}
           style={{
@@ -199,6 +208,7 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
           <input
             type="text"
             placeholder="Buscar cursos..."
+            aria-label="Buscar cursos"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all duration-180 ease-out"

@@ -21,27 +21,6 @@ export function AprobacionMatriculasPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
 
-  const solicitudesQuery = useQuery({
-    queryKey: ["solicitudes-inscripcion"],
-    queryFn: async () => {
-      const res = await cursosService.getSolicitudesInscripcion({ per_page: 200 })
-      return ((res as Record<string, unknown>).data as Record<string, unknown>[]) || []
-    },
-  })
-
-  const talleresQuery = useQuery({
-    queryKey: ["talleres-inscripciones-pendientes"],
-    queryFn: async () => {
-      const res = await tallerService.listarInscripcionesPendientes({ per_page: 200 })
-      return ((res as Record<string, unknown>).data || (res as Record<string, unknown>).datos || []) as any[]
-    },
-  })
-
-  const solicitudes: any[] = useMemo(() => solicitudesQuery.data ?? [], [solicitudesQuery.data])
-  const loading = solicitudesQuery.isLoading
-  const tallerInscripciones: any[] = useMemo(() => talleresQuery.data ?? [], [talleresQuery.data])
-  const loadingTalleres = talleresQuery.isLoading
-
   const [mainTab, setMainTab] = useState<"cursos" | "personalizados" | "talleres">(() => {
     const tab = searchParams.get("tab")
     return tab === "personalizados" || tab === "talleres" ? tab : "cursos"
@@ -60,9 +39,44 @@ export function AprobacionMatriculasPage() {
   const [filtroCursoId, setFiltroCursoId] = useState("")
   const [catalogosFiltro, setCatalogosFiltro] = useState<CatalogoCurso[]>([])
 
-  const VENTANA_DIAS = 5
   const [ventanaActual, setVentanaActual] = useState(1)
   const [tallerVentanaActual, setTallerVentanaActual] = useState(1)
+
+  const estadoSolicitud = statusFilter === "pendientes" ? "pendiente_validacion" : statusFilter === "aprobados" ? "matricula_creada" : "rechazado"
+  const categoria = mainTab === "cursos" ? "regular" : "personalizado"
+  const solicitudesQuery = useQuery({
+    queryKey: ["solicitudes-inscripcion", categoria, estadoSolicitud, searchTerm, filtroCursoId, filtroFechaDesde, filtroFechaHasta, ventanaActual],
+    queryFn: () => cursosService.getSolicitudesInscripcion({
+      per_page: 20,
+      page: ventanaActual,
+      estado: estadoSolicitud,
+      categoria,
+      search: searchTerm || undefined,
+      curso_abierto_id: filtroCursoId || undefined,
+      fecha_desde: filtroFechaDesde || undefined,
+      fecha_hasta: filtroFechaHasta || undefined,
+    } as Record<string, string | number | undefined>),
+    enabled: mainTab !== "talleres",
+    placeholderData: previous => previous,
+  })
+  const talleresParams = statusFilter === "pendientes"
+    ? { estado: "activo", pago_verificado: "false" }
+    : statusFilter === "aprobados"
+      ? { pago_verificado: "true" }
+      : { estado: "retirado" }
+  const talleresQuery = useQuery({
+    queryKey: ["talleres-inscripciones-pendientes", talleresParams, searchTerm, tallerVentanaActual],
+    queryFn: () => tallerService.listarInscripcionesPendientes({ per_page: 20, page: tallerVentanaActual, search: searchTerm || undefined, ...talleresParams }),
+    enabled: mainTab === "talleres",
+    placeholderData: previous => previous,
+  })
+  const solicitudes: any[] = useMemo(() => ((solicitudesQuery.data as Record<string, unknown> | undefined)?.data as any[]) ?? [], [solicitudesQuery.data])
+  const tallerInscripciones: any[] = useMemo(() => {
+    const response = talleresQuery.data as Record<string, unknown> | undefined
+    return (response?.data || response?.datos || []) as any[]
+  }, [talleresQuery.data])
+  const loading = solicitudesQuery.isLoading
+  const loadingTalleres = talleresQuery.isLoading
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -98,7 +112,7 @@ export function AprobacionMatriculasPage() {
       if (!rawDate) continue
       const d = new Date(rawDate)
       if (isNaN(d.getTime())) continue
-      const key = d.toISOString().slice(0, 10)
+      const key = String(rawDate).slice(0, 10)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(s)
     }
@@ -164,7 +178,7 @@ export function AprobacionMatriculasPage() {
       if (!rawDate) continue
       const d = new Date(rawDate)
       if (isNaN(d.getTime())) continue
-      const key = d.toISOString().slice(0, 10)
+      const key = String(rawDate).slice(0, 10)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(s)
     }
@@ -179,41 +193,14 @@ export function AprobacionMatriculasPage() {
     return grupos
   }, [solicitudesFiltradas, statusFilter, mainTab])
 
-  const ventanasAgrupadas = useMemo(() => {
-    if (!solicitudesAgrupadas) return null
-    const ventanas: { days: any[]; index: number }[] = []
-    for (let i = 0; i < solicitudesAgrupadas.length; i += VENTANA_DIAS) {
-      ventanas.push({
-        days: solicitudesAgrupadas.slice(i, i + VENTANA_DIAS),
-        index: Math.floor(i / VENTANA_DIAS) + 1,
-      })
-    }
-    return ventanas
-  }, [solicitudesAgrupadas])
+  const solicitudesMeta = ((solicitudesQuery.data as Record<string, unknown> | undefined)?.meta ?? {}) as { total?: number; last_page?: number }
+  const talleresMeta = ((talleresQuery.data as Record<string, unknown> | undefined)?.meta ?? {}) as { total?: number; last_page?: number }
+  const totalVentanas = solicitudesMeta.last_page || 1
+  const ventanaActualDays = solicitudesAgrupadas || []
+  const tallerTotalVentanas = talleresMeta.last_page || 1
+  const tallerVentanaActualDays = tallerAgrupadas || []
 
-  const totalVentanas = ventanasAgrupadas?.length || 0
-  const ventanaActualDays = ventanasAgrupadas?.[ventanaActual - 1]?.days || []
-
-  const tallerVentanasAgrupadas = useMemo(() => {
-    if (!tallerAgrupadas) return null
-    const ventanas: { days: any[]; index: number }[] = []
-    for (let i = 0; i < tallerAgrupadas.length; i += VENTANA_DIAS) {
-      ventanas.push({
-        days: tallerAgrupadas.slice(i, i + VENTANA_DIAS),
-        index: Math.floor(i / VENTANA_DIAS) + 1,
-      })
-    }
-    return ventanas
-  }, [tallerAgrupadas])
-
-  const tallerTotalVentanas = tallerVentanasAgrupadas?.length || 0
-  const tallerVentanaActualDays = tallerVentanasAgrupadas?.[tallerVentanaActual - 1]?.days || []
-
-  const totalPendientes = useMemo(() => {
-    const cursos = solicitudes.filter(s => s.estado === "pendiente_validacion").length
-    const talleres = tallerInscripciones.filter(ins => ins.estado === "activo" && !ins.pago_verificado).length
-    return cursos + talleres
-  }, [solicitudes, tallerInscripciones])
+  const totalPendientes = statusFilter === "pendientes" ? (mainTab === "talleres" ? talleresMeta.total || 0 : solicitudesMeta.total || 0) : 0
 
   const handleDeleteRejected = async () => {
     if (!deleteTarget) return
@@ -241,7 +228,9 @@ export function AprobacionMatriculasPage() {
       <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-[1000px] mx-auto px-6 py-6">
           <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Aprobación de Matrículas</h1>
-          <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>{totalPendientes} pendiente{totalPendientes !== 1 ? "s" : ""} de revisión</p>
+          <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
+            {totalPendientes} {statusFilter === "pendientes" ? `pendiente${totalPendientes !== 1 ? "s" : ""} de revisión` : "resultado(s)"}
+          </p>
         </div>
       </div>
 
@@ -250,12 +239,12 @@ export function AprobacionMatriculasPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.TEXT_MUTED }} />
-              <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              <input type="text" placeholder="Buscar por nombre o cédula..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setVentanaActual(1); setTallerVentanaActual(1) }} aria-label="Buscar solicitudes"
                 className="w-full pl-9 pr-3 py-2.5 border rounded-xl text-xs outline-none bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
             </div>
             <div className="flex gap-1 rounded-xl border p-0.5 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               {[{ value: "cursos" as const, label: "Cursos" }, { value: "personalizados" as const, label: "Personalizados" }, { value: "talleres" as const, label: "Talleres" }].map(f => (
-                <button key={f.value} onClick={() => { setMainTab(f.value); setStatusFilter("pendientes"); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
+                <button key={f.value} onClick={() => { setMainTab(f.value); setStatusFilter("pendientes"); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta(""); setVentanaActual(1); setTallerVentanaActual(1) }}
                   className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                   style={{ backgroundColor: mainTab === f.value ? COLORS.CHARCOAL : "transparent", color: mainTab === f.value ? "white" : COLORS.TEXT_MUTED }}>
                   {f.label}
@@ -266,7 +255,7 @@ export function AprobacionMatriculasPage() {
 
           <div className="flex gap-1 rounded-lg border p-0.5 bg-white inline-flex" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {[{ value: "pendientes" as const, label: "Pendientes" }, { value: "aprobados" as const, label: "Aprobados" }, { value: "rechazados" as const, label: "Rechazados" }].map(f => (
-              <button key={f.value} onClick={() => { setStatusFilter(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta("") }}
+              <button key={f.value} onClick={() => { setStatusFilter(f.value); setFiltroCursoId(""); setFiltroFechaDesde(""); setFiltroFechaHasta(""); setVentanaActual(1); setTallerVentanaActual(1) }}
                 className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
                 style={{
                   backgroundColor: statusFilter === f.value ? COLORS.CHARCOAL : "transparent",
@@ -309,6 +298,11 @@ export function AprobacionMatriculasPage() {
             <div className="space-y-4">
               {loadingTalleres ? (
                 <div className="p-16 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
+              ) : talleresQuery.isError ? (
+                <div role="alert" className="p-16 text-center bg-red-50 rounded-2xl border border-red-100">
+                  <p className="text-sm font-medium text-red-700">No se pudieron cargar las inscripciones de talleres.</p>
+                  <button type="button" onClick={() => { void talleresQuery.refetch() }} className="mt-3 text-xs font-semibold underline text-red-700">Reintentar</button>
+                </div>
               ) : tallerVentanaActualDays.length === 0 ? (
                 <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay inscripciones a talleres {statusFilter === "aprobados" ? "verificadas" : statusFilter === "rechazados" ? "rechazadas" : "pendientes"}</p>
@@ -360,7 +354,7 @@ export function AprobacionMatriculasPage() {
                     ◀ Anterior
                   </button>
                   <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
-                    Ventana {tallerVentanaActual} de {tallerTotalVentanas}
+                    Página {tallerVentanaActual} de {tallerTotalVentanas}
                   </span>
                   <button onClick={() => setTallerVentanaActual(p => Math.min(tallerTotalVentanas, p + 1))}
                     disabled={tallerVentanaActual >= tallerTotalVentanas}
@@ -373,6 +367,11 @@ export function AprobacionMatriculasPage() {
             </div>
           ) : loading ? (
             <div className="p-20 text-center" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</div>
+          ) : solicitudesQuery.isError ? (
+            <div role="alert" className="p-16 text-center bg-red-50 rounded-2xl border border-red-100">
+              <p className="text-sm font-medium text-red-700">No se pudieron cargar las solicitudes.</p>
+              <button type="button" onClick={() => { void solicitudesQuery.refetch() }} className="mt-3 text-xs font-semibold underline text-red-700">Reintentar</button>
+            </div>
           ) : solicitudesFiltradas.length === 0 ? (
             <div className="p-16 text-center bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>No hay solicitudes</p>
@@ -424,7 +423,7 @@ export function AprobacionMatriculasPage() {
                     ◀ Anterior
                   </button>
                   <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
-                    Ventana {ventanaActual} de {totalVentanas}
+                    Página {ventanaActual} de {totalVentanas}
                   </span>
                   <button onClick={() => setVentanaActual(p => Math.min(totalVentanas, p + 1))}
                     disabled={ventanaActual >= totalVentanas}

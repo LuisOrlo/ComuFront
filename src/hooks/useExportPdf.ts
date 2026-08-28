@@ -1,103 +1,26 @@
 import jsPDF from "jspdf"
-import "jspdf-autotable"
-import html2canvas from "html2canvas"
+import autoTable from "jspdf-autotable"
+import type { EstadisticasResponse } from "@/types/estadisticas"
 
-async function captureElement(el: HTMLElement): Promise<HTMLCanvasElement> {
-  return html2canvas(el, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    logging: false,
-  })
-}
+const money = (value: number) => `$${Number(value || 0).toLocaleString("es-EC", { minimumFractionDigits: 2 })}`
 
-export async function exportarEstadisticasPDF(
-  seccionesRef: React.MutableRefObject<Map<string, HTMLDivElement>>
-): Promise<void> {
+export async function exportarEstadisticasPDF(data: EstadisticasResponse): Promise<void> {
   const pdf = new jsPDF("p", "mm", "a4")
-  const pageWidth = pdf.internal.pageSize.getWidth()
-  const pageHeight = pdf.internal.pageSize.getHeight()
-  const margin = 12
-  const contentWidth = pageWidth - margin * 2
-  const usableHeight = pageHeight - margin * 2
-  let y = margin
-
-  const titulo = "Estadísticas Financieras"
-  pdf.setFontSize(16)
+  const margin = 14
+  const title = "Informe de estadísticas financieras"
+  const period = `${data.periodo.desde} al ${data.periodo.hasta}`
+  pdf.setFillColor(20, 34, 53); pdf.rect(0, 0, 210, 31, "F")
+  pdf.setTextColor(255, 255, 255); pdf.setFontSize(17); pdf.text(title, margin, 15)
+  pdf.setFontSize(9); pdf.text(`Período: ${period}`, margin, 22); pdf.text(`Generado: ${new Date().toLocaleDateString("es-EC")}`, margin, 27)
   pdf.setTextColor(30, 41, 59)
-  pdf.text(titulo, margin, y + 6)
-  pdf.setFontSize(8)
-  pdf.setTextColor(120, 120, 140)
-  pdf.text(new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }), margin, y + 12)
-  y += 22
-
-  const secciones = [
-    { key: "resumen", title: "Resumen Ejecutivo" },
-    { key: "flujo", title: "Flujo Financiero" },
-    { key: "composicion", title: "Composición de Ingresos" },
-    { key: "catalogo", title: "Rendimiento por Catálogo" },
-    { key: "geografica", title: "Distribución Geográfica" },
-    { key: "modalidad", title: "Comparativa por Modalidad" },
-    { key: "retencion", title: "Retención y Fidelización" },
-    { key: "cobranza", title: "Estado de Cobranza" },
-    { key: "servicios", title: "Actividad de Servicios" },
-  ]
-
-  for (const seccion of secciones) {
-    const el = seccionesRef.current.get(seccion.key)
-    if (!el) continue
-
-    if (y + 20 > pageHeight - margin) {
-      pdf.addPage()
-      y = margin
-    }
-
-    pdf.setFontSize(10)
-    pdf.setTextColor(80, 80, 100)
-    pdf.text(seccion.title, margin, y + 5)
-    y += 8
-
-    try {
-      const canvas = await captureElement(el)
-      const imgData = canvas.toDataURL("image/png")
-      const imgWidth = contentWidth
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-
-      if (y + imgHeight > pageHeight - margin) {
-        pdf.addPage()
-        y = margin
-        pdf.setFontSize(10)
-        pdf.setTextColor(80, 80, 100)
-        pdf.text(seccion.title + " (cont.)", margin, y + 5)
-        y += 8
-      }
-
-      let sliceImgHeight = imgHeight
-      if (y + imgHeight > pageHeight - margin) {
-        sliceImgHeight = usableHeight - y
-      }
-      if (sliceImgHeight < 10) {
-        pdf.addPage()
-        y = margin
-        sliceImgHeight = Math.min(imgHeight, usableHeight)
-      }
-
-      pdf.addImage({
-        imageData: imgData,
-        format: "PNG",
-        x: margin,
-        y,
-        width: imgWidth,
-        height: sliceImgHeight,
-      })
-      y += sliceImgHeight + 5
-    } catch {
-      pdf.setFontSize(8)
-      pdf.setTextColor(150, 150, 160)
-      pdf.text("(No se pudo renderizar esta sección)", margin, y + 4)
-      y += 10
-    }
-  }
-
-  pdf.save(`estadisticas-${new Date().toISOString().split("T")[0]}.pdf`)
+  autoTable(pdf, { startY: 38, theme: "grid", head: [["Ingresos cobrados", "Egresos registrados", "Resultado neto", "Margen neto", "Matrículas del período"]], body: [[money(data.metricas.ingresos), money(data.metricas.egresos), money(data.metricas.balance), `${data.metricas.margen_neto}%`, String(data.metricas.estudiantes_matriculados)]], styles: { fontSize: 8.5, halign: "center" }, headStyles: { fillColor: [20, 34, 53] } })
+  const section = (name: string, description?: string) => { const y = (pdf as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 45; const top = y > 248 ? (pdf.addPage(), 16) : y + 12; pdf.setFontSize(11); pdf.setTextColor(20, 34, 53); pdf.text(name, margin, top); if (description) { pdf.setFontSize(7.5); pdf.setTextColor(100, 110, 125); pdf.text(description, margin, top + 4); return top + 7 } return top + 4 }
+  if (data.ingresos_vs_egresos.length > 0) autoTable(pdf, { startY: section("Evolución de ingresos y egresos", "Movimientos registrados dentro del período seleccionado."), head: [["Mes", "Ingresos cobrados", "Egresos", "Resultado neto"]], body: data.ingresos_vs_egresos.map(item => [item.mes, money(item.ingresos), money(item.egresos), money(item.ingresos - item.egresos)]), styles: { fontSize: 8 }, headStyles: { fillColor: [59, 130, 246] } })
+  if (data.distribucion_categorias.length > 0) autoTable(pdf, { startY: section("Origen de los ingresos", "Distribución de cobros verificados por línea de negocio."), head: [["Línea de negocio", "Ingreso cobrado", "Participación"]], body: data.distribucion_categorias.map(item => [item.name, money(item.value), `${item.porcentaje}%`]), styles: { fontSize: 8 }, headStyles: { fillColor: [22, 163, 74] } })
+  if (data.metodo_pago.length > 0) autoTable(pdf, { startY: section("Cómo se realizaron los cobros"), head: [["Método de pago", "Ingreso cobrado"]], body: data.metodo_pago.map(item => [item.name.charAt(0).toUpperCase() + item.name.slice(1), money(item.value)]), styles: { fontSize: 8 }, headStyles: { fillColor: [8, 145, 178] } })
+  if (data.catalogos_top.length > 0) autoTable(pdf, { startY: section("Rendimiento académico por catálogo", "Solo se muestran catálogos con ofertas durante el período."), head: [["Catálogo", "Ofertas", "Estudiantes", "Ocupación", "Aprobación", "Ingresos"]], body: data.catalogos_top.map(item => [item.nombre, item.ofertas, item.estudiantes, `${item.ocupacion_pct}%`, `${item.aprobacion_pct}%`, money(item.ingreso)]), styles: { fontSize: 7.5 }, headStyles: { fillColor: [124, 58, 237] } })
+  autoTable(pdf, { startY: section("Estado de cobranza", "Deuda pendiente de estudiantes con matrícula dentro del período."), head: [["Indicador", "Estudiantes"]], body: [["Con al menos un pago pendiente", data.cobranza.deben_al_menos_un_pago], ["Con todos sus pagos pendientes", data.cobranza.deben_todos_los_pagos]], styles: { fontSize: 8 }, headStyles: { fillColor: [234, 88, 12] } })
+  if (data.actividad_servicios.length > 0) autoTable(pdf, { startY: section("Servicios", "Los ingresos corresponden a cobros recibidos en el período; la cantidad refleja servicios con fecha registrada en el período."), head: [["Servicio", "Servicios registrados", "Ingresos cobrados"]], body: data.actividad_servicios.map(item => [item.tipo, item.cantidad > 0 ? item.cantidad : "Sin registro en el período", money(item.ingresos)]), styles: { fontSize: 8 }, headStyles: { fillColor: [168, 85, 247] } })
+  const pages = pdf.getNumberOfPages(); for (let page = 1; page <= pages; page++) { pdf.setPage(page); pdf.setFontSize(8); pdf.setTextColor(110, 120, 135); pdf.text(`${title} · ${period}`, margin, 290); pdf.text(`Página ${page} de ${pages}`, 196, 290, { align: "right" }) }
+  pdf.save(`estadisticas_${data.periodo.desde}_a_${data.periodo.hasta}.pdf`)
 }

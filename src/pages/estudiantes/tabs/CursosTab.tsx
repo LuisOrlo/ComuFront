@@ -39,6 +39,7 @@ const ESTADO_OPTIONS = [
 export function CursosTab() {
   const [cursos, setCursos] = useState<Curso[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [search, setSearch] = useState("")
   const [modalidadFilter, setModalidadFilter] = useState<string>("")
   const [estadoFilter, setEstadoFilter] = useState<string>("")
@@ -48,11 +49,12 @@ export function CursosTab() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
       const cursosRes = await cursosService.getCursos({ per_page: 500 })
       setCursos(cursosRes.data)
     } catch {
-      // silent
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -253,6 +255,11 @@ export function CursosTab() {
               <div className="h-6 w-48 bg-gray-100 animate-pulse rounded" />
             </div>
           ))}
+        </div>
+      ) : error ? (
+        <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm font-semibold text-red-700">No se pudieron cargar los cursos.</p>
+          <button type="button" onClick={loadData} className="mt-3 text-sm font-semibold underline text-red-700">Reintentar</button>
         </div>
       ) : (
         <div className="bg-white border rounded-xl overflow-hidden" style={{ borderColor: BORDER }}>

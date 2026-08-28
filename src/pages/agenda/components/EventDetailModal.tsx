@@ -96,11 +96,19 @@ export function EventDetailModal({
     }
   }, [event.tipo_evento, event.referencia_id])
 
+  useEffect(() => {
+    const handleKeyDown = (keyboardEvent: KeyboardEvent) => {
+      if (keyboardEvent.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
+
   const data = detail ?? event
   const color = getEventColor(data)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="agenda-event-title">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
         className="relative bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-xl"
@@ -115,7 +123,7 @@ export function EventDetailModal({
               <HugeiconsIcon icon={Calendar03Icon} size={20} style={{ color: "white" }} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold pr-6" style={{ color: COLORS.CHARCOAL }}>
+              <h2 id="agenda-event-title" className="text-base font-bold pr-6" style={{ color: COLORS.CHARCOAL }}>
                 {data.tipo_evento === "CLASE_CURSO" && data.nombre_instancia
                   ? `Clase: ${data.nombre_instancia}`
                   : data.titulo}
@@ -126,6 +134,7 @@ export function EventDetailModal({
             </div>
             <button
               onClick={onClose}
+              aria-label="Cerrar detalle del evento"
               className="absolute top-5 right-5 size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
               style={{ color: COLORS.TEXT_MUTED }}
             >
@@ -146,7 +155,7 @@ export function EventDetailModal({
               {data.instructor_nombre && (
                 <InfoField icon={UserIcon} label="Instructor" value={data.instructor_nombre} />
               )}
-              {data.tipo_evento !== "CLASE_CURSO" && data.tipo_evento !== "TALLER" && data.aula_nombre && (
+              {data.aula_nombre && (
                 <InfoField icon={Home02Icon} label="Aula" value={data.aula_nombre} />
               )}
               {data.modalidad && (

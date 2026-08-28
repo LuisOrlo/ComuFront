@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react"
+import { useSearchParams } from "react-router"
 import { useStudentList } from "../hooks/useStudentList"
 import { StudentFilters } from "../components/StudentFilters"
 import { StudentTable, type StudentRow } from "../components/StudentTable"
@@ -11,6 +12,8 @@ import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 
 export function TodosTab() {
+  const [searchParams] = useSearchParams()
+  const segmentId = searchParams.get("segmento")
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteCedulasOpen, setConfirmDeleteCedulasOpen] = useState(false)
 
@@ -30,7 +33,9 @@ export function TodosTab() {
     toggleSelectAll,
     clearSelection,
     deleteStudents,
-  } = useStudentList({ pageSize: 2000 })
+    meta,
+    loadPage,
+  } = useStudentList({ pageSize: 25, segmentId })
   const [deleting, setDeleting] = useState(false)
   const [deletingCedulas, setDeletingCedulas] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -119,6 +124,7 @@ export function TodosTab() {
         ciudadFilter={ciudadFilter}
         onCiudadFilterChange={setCiudadFilter}
         ciudades={ciudades}
+        segmentActive={Boolean(segmentId)}
       />
 
       <div className="sticky top-0 z-20 min-h-[32px]">
@@ -138,6 +144,8 @@ export function TodosTab() {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
+          meta={meta}
+          onPageChange={loadPage}
         />
       </div>
 

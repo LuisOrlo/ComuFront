@@ -44,14 +44,16 @@ export interface AgendaResponse {
   tipos_disponibles: TipoDisponible[]
 }
 
+export interface AgendaEventParams {
+  fecha_inicio?: string
+  fecha_fin?: string
+  tipos?: string[]
+  per_page?: number
+  page?: number
+}
+
 export const agendaService = {
-  async getEvents(params: {
-    fecha_inicio?: string
-    fecha_fin?: string
-    tipos?: string[]
-    per_page?: number
-    page?: number
-  }): Promise<AgendaResponse> {
+  async getEvents(params: AgendaEventParams): Promise<AgendaResponse> {
     const response = await api.get("/academic/agenda", { params })
     return response.data
   },
@@ -61,8 +63,18 @@ export const agendaService = {
     return response.data.data
   },
 
+  async getAllEvents(params: Omit<AgendaEventParams, "page">): Promise<AgendaResponse> {
+    const firstPage = await this.getEvents({ ...params, page: 1, per_page: 500 })
+    const pages = Array.from({ length: Math.max(firstPage.meta.last_page - 1, 0) }, (_, index) => index + 2)
+    const rest = await Promise.all(pages.map(page => this.getEvents({ ...params, page, per_page: 500 })))
+    return {
+      ...firstPage,
+      data: [firstPage.data, ...rest.map(response => response.data)].flat(),
+    }
+  },
+
   async downloadPDF(params: {
-    vista: "mes" | "semana"
+    vista: "mes" | "semana" | "dia" | "lista"
     fecha_inicio?: string
     fecha_fin?: string
     tipos?: string[]

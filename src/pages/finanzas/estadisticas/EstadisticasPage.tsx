@@ -14,6 +14,7 @@ import { ComparativaModalidad } from "./components/ComparativaModalidad"
 import { RetencionFidelizacion } from "./components/RetencionFidelizacion"
 import { EstadoCobranza } from "./components/EstadoCobranza"
 import { ActividadServicios } from "./components/ActividadServicios"
+import { PatronesCobro } from "./components/PatronesCobro"
 import { COLORS } from "@/lib/constants"
 import type { EstadisticasResponse } from "@/types/estadisticas"
 
@@ -67,7 +68,7 @@ export function EstadisticasPage() {
           periodo={periodo} setPeriodo={setPeriodo}
           customDesde={customDesde} setCustomDesde={setCustomDesde}
           customHasta={customHasta} setCustomHasta={setCustomHasta}
-          onApply={applyCustom} seccionesRef={seccionesRef}
+          onApply={applyCustom}
           loading={isLoading} data={data}
         />
         <div className="flex-1 overflow-auto">
@@ -84,7 +85,7 @@ export function EstadisticasPage() {
           periodo={periodo} setPeriodo={setPeriodo}
           customDesde={customDesde} setCustomDesde={setCustomDesde}
           customHasta={customHasta} setCustomHasta={setCustomHasta}
-          onApply={applyCustom} seccionesRef={seccionesRef}
+          onApply={applyCustom}
           loading={false} data={data}
         />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -105,7 +106,7 @@ export function EstadisticasPage() {
           periodo={periodo} setPeriodo={setPeriodo}
           customDesde={customDesde} setCustomDesde={setCustomDesde}
           customHasta={customHasta} setCustomHasta={setCustomHasta}
-          onApply={applyCustom} seccionesRef={seccionesRef}
+          onApply={applyCustom}
           loading={false} data={data}
         />
         <div className="flex-1 flex items-center justify-center">
@@ -123,7 +124,7 @@ export function EstadisticasPage() {
         periodo={periodo} setPeriodo={setPeriodo}
         customDesde={customDesde} setCustomDesde={setCustomDesde}
         customHasta={customHasta} setCustomHasta={setCustomHasta}
-        onApply={applyCustom} seccionesRef={seccionesRef}
+        onApply={applyCustom}
         loading={isLoading} data={data}
       />
 
@@ -142,6 +143,10 @@ export function EstadisticasPage() {
             categoriaSeleccionada={categoriaSeleccionada}
             onSelectCategoria={setCategoriaSeleccionada}
           />
+        </div>
+
+        <div ref={registerRef("patrones-cobro")}>
+          <PatronesCobro metodos={data.metodo_pago} dias={data.dias_semana} />
         </div>
 
         <div ref={registerRef("catalogo")}>

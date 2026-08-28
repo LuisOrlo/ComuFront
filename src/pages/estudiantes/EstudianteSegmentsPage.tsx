@@ -96,15 +96,17 @@ export function EstudianteSegmentsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  to={`/estudiantes`}
+                  to={`/estudiantes?tab=todos&segmento=${encodeURIComponent(seg.id)}`}
                   className="size-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
                   title="Ver estudiantes"
+                  aria-label={`Ver estudiantes del segmento ${seg.nombre}`}
                 >
                   <HugeiconsIcon icon={ChevronRightIcon} size={16} className="text-gray-400" />
                 </Link>
                 <button
                   onClick={() => setDeleteTarget({ id: seg.id, nombre: seg.nombre })}
                   className="size-10 flex items-center justify-center rounded-xl hover:bg-red-50 hover:text-red-500 transition-colors"
+                  aria-label={`Eliminar segmento ${seg.nombre}`}
                 >
                   <HugeiconsIcon icon={Delete02Icon} size={16} className="text-gray-400" />
                 </button>

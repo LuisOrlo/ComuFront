@@ -40,6 +40,7 @@ export function TalleresTab() {
   const navigate = useNavigate()
   const [talleres, setTalleres] = useState<Taller[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [search, setSearch] = useState("")
   const [modalidadFilter, setModalidadFilter] = useState("")
   const [estadoFilter, setEstadoFilter] = useState("")
@@ -48,6 +49,7 @@ export function TalleresTab() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setError(false)
     try {
       const params: Record<string, unknown> = { per_page: 500 }
       if (search) params.search = search
@@ -58,7 +60,7 @@ export function TalleresTab() {
       const data = res.data || res.datos || []
       setTalleres(Array.isArray(data) ? data : [])
     } catch {
-      // silent
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -261,6 +263,11 @@ export function TalleresTab() {
               <div className="h-6 w-48 bg-gray-100 animate-pulse rounded" />
             </div>
           ))}
+        </div>
+      ) : error ? (
+        <div role="alert" className="rounded-xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm font-semibold text-red-700">No se pudieron cargar los talleres.</p>
+          <button type="button" onClick={loadData} className="mt-3 text-sm font-semibold underline text-red-700">Reintentar</button>
         </div>
       ) : (
         <div className="bg-white border rounded-xl shadow-sm overflow-hidden" style={{ borderColor: BORDER }}>

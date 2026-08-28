@@ -94,6 +94,7 @@ export function CourseTable({ cursos, onView }: {
                     <div className="flex justify-end gap-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); onView?.(c.id) }}
+                        aria-label={`Ver detalle de ${c.nombre}`}
                         className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors duration-150 text-xs font-medium"
                         style={{ color: COLORS.TEXT_MUTED }}
                         onMouseEnter={(e) => {

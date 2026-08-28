@@ -24,6 +24,10 @@ import type { MatriculaDetallada } from "@/services/cursos.service"
 
 interface Props {
   matriculas: MatriculaDetallada[]
+  meta?: { total: number; per_page: number; current_page: number; last_page: number }
+  search?: string
+  onSearchChange?: (value: string) => void
+  onPageChange?: (page: number) => void
 }
 
 const BORDER = COLORS.BORDER_SUBTLE
@@ -61,7 +65,7 @@ function Badge({ children, color }: { children: string; color: string }) {
   )
 }
 
-export function CursoEstudiantesTable({ matriculas }: Props) {
+export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange, onPageChange }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [globalFilter, setGlobalFilter] = useState("")
@@ -129,21 +133,20 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
   const table = useReactTable({
     data: matriculas,
     columns,
-    state: { sorting, pagination, globalFilter },
+    state: { sorting, ...(meta ? {} : { pagination, globalFilter }) },
     onSortingChange: setSorting,
-    onPaginationChange: setPagination,
-    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: meta ? undefined : setPagination,
+    onGlobalFilterChange: meta ? undefined : setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(meta ? {} : { getFilteredRowModel: getFilteredRowModel(), getPaginationRowModel: getPaginationRowModel() }),
     autoResetAll: false,
   })
 
-  const currentPage = table.getState().pagination.pageIndex + 1
-  const totalPages = table.getPageCount()
-  const { pageSize } = table.getState().pagination
-  const totalRows = table.getFilteredRowModel().rows.length
+  const currentPage = meta?.current_page ?? table.getState().pagination.pageIndex + 1
+  const totalPages = meta?.last_page ?? table.getPageCount()
+  const pageSize = meta?.per_page ?? table.getState().pagination.pageSize
+  const totalRows = meta?.total ?? table.getFilteredRowModel().rows.length
   const from = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const to = Math.min(currentPage * pageSize, totalRows)
 
@@ -158,9 +161,12 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
         <HugeiconsIcon icon={Search01Icon} size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: TEXT_MUTED }} />
         <input
           type="text"
-          value={globalFilter}
-          onChange={(e) => { setGlobalFilter(e.target.value); setPagination(p => ({ ...p, pageIndex: 0 })) }}
-          placeholder="Buscar estudiante..."
+          value={search ?? globalFilter}
+          onChange={(e) => {
+            if (onSearchChange) onSearchChange(e.target.value)
+            else { setGlobalFilter(e.target.value); setPagination(p => ({ ...p, pageIndex: 0 })) }
+          }}
+          placeholder="Buscar por nombre o cédula..."
           className="w-full pl-9 pr-3 py-2.5 rounded-lg text-sm border outline-none"
           style={{ borderColor: BORDER }}
         />
@@ -190,10 +196,9 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
                         letterSpacing: "0.06em",
                         whiteSpace: "nowrap",
                       }}
-                      className={canSort ? "cursor-pointer select-none" : ""}
-                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none"}
                     >
-                      <div className="flex items-center gap-1">
+                      <button type="button" onClick={canSort ? header.column.getToggleSortingHandler() : undefined} disabled={!canSort} className={`flex items-center gap-1 ${canSort ? "cursor-pointer" : "cursor-default"}`}>
                         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                         {canSort && (
                           <span className="inline-flex flex-col leading-none ml-1">
@@ -201,7 +206,7 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
                             <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "text-white" : "text-white/40"} />
                           </span>
                         )}
-                      </div>
+                      </button>
                     </th>
                   )
                 })}
@@ -241,7 +246,7 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: TEXT_MUTED }}>
-        <div className="flex items-center gap-2">
+        {!meta && <div className="flex items-center gap-2">
           <span>Filas por página:</span>
           <select
             value={pageSize}
@@ -253,20 +258,20 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
-        </div>
+        </div>}
 
         <span className="font-medium">
           {from}–{to} de {totalRows}
         </span>
 
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}
+          <button type="button" onClick={() => meta && onPageChange ? onPageChange(1) : table.setPageIndex(0)} disabled={currentPage <= 1}
             className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
             style={{ borderColor: BORDER }}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="-ml-2" />
           </button>
-          <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}
+          <button type="button" onClick={() => meta && onPageChange ? onPageChange(currentPage - 1) : table.previousPage()} disabled={currentPage <= 1}
             className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
             style={{ borderColor: BORDER }}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
@@ -275,7 +280,7 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
             const start = Math.max(0, Math.min(currentPage - 3, totalPages - 5))
             const pageNum = start + i + 1
             return (
-              <button key={pageNum} type="button" onClick={() => table.setPageIndex(pageNum - 1)}
+              <button key={pageNum} type="button" onClick={() => meta && onPageChange ? onPageChange(pageNum) : table.setPageIndex(pageNum - 1)}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
                 style={{
                   backgroundColor: currentPage === pageNum ? ACCENT : "transparent",
@@ -286,12 +291,12 @@ export function CursoEstudiantesTable({ matriculas }: Props) {
               </button>
             )
           })}
-          <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}
+          <button type="button" onClick={() => meta && onPageChange ? onPageChange(currentPage + 1) : table.nextPage()} disabled={currentPage >= totalPages}
             className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
             style={{ borderColor: BORDER }}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="rotate-180" />
           </button>
-          <button type="button" onClick={() => table.setPageIndex(totalPages - 1)} disabled={!table.getCanNextPage()}
+          <button type="button" onClick={() => meta && onPageChange ? onPageChange(totalPages) : table.setPageIndex(totalPages - 1)} disabled={currentPage >= totalPages}
             className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
             style={{ borderColor: BORDER }}>
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="rotate-180" />

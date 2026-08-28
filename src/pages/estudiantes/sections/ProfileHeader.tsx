@@ -68,7 +68,7 @@ export function ProfileHeader({ estudiante, totalCursos, totalTalleres = 0, esta
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>{estudiante.nombre_completo}</h1>
               {!editing && isAdmin && (
-                <button onClick={handleStartEdit} className="size-7 rounded-lg border flex items-center justify-center hover:bg-gray-50 transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <button onClick={handleStartEdit} aria-label="Editar datos del estudiante" className="size-7 rounded-lg border flex items-center justify-center hover:bg-gray-50 transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <HugeiconsIcon icon={PencilEdit01Icon} size={13} style={{ color: COLORS.TEXT_MUTED }} />
                 </button>
               )}

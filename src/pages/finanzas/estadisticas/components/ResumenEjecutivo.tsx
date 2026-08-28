@@ -30,7 +30,7 @@ export function ResumenEjecutivo({ m }: { m: Metricas }) {
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Ingresos</p>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black" style={{ color: "#16a34a" }}>{format(m.ingresos)}</span>
-            <VariacionPill value={m.vs_anio_anterior} />
+            <VariacionPill value={m.vs_periodo_anterior} />
           </div>
         </div>
 

@@ -3,7 +3,7 @@ export interface Metricas {
   ingresos: number
   egresos: number
   margen_neto: number
-  vs_anio_anterior: number | null | string
+  vs_periodo_anterior: number | null | string
   estudiantes_matriculados: number
   tasa_retencion: number
   tasa_abandono: number

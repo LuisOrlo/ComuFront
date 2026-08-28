@@ -13,7 +13,7 @@ import {
   Download04Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { agendaService, type AgendaEvent } from "@/services/agenda.service"
+import { agendaService, type AgendaEvent, type AgendaEventParams, type TipoDisponible } from "@/services/agenda.service"
 import { AgendaLegend } from "./components/AgendaLegend"
 import { EventDetailModal } from "./components/EventDetailModal"
 import { toast } from "sonner"
@@ -37,10 +37,12 @@ export function AgendaPage() {
   const calendarRef = useRef<FullCalendar>(null)
   const [activeTypes, setActiveTypes] = useState<string[]>([])
   const [eventCount, setEventCount] = useState(0)
+  const [availableTypes, setAvailableTypes] = useState<TipoDisponible[]>([])
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
   const [currentView, setCurrentView] = useState("dayGridMonth")
   const [currentTitle, setCurrentTitle] = useState("")
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
 
   const handleToggleType = useCallback((tipo: string) => {
@@ -60,6 +62,7 @@ export function AgendaPage() {
   const fetchEvents = useCallback(
     async ({ start, end }: { start: Date; end: Date }, successCallback: (events: object[]) => void, failureCallback: (error: Error) => void) => {
       setLoading(true)
+      setLoadError(null)
       try {
         const fechaInicio = toLocalDateStr(start)
         const fechaFin = toLocalDateStr(end)
@@ -67,8 +70,9 @@ export function AgendaPage() {
         if (activeTypes.length > 0) {
           params.tipos = activeTypes
         }
-        const response = await agendaService.getEvents(params as Parameters<typeof agendaService.getEvents>[0])
+        const response = await agendaService.getAllEvents(params as AgendaEventParams)
         setEventCount(response.meta.total)
+        setAvailableTypes(response.tipos_disponibles)
         const fullCalendarEvents = response.data.map((event) => {
           const startDate = new Date(`${event.fecha}T${event.hora_inicio}`)
           const endDate = new Date(`${event.fecha}T${event.hora_fin}`)
@@ -88,6 +92,7 @@ export function AgendaPage() {
         setLoading(false)
       } catch (err) {
         console.error("FullCalendar events fetch error:", err)
+        setLoadError("No se pudieron cargar los eventos de este período.")
         failureCallback(err instanceof Error ? err : new Error(String(err)))
         setLoading(false)
       }
@@ -110,7 +115,13 @@ export function AgendaPage() {
 
       if (!start || !end) throw new Error("Sin rango visible")
 
-      const vista = currentView === 'dayGridMonth' ? 'mes' : 'semana'
+      const vista = currentView === "dayGridMonth"
+        ? "mes"
+        : currentView === "timeGridDay"
+          ? "dia"
+          : currentView === "listWeek"
+            ? "lista"
+            : "semana"
       const titulo = activeTypes.length === 0
         ? 'AGENDA GENERAL'
         : `AGENDA DE ${activeTypes.map(t => EVENT_TYPE_LABELS[t] || t.replace('CLASE_', '')).join(' - ')}`
@@ -118,7 +129,10 @@ export function AgendaPage() {
       const tipoStr = activeTypes.length > 0
         ? activeTypes.map(t => t.replace('CLASE_', '')).join('_')
         : 'GENERAL'
-      const fileName = `AGENDA_${tipoStr.toUpperCase()}.pdf`
+      const rango = start.getTime() === end.getTime()
+        ? toLocalDateStr(start)
+        : `${toLocalDateStr(start)}_A_${toLocalDateStr(end)}`
+      const fileName = `AGENDA_${vista.toUpperCase()}_${tipoStr.toUpperCase()}_${rango}.pdf`
 
       const blob = await agendaService.downloadPDF({
         vista,
@@ -176,6 +190,7 @@ export function AgendaPage() {
               <div className="flex items-center gap-1 rounded-xl border p-0.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                 <button
                   onClick={() => handleNavigate("prev")}
+                  aria-label="Período anterior"
                   className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
                   style={{ color: COLORS.TEXT_MUTED }}
                 >
@@ -183,6 +198,7 @@ export function AgendaPage() {
                 </button>
                 <button
                   onClick={() => handleNavigate("today")}
+                  aria-label="Ir a hoy"
                   className="px-3 py-1.5 text-xs font-bold rounded-lg hover:bg-gray-100 transition-colors"
                   style={{ color: COLORS.CHARCOAL }}
                 >
@@ -190,6 +206,7 @@ export function AgendaPage() {
                 </button>
                 <button
                   onClick={() => handleNavigate("next")}
+                  aria-label="Período siguiente"
                   className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
                   style={{ color: COLORS.TEXT_MUTED }}
                 >
@@ -209,6 +226,8 @@ export function AgendaPage() {
                       setCurrentView(view.key)
                       calendarRef.current?.getApi()?.changeView(view.key)
                     }}
+                    aria-label={`Vista de ${view.label.toLowerCase()}`}
+                    aria-pressed={currentView === view.key}
                     className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors"
                     style={{
                       backgroundColor: currentView === view.key ? COLORS.CHARCOAL : "transparent",
@@ -223,6 +242,7 @@ export function AgendaPage() {
               <button
                 onClick={handleExportPDF}
                 disabled={exporting}
+                aria-busy={exporting}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
                 style={{ backgroundColor: COLORS.ACCENT }}
               >
@@ -234,7 +254,7 @@ export function AgendaPage() {
         
         {/* FILTERS */}
         <div className="flex flex-wrap items-center gap-2">
-          <AgendaLegend activeTypes={activeTypes} eventCount={eventCount} onToggle={handleToggleType} onClearAll={handleClearAll} />
+          <AgendaLegend activeTypes={activeTypes} tipos={availableTypes} eventCount={eventCount} onToggle={handleToggleType} onClearAll={handleClearAll} />
         </div>
       </header>
 
@@ -358,6 +378,11 @@ export function AgendaPage() {
             }}
             noEventsContent="No hay eventos en este período"
           />
+          {loadError && (
+            <div className="m-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+              {loadError}
+            </div>
+          )}
         </div>
       </div>
 

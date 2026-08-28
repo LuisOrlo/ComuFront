@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -21,44 +22,23 @@ export function CursosPage() {
   const navigate = useNavigate()
   const { isAdmin } = usePermission()
   const [vista, setVista] = useState<Vista>("tabla")
-  const [cursos, setCursos] = useState<Curso[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
   // Paginación
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [perPage, setPerPage] = useState(15)
 
   // Filtros
   const [filtros, setFiltros] = useState<CursoFilters>({})
-
-  const cargarCursos = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await cursosService.getCursos(filtros, currentPage)
-      setCursos(response.data)
-      setTotal(response.meta.total ?? 0)
-      setPerPage(response.meta.per_page ?? 15)
-      setCurrentPage(response.meta.current_page ?? 1)
-      setTotalPages(response.meta.last_page ?? 1)
-    } catch (err) {
-      console.error("Error cargando cursos:", err)
-      setError("Error al cargar los cursos. Por favor, intenta de nuevo.")
-      setCursos([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Cargar cursos cuando cambian página o filtros
-  useEffect(() => {
-
-    cargarCursos()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, filtros])
+  const cursosQuery = useQuery({
+    queryKey: ["cursos", "listado", filtros, currentPage],
+    queryFn: () => cursosService.getCursos(filtros, currentPage),
+    placeholderData: keepPreviousData,
+    staleTime: 60_000,
+  })
+  const cursos: Curso[] = cursosQuery.data?.data ?? []
+  const total = cursosQuery.data?.meta.total ?? 0
+  const perPage = cursosQuery.data?.meta.per_page ?? 15
+  const totalPages = cursosQuery.data?.meta.last_page ?? 1
+  const loading = cursosQuery.isLoading
+  const error = cursosQuery.isError ? "Error al cargar los cursos. Por favor, intenta de nuevo." : null
 
   const handleFilterChange = (nuevosFiltros: CursoFilters) => {
     setFiltros(nuevosFiltros)
@@ -100,7 +80,7 @@ export function CursosPage() {
           <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>
-                Cursos Activos
+                Cursos
               </h1>
 
             </div>
@@ -127,6 +107,7 @@ export function CursosPage() {
             <div className="flex items-center gap-1 rounded-lg border p-0.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <button
                 onClick={() => setVista("tabla")}
+                aria-pressed={vista === "tabla"}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-180 ease-out"
                 style={{
                   backgroundColor: vista === "tabla" ? COLORS.CHARCOAL : "transparent",
@@ -138,6 +119,7 @@ export function CursosPage() {
               </button>
               <button
                 onClick={() => setVista("cards")}
+                aria-pressed={vista === "cards"}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-180 ease-out"
                 style={{
                   backgroundColor: vista === "cards" ? COLORS.CHARCOAL : "transparent",
@@ -181,7 +163,7 @@ export function CursosPage() {
             >
               <p style={{ color: "oklch(0.50 0.12 10)" }}>{error}</p>
               <button
-                onClick={cargarCursos}
+                onClick={() => { void cursosQuery.refetch() }}
                 className="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors duration-180"
                 style={{
                   backgroundColor: "oklch(0.50 0.12 10 / 0.20)",
@@ -227,6 +209,7 @@ export function CursosPage() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => irAPagina(currentPage - 1)}
+                  aria-label="Página anterior"
                   disabled={currentPage === 1}
                   className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
                   style={{
@@ -243,6 +226,8 @@ export function CursosPage() {
                   <button
                     key={pagina}
                     onClick={() => irAPagina(pagina)}
+                    aria-label={`Ir a la página ${pagina}`}
+                    aria-current={pagina === currentPage ? "page" : undefined}
                     className="size-8 flex items-center justify-center rounded-lg text-xs font-medium transition-colors duration-150"
                     style={{
                       backgroundColor:
@@ -256,6 +241,7 @@ export function CursosPage() {
 
                 <button
                   onClick={() => irAPagina(currentPage + 1)}
+                  aria-label="Página siguiente"
                   disabled={currentPage === totalPages}
                   className="size-8 flex items-center justify-center rounded-lg transition-colors duration-150"
                   style={{

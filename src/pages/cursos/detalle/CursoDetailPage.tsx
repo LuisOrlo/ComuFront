@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { usePermission } from "@/hooks/usePermission"
 import { useParams, useNavigate, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -57,7 +57,11 @@ export function CursoDetailPage() {
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<ModuloData[]>([])
   const [matriculas, setMatriculas] = useState<MatriculaDetallada[]>([])
+  const [matriculasMeta, setMatriculasMeta] = useState({ total: 0, per_page: 15, current_page: 1, last_page: 1 })
+  const [matriculasSearch, setMatriculasSearch] = useState("")
+  const [loadingMatriculas, setLoadingMatriculas] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [tab, setTab] = useState<Tab>("info")
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -66,15 +70,15 @@ export function CursoDetailPage() {
     if (!id) return
     setLoading(true)
     try {
-      const [c, mods, mats] = await Promise.all([
+      const [c, mods] = await Promise.all([
         cursosService.getCursoById(id),
         cursosService.getModulosCurso(id),
-        cursosService.getMatriculasCurso(id),
       ])
       setCurso(c)
       setModulos(mods as unknown as ModuloData[])
-      setMatriculas(mats)
+      setLoadError(false)
     } catch {
+      setLoadError(true)
       toast.error("Error al cargar curso")
     } finally { setLoading(false) }
   }
@@ -83,6 +87,24 @@ export function CursoDetailPage() {
     if (id) cargarTodo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  const cargarMatriculas = useCallback(async (page = 1, buscar = matriculasSearch) => {
+    if (!id) return
+    setLoadingMatriculas(true)
+    try {
+      const response = await cursosService.getMatriculasCursoPaginadas(id, page, buscar)
+      setMatriculas(response.data)
+      setMatriculasMeta(response.meta)
+    } catch {
+      toast.error("Error al cargar estudiantes del curso")
+    } finally { setLoadingMatriculas(false) }
+  }, [id, matriculasSearch])
+
+  useEffect(() => {
+    if (tab !== "estudiantes" && tab !== "pagos") return
+    const timer = window.setTimeout(() => { void cargarMatriculas(1) }, matriculasSearch ? 300 : 0)
+    return () => window.clearTimeout(timer)
+  }, [tab, matriculasSearch, cargarMatriculas])
 
   const confirmDeleteCurso = async () => {
     if (!id || !curso) return
@@ -102,7 +124,10 @@ export function CursoDetailPage() {
       <div className="size-10 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: COLORS.ACCENT, borderRightColor: COLORS.ACCENT }} />
     </div>
   )
-  if (!curso) return <div className="p-10 text-center" style={{ color: COLORS.TEXT_MUTED }}>Curso no encontrado</div>
+  if (!curso) return <div className="p-10 text-center" style={{ color: COLORS.TEXT_MUTED }}>
+    <p>{loadError ? "No se pudo cargar el curso." : "Curso no encontrado"}</p>
+    {loadError && <button type="button" onClick={cargarTodo} className="mt-3 text-sm font-semibold underline" style={{ color: COLORS.ACCENT }}>Reintentar</button>}
+  </div>
 
   const est = estadoConfig[curso.estado] || estadoConfig.pendiente
 
@@ -112,7 +137,7 @@ export function CursoDetailPage() {
   const tabs = [
     { key: "info" as Tab, label: "Información", icon: CalendarIcon },
     { key: "modulos" as Tab, label: "Módulos", icon: NoteIcon },
-    { key: "estudiantes" as Tab, label: `Estudiantes (${matriculas.length})`, icon: UserGroupIcon },
+    { key: "estudiantes" as Tab, label: `Estudiantes (${matriculasMeta.total || curso.estudiantes})`, icon: UserGroupIcon },
     { key: "asistencia" as Tab, label: "Asistencia", icon: CheckmarkCircle01Icon },
     { key: "pagos" as Tab, label: "Pagos", icon: Money01Icon },
   ]
@@ -176,9 +201,9 @@ export function CursoDetailPage() {
 
         <div className="max-w-[1100px] mx-auto px-6 py-6 space-y-6">
           {/* Tabs */}
-          <div className="flex gap-1 border-b overflow-x-auto -mx-6 px-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div role="tablist" aria-label="Secciones del curso" className="flex gap-1 border-b overflow-x-auto -mx-6 px-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             {tabs.map(t => (
-              <button key={t.key} onClick={() => setTab(t.key)}
+              <button key={t.key} id={`curso-tab-${t.key}`} role="tab" aria-selected={tab === t.key} aria-controls={`curso-panel-${t.key}`} onClick={() => setTab(t.key)}
                 className="flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-medium border-b-2 border-b-white transition-all shrink-0 whitespace-nowrap"
                 style={{
                   borderColor: tab === t.key ? COLORS.ACCENT : "transparent",
@@ -192,7 +217,7 @@ export function CursoDetailPage() {
 
           {/* Tab: Info */}
           {tab === "info" && (
-            <div className="space-y-6">
+            <div id="curso-panel-info" role="tabpanel" aria-labelledby="curso-tab-info" className="space-y-6">
               {/* Stats row */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 <StatCard icon={<HugeiconsIcon icon={CapIcon} size={18} />} label="Capacidad" value={`${curso.estudiantes}/${curso.capacidad}`} subtitle={progreso > 0 ? `${progreso}% ocupado` : undefined} />
@@ -280,7 +305,7 @@ export function CursoDetailPage() {
 
           {/* Tab: Módulos */}
           {tab === "modulos" && (
-            <div className="space-y-3">
+            <div id="curso-panel-modulos" role="tabpanel" aria-labelledby="curso-tab-modulos" className="space-y-3">
               {modulos.length === 0 ? (
                 <div className="p-12 text-center border rounded-xl border-dashed" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
                   <HugeiconsIcon icon={NoteIcon} size={32} className="mx-auto mb-2 opacity-40" />
@@ -346,19 +371,19 @@ export function CursoDetailPage() {
 
           {/* Tab: Asistencia */}
           {tab === "asistencia" && (
-            <CursoAsistenciaSection
+            <div id="curso-panel-asistencia" role="tabpanel" aria-labelledby="curso-tab-asistencia"><CursoAsistenciaSection
               cursoId={id!}
               cursoNombre={curso.nombre}
               modulos={modulos}
-            />
+            /></div>
           )}
 
           {/* Tab: Estudiantes */}
           {tab === "estudiantes" && (
-            <div className="space-y-4">
-              {matriculas.length > 0 && (
+            <div id="curso-panel-estudiantes" role="tabpanel" aria-labelledby="curso-tab-estudiantes" className="space-y-4">
+              {matriculasMeta.total > 0 && (
                 <div className="flex items-center justify-between">
-                  <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{matriculas.length} estudiante{matriculas.length !== 1 ? "s" : ""}</p>
+                  <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{matriculasMeta.total} estudiante{matriculasMeta.total !== 1 ? "s" : ""}</p>
                   <div className="flex gap-2">
                     <button
   onClick={async () => {
@@ -385,25 +410,33 @@ export function CursoDetailPage() {
                   </div>
                 </div>
               )}
-              {matriculas.length === 0 ? (
+              {loadingMatriculas ? (
+                <div className="p-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando estudiantes…</div>
+              ) : matriculas.length === 0 ? (
                 <div className="p-12 text-center border rounded-xl border-dashed" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
                   <HugeiconsIcon icon={UserIcon} size={32} className="mx-auto mb-2 opacity-40" />
                   <p className="text-sm font-medium">Sin estudiantes matriculados</p>
                 </div>
               ) : (
-                <CursoEstudiantesTable matriculas={matriculas} />
+                <CursoEstudiantesTable
+                  matriculas={matriculas}
+                  meta={matriculasMeta}
+                  search={matriculasSearch}
+                  onSearchChange={setMatriculasSearch}
+                  onPageChange={(page) => { void cargarMatriculas(page) }}
+                />
               )}
             </div>
           )}
 
           {/* Tab: Pagos */}
           {tab === "pagos" && (
-            <CursoPagosSection
+            <div id="curso-panel-pagos" role="tabpanel" aria-labelledby="curso-tab-pagos"><CursoPagosSection
               cursoId={id!}
               cursoNombre={curso.nombre}
               curso={curso}
               matriculas={matriculas}
-            />
+            /></div>
           )}
         </div>
       </main>
@@ -454,4 +487,3 @@ function StatCard({ icon, label, value, subtitle }: { icon: React.ReactNode; lab
     </div>
   )
 }
-

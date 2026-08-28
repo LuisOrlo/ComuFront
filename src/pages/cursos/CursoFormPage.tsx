@@ -12,6 +12,7 @@ import { iconMap } from "@/pages/catalogos/components/catalog-icons"
 import { instructoresService } from "@/services/instructores.service"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { toast } from "sonner"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 
 const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
@@ -88,6 +89,7 @@ export function CursoFormPage() {
   const [ciudadModalRegion, setCiudadModalRegion] = useState<Region | null>(null)
   const [ciudadModalSeleccionada, setCiudadModalSeleccionada] = useState<string | null>(null)
   const [savingCiudad, setSavingCiudad] = useState(false)
+  const [showRegenerationConfirm, setShowRegenerationConfirm] = useState(false)
 
   const [form, setForm] = useState({
     catalogo_curso_id: "",
@@ -157,6 +159,7 @@ export function CursoFormPage() {
               nombre: String(m.nombre_modulo || m.nombre || ""),
               fecha_inicio: String(m.fecha_inicio || ""),
               fecha_fin: String(m.fecha_fin || ""),
+              precio_base: m.precio_base == null ? undefined : Number(m.precio_base),
             }))
           } catch {
             modulosEdit = calcularFechasModulos(
@@ -343,7 +346,7 @@ export function CursoFormPage() {
     setCurrentStep(Math.max(currentStep - 1, 1))
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (confirmarRegeneracion = false) => {
     if (!validateStep(currentStep)) {
       toast.error("Revisa los campos marcados en rojo antes de continuar")
       return
@@ -369,6 +372,7 @@ export function CursoFormPage() {
         await cursosService.actualizarCursoAbierto(id, {
           ...baseData,
           modulos: form.modulos.length > 0 ? form.modulos : undefined,
+          confirmar_regeneracion_clases: confirmarRegeneracion || undefined,
         })
         toast.success("Curso actualizado")
       } else {
@@ -381,6 +385,11 @@ export function CursoFormPage() {
       }
       navigate("/cursos")
     } catch (err) {
+      const responseData = (err as { response?: { data?: { requiere_confirmacion_regeneracion?: boolean } } })?.response?.data
+      if (responseData?.requiere_confirmacion_regeneracion && !confirmarRegeneracion) {
+        setShowRegenerationConfirm(true)
+        return
+      }
       const e = (err as { response?: { data?: { errors?: Record<string, string[]>; mensaje?: string } } })?.response?.data?.errors
       if (e) {
         setFieldErrors(parseErrors(e))
@@ -825,7 +834,7 @@ export function CursoFormPage() {
                 Siguiente<ChevronRight size={18} />
               </button>
             ) : (
-              <button type="button" disabled={loading} onClick={handleSubmit}
+              <button type="button" disabled={loading} onClick={() => { void handleSubmit() }}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-white transition-all active:scale-95"
                 style={{ backgroundColor: ACCENT, opacity: loading ? 0.6 : 1 }}>
                 {loading ? (isEdit ? "Actualizando..." : "Creando...") : (isEdit ? "Guardar Cambios" : "Crear Curso")}
@@ -925,6 +934,19 @@ export function CursoFormPage() {
           </div>
         )
       })()}
+
+      <ConfirmationModal
+        isOpen={showRegenerationConfirm}
+        title="Regenerar clases con asistencia"
+        message="Los cambios de programación reemplazarán las clases actuales. Las asistencias asociadas podrían perderse. Confirma únicamente si ya verificaste esta consecuencia."
+        confirmText="Regenerar y guardar"
+        cancelText="Volver a revisar"
+        isDangerous
+        isLoading={loading}
+        icon="danger"
+        onConfirm={() => { setShowRegenerationConfirm(false); void handleSubmit(true) }}
+        onCancel={() => setShowRegenerationConfirm(false)}
+      />
     </div>
   )
 }

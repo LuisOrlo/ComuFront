@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router"
+import { useParams, Link, useNavigate } from "react-router"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, AddCircleIcon, ImageIcon, Delete02Icon, UserIcon, DashboardSquareIcon, GraduationCapIcon, MoneyIcon } from "@hugeicons/core-free-icons"
@@ -24,6 +24,7 @@ const tabs = [
 
 export function EstudiantePerfilAcademicoPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [cedulaPurgado, setCedulaPurgado] = useState(false)
@@ -33,6 +34,8 @@ export function EstudiantePerfilAcademicoPage() {
     academicData,
     financialData,
     loading,
+    academicLoading,
+    financialLoading,
     notFound,
     activeTab,
     setActiveTab,
@@ -118,14 +121,12 @@ export function EstudiantePerfilAcademicoPage() {
           Volver a listado de estudiantes
         </Link>
         <button
-          disabled
-          title="En revisión - Por confirmar proceso"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all opacity-50 cursor-not-allowed"
-          style={{ backgroundColor: COLORS.TEXT_MUTED }}
+          onClick={() => id && navigate(`/estudiantes/${id}/inscribir`)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.97]"
+          style={{ backgroundColor: COLORS.ACCENT }}
         >
           <HugeiconsIcon icon={AddCircleIcon} size={16} />
           Inscribir a nuevo curso/taller
-          <span className="text-[10px] opacity-70 ml-1">En revisión</span>
         </button>
       </div>
 
@@ -224,15 +225,15 @@ export function EstudiantePerfilAcademicoPage() {
             <OverviewTabContent
               academicData={academicData}
               financialData={financialData}
-              academicLoading={loading && !academicData}
-              financialLoading={loading && !financialData}
+              academicLoading={academicLoading}
+              financialLoading={financialLoading}
             />
           )}
           {activeTab === "academico" && (
-            <AcademicTabContent data={academicData} loading={loading && !academicData} />
+            <AcademicTabContent data={academicData} loading={academicLoading} />
           )}
           {activeTab === "financiero" && (
-            <FinancialTabContent data={financialData} loading={loading && !financialData} onRefresh={refreshData} />
+            <FinancialTabContent data={financialData} loading={financialLoading} onRefresh={refreshData} />
           )}
         </div>
       </div>

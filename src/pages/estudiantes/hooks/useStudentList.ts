@@ -16,6 +16,7 @@ interface Meta {
 interface UseStudentListOptions {
   extraFilters?: Record<string, string | number | undefined>
   pageSize?: number
+  segmentId?: string | null
 }
 
 interface UseStudentListReturn {
@@ -40,7 +41,7 @@ interface UseStudentListReturn {
 }
 
 export function useStudentList(options: UseStudentListOptions = {}): UseStudentListReturn {
-  const { extraFilters = {}, pageSize = 500 } = options
+  const { extraFilters = {}, pageSize = 25, segmentId = null } = options
 
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -62,12 +63,37 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       ciudad: ciudadFilter,
       page,
       extra: extraFiltersKey,
+      segmento: segmentId,
     },
   ]
 
   const query = useQuery({
     queryKey,
-    queryFn: () => {
+    queryFn: async () => {
+      if (segmentId) {
+        const result = await estudiantesService.getSegmentStudents(segmentId)
+        const filtered = result.estudiantes.filter((student) => {
+          const term = debouncedSearch.trim().toLocaleLowerCase()
+          const fullName = `${student.nombres} ${student.apellidos}`.toLocaleLowerCase()
+          const city = student.ciudad?.nombre || student.perfil_estudiante?.ciudad || ""
+          return (!term || fullName.includes(term) || (student.cedula || "").toLocaleLowerCase().includes(term) || (student.correo || "").toLocaleLowerCase().includes(term))
+            && (paymentFilter === "todos" || student.estado_pago === paymentFilter)
+            && (!ciudadFilter || city.toLocaleLowerCase() === ciudadFilter.toLocaleLowerCase())
+        })
+        const total = filtered.length
+        const start = (page - 1) * pageSize
+        return {
+          datos: filtered.slice(start, start + pageSize),
+          ciudades: [...new Set(result.estudiantes.map(e => e.ciudad?.nombre || e.perfil_estudiante?.ciudad).filter(Boolean))] as string[],
+          stats: {
+            todos: total,
+            deudor: result.estudiantes.filter(e => e.estado_pago === "deudor").length,
+            abonado: result.estudiantes.filter(e => e.estado_pago === "abonado").length,
+            al_dia: result.estudiantes.filter(e => e.estado_pago === "al_dia").length,
+          },
+          meta: { actual: page, ultima_pagina: Math.max(1, Math.ceil(total / pageSize)), total, per_page: pageSize },
+        }
+      }
       const params: Record<string, string | number | undefined> = {
         buscar: debouncedSearch || undefined,
         estado_pago: paymentFilter !== "todos" ? paymentFilter : undefined,
@@ -95,24 +121,28 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
 
   useEffect(() => {
     setPage(1)
-  }, [extraFiltersKey])
+    setSelectedIds(new Set())
+  }, [extraFiltersKey, segmentId])
 
   const handleSetSearch = useCallback((value: string) => {
     setSearch(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       setPage(1)
+      setSelectedIds(new Set())
       setDebouncedSearch(value)
     }, 300)
   }, [])
 
   const handleSetPaymentFilter = useCallback((value: PaymentFilter) => {
     setPage(1)
+    setSelectedIds(new Set())
     setPaymentFilter(value)
   }, [])
 
   const handleSetCiudadFilter = useCallback((value: string) => {
     setPage(1)
+    setSelectedIds(new Set())
     setCiudadFilter(value)
   }, [])
 
@@ -137,7 +167,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map((id) => estudiantesService.deleteStudent(id)))
+      await estudiantesService.deleteStudents(ids)
     },
     onSuccess: (_data, ids) => {
       toast.success(`${ids.length} estudiante(s) eliminado(s)`)

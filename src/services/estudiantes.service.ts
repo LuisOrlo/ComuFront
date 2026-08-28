@@ -332,6 +332,11 @@ export const estudiantesService = {
     return response.data
   },
 
+  async deleteStudents(ids: string[]) {
+    const response = await api.post("/personas/estudiantes/eliminar-lote", { ids })
+    return response.data as { eliminados: number; no_encontrados: string[] }
+  },
+
   async getAcademicProfile(id: string): Promise<AcademicProfile> {
     const response = await api.get(`/personas/estudiantes/${id}/academic-profile`)
     return response.data.datos

@@ -247,6 +247,11 @@ export interface MatriculaDetallada {
   }>
 }
 
+export interface MatriculasCursoResponse {
+  data: MatriculaDetallada[]
+  meta: { total: number; per_page: number; current_page: number; last_page: number }
+}
+
 // ============================================================================
 // TRANSFORMADORES
 // ============================================================================
@@ -687,6 +692,13 @@ export const cursosService = {
     return response.data.data || []
   },
 
+  async getMatriculasCursoPaginadas(cursoAbiertoId: string, page = 1, buscar = "", perPage = 15): Promise<MatriculasCursoResponse> {
+    const response = await api.get<MatriculasCursoResponse>(`/academic/cursos-abiertos/${cursoAbiertoId}/matriculas`, {
+      params: { page, per_page: perPage, buscar: buscar || undefined },
+    })
+    return response.data
+  },
+
   // ========================================================================
   // MÉTODOS DE MÓDULOS
   // ========================================================================
@@ -750,7 +762,10 @@ export const cursosService = {
    * GET /api/academic/solicitudes-inscripcion
    * Listar solicitudes
    */
-  async getSolicitudesInscripcion(params?: { estado?: string; per_page?: number; page?: number }): Promise<Record<string, unknown>> {
+  async getSolicitudesInscripcion(params?: {
+    estado?: string; per_page?: number; page?: number; categoria?: string; search?: string
+    curso_abierto_id?: string; fecha_desde?: string; fecha_hasta?: string
+  }): Promise<Record<string, unknown>> {
     const response = await api.get('/academic/solicitudes-inscripcion', { params })
     return response.data
   },

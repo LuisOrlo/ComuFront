@@ -143,16 +143,16 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const esTaller = !!tallerSel && !curso
 
   const step1CanProceed = useMemo(() => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo"]
     const allFilled = fields.every(f => estudiante[f]?.trim())
     return allFilled && !!cedulaFile && Object.keys(errors).length === 0
   }, [estudiante, cedulaFile, errors])
 
   const step3CanSubmit = useMemo(() => {
     if (!metodoPago) return false
-    if (!esTaller && !comprobanteFile) return false
+    if (metodoPago === "transferencia" && !comprobanteFile) return false
     return Object.keys(paymentErrors).length === 0
-  }, [metodoPago, esTaller, comprobanteFile, paymentErrors])
+  }, [metodoPago, comprobanteFile, paymentErrors])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -200,7 +200,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   }
 
   const validateStep1 = (): boolean => {
-    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"]
+    const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo"]
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach(f => {
@@ -227,7 +227,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const validateStep3 = (): boolean => {
     const errs: Record<string, string> = {}
     if (!metodoPago) errs.metodoPago = "Selecciona un método de pago"
-    if (!esTaller && !comprobanteFile) errs.comprobante = "Adjunta el comprobante de pago"
+    if (metodoPago === "transferencia" && !comprobanteFile) errs.comprobante = "Adjunta el comprobante de transferencia"
     setPaymentErrors(errs)
     setPaymentTouched({ metodoPago: true, comprobante: true })
     return Object.keys(errs).length === 0
@@ -240,7 +240,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       ocupacion: "Ocupación", direccion: "Dirección", ciudad: "Residencia",
       estado_civil: "Estado Civil", nivel_educativo: "Nivel Educativo",
     }
-    if (["cedula", "nombres", "apellidos", "telefono", "correo", "ocupacion", "direccion", "ciudad", "estado_civil", "edad", "nivel_educativo"].includes(campo) && !valor.trim()) {
+    if (["cedula", "nombres", "apellidos", "telefono", "correo"].includes(campo) && !valor.trim()) {
       return `${labels[campo] || campo} es requerido`
     }
     if (campo === "cedula") {

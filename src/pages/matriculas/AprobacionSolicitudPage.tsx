@@ -152,19 +152,9 @@ export function AprobacionSolicitudPage() {
   }, [id, filtros])
 
   const navigateTo = useCallback(async (targetId: string) => {
-    try {
-      const [detalle, data] = await Promise.all([
-        cursosService.getSolicitudInscripcionById(targetId),
-        cursosService.getSolicitudAdjacent(targetId, filtros),
-      ])
-      setSelected(detalle)
-      setAdjacent(data)
-      setActiveTab("resumen")
-      window.history.replaceState(null, "", `/matriculas/aprobacion/solicitud/${targetId}${searchStr}`)
-    } catch {
-      toast.error("Error al cargar solicitud")
-    }
-  }, [filtros, searchStr])
+    // Navegación real: garantiza que todas las acciones usen el id visible.
+    navigate(`/matriculas/aprobacion/solicitud/${targetId}${searchStr}`, { replace: true })
+  }, [navigate, searchStr])
 
   useEffect(() => { fetchDetail(); fetchAdjacent() }, [fetchDetail, fetchAdjacent])
 
@@ -549,9 +539,9 @@ export function AprobacionSolicitudPage() {
 
       <div className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="max-w-[900px] mx-auto px-6">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
+          <div role="tablist" aria-label="Secciones de la solicitud" className="flex gap-1 overflow-x-auto scrollbar-hide">
             {TABS.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}
                 className="flex items-center gap-2 px-3 sm:px-4 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap shrink-0"
                 style={{ borderColor: activeTab === tab.id ? COLORS.ACCENT : "transparent", color: activeTab === tab.id ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
                 <HugeiconsIcon icon={tab.icon} size={14} /><span className="hidden sm:inline">{tab.label}</span>
@@ -562,7 +552,7 @@ export function AprobacionSolicitudPage() {
       </div>
 
       <div className="flex-1 max-w-[900px] mx-auto w-full px-6 py-6">
-          <div className="bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div role="tabpanel" className="bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="p-6">
               {activeTab === "resumen" && (
                 <SolicitudResumenTab selected={selected} getCursoNombre={getCursoNombre}
