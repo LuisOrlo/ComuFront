@@ -189,7 +189,7 @@ export function DatosEstudianteStep({
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5">Estado Civil</label>
-          <select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
+          <select value={estudiante.estado_civil} onChange={e => updateEstudiante("estado_civil", e.target.value)} onBlur={() => blurEstudiante("estado_civil")} onMouseDown={e => e.stopPropagation()} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.estado_civil && errors.estado_civil ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
             <option value="">Seleccionar...</option>
             <option value="soltero">Soltero</option>
             <option value="casado">Casado</option>
@@ -209,7 +209,7 @@ export function DatosEstudianteStep({
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5">Nivel Educativo</label>
-          <select value={estudiante.nivel_educativo} onChange={e => updateEstudiante("nivel_educativo", e.target.value)} onBlur={() => blurEstudiante("nivel_educativo")} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.nivel_educativo && errors.nivel_educativo ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
+          <select value={estudiante.nivel_educativo} onChange={e => updateEstudiante("nivel_educativo", e.target.value)} onBlur={() => blurEstudiante("nivel_educativo")} onMouseDown={e => e.stopPropagation()} className="w-full px-3.5 py-2.5 rounded-lg text-sm border bg-white outline-none" style={{ borderColor: touched.nivel_educativo && errors.nivel_educativo ? "#ef4444" : COLORS.BORDER_SUBTLE }}>
             <option value="">Seleccionar...</option>
             {nivelesEducativos.map(n => (
               <option key={n.value} value={n.value}>{n.label}</option>

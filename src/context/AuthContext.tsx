@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { authService, type LoginResponse } from "@/services/auth.service"
+import { queryClient } from "@/lib/queryClient"
 
 interface AuthContextType {
   user: LoginResponse["datos"]["usuario"] | null
@@ -36,6 +37,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     recoverSession()
   }, [])
 
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key !== "auth_token" || event.newValue !== null) return
+
+      queryClient.clear()
+      setUser(null)
+      toast.info("Sesión cerrada", {
+        description: "La sesión se cerró desde otra pestaña.",
+      })
+      navigate("/login", { replace: true })
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [navigate])
+
   const login = async (username: string, password: string) => {
     try {
       const response = await authService.login(username, password)
@@ -63,12 +80,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await authService.logout()
-    setUser(null)
-    toast.info("Sesión cerrada", {
-      description: "Has cerrado sesión correctamente",
-    })
-    navigate("/login")
+    try {
+      await authService.logout()
+    } finally {
+      queryClient.clear()
+      setUser(null)
+      toast.info("Sesión cerrada", {
+        description: "Has cerrado sesión correctamente",
+      })
+      navigate("/login", { replace: true })
+    }
   }
 
   if (isLoading) {
