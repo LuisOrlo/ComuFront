@@ -87,7 +87,7 @@ export function NuevaReservaPage() {
           setHoraInicio(r.hora_inicio?.substring(0, 5) || "08:00")
           setHoraFin(r.hora_fin?.substring(0, 5) || "10:00")
           if (r.persona_id) {
-            const opt: ClienteOption = { tipo: "persona", id: r.persona_id, nombres: r.persona?.nombres || "", apellidos: r.persona?.apellidos || "" }
+            const opt: ClienteOption = { tipo: "persona", id: r.persona_id, nombres: r.persona?.nombres || "", apellidos: r.persona?.apellidos || "", personaTipo: r.persona?.tipo }
             setSelectedCliente(opt)
             setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
           } else if (r.cliente_externo_id) {
@@ -140,7 +140,7 @@ export function NuevaReservaPage() {
         const results: ClienteOption[] = []
         if (personasRes.status === "fulfilled") {
           for (const p of personasRes.value.data) {
-            results.push({ tipo: "persona", id: p.id, nombres: p.nombres, apellidos: p.apellidos || "", cedula: p.cedula, correo: p.correo })
+            results.push({ tipo: "persona", id: p.id, nombres: p.nombres, apellidos: p.apellidos || "", cedula: p.cedula, correo: p.correo, personaTipo: p.tipo })
           }
         }
         if (clientesRes.status === "fulfilled") {
@@ -603,7 +603,7 @@ export function NuevaReservaPage() {
                                     <div className="flex items-center gap-2 mt-0.5">
                                       {opt.cedula && <span className="text-[10px] opacity-40">C.I. {opt.cedula}</span>}
                                       <span className={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded", opt.tipo === "persona" ? "bg-indigo-100 text-indigo-600" : "bg-emerald-100 text-emerald-600")}>
-                                        {opt.tipo === "persona" ? "Staff" : "Externo"}
+                                        {opt.tipo === "persona" ? (opt.personaTipo === "estudiante" ? "Estudiante" : opt.personaTipo === "instructor" ? "Instructor" : opt.personaTipo === "pasante" ? "Pasante" : "Staff") : "Externo"}
                                       </span>
                                     </div>
                                   </div>
@@ -642,7 +642,9 @@ export function NuevaReservaPage() {
                         {selectedCliente.nombres} {selectedCliente.apellidos}
                       </p>
                       <span className={cn("text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded", selectedCliente.tipo === "persona" ? "bg-indigo-100 text-indigo-600" : "bg-emerald-100 text-emerald-600")}>
-                        {selectedCliente.tipo === "persona" ? "Staff Interno" : "Cliente Externo"}
+                        {selectedCliente.tipo === "persona"
+                          ? (selectedCliente.personaTipo === "estudiante" ? "Estudiante" : selectedCliente.personaTipo === "instructor" ? "Instructor" : selectedCliente.personaTipo === "pasante" ? "Pasante" : "Staff Interno")
+                          : "Cliente Externo"}
                       </span>
                     </div>
                     <HugeiconsIcon icon={Tick02Icon} size={16} className="text-violet-500 shrink-0" />

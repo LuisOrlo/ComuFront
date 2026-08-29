@@ -19,6 +19,7 @@ interface ClienteOption {
   apellidos: string
   cedula?: string
   correo?: string
+  personaTipo?: string
 }
 
 export function ReservaForm({
@@ -87,7 +88,7 @@ export function ReservaForm({
     setSearchingCliente(true)
     try {
       const [personasRes, clientesRes] = await Promise.allSettled([
-        personasService.getPersonas({ buscar: query, tipo: 'estudiante,instructor' }),
+        personasService.getPersonas({ buscar: query, tipo: 'estudiante,instructor,pasante,staff', per_page: 50 }),
         clientesService.getClientes({ search: query, per_page: 15 }),
       ])
 
@@ -104,6 +105,7 @@ export function ReservaForm({
             apellidos: p.apellidos,
             cedula: p.cedula,
             correo: p.correo,
+            personaTipo: p.tipo,
           })
         }
       }
@@ -462,7 +464,7 @@ export function ReservaForm({
                                 "ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded",
                                 opt.tipo === "persona" ? "bg-indigo-100 text-indigo-600" : "bg-emerald-100 text-emerald-600"
                               )}>
-                                {opt.tipo === "persona" ? "Interno" : "Externo"}
+                                {opt.tipo === "persona" ? (opt.personaTipo === "estudiante" ? "Estudiante" : opt.personaTipo === "instructor" ? "Instructor" : opt.personaTipo === "pasante" ? "Pasante" : "Staff") : "Externo"}
                               </span>
                               {opt.cedula && <span className="ml-2 opacity-40">· {opt.cedula}</span>}
                               {opt.correo && <span className="ml-2 opacity-30 text-[10px]">{opt.correo}</span>}

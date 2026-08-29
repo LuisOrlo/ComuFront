@@ -24,6 +24,7 @@ export interface ReservaAula {
   observaciones?: string
   aula?: Aula
   persona?: {
+    tipo?: string
     nombres?: string
     apellidos?: string
     cedula?: string
