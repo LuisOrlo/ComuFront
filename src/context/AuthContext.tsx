@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       queryClient.clear()
       setUser(null)
+      if (window.location.pathname === "/matricula/nueva") return
+
       toast.info("Sesión cerrada", {
         description: "La sesión se cerró desde otra pestaña.",
       })

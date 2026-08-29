@@ -92,11 +92,13 @@ const unauthorizedInterceptor = (error: unknown) => {
   const axiosError = error as { response?: { status?: number }; config?: { url?: string } }
   const status = axiosError.response?.status
   const url = axiosError.config?.url || ""
+  const isPublicRegistration = window.location.pathname === "/matricula/nueva"
 
   if (
     status === 401 &&
     !url.includes("/auth/iniciar-sesion") &&
-    !url.includes("/auth/cerrar-sesion")
+    !url.includes("/auth/cerrar-sesion") &&
+    !isPublicRegistration
   ) {
     handleUnauthorized()
   }
