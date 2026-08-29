@@ -141,7 +141,7 @@ export function CertificadosPage() {
 
   const handleMarcarEntregado = async (certId: string) => {
     try {
-      await certificadosService.marcarEntregado(certId, { fecha_entrega: new Date().toISOString().split("T")[0] })
+      await certificadosService.marcarEntregado(certId, { fecha_entrega: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date()) })
       toast.success("Certificado marcado como entregado")
       loadPanel()
     } catch { toast.error("Error al marcar como entregado") }

@@ -15,7 +15,8 @@ interface NotificationDropdownProps {
 }
 
 function formatFecha(fechaStr: string): string {
-  const fecha = new Date(fechaStr + "T00:00:00")
+  const [year, month, day] = fechaStr.slice(0, 10).split("-").map(Number)
+  const fecha = new Date(year, month - 1, day)
   const hoy = new Date()
   const ayer = new Date()
   ayer.setDate(ayer.getDate() - 1)

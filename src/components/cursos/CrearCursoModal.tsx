@@ -62,8 +62,10 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
   const calcularFechasModulos = (numModulos: number, fechaInicio: string, fechaFin: string) => {
     if (!fechaInicio || !fechaFin || numModulos === 0) return []
 
-    const inicio = new Date(fechaInicio)
-    const fin = new Date(fechaFin)
+    const [iy, im, id] = fechaInicio.split("-").map(Number)
+    const [fy, fm, fd] = fechaFin.split("-").map(Number)
+    const inicio = new Date(iy, im - 1, id)
+    const fin = new Date(fy, fm - 1, fd)
     const totalDias = Math.floor((fin.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24))
     const totalSemanas = Math.ceil(totalDias / 7)
     const semanasModulo = Math.floor(totalSemanas / numModulos)
@@ -86,8 +88,8 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
 
       return {
         nombre: `Módulo ${i + 1}`,
-        fecha_inicio: fechaModInicio.toISOString().split('T')[0],
-        fecha_fin: fechaModFin.toISOString().split('T')[0],
+        fecha_inicio: `${fechaModInicio.getFullYear()}-${String(fechaModInicio.getMonth() + 1).padStart(2, '0')}-${String(fechaModInicio.getDate()).padStart(2, '0')}`,
+        fecha_fin: `${fechaModFin.getFullYear()}-${String(fechaModFin.getMonth() + 1).padStart(2, '0')}-${String(fechaModFin.getDate()).padStart(2, '0')}`,
       }
     })
   }

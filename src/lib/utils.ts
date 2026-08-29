@@ -13,6 +13,26 @@ export function parseLocalDate(fecha?: string | null): Date {
   return new Date(y, m - 1, d)
 }
 
+/** Dates from date columns are calendar values, not UTC instants. */
+export function formatCalendarDate(fecha?: string | null, options?: Intl.DateTimeFormatOptions): string {
+  if (!fecha) return "—"
+  const parts = fecha.slice(0, 10).split("-").map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return fecha
+  const date = new Date(parts[0], parts[1] - 1, parts[2])
+  return date.toLocaleDateString("es-EC", options ?? { day: "2-digit", month: "long", year: "numeric" })
+}
+
+export function todayInEcuador(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date())
+}
+
+export function formatEcuadorDateTime(fecha?: string | null): string {
+  if (!fecha) return "—"
+  const date = new Date(fecha)
+  if (Number.isNaN(date.getTime())) return fecha
+  return date.toLocaleString("es-EC", { timeZone: "America/Guayaquil", dateStyle: "medium", timeStyle: "short" })
+}
+
 export function getStorageUrl(url?: string | null): string {
   if (!url) return ""
   if (url.startsWith("blob:")) return url
@@ -22,13 +42,14 @@ export function getStorageUrl(url?: string | null): string {
 export function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return "—"
   try {
-    const date = new Date(dateStr)
-    if (isNaN(date.getTime())) return dateStr
-    return date.toLocaleDateString("es-ES", {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return formatCalendarDate(dateStr, {
       day: "2-digit",
       month: "short",
       year: "numeric",
     })
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return dateStr
+    return date.toLocaleDateString("es-EC", { timeZone: "America/Guayaquil", day: "2-digit", month: "short", year: "numeric" })
   } catch {
     return dateStr
   }

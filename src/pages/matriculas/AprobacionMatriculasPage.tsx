@@ -119,7 +119,8 @@ export function AprobacionMatriculasPage() {
     const dias = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
     const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
     for (const [key, items] of map) {
-      const d = new Date(key)
+      const [year, month, day] = key.split("-").map(Number)
+      const d = new Date(year, month - 1, day)
       const label = `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`
       grupos.push({ dateKey: key, label, items })
     }
@@ -183,7 +184,8 @@ export function AprobacionMatriculasPage() {
       map.get(key)!.push(s)
     }
     for (const [key, items] of map) {
-      const d = new Date(key)
+      const [year, month, day] = key.split("-").map(Number)
+      const d = new Date(year, month - 1, day)
       const dias = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
       const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
       const label = `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`

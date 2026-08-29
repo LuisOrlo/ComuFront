@@ -15,7 +15,7 @@ export function ClientePagoPage() {
 
   const [monto, setMonto] = useState(state?.montoSaldo ? String(state.montoSaldo) : "")
   const [metodoPago, setMetodoPago] = useState("efectivo")
-  const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0])
+  const [fechaPago, setFechaPago] = useState(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date()))
   const [saving, setSaving] = useState(false)
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)

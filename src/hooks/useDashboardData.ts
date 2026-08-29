@@ -4,7 +4,7 @@ import { cursosService } from "@/services/cursos.service"
 import { agendaService } from "@/services/agenda.service"
 
 function today(): string {
-  return new Date().toISOString().split("T")[0]
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date())
 }
 
 export function useDashboardData() {
