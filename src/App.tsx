@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import { LoginPage } from "@/pages/login/LoginPage"
@@ -124,23 +125,14 @@ function DashboardRouter() {
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [pendientesCount, setPendientesCount] = useState(0)
+  const notificationsQuery = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => cursosService.getNotificaciones(),
+    staleTime: 0,
+  })
+  const pendientesCount = notificationsQuery.data?.pendientes ?? 0
   const [showNotifications, setShowNotifications] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
-
-  const fetchPendientes = useCallback(async () => {
-    try {
-      const res = await cursosService.getNotificaciones()
-      setPendientesCount(res.pendientes)
-    } catch {
-      // silent fail
-    }
-  }, [])
-
-  useEffect(() => {
-
-    fetchPendientes()
-  }, [fetchPendientes])
 
   return (
     <div className="flex h-[100dvh] overflow-x-hidden bg-gray-50">

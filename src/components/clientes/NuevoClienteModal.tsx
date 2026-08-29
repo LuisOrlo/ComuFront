@@ -107,7 +107,7 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
 
     setSaving(true)
     try {
-      const nuevo = await clientesService.createCliente(form)
+      const nuevo = await clientesService.createCliente({ ...form, correo: form.correo.trim() || undefined })
       toast.success("Cliente externo registrado")
       onCreated(nuevo as ClienteExterno)
       setForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })

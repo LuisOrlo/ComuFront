@@ -330,6 +330,7 @@ export function AprobacionSolicitudPage() {
       setActionLoading(false)
       toast.success("Matrícula aprobada exitosamente")
       queryClient.invalidateQueries({ queryKey: ["solicitudes-inscripcion"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
       navigate("/matriculas?tab=cursos&status=aprobados")
     } catch (err) {
       setActionLoading(false)
@@ -345,6 +346,7 @@ export function AprobacionSolicitudPage() {
       toast.success("Solicitud rechazada")
       setActionLoading(false)
       queryClient.invalidateQueries({ queryKey: ["solicitudes-inscripcion"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
       navigate("/matriculas?tab=cursos&status=rechazados")
     } catch (err) {
       toast.error((err as any)?.response?.data?.mensaje || "Error al rechazar")

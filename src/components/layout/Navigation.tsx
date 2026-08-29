@@ -16,7 +16,6 @@ import {
   UserCheckIcon,
   SettingsIcon,
   BellIcon,
-  SearchIcon,
   Menu09Icon,
   AiFolderIcon,
   AiLearningIcon,
@@ -409,40 +408,7 @@ export function TopBar({
         </button>
       </div>
 
-      <div className="flex-1 max-w-sm mx-4 hidden md:block">
-        <div className="relative">
-          <HugeiconsIcon
-            icon={SearchIcon}
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[--muted-foreground]"
-          />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border bg-transparent outline-none"
-            style={{
-              borderColor: COLORS.BORDER_SUBTLE,
-              transition: "border-color 180ms ease-out, box-shadow 180ms ease-out",
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = ACCENT
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${ACCENT}20`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-              e.currentTarget.style.boxShadow = "none"
-            }}
-          />
-        </div>
-      </div>
-
       <div className="flex items-center gap-2">
-        <button className="flex items-center justify-center size-9 rounded-lg text-[--muted-foreground] md:hidden select-none"
-          style={{ transition: "background-color 150ms ease-out" }}
-        >
-          <HugeiconsIcon icon={SearchIcon} size={18} />
-        </button>
-
         {(isAdmin || isSecretaria) && (
         <div className="relative">
           <button
@@ -471,7 +437,6 @@ export function TopBar({
             onClose={onNotificationToggle}
             anchorRef={bellRef}
             pendientesCount={pendientesCount}
-            onCountChange={() => {}}
           />
         </div>
         )}

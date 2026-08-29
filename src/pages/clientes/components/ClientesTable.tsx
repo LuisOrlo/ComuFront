@@ -31,7 +31,7 @@ const CHARCOAL = COLORS.CHARCOAL
 export function ClientesTable({ clientes, loading, search, onSearchChange }: ClientesTableProps) {
   const navigate = useNavigate()
   const [sorting, setSorting] = useState<SortingState>([])
-  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 })
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 })
 
   useEffect(() => {
     setPagination(p => ({ ...p, pageIndex: 0 }))

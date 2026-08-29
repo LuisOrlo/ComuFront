@@ -202,6 +202,7 @@ export function AprobacionTallerPage() {
       setActionLoading(false)
       setConfirmApprove(false)
       queryClient.invalidateQueries({ queryKey: ["talleres-inscripciones-pendientes"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
       navigate("/matriculas?tab=talleres&status=aprobados")
     } catch (err) {
       setActionLoading(false)
@@ -218,6 +219,7 @@ export function AprobacionTallerPage() {
       toast.success("Inscripción rechazada")
       setActionLoading(false)
       queryClient.invalidateQueries({ queryKey: ["talleres-inscripciones-pendientes"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
       navigate("/matriculas?tab=talleres&status=rechazados")
     } catch {
       setActionLoading(false)

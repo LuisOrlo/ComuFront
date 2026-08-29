@@ -1,37 +1,31 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { Plus, Loader2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
-import { toast } from "sonner"
 import { ClientesFilters } from "./components/ClientesFilters"
 import { ClientesTable } from "./components/ClientesTable"
 
-const ITEMS_PER_PAGE = 500
+const ITEMS_PER_PAGE = 50
 
 export function ClientesPage() {
   const navigate = useNavigate()
-  const [clientes, setClientes] = useState<ClienteExterno[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
-
-  const loadClientes = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await clientesService.getClientes({ per_page: ITEMS_PER_PAGE }) as {
-        data: ClienteExterno[]
-      }
-      setClientes(res.data)
-    } catch {
-      toast.error("Error al cargar clientes")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
-    loadClientes()
-  }, [loadClientes])
+    const timer = window.setTimeout(() => setSearchQuery(search.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [search])
+
+  const clientesQuery = useQuery({
+    queryKey: ["clientes", searchQuery],
+    queryFn: () => clientesService.getClientes({ per_page: ITEMS_PER_PAGE, search: searchQuery || undefined }) as Promise<{ data: ClienteExterno[] }>,
+    placeholderData: keepPreviousData,
+  })
+  const clientes = clientesQuery.data?.data ?? []
+  const loading = clientesQuery.isLoading
 
   const handleSearch = (value: string) => {
     setSearch(value)
@@ -69,7 +63,7 @@ export function ClientesPage() {
           ) : (
             <ClientesTable
               clientes={clientes}
-              loading={loading}
+              loading={clientesQuery.isFetching}
               search={search}
               onSearchChange={handleSearch}
             />

@@ -97,7 +97,7 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
     }
     const timer = setTimeout(() => {
       setLoadingPersonas(true)
-      personasService.getPersonas({ buscar: q })
+      personasService.getPersonas({ buscar: q, tipo: "estudiante,instructor,pasante,staff", per_page: 50, page: 1 })
         .then(res => setPersonas(res.data))
         .catch(() => setPersonas([]))
         .finally(() => setLoadingPersonas(false))

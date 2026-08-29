@@ -11,6 +11,7 @@ import {
 import { UserPlus, Loader2, X } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
+import { getCachedAvailability } from "@/lib/availabilityCache"
 import {
   podcastService,
   type PaquetePodcast,
@@ -163,7 +164,7 @@ export function NuevaReservaPage() {
     const timer = setTimeout(async () => {
       setVerificandoConflicto(true)
       try {
-        const data = await podcastService.getReservas({ fecha })
+        const data = await getCachedAvailability(`podcast:${fecha}`, () => podcastService.getReservas({ fecha }))
         if (!active) return
         const reservas = Array.isArray(data) ? data : []
         const conflictoEncontrado = reservas.find((r: ReservaPodcast) =>

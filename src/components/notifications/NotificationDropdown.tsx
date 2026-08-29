@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -11,7 +12,6 @@ interface NotificationDropdownProps {
   onClose: () => void
   anchorRef: React.RefObject<HTMLButtonElement | null>
   pendientesCount: number
-  onCountChange: (count: number) => void
 }
 
 function formatFecha(fechaStr: string): string {
@@ -27,28 +27,20 @@ function formatFecha(fechaStr: string): string {
   return fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
 }
 
-export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCount, onCountChange }: NotificationDropdownProps) {
-  const [data, setData] = useState<NotificacionesResponse | null>(null)
-  const [loading, setLoading] = useState(false)
+export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCount }: NotificationDropdownProps) {
+  const notificationsQuery = useQuery<NotificacionesResponse>({
+    queryKey: ["notifications"],
+    queryFn: () => cursosService.getNotificaciones(),
+    staleTime: 0,
+  })
+  const data = notificationsQuery.data ?? null
+  const loading = notificationsQuery.isLoading || notificationsQuery.isFetching
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await cursosService.getNotificaciones()
-      setData(res)
-      onCountChange(res.pendientes)
-    } catch {
-      // silent fail, keep previous data
-    }
-  }, [onCountChange])
 
   useEffect(() => {
     if (!isOpen) return
-
-
-    setLoading(true)
-    fetchData().finally(() => setLoading(false))
-  }, [isOpen, fetchData])
+    void notificationsQuery.refetch()
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

@@ -17,6 +17,7 @@ import {
 import { UserPlus, Loader2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
+import { getCachedAvailability } from "@/lib/availabilityCache"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
@@ -133,7 +134,7 @@ export function NuevaReservaPage() {
     const timer = setTimeout(() => {
       setSearchingCliente(true)
       Promise.allSettled([
-        personasService.getPersonas({ buscar: q }),
+        personasService.getPersonas({ buscar: q, tipo: "estudiante,instructor,pasante,staff", per_page: 50, page: 1 }),
         clientesService.getClientes({ search: q, per_page: 50 }),
       ]).then(([personasRes, clientesRes]) => {
         const results: ClienteOption[] = []
@@ -174,7 +175,7 @@ export function NuevaReservaPage() {
     const timer = setTimeout(async () => {
       setVerificandoConflicto(true)
       try {
-        const reservas = await aulasService.getReservas({ aula_id: aulaActual, fecha_inicio: fechaReserva, fecha_fin: fechaReserva })
+        const reservas = await getCachedAvailability(`aula:${aulaActual}:${fechaReserva}`, () => aulasService.getReservas({ aula_id: aulaActual, fecha_inicio: fechaReserva, fecha_fin: fechaReserva }))
         if (!active) return
         const conflictoEncontrado = (Array.isArray(reservas) ? reservas : []).find(r =>
           r.fecha_reserva === fechaReserva &&
