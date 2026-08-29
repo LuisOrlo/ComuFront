@@ -5,7 +5,6 @@ import { ArrowLeft, UserPlus } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { radioService, type TarifaRadio, type ReservaRadio } from "@/services/radio.service"
-import { staffService } from "@/services/staff.service"
 import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
@@ -209,20 +208,54 @@ export function ReservaForm({
 
   useEffect(() => {
     if (!isOpen) return
-    staffService.getStaff({ page: 1 })
-      .then(res => {
+    let cancelled = false
+
+    const cargarOperadores = async () => {
+      try {
+        const tiposOperador = "instructor,staff,admin,secretaria"
+        const primeraPagina = await personasService.getPersonas({
+          tipo: tiposOperador,
+          page: 1,
+          per_page: 100,
+        })
+
+        const paginasRestantes = primeraPagina.meta.last_page > 1
+          ? await Promise.all(
+              Array.from({ length: primeraPagina.meta.last_page - 1 }, (_, index) =>
+                personasService.getPersonas({
+                  tipo: tiposOperador,
+                  page: index + 2,
+                  per_page: 100,
+                })
+              )
+            )
+          : []
+
+        if (cancelled) return
+
+        const personas = [
+          ...primeraPagina.data,
+          ...paginasRestantes.flatMap(res => res.data),
+        ]
+
         setOperadores(
-          res.data
-            .filter(p => p.es_activo && (p.perfilStaff || p.perfilInstructor))
+          personas
+            .filter(p => p.es_activo && ["instructor", "staff", "admin", "secretaria"].includes(p.tipo))
             .map(p => ({
               id: p.id,
               nombres: p.nombres,
               apellidos: p.apellidos,
-              cargo: p.perfilStaff?.cargo || p.perfilInstructor?.especialidad || "Staff",
+              cargo: p.perfilStaff?.cargo || p.perfilInstructor?.especialidad ||
+                (p.tipo === "instructor" ? "Profesor" : "Staff"),
             }))
         )
-      })
-      .catch(() => {})
+      } catch {
+        if (!cancelled) setOperadores([])
+      }
+    }
+
+    cargarOperadores()
+    return () => { cancelled = true }
   }, [isOpen])
 
   const tarifaSeleccionada = useMemo(
