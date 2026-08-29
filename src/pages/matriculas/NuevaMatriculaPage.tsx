@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type CSSProperties } from "react"
+import { createPortal } from "react-dom"
 import { AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -338,12 +339,18 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
 
   return (
     <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-      {loadingSubmit && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/85 backdrop-blur-sm">
+      {loadingSubmit && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm"
+          style={{ zIndex: 9999 }}
+          role="status"
+          aria-live="polite"
+          aria-label="Enviando solicitud"
+        >
           <div className="flex flex-col items-center gap-4 px-6 text-center">
             <div
-              className="size-12 rounded-full border-4 border-gray-200 border-t-[var(--loading-accent)] animate-spin"
-              style={{ "--loading-accent": COLORS.ACCENT } as CSSProperties}
+              className="size-12 rounded-full border-4 border-gray-200 animate-spin"
+              style={{ borderTopColor: COLORS.ACCENT } as CSSProperties}
             />
             <div>
               <p className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>
@@ -354,7 +361,8 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               </p>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       <style>{`
         .hover-orange:hover {
