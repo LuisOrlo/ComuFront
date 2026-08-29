@@ -435,10 +435,7 @@ export function ServicioPagoPage() {
                   style={{ borderColor: BORDER }}
                 >
                   <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="deposito">Depósito</option>
-                  <option value="tarjeta">Tarjeta</option>
-                  <option value="otro">Otro</option>
+                  <option value="transferencia">Transferencia / Depósito</option>
                 </select>
               </div>
 
