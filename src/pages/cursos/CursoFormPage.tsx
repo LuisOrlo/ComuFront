@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate, useParams } from "react-router-dom"
 import { ChevronRight, ChevronLeft, Search, Plus, Trash2 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -70,6 +71,7 @@ interface Modulo {
 }
 
 export function CursoFormPage() {
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = !!id
@@ -383,6 +385,11 @@ export function CursoFormPage() {
         })
         toast.success("Curso creado exitosamente")
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["cursos"] }),
+        queryClient.invalidateQueries({ queryKey: ["cursos-abiertos"] }),
+        queryClient.invalidateQueries({ queryKey: ["catalogos"] }),
+      ])
       navigate("/cursos")
     } catch (err) {
       const responseData = (err as { response?: { data?: { requiere_confirmacion_regeneracion?: boolean } } })?.response?.data

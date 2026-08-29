@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { usePermission } from "@/hooks/usePermission"
 import { useParams, useNavigate, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -53,6 +54,7 @@ const estadoConfig: Record<string, { bg: string; text: string; label: string }> 
 export function CursoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { isAdmin } = usePermission()
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<ModuloData[]>([])
@@ -112,6 +114,10 @@ export function CursoDetailPage() {
     try {
       await cursosService.eliminarCursoAbierto(id)
       toast.success("Curso eliminado exitosamente")
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["cursos"] }),
+        queryClient.invalidateQueries({ queryKey: ["cursos-abiertos"] }),
+      ])
       setShowDeleteConfirm(false)
       navigate("/cursos")
     } catch {

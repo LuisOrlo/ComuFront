@@ -21,7 +21,7 @@ export function useCatalogos(enabled: boolean) {
     queryKey: ["catalogos"],
     queryFn: () => cursosService.getCatalogos().then(res => res.data || []),
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   })
 }
 
@@ -40,7 +40,7 @@ export function useCursosAbiertos({ modalidad, ciudadId, catalogoFilter, enabled
       return res.data.data || []
     },
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   })
 }
 
@@ -58,6 +58,6 @@ export function useTalleres({ modalidad, ciudadId, enabled }: UseTalleresParams)
       return (res.data as { data: Taller[] }).data || []
     },
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   })
 }
