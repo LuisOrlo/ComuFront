@@ -17,6 +17,7 @@ export interface TareaStaff {
   fecha_fin?: string
   estado: "pendiente" | "en_progreso" | "completada" | "cancelada"
   created_at: string
+  origen?: "manual" | "edicion_video"
 }
 
 export interface TareasResponse {

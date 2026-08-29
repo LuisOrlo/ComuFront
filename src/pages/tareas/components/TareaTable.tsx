@@ -224,10 +224,17 @@ export function TareaTable({
                   {formatDate(t.fecha_fin)}
                 </td>
                 <td className="px-4 py-3">
-                  <StatusBadge estado={t.estado} tareaId={t.id} onTareaUpdate={onTareaUpdate} />
+                  {t.origen === "edicion_video" ? (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                      style={{ backgroundColor: "oklch(0.55 0.14 250 / 0.10)", color: "oklch(0.55 0.14 250)" }}>
+                      {ESTADO_LABELS[t.estado] || t.estado}
+                    </span>
+                  ) : (
+                    <StatusBadge estado={t.estado} tareaId={t.id} onTareaUpdate={onTareaUpdate} />
+                  )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
+                  {t.origen !== "edicion_video" && <div className="flex items-center gap-1">
                     <button
                       onClick={() => onEdit(t)}
                       className="size-8 flex items-center justify-center rounded-lg transition-colors"
@@ -258,7 +265,7 @@ export function TareaTable({
                     >
                       <HugeiconsIcon icon={Delete01Icon} size={14} />
                     </button>
-                  </div>
+                  </div>}
                 </td>
               </tr>
             ))}

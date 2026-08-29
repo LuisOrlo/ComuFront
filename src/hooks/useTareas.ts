@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { tareasService, type TareaStaff, type TareaFilters } from "@/services/tareas.service"
+import { edicionVideoService } from "@/services/edicion-video.service"
 
 interface TareasState {
   tareas: TareaStaff[]
@@ -28,9 +29,35 @@ export function useTareas() {
   const fetchTareas = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true }))
     try {
-      const res = await tareasService.getTareas(filters)
+      const [res, trabajosRes] = await Promise.all([
+        tareasService.getTareas(filters),
+        edicionVideoService.getTrabajos({ per_page: 100 }),
+      ])
+
+      const trabajos: TareaStaff[] = trabajosRes.data
+        .filter((trabajo) => trabajo.estado !== "entregado" && trabajo.editor_ids.length > 0)
+        .flatMap((trabajo): (TareaStaff | null)[] => trabajo.editor_ids.map((editorId) => {
+          const editor = trabajo.editores?.find((persona) => persona.id === editorId)
+          if (!editor) return null
+
+          return {
+            id: `edicion-video-${trabajo.id}-${editor.id}`,
+            titulo: `Edición de video: ${trabajo.titulo}`,
+            descripcion: trabajo.descripcion,
+            persona_id: editor.id,
+            persona: { ...editor, tipo: "staff" },
+            fecha_inicio: trabajo.fecha_recibo,
+            fecha_fin: trabajo.fecha_limite,
+            estado: trabajo.estado === "recibido" ? "pendiente" : "en_progreso",
+            created_at: trabajo.created_at || trabajo.fecha_recibo,
+            origen: "edicion_video" as const,
+          } satisfies TareaStaff
+        }))
+        .filter((tarea): tarea is TareaStaff => tarea !== null)
+
+      const tareasCombinadas = [...res.tareas, ...trabajos]
       setState({
-        tareas: res.tareas,
+        tareas: tareasCombinadas,
         loading: false,
         totales: res.totales,
         currentPage: res.meta.current_page,
