@@ -52,6 +52,8 @@ interface IngresoRow {
   modulos_count?: number
   modulos_detalle?: { id: string; modulo_nombre: string; monto: number }[]
   es_personalizado?: boolean
+  comprobante_url?: string | null
+  estado_verificacion?: string
 }
 
 interface Props {
@@ -76,6 +78,37 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
       setPagination(p => ({ ...p, pageIndex: 0 }))
     }
   }, [loading])
+
+  // Una aprobación puede crear varios movimientos internos para módulos
+  // distintos. En la interfaz financiera se muestran como un único pago,
+  // igual que en el perfil académico, conservando el detalle contable en el
+  // backend.
+  const displayData = useMemo(() => {
+    const groups = new Map<string, IngresoRow>()
+    for (const item of data) {
+      const key = [
+        item.fecha_pago,
+        item.concepto || "",
+        item.estudiante_nombre || "",
+        item.categoria || "",
+        item.metodo_pago || "",
+        item.comprobante_url || "",
+        item.estado_verificacion || "",
+      ].join("|")
+      const current = groups.get(key)
+      if (current) {
+        current.monto = Number(current.monto || 0) + Number(item.monto || 0)
+        current.modulos_count = (current.modulos_count || 0) + (item.modulos_count || 0)
+        current.modulos_detalle = [
+          ...(current.modulos_detalle || []),
+          ...(item.modulos_detalle || []),
+        ]
+      } else {
+        groups.set(key, { ...item })
+      }
+    }
+    return Array.from(groups.values())
+  }, [data])
 
   const columns = useMemo<ColumnDef<IngresoRow>[]>(() => [
     {
@@ -176,7 +209,7 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data,
+    data: displayData,
     columns,
     state: { sorting, pagination },
     onSortingChange: setSorting,
@@ -188,7 +221,7 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
     autoResetAll: false,
   })
 
-  const totalFila = data.reduce((s, r) => s + Number(r.monto || 0), 0)
+  const totalFila = displayData.reduce((s, r) => s + Number(r.monto || 0), 0)
 
   return (
     <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
@@ -223,7 +256,7 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
         <tbody className="divide-y" style={{ borderColor: BORDER }}>
           {loading ? (
             <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Cargando...</td></tr>
-          ) : data.length === 0 ? (
+          ) : displayData.length === 0 ? (
             <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Sin ingresos</td></tr>
           ) : table.getRowModel().rows.map((row) => (
             <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
@@ -237,11 +270,11 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
             </tr>
           ))}
         </tbody>
-        {data.length > 0 && (
+        {displayData.length > 0 && (
           <tfoot>
             <tr style={{ backgroundColor: CHARCOAL }}>
               <td className="px-3 py-2" colSpan={5}>
-                <span className="text-[10px] font-bold text-white/60">Total ({data.length} registros)</span>
+                <span className="text-[10px] font-bold text-white/60">Total ({displayData.length} registros)</span>
               </td>
               <td className="px-3 py-2 text-xs font-bold text-white">${totalFila.toLocaleString()}</td>
               <td></td>
@@ -249,7 +282,7 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
           </tfoot>
         )}
       </table>
-      {data.length > 0 && (
+      {displayData.length > 0 && (
         <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
           <div className="flex items-center justify-between text-xs font-medium opacity-70">
             <span>Página {page} de {lastPage}</span>

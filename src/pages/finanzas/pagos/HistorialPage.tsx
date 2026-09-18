@@ -53,7 +53,6 @@ export function HistorialPage() {
   // Pagination
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
   const PER_PAGE = 50
 
   useEffect(() => {
@@ -73,7 +72,6 @@ export function HistorialPage() {
         
         setAllTransacciones(prev => page === 1 ? (res.data || []) : [...prev, ...(res.data || [])])
         setTotalPages(res.last_page || 1)
-        setTotalItems(res.total || 0)
       } catch (err: any) {
         if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
           toast.error("Error al cargar historial")
@@ -169,9 +167,39 @@ export function HistorialPage() {
     return list
   }, [allTransacciones, search, getNombreEstudiante, getCursoNombre, metodoFilter, estadoFilter, tipoFilter])
 
+  // Una aprobación puede generar varios movimientos internos (por ejemplo,
+  // dos líneas de $10 para un único pago efectivo de $20). El perfil
+  // académico los presenta como un solo pago; el historial debe usar el mismo
+  // criterio sin eliminar los movimientos originales.
+  const groupedForDisplay = useMemo(() => {
+    const groups = new Map<string, any>()
+    for (const transaction of clientFiltered) {
+      const date = String(transaction.fecha_pago || transaction.created_at || "").slice(0, 10)
+      const key = [
+        transaction.tipo_movimiento,
+        date,
+        getNombreEstudiante(transaction),
+        getCursoNombre(transaction),
+        transaction.metodo_pago || "",
+        transaction.comprobante_url || "",
+        transaction.estado_verificacion || "",
+      ].join("|")
+
+      const current = groups.get(key)
+      if (current) {
+        current.monto = Number(current.monto || 0) + Number(transaction.monto || 0)
+        current.count += 1
+        current.ids.push(transaction.id)
+      } else {
+        groups.set(key, { ...transaction, count: 1, ids: [transaction.id] })
+      }
+    }
+    return Array.from(groups.values())
+  }, [clientFiltered, getNombreEstudiante, getCursoNombre])
+
   // Group items by Date (sorted by time within each group)
   const groupedByDate = useMemo(() => {
-    const sorted = [...clientFiltered].sort((a, b) =>
+    const sorted = [...groupedForDisplay].sort((a, b) =>
       new Date(b.fecha_pago || b.created_at).getTime() -
       new Date(a.fecha_pago || a.created_at).getTime()
     )
@@ -187,7 +215,7 @@ export function HistorialPage() {
       groups[dateKey].push(t)
     })
     return Object.entries(groups)
-  }, [clientFiltered])
+  }, [groupedForDisplay])
 
   // Automatically expand the first group by default on load
   useEffect(() => {
@@ -222,7 +250,7 @@ export function HistorialPage() {
     return InvoiceIcon
   }
 
-  const hasResults = clientFiltered.length > 0
+  const hasResults = groupedForDisplay.length > 0
 
   // Bulk Delete
   const handleBulkDelete = async () => {
@@ -299,7 +327,7 @@ export function HistorialPage() {
             <h2 className="text-lg font-black flex items-center gap-3 text-gray-850 dark:text-white">
               <HugeiconsIcon icon={InvoiceIcon} size={22} style={{ color: COLORS.ACCENT }} />
               Historial de Movimientos
-              {hasResults && <span className="text-xs font-extrabold opacity-45 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">({totalItems})</span>}
+              {hasResults && <span className="text-xs font-extrabold opacity-45 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">({groupedForDisplay.length})</span>}
             </h2>
             
             <div className="flex flex-wrap items-center gap-2">
