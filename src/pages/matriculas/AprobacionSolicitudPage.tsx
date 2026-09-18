@@ -428,17 +428,19 @@ export function AprobacionSolicitudPage() {
   }
 
   const editPrecioChange = (lineaId: string, nuevoPrecio: string, motivo: string) => {
+    const precioNum = parseFloat(nuevoPrecio) || 0
+    const abonadoActual = parseFloat(editMontosValues[lineaId] || "0") || 0
+
+    // Un descuento no puede reducir retroactivamente un pago ya registrado.
+    // Antes se ajustaba silenciosamente el abonado al nuevo precio, lo que
+    // podía alterar el historial contable y terminaba provocando un 500.
+    if (precioNum > 0 && precioNum + 0.001 < abonadoActual) {
+      toast.error(`El nuevo precio no puede ser menor que lo ya pagado ($${abonadoActual.toFixed(2)}).`)
+      return
+    }
+
     setEditPreciosValues(prev => ({ ...prev, [lineaId]: nuevoPrecio }))
     setEditMotivosValues(prev => ({ ...prev, [lineaId]: motivo }))
-
-    const precioNum = parseFloat(nuevoPrecio) || 0
-    setEditMontosValues(prev => {
-      const abonadoActual = parseFloat(prev[lineaId] || "0")
-      if (abonadoActual > precioNum && precioNum > 0) {
-        return { ...prev, [lineaId]: String(precioNum) }
-      }
-      return prev
-    })
   }
 
   const saveEditMontos = async () => {
