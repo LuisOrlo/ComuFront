@@ -16,12 +16,13 @@ import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
-import { useParams, useNavigate } from "react-router"
+import { useParams, useNavigate, useLocation } from "react-router"
 import { generarCuentaCursoPDF } from "@/lib/generarPagosCuentaPDF"
 
 export function CursoCuentasDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAdmin } = usePermission()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
@@ -153,7 +154,9 @@ export function CursoCuentasDetallePage() {
     <div className="px-8 py-6">
       
       <button
-        onClick={() => navigate("/finanzas/pagos/cuentas/cursos")}
+        onClick={() => navigate(location.pathname.includes("cursos-personalizados")
+          ? "/finanzas/pagos/cuentas/cursos-personalizados"
+          : "/finanzas/pagos/cuentas/cursos")}
         className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
         style={{ color: COLORS.CHARCOAL }}
       >

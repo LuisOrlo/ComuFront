@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { FilterIcon, SearchIcon } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
+import { FilterIcon, SearchIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
-import { FilterArrow } from "./FilterArrow"
-
-const selectClasses =
-  "appearance-none bg-white border rounded-lg px-3 py-2 text-sm outline-none cursor-pointer min-w-[130px] select-none"
 
 export interface FilterBarProps {
   onFilterChange?: (filters: {
@@ -93,149 +88,113 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     }
   }
 
+  const tieneFiltrosActivos = Boolean(filtros.ciudad || filtros.modalidad || filtros.estado || search)
+
   return (
-    <div
-      className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border bg-white"
-      style={{ borderColor: COLORS.BORDER_SUBTLE }}
-    >
-      <div className="flex items-center gap-1.5 mr-1">
-        <HugeiconsIcon icon={FilterIcon} size={16} className="text-[--muted-foreground]" />
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-wrap items-center gap-3">
+      {/* Etiqueta Filtros */}
+      <div className="hidden sm:flex items-center gap-2 pr-3 border-r border-slate-200">
+        <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#fd761a] flex items-center justify-center">
+          <HugeiconsIcon icon={FilterIcon} size={16} />
+        </div>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
           Filtros
         </span>
       </div>
 
-      {/* Ciudad */}
-      <div className="relative">
+      {/* Input Búsqueda */}
+      <div className="relative flex-1 min-w-[200px] sm:min-w-[240px]">
+        <HugeiconsIcon
+          icon={SearchIcon}
+          size={16}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+        />
+        <input
+          type="text"
+          placeholder="Buscar cursos..."
+          aria-label="Buscar cursos"
+          value={search}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="w-full pl-10 pr-8 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => handleSearchChange("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 cursor-pointer"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Select Ciudad */}
+      <div className="relative min-w-[130px]">
         <select
           value={filtros.ciudad}
           aria-label="Filtrar cursos por ciudad"
           onChange={(e) => handleFilterChange("ciudad", e.target.value)}
-          className={selectClasses}
-          style={{
-            borderColor: COLORS.BORDER_SUBTLE,
-            color: COLORS.CHARCOAL,
-            transition: "border-color 180ms ease-out, box-shadow 180ms ease-out",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = COLORS.ACCENT
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-            e.currentTarget.style.boxShadow = "none"
-          }}
           disabled={cargando}
+          className="w-full appearance-none bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3.5 py-2 pr-8 text-sm font-semibold text-slate-700 outline-none cursor-pointer focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all disabled:opacity-50"
         >
-          <option value="">
-            {cargando ? "Cargando..." : "Ciudad"}
-          </option>
+          <option value="">{cargando ? "Cargando..." : "Todas las sedes"}</option>
           {ciudades.map((ciudad) => (
             <option key={ciudad.id} value={ciudad.nombre}>
               {ciudad.nombre}
             </option>
           ))}
         </select>
-        <FilterArrow />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+          ▼
+        </span>
       </div>
 
-      {/* Modalidad */}
-      <div className="relative">
+      {/* Select Modalidad */}
+      <div className="relative min-w-[130px]">
         <select
           value={filtros.modalidad}
           aria-label="Filtrar cursos por modalidad"
           onChange={(e) => handleFilterChange("modalidad", e.target.value)}
-          className={selectClasses}
-          style={{
-            borderColor: COLORS.BORDER_SUBTLE,
-            color: COLORS.CHARCOAL,
-            transition: "border-color 180ms ease-out, box-shadow 180ms ease-out",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = COLORS.ACCENT
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-            e.currentTarget.style.boxShadow = "none"
-          }}
+          className="w-full appearance-none bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3.5 py-2 pr-8 text-sm font-semibold text-slate-700 outline-none cursor-pointer focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
         >
           <option value="">Modalidad</option>
           <option value="presencial">Presencial</option>
           <option value="virtual">Virtual</option>
         </select>
-        <FilterArrow />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+          ▼
+        </span>
       </div>
 
-      {/* Estado */}
-      <div className="relative">
+      {/* Select Estado */}
+      <div className="relative min-w-[130px]">
         <select
           value={filtros.estado}
           aria-label="Filtrar cursos por estado"
           onChange={(e) => handleFilterChange("estado", e.target.value)}
-          className={selectClasses}
-          style={{
-            borderColor: COLORS.BORDER_SUBTLE,
-            color: COLORS.CHARCOAL,
-            transition: "border-color 180ms ease-out, box-shadow 180ms ease-out",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = COLORS.ACCENT
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-            e.currentTarget.style.boxShadow = "none"
-          }}
+          className="w-full appearance-none bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl px-3.5 py-2 pr-8 text-sm font-semibold text-slate-700 outline-none cursor-pointer focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
         >
           <option value="">Estado</option>
-          <option value="en_progreso">En progreso</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="completado">Completado</option>
+          <option value="en_progreso">En curso</option>
+          <option value="pendiente">Por iniciar</option>
+          <option value="completado">Finalizado</option>
         </select>
-        <FilterArrow />
-      </div>
-
-      {/* Input Búsqueda */}
-      <div className="relative flex-1 min-w-[200px] md:min-w-[250px]">
-        <div className="relative">
-          <HugeiconsIcon
-            icon={SearchIcon}
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[--muted-foreground]"
-            style={{ color: COLORS.TEXT_MUTED }}
-          />
-          <input
-            type="text"
-            placeholder="Buscar cursos..."
-            aria-label="Buscar cursos"
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all duration-180 ease-out"
-            style={{
-              borderColor: COLORS.BORDER_SUBTLE,
-              color: COLORS.CHARCOAL,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = COLORS.ACCENT
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-              e.currentTarget.style.boxShadow = "none"
-            }}
-          />
-        </div>
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+          ▼
+        </span>
       </div>
 
       {/* Botón Limpiar */}
-      <button
-        onClick={limpiarFiltros}
-        className="ml-auto text-xs font-medium transition-colors duration-180 ease-out hover:underline"
-        style={{ color: COLORS.ACCENT }}
-      >
-        Limpiar filtros
-      </button>
+      {tieneFiltrosActivos && (
+        <button
+          type="button"
+          onClick={limpiarFiltros}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200/60 transition-all ml-auto cursor-pointer"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} size={14} />
+          <span>Limpiar filtros</span>
+        </button>
+      )}
     </div>
   )
 }

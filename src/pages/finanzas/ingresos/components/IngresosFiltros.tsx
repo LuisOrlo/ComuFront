@@ -12,7 +12,7 @@ interface FiltrosProps {
 
 const CATEGORIAS = [
   { key: "", label: "Todas las categorías" },
-  { key: "cursos", label: "Cursos" }, { key: "talleres", label: "Talleres" },
+  { key: "cursos", label: "Cursos" }, { key: "cursos_personalizados", label: "Cursos personalizados" }, { key: "talleres", label: "Talleres" },
   { key: "podcast", label: "Podcast" }, { key: "aulas", label: "Alquiler de Aulas" },
   { key: "equipos", label: "Alquiler de Equipos" }, { key: "radio", label: "Radio" },
   { key: "edicion", label: "Edición de Video" }, { key: "streaming", label: "Streaming" },

@@ -20,6 +20,7 @@ interface FinanceResumenProps {
 
 const ORIGEN_CONFIG: Record<string, { label: string; desc: string; icon: any; color: string }> = {
   cursos:    { label: "Cursos",     desc: "Matrículas e inscripciones",        icon: LibraryIcon,    color: "#4f46e5" },
+  cursos_personalizados: { label: "Cursos personalizados", desc: "Cursos diseñados a medida", icon: LibraryIcon, color: "#7c3aed" },
   talleres:  { label: "Talleres",   desc: "Talleres y workshops",             icon: SchoolIcon,     color: "#0891b2" },
   servicios: { label: "Servicios",  desc: "Aulas, podcast, equipos",          icon: AiFolderIcon,   color: "#7c3aed" },
 }
@@ -67,8 +68,9 @@ function getCuentaType(cuenta: any): string {
     ?? cuenta.matricula?.curso_abierto?.tipo
     ?? cuenta.solicitud_inscripcion?.curso_abierto?.catalogo?.categoria
     ?? cuenta.categoria
+  const curso = cuenta.matricula?.curso_abierto || cuenta.solicitud_inscripcion?.curso_abierto
+  if (curso?.es_personalizado === true) return "cursos_personalizados"
   if (cat === "taller" || cat === "talleres") return "talleres"
-  if (cat === "personalizado") return "servicios"
   return "cursos"
 }
 
@@ -158,6 +160,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const [modulosExpandidos, setModulosExpandidos] = useState<Set<string>>(new Set())
   const [categoryPages, setCategoryPages] = useState<Record<string, number>>({
     cursos: 1,
+    cursos_personalizados: 1,
     talleres: 1,
     servicios: 1,
   })
@@ -173,7 +176,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
 
   // Reset pages and expanded row when filters change
   useEffect(() => {
-    setCategoryPages({ cursos: 1, talleres: 1, servicios: 1 })
+    setCategoryPages({ cursos: 1, cursos_personalizados: 1, talleres: 1, servicios: 1 })
     setExpandedRowId(null)
   }, [search, filter, modalidadFilter, sortBy])
 
@@ -197,6 +200,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   const processedData = useMemo(() => {
     const groups: Record<string, any> = {
       cursos:    { label: "Cursos",    items: {} },
+      cursos_personalizados: { label: "Cursos personalizados", items: {} },
       talleres:  { label: "Talleres",  items: {} },
       servicios: { label: "Servicios", items: {} },
     }
@@ -269,10 +273,12 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
       stats.sin_cuenta.cursos.items.forEach((item: any) => {
         if (item.matricula_id && idsEnCuentas.has(item.matricula_id)) return
         const name = item.curso_nombre || "Curso"
-        if (!groups.cursos.items[name]) {
-          groups.cursos.items[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, deudores: 0, entries: [] }
+        const type = getCuentaType(item)
+        if (!groups[type]?.items) return
+        if (!groups[type].items[name]) {
+          groups[type].items[name] = { total: 0, cobrado: 0, saldo: 0, personas: 0, deudores: 0, entries: [] }
         }
-        const g = groups.cursos.items[name]
+        const g = groups[type].items[name]
         g.total += Number(item.monto_total || 0)
         g.cobrado += Number(item.monto_abonado || 0)
         g.saldo += Number(item.saldo_pendiente || 0)
@@ -290,7 +296,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
   // Filter and sort items per category
   const filteredAndSortedGroups = useMemo(() => {
     const result: Record<string, { label: string; items: any[] }> = {}
-    const categories = filter === "todos" ? ["cursos", "talleres", "servicios"] : [filter]
+    const categories = filter === "todos" ? ["cursos", "cursos_personalizados", "talleres", "servicios"] : [filter]
 
     categories.forEach(cat => {
       const group = processedData[cat]
@@ -394,6 +400,7 @@ export function FinanceResumen({ stats, cuentas }: FinanceResumenProps) {
           >
             <option value="todos">Todas las categorías</option>
             <option value="cursos">Cursos</option>
+            <option value="cursos_personalizados">Cursos personalizados</option>
             <option value="talleres">Talleres</option>
             <option value="servicios">Servicios</option>
           </select>

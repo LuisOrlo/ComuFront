@@ -1,172 +1,358 @@
+import React from "react"
 import type { AcademicProfile, FinancialProfile } from "@/services/estudiantes.service"
-import { COLORS } from "@/lib/constants"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Award01Icon,
+  CalendarCheckIn01Icon,
+  Book02Icon,
+  CheckmarkBadge01Icon,
+  Money01Icon,
+} from "@hugeicons/core-free-icons"
 
 interface OverviewTabContentProps {
   academicData: AcademicProfile | null
   financialData: FinancialProfile | null
   academicLoading: boolean
   financialLoading: boolean
+  onSwitchToAcademic?: () => void
 }
 
-export function OverviewTabContent({ academicData, financialData, academicLoading, financialLoading }: OverviewTabContentProps) {
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "—"
+  try {
+    const clean = dateStr.split("T")[0]
+    const [y, m, d] = clean.split("-")
+    if (y && m && d) {
+      const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+      return new Intl.DateTimeFormat("es-EC", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(date)
+    }
+    return dateStr
+  } catch {
+    return dateStr
+  }
+}
+
+export const OverviewTabContent: React.FC<OverviewTabContentProps> = ({
+  academicData,
+  financialData,
+  academicLoading,
+  financialLoading,
+  onSwitchToAcademic,
+}) => {
   const matriculas = academicData?.matriculas ?? []
-  const esSoloTaller = matriculas.length > 0 && matriculas.every(m => m.curso.startsWith("Taller:"))
   const promedioGeneral = matriculas.length
     ? (matriculas.reduce((acc, m) => acc + (m.promedio || 0), 0) / matriculas.length).toFixed(1)
     : null
+
   const asistenciaGeneral = matriculas.length
     ? Math.round(matriculas.reduce((acc, m) => acc + m.porcentaje_asistencia, 0) / matriculas.length)
     : null
-  const cursosActivos = matriculas.filter(m => m.estado === 'activo').length
-  const cursosCompletados = matriculas.filter(m => m.estado === 'completado').length
-  const resumen = financialData?.resumen
-  const servicios = (financialData?.cuentas ?? []).filter(c => c.origen === 'servicio').sort((a, b) => (b.saldo_pendiente ?? 0) - (a.saldo_pendiente ?? 0))
-  const serviciosEnDeuda = servicios.filter(s => s.saldo_pendiente > 0)
 
-  const estadoClasses: Record<string, string> = {
-    pendiente: 'bg-red-100 text-red-700',
-    abonado: 'bg-amber-100 text-amber-700',
-    pagado: 'bg-emerald-100 text-emerald-700',
-    anulado: 'bg-gray-100 text-gray-500',
-  }
+  const cursosActivos = matriculas.filter((m) => m.estado === "activo").length
+  const cursosCompletados = matriculas.filter((m) => m.estado === "completado").length
+  const resumen = financialData?.resumen
+  const totalAdeudado = resumen?.total_adeudado ?? 0
+  const porcentajePagado = resumen?.porcentaje_pagado ?? (totalAdeudado === 0 ? 100 : 0)
+  const totalCuentas = (resumen?.cuentas_pagadas ?? 0) + (resumen?.cuentas_abonadas ?? 0) + (resumen?.cuentas_pendientes ?? 0)
 
   return (
-    <div>
-      <div className="flex items-center gap-8 py-3 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Promedio General</span>
-          <div className="text-2xl font-black mt-0.5" style={{ color: COLORS.CHARCOAL }}>{academicLoading ? '—' : (promedioGeneral || '—')}</div>
-        </div>
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</span>
-          <div className="text-2xl font-black mt-0.5" style={{ color: asistenciaGeneral !== null && asistenciaGeneral < 70 ? "oklch(0.5 0.15 20)" : COLORS.CHARCOAL }}>
-            {academicLoading ? '—' : `${asistenciaGeneral ?? '—'}%`}
+    <div className="flex flex-col gap-6 w-full">
+      {/* 5-Card Academic Metrics Strip (de code.html líneas 369-425) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Metric 1: Promedio General */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider">
+              Promedio General
+            </span>
+            <HugeiconsIcon icon={Award01Icon} size={18} className="text-[#fd761a]" />
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-black text-slate-900 leading-tight">
+              {academicLoading ? "—" : promedioGeneral || "0.0"}
+            </div>
+            <span className="text-xs text-slate-400 font-medium">
+              {promedioGeneral ? "Promedio ponderado" : "Sin calificaciones aún"}
+            </span>
           </div>
         </div>
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Cursos Activos</span>
-          <div className="text-2xl font-black mt-0.5" style={{ color: COLORS.CHARCOAL }}>{academicLoading ? '—' : cursosActivos}</div>
+
+        {/* Metric 2: Asistencia Global */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider">
+              Asistencia Global
+            </span>
+            <HugeiconsIcon
+              icon={CalendarCheckIn01Icon}
+              size={18}
+              className={
+                asistenciaGeneral !== null && asistenciaGeneral >= 70
+                  ? "text-emerald-600"
+                  : "text-amber-600"
+              }
+            />
+          </div>
+          <div className="mt-2.5">
+            <div
+              className={`text-2xl font-black leading-tight ${
+                asistenciaGeneral !== null && asistenciaGeneral >= 70
+                  ? "text-emerald-700"
+                  : "text-amber-600"
+              }`}
+            >
+              {academicLoading ? "—" : `${asistenciaGeneral ?? 0}%`}
+            </div>
+            <span className="text-xs text-slate-500 font-medium">
+              {asistenciaGeneral !== null ? "Asistencia calculada" : "Sin registros"}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Completados</span>
-          <div className="text-2xl font-black mt-0.5" style={{ color: COLORS.CHARCOAL }}>{academicLoading ? '—' : cursosCompletados}</div>
+
+        {/* Metric 3: Cursos Activos */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider">
+              Cursos Activos
+            </span>
+            <HugeiconsIcon icon={Book02Icon} size={18} className="text-[#fd761a]" />
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-black text-slate-900 leading-tight">
+              {academicLoading ? "—" : cursosActivos}
+            </div>
+            <span className="text-xs text-emerald-700 font-semibold">En curso regular</span>
+          </div>
         </div>
-        <div className="ml-auto">
-          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Saldo Pendiente</span>
-          <div className="text-2xl font-black mt-0.5" style={{ color: (resumen?.total_adeudado ?? 0) > 0 ? "oklch(0.5 0.15 20)" : COLORS.TEXT_MUTED }}>
-            {financialLoading ? '—' : `$${(resumen?.total_adeudado ?? 0).toLocaleString()}`}
+
+        {/* Metric 4: Completados */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider">
+              Completados
+            </span>
+            <HugeiconsIcon icon={CheckmarkBadge01Icon} size={18} className="text-slate-400" />
+          </div>
+          <div className="mt-2.5">
+            <div className="text-2xl font-black text-slate-900 leading-tight">
+              {academicLoading ? "—" : cursosCompletados}
+            </div>
+            <span className="text-xs text-slate-400 font-medium">Histórico finalizado</span>
+          </div>
+        </div>
+
+        {/* Metric 5: Saldo Pendiente */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider">
+              Saldo Pendiente
+            </span>
+            <HugeiconsIcon
+              icon={Money01Icon}
+              size={18}
+              className={totalAdeudado > 0 ? "text-rose-600" : "text-emerald-600"}
+            />
+          </div>
+          <div className="mt-2.5">
+            <div
+              className={`text-2xl font-black leading-tight ${
+                totalAdeudado > 0 ? "text-rose-600" : "text-emerald-600"
+              }`}
+            >
+              {financialLoading ? "—" : `$${totalAdeudado.toFixed(2)}`}
+            </div>
+            <span
+              className={`text-xs font-semibold ${
+                totalAdeudado > 0 ? "text-rose-700" : "text-emerald-700"
+              }`}
+            >
+              {totalAdeudado === 0 ? "Totalmente al día" : "Saldo exigible"}
+            </span>
           </div>
         </div>
       </div>
 
-      {resumen && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
+      {/* Financial Summary Banner with Progress Bar (de code.html líneas 426-465) */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-100 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: COLORS.TEXT_MUTED }}>Finanzas</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span style={{ color: COLORS.TEXT_MUTED }}>Total General</span>
-                <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${resumen.total_general.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: COLORS.TEXT_MUTED }}>Total Pagado</span>
-                <span className="font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>${resumen.total_pagado.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: COLORS.TEXT_MUTED }}>Total Adeudado</span>
-                <span className="font-bold" style={{ color: resumen.total_adeudado > 0 ? "oklch(0.5 0.15 20)" : COLORS.TEXT_MUTED }}>
-                  ${resumen.total_adeudado.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: COLORS.TEXT_MUTED }}>Porcentaje Pagado</span>
-                <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>{resumen.porcentaje_pagado}%</span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden mt-2" style={{ backgroundColor: "oklch(0.93 0 0)" }}>
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${resumen.porcentaje_pagado}%`,
-                    backgroundColor: resumen.porcentaje_pagado >= 100 ? "oklch(0.55 0.15 150)" : "oklch(0.65 0.15 75)"
-                  }}
-                />
-              </div>
-              <div className="flex gap-4 text-xs mt-1">
-                <span className="font-bold" style={{ color: "oklch(0.5 0.15 20)" }}>{resumen.cuentas_pendientes} Pendientes</span>
-                <span className="font-bold" style={{ color: "oklch(0.65 0.15 75)" }}>{resumen.cuentas_abonadas} Abonadas</span>
-                <span className="font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>{resumen.cuentas_pagadas} Pagadas</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: COLORS.TEXT_MUTED }}>{esSoloTaller ? 'Talleres' : 'Cursos'} Recientes</h3>
-            {matriculas.length === 0 ? (
-              <p className="text-sm py-4" style={{ color: COLORS.TEXT_MUTED }}>Sin {esSoloTaller ? 'talleres' : 'cursos'} registrados.</p>
-            ) : (
-              <div className="space-y-2">
-                {matriculas.slice(0, 5).map((m) => (
-                  <div key={m.id} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <div className="min-w-0 flex-1 mr-4">
-                      <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{m.curso}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                        {new Date(m.fecha_inscripcion).toLocaleDateString('es-ES', { year: 'numeric', month: 'short' })}
-                        {m.promedio !== null && ` · Promedio ${m.promedio}`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{m.porcentaje_asistencia}% asis.</span>
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                        m.estado === 'activo' ? 'bg-emerald-100 text-emerald-700' :
-                        m.estado === 'completado' ? 'bg-blue-100 text-blue-700' :
-                        m.estado === 'retirado' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {m.estado}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {matriculas.length > 5 && (
-                  <p className="text-xs pt-1" style={{ color: COLORS.TEXT_MUTED }}>Y {matriculas.length - 5} {esSoloTaller ? 'talleres' : 'cursos'} mas. Ver pestaña Academico.</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {servicios.length > 0 && (
-        <div className="mt-8 border-t pt-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="flex items-center gap-3 mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-              Servicios ({servicios.length})
+            <h3 className="text-base font-bold text-slate-900">
+              Resumen de Liquidación Económica
             </h3>
-            {serviciosEnDeuda.length > 0 && (
-              <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                {serviciosEnDeuda.length} con deuda
-              </span>
-            )}
+            <p className="text-xs text-slate-500 mt-0.5">
+              Estado de pagos y obligaciones vinculadas al estudiante
+            </p>
           </div>
-          <div className="space-y-2">
-            {servicios.slice(0, 5).map((s) => (
-              <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div className="min-w-0 flex-1 mr-4">
-                  <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{s.concepto}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                    ${s.monto_total.toLocaleString()} · Saldo: ${s.saldo_pendiente.toLocaleString()}
-                  </p>
-                </div>
-                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${estadoClasses[s.estado] || 'bg-gray-100 text-gray-600'}`}>
-                  {s.estado}
-                </span>
-              </div>
-            ))}
-            {servicios.length > 5 && (
-              <p className="text-xs pt-1" style={{ color: COLORS.TEXT_MUTED }}>Y {servicios.length - 5} servicio{servicios.length - 5 !== 1 ? 's' : ''} más. Ver pestaña Financiero.</p>
-            )}
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto ${
+              porcentajePagado >= 100
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {porcentajePagado >= 100
+              ? "100% Pagado (Completado)"
+              : `${porcentajePagado}% Pagado`}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Costo Total
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+              ${(resumen?.total_general ?? 0).toFixed(2)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Total Pagado
+            </span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-600 mt-1">
+              ${(resumen?.total_pagado ?? 0).toFixed(2)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Total Adeudado
+            </span>
+            <span
+              className={`text-xl sm:text-2xl font-black mt-1 ${
+                totalAdeudado > 0 ? "text-rose-600" : "text-slate-400"
+              }`}
+            >
+              ${totalAdeudado.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Estado Actual
+            </span>
+            <span
+              className={`text-xl sm:text-2xl font-black mt-1 ${
+                totalAdeudado === 0 ? "text-emerald-700" : "text-amber-700"
+              }`}
+            >
+              {totalAdeudado === 0 ? "Solvente" : "Pendiente"}
+            </span>
           </div>
         </div>
-      )}
+
+        {/* Progress Bar */}
+        <div className="flex flex-col gap-1.5 mt-2">
+          <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                porcentajePagado >= 100 ? "bg-emerald-500" : "bg-[#fd761a]"
+              }`}
+              style={{ width: `${Math.min(porcentajePagado, 100)}%` }}
+            />
+          </div>
+          <div className="flex justify-between items-center text-xs text-slate-500">
+            <span>
+              Cuentas liquidadas: {resumen?.cuentas_pagadas ?? 0} de {totalCuentas || 1}
+            </span>
+            <span
+              className={
+                totalAdeudado === 0
+                  ? "font-semibold text-emerald-700"
+                  : "font-semibold text-rose-700"
+              }
+            >
+              {totalAdeudado === 0 ? "Sin saldos pendientes exigibles" : "Saldo pendiente por liquidar"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Cursos en Curso y Recientes Table (de code.html líneas 466-512) */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-100 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-900">Cursos en Curso y Recientes</h3>
+          {onSwitchToAcademic && (
+            <button
+              type="button"
+              onClick={onSwitchToAcademic}
+              className="text-[#fd761a] hover:underline text-xs font-semibold cursor-pointer"
+            >
+              Ver detalle completo
+            </button>
+          )}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 font-extrabold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-4 rounded-l-xl">Curso</th>
+                <th className="py-3 px-4">Modalidad</th>
+                <th className="py-3 px-4">Fecha Inicio</th>
+                <th className="py-3 px-4">Asistencia</th>
+                <th className="py-3 px-4 rounded-r-xl text-center">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {matriculas.length > 0 ? (
+                matriculas.map((m) => (
+                  <tr key={m.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-4 font-bold text-slate-900">
+                      {m.curso}
+                      <span className="block text-xs font-normal text-slate-400 font-mono">
+                        ID: #{m.id.slice(0, 8)}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                        Presencial
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">
+                      {formatDate(m.fecha_inscripcion)}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              m.porcentaje_asistencia >= 70 ? "bg-emerald-500" : "bg-amber-500"
+                            }`}
+                            style={{ width: `${Math.min(m.porcentaje_asistencia, 100)}%` }}
+                          />
+                        </div>
+                        <span
+                          className={`text-xs font-bold ${
+                            m.porcentaje_asistencia >= 70
+                              ? "text-emerald-700"
+                              : "text-amber-700"
+                          }`}
+                        >
+                          {m.porcentaje_asistencia}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                        Activo
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
+                    No hay cursos registrados para este estudiante.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

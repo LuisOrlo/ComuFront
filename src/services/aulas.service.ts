@@ -74,8 +74,9 @@ export const aulasService = {
   },
 
   // Reservas
-  getReservas: async (filters?: { aula_id?: string, fecha_inicio?: string, fecha_fin?: string }) => {
-    const { data } = await api.get<{ data: ReservaAula[] }>("/academic/servicios/reservas-aulas", { params: filters })
+  getReservas: async (filters?: { aula_id?: string, fecha_inicio?: string, fecha_fin?: string, fecha_desde?: string, fecha_hasta?: string, per_page?: number | string }) => {
+    const params = { per_page: "all", ...filters }
+    const { data } = await api.get<{ data: ReservaAula[] }>("/academic/servicios/reservas-aulas", { params })
     return data.data
   },
 

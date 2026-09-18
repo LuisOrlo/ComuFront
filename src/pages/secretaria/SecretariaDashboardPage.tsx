@@ -3,8 +3,6 @@ import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Wallet01Icon,
-  AddCircleIcon,
-  UserAdd01Icon,
   VideoIcon,
   Microphone,
   AiFolderIcon,
@@ -27,9 +25,7 @@ import {
 import { COLORS } from "@/lib/constants"
 import { formatDate } from "@/lib/utils"
 import { useSecretariaDashboardData } from "@/hooks/useSecretariaDashboardData"
-import { secretariaService } from "@/services/secretaria.service"
-import type { EventoAgenda, TareaPendiente, ReservaProxima, SolicitudPendienteItem, Alerta } from "@/services/secretaria.service"
-import { toast } from "sonner"
+import type { EventoAgenda, TareaPendiente, ReservaProxima, Alerta } from "@/services/secretaria.service"
 
 const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
@@ -156,54 +152,6 @@ function TareaCard({ tarea }: { tarea: TareaPendiente }) {
   )
 }
 
-function SolicitudCard({
-  item,
-  onAprobar,
-  onRechazar,
-}: {
-  item: SolicitudPendienteItem
-  onAprobar: (id: string) => void
-  onRechazar: (id: string) => void
-}) {
-  return (
-    <div className="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50/40 transition-colors">
-      <div className="flex-none flex items-center justify-center size-9 rounded-full text-xs font-semibold" style={{ backgroundColor: `${ACCENT}18`, color: ACCENT }}>
-        {item.solicitante.charAt(0)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate" style={{ color: CHARCOAL }}>{item.solicitante}</p>
-        <p className="text-xs mt-0.5" style={{ color: MUTED }}>{item.curso}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.tiene_comprobante ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-            {item.tiene_comprobante ? "Comprobante OK" : "Sin comprobante"}
-          </span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded ${item.tiene_cedula ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-            {item.tiene_cedula ? "Cédula OK" : "Sin cédula"}
-          </span>
-        </div>
-      </div>
-      <div className="flex-none flex items-center gap-1.5">
-        <button
-          onClick={() => onAprobar(item.id)}
-          className="inline-flex items-center justify-center size-7 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-          style={{ backgroundColor: "oklch(0.58 0.16 145 / 0.12)", color: "oklch(0.58 0.16 145)" }}
-          title="Aprobar"
-        >
-          <HugeiconsIcon icon={CheckmarkCircle02Icon} size={15} />
-        </button>
-        <button
-          onClick={() => onRechazar(item.id)}
-          className="inline-flex items-center justify-center size-7 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
-          style={{ backgroundColor: "oklch(0.55 0.18 15 / 0.1)", color: "oklch(0.55 0.18 15)" }}
-          title="Rechazar"
-        >
-          <HugeiconsIcon icon={CancelCircleIcon} size={15} />
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export function SecretariaDashboardPage() {
   const navigate = useNavigate()
   const { data, loading } = useSecretariaDashboardData()
@@ -230,26 +178,6 @@ export function SecretariaDashboardPage() {
   const totalEventosHoy = useMemo(() =>
     data?.agenda_hoy?.reduce((acc, g) => acc + g.total, 0) ?? 0,
   [data?.agenda_hoy])
-
-  const handleAprobar = async (id: string) => {
-    try {
-      await secretariaService.aprobarSolicitud(id)
-      toast.success("Solicitud aprobada exitosamente")
-      window.location.reload()
-    } catch {
-      toast.error("Error al aprobar la solicitud")
-    }
-  }
-
-  const handleRechazar = async (id: string) => {
-    try {
-      await secretariaService.rechazarSolicitud(id, { motivo_rechazo: "Rechazado desde dashboard" })
-      toast.success("Solicitud rechazada")
-      window.location.reload()
-    } catch {
-      toast.error("Error al rechazar la solicitud")
-    }
-  }
 
   if (loading) {
     return (
@@ -301,7 +229,6 @@ export function SecretariaDashboardPage() {
   const stats = [
     { icon: Wallet01Icon, label: "Pagos pendientes", value: data.pagos_pendientes_hoy, sub: "Por verificar hoy", color: "oklch(0.55 0.18 15)", path: "/finanzas/pagos" },
     { icon: UserGroupIcon, label: "Estudiantes activos", value: data.resumen_estudiantes.total_activos, sub: "Con matrícula activa", color: "oklch(0.58 0.16 145)", path: "/estudiantes" },
-    { icon: AddCircleIcon, label: "Solicitudes", value: data.solicitudes_pendientes.total, sub: "Pendientes de aprobar", color: "oklch(0.62 0.16 245)", path: "/secretaria/solicitudes" },
     { icon: CalendarIcon, label: "Eventos hoy", value: totalEventosHoy, sub: "En la agenda del día", color: ACCENT, path: "#" },
   ]
 
@@ -435,41 +362,6 @@ export function SecretariaDashboardPage() {
             </div>
           </article>
 
-          {/* Solicitudes pendientes */}
-          <article className="rounded-xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
-            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: BORDER }}>
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center size-8 rounded-lg" style={{ backgroundColor: `${ACCENT}15` }}>
-                  <HugeiconsIcon icon={UserAdd01Icon} size={16} style={{ color: ACCENT }} />
-                </div>
-                <h2 className="text-sm font-bold" style={{ color: CHARCOAL }}>Solicitudes pendientes</h2>
-              </div>
-              <button
-                onClick={() => navigate("/secretaria/solicitudes")}
-                className="flex items-center gap-1 text-xs font-semibold transition-all duration-200 hover:gap-1.5"
-                style={{ color: ACCENT }}
-              >
-                Ver todas <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
-              </button>
-            </div>
-            <div className="divide-y" style={{ borderColor: "oklch(0.9 0 0)" }}>
-              {data.solicitudes_pendientes.items.length === 0 ? (
-                <div className="px-5 py-10 text-center">
-                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={22} style={{ color: "oklch(0.8 0 0)" }} />
-                  <p className="text-sm mt-2" style={{ color: MUTED }}>Sin solicitudes pendientes</p>
-                </div>
-              ) : (
-                data.solicitudes_pendientes.items.slice(0, 5).map((item) => (
-                  <SolicitudCard
-                    key={item.id}
-                    item={item}
-                    onAprobar={handleAprobar}
-                    onRechazar={handleRechazar}
-                  />
-                ))
-              )}
-            </div>
-          </article>
         </section>
 
         {/* Grid secundario: Estudiantes + Reservas + Tareas */}

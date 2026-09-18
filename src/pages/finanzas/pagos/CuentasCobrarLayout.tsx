@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router"
 
 const SUB_TABS = [
   { label: "Cursos", path: "/finanzas/pagos/cuentas/cursos" },
+  { label: "Cursos personalizados", path: "/finanzas/pagos/cuentas/cursos-personalizados" },
   { label: "Talleres", path: "/finanzas/pagos/cuentas/talleres" },
   { label: "Servicios", path: "/finanzas/pagos/cuentas/servicios" },
 ]

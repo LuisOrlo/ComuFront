@@ -13,7 +13,7 @@ import { SearchIcon, Users } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import type { MatriculaDetallada } from "@/services/cursos.service"
 import { PaginationControls } from "@/components/table/PaginationControls"
-import { getEstudianteData, estadoBadge } from "./estudiantesHelpers"
+import { getEstudianteData } from "./estudiantesHelpers"
 
 const BORDER = COLORS.BORDER_SUBTLE
 const TEXT_MUTED = COLORS.TEXT_MUTED
@@ -24,6 +24,7 @@ interface EstudiantesTableProps {
   loading: boolean
   search: string
   onSearchChange: (v: string) => void
+  totalModulos: number
 }
 
 interface Row {
@@ -32,10 +33,11 @@ interface Row {
   apellidos: string
   cedula: string
   correo: string
-  estado: string
+  fechaInscripcion: string
+  progreso: number
 }
 
-function toRow(m: MatriculaDetallada): Row {
+function toRow(m: MatriculaDetallada, totalModulos: number): Row {
   const e = getEstudianteData(m)
   return {
     id: m.id,
@@ -43,14 +45,17 @@ function toRow(m: MatriculaDetallada): Row {
     apellidos: e?.apellidos || "",
     cedula: e?.cedula || "",
     correo: e?.correo || "",
-    estado: m.estado || "",
+    fechaInscripcion: m.fecha_inscripcion ? new Date(m.fecha_inscripcion).toLocaleDateString("es-EC") : "—",
+    progreso: totalModulos > 0
+      ? Math.round(((m.notas ?? []).filter((nota) => nota.aprobado).length / totalModulos) * 100)
+      : 0,
   }
 }
 
-export function EstudiantesTable({ matriculas, loading, search, onSearchChange }: EstudiantesTableProps) {
+export function EstudiantesTable({ matriculas, loading, search, onSearchChange, totalModulos }: EstudiantesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "apellidos", desc: false }])
 
-  const data = useMemo<Row[]>(() => matriculas.map(toRow), [matriculas])
+  const data = useMemo<Row[]>(() => matriculas.map((matricula) => toRow(matricula, totalModulos)), [matriculas, totalModulos])
 
   const columns = useMemo(
     () => [
@@ -87,19 +92,19 @@ export function EstudiantesTable({ matriculas, loading, search, onSearchChange }
           return <span className="truncate max-w-[220px] inline-block align-bottom">{v || "—"}</span>
         },
       },
+      { accessorKey: "fechaInscripcion", header: "Fecha matrícula" },
       {
-        accessorKey: "estado",
-        header: "Estado",
+        accessorKey: "progreso",
+        header: "Progreso",
         cell: ({ getValue }: { getValue: () => unknown }) => {
-          const v = getValue() as string
-          const badge = estadoBadge(v)
+          const value = getValue() as number
           return (
-            <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
-              style={{ backgroundColor: badge.bg, color: badge.text }}
-            >
-              {badge.label}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{value}%</span>
+              <div className="w-12 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "#e5eeff" }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.min(value, 100)}%`, backgroundColor: "#009668" }} />
+              </div>
+            </div>
           )
         },
       },
@@ -132,7 +137,8 @@ export function EstudiantesTable({ matriculas, loading, search, onSearchChange }
 
   return (
     <div className="space-y-3">
-      <div className="relative max-w-sm">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 bg-white p-2 rounded-xl shadow-sm">
+      <div className="relative w-full sm:w-80">
         <HugeiconsIcon
           icon={SearchIcon}
           className="absolute left-3 top-1/2 -translate-y-1/2"
@@ -143,10 +149,11 @@ export function EstudiantesTable({ matriculas, loading, search, onSearchChange }
           type="text"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Buscar estudiante..."
-          className="w-full pl-9 pr-4 py-2 rounded-xl border bg-white/70 text-sm outline-none transition-all focus:bg-white focus:ring-2"
-          style={{ borderColor: BORDER, color: COLORS.CHARCOAL }}
+          placeholder="Buscar por nombre, cédula o correo..."
+          className="w-full pl-9 pr-3 py-1.5 rounded-lg border-0 text-xs outline-none focus:ring-0 transition-colors focus:bg-[#e5eeff]"
+          style={{ backgroundColor: "#eff4ff", color: COLORS.CHARCOAL }}
         />
+      </div>
       </div>
 
       {data.length === 0 ? (

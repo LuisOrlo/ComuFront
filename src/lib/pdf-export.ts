@@ -1,6 +1,3 @@
-import html2canvas from 'html2canvas-pro'
-import jsPDF from 'jspdf'
-
 export interface PDFOptions {
   title?: string
   subtitle?: string
@@ -83,6 +80,10 @@ export const exportToPDF = async (
   document.head.appendChild(nowIndicatorStyle)
 
   try {
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas-pro'),
+      import('jspdf'),
+    ])
     const canvas = await html2canvas(element, {
       scale: 2,
       logging: false,

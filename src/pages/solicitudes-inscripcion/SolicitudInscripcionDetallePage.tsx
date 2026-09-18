@@ -178,6 +178,20 @@ export function SolicitudInscripcionDetallePage() {
                   Datos del Solicitante
                 </h2>
                 <div className="space-y-4">
+                  {solicitud.solicitante?.datos_declarados && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-xs font-semibold text-amber-800">Datos declarados en la solicitud</p>
+                      <p className="text-xs mt-1 text-amber-700">Comparar estos valores con el expediente antes de aceptar cambios.</p>
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        {Object.entries(solicitud.solicitante.datos_declarados).map(([campo, valor]) => (
+                          <div key={campo}>
+                            <p className="text-[10px] font-semibold uppercase text-amber-700">{campo.replaceAll("_", " ")}</p>
+                            <p className="text-sm text-amber-950">{valor === null || valor === "" ? "—" : String(valor)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>Nombres</p>

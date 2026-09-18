@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import { COLORS } from "@/lib/constants"
 import type { DistribucionCategoria } from "@/types/estadisticas"
 
-const CAT_COLORS = ["#16a34a", "#3b82f6", "#f97316", "#a855f7", "#eab308", "#06b6d4", "#ec4899", "#8b5cf6"]
+const CAT_COLORS = ["#16a34a", "#7c3aed", "#3b82f6", "#f97316", "#a855f7", "#eab308", "#06b6d4", "#ec4899"]
 
 interface Props {
   distribucion: DistribucionCategoria[]

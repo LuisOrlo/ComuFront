@@ -655,6 +655,12 @@ export function HistorialPage() {
 function getTipoPago(t: any): { tipo: string; color: string } {
   if (t.tipo_movimiento === "egreso") return { tipo: "Egreso", color: "bg-red-100 text-red-700" }
 
+  const cursoPersonalizado = t.es_personalizado === true
+    || t.categoria_nombre === "Cursos personalizados"
+    || t.cuenta_por_cobrar?.matricula?.curso_abierto?.es_personalizado === true
+    || t.cuenta_por_cobrar?.solicitud_inscripcion?.curso_abierto?.es_personalizado === true
+  if (cursoPersonalizado) return { tipo: "Curso personalizado", color: "bg-violet-100 text-violet-700" }
+
   const cp = t.cuenta_por_cobrar
   if (!cp) {
     if (t.modulo_nombre || t.linea_pago_modulo || t.curso_nombre) return { tipo: "Curso", color: "bg-blue-100 text-blue-700" }

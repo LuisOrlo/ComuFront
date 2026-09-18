@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Dialog } from "radix-ui"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons"
 import { estudiantesService } from "@/services/estudiantes.service"
-import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
+import { StudentForm, type StudentFormValues } from "./StudentForm"
+import { EMPTY_STUDENT_FORM } from "./studentForm.constants"
 
 interface EstudianteBusqueda {
   id: string
@@ -34,25 +35,6 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
   const [resultados, setResultados] = useState<EstudianteBusqueda[]>([])
 
   const [saving, setSaving] = useState(false)
-  const [ciudades, setCiudades] = useState<Ciudad[]>([])
-  const [form, setForm] = useState({
-    nombres: "",
-    apellidos: "",
-    cedula: "",
-    correo: "",
-    celular: "",
-    ciudad_id: "",
-    ocupacion: "",
-    direccion: "",
-    estado_civil: "",
-    edad: "",
-  })
-
-  useEffect(() => {
-    if (open) {
-      ciudadesService.getCiudadesTodas().then(setCiudades).catch(() => {})
-    }
-  }, [open])
 
   const resetAll = () => {
     setStep("buscar")
@@ -60,7 +42,6 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
     setSearchNombre("")
     setSearchCorreo("")
     setResultados([])
-    setForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "", ciudad_id: "",     ocupacion: "", direccion: "", estado_civil: "", edad: "" })
   }
 
   const handleBuscar = async () => {
@@ -90,9 +71,7 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
     toast.success("Estudiante existente seleccionado: " + e.nombres + " " + e.apellidos)
   }
 
-  const handleCreateNew = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.nombres.trim() || !form.apellidos.trim()) return
+  const handleCreateNew = async (form: StudentFormValues) => {
     setSaving(true)
     try {
       await estudiantesService.createEstudiante({
@@ -101,11 +80,15 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
         cedula: form.cedula || undefined,
         correo: form.correo || undefined,
         celular: form.celular || undefined,
-        ciudad_id: form.ciudad_id || undefined,
+        ciudad_id: form.ciudad_id ? Number(form.ciudad_id) : undefined,
+        ciudad: form.ciudad || undefined,
+        notas_internas: form.notas_internas || undefined,
         ocupacion: form.ocupacion || undefined,
         direccion: form.direccion || undefined,
         estado_civil: form.estado_civil || undefined,
         edad: form.edad ? Number(form.edad) : undefined,
+        nivel_educativo: form.nivel_educativo || undefined,
+        archivo_cedula: form.archivo_cedula || undefined,
       })
       toast.success("Estudiante registrado")
       onOpenChange(false)
@@ -139,7 +122,7 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
                 <Dialog.Description className="text-sm text-gray-500 mt-1">
                   {step === "buscar"
                     ? "Busca un estudiante existente por cédula, nombre o correo."
-                    : "Completa los datos para el registro academico."}
+                    : "Completa los datos del registro independiente."}
                 </Dialog.Description>
               </div>
               <Dialog.Close className="size-10 flex items-center justify-center rounded-2xl bg-white border shadow-sm hover:bg-red-50 hover:text-red-500 transition-all">
@@ -219,7 +202,7 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
             )}
 
             {step === "formulario" && (
-              <form onSubmit={handleCreateNew} className="p-8 space-y-5">
+              <div className="p-8">
                 <div className="text-right">
                   <button
                     type="button"
@@ -230,77 +213,8 @@ export function StudentCreateModal({ open, onOpenChange, onCreated }: StudentCre
                     ← Volver a buscar
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Nombres *</label>
-                    <input type="text" value={form.nombres} onChange={e => setForm({ ...form, nombres: e.target.value })} placeholder="Ej: Juan" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Apellidos *</label>
-                    <input type="text" value={form.apellidos} onChange={e => setForm({ ...form, apellidos: e.target.value })} placeholder="Ej: Perez" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" required />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Cédula / DNI</label>
-                    <input type="text" value={form.cedula} onChange={e => setForm({ ...form, cedula: e.target.value })} placeholder="Cédula o DNI" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Celular</label>
-                    <input type="text" value={form.celular} onChange={e => setForm({ ...form, celular: e.target.value })} placeholder="0999999999" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Correo Electronico</label>
-                  <input type="email" value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })} placeholder="correo@email.com" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
-                </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Ciudad</label>
-                    <select value={form.ciudad_id} onChange={e => setForm({ ...form, ciudad_id: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white">
-                      <option value="">Seleccionar...</option>
-                      {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Fecha Nacimiento</label>
-                    <input type="number" min="0" max="150" value={form.edad} onChange={e => setForm({ ...form, edad: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" placeholder="Edad" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Ocupacion</label>
-                    <input type="text" value={form.ocupacion} onChange={e => setForm({ ...form, ocupacion: e.target.value })} placeholder="Ej: Ingeniero" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Estado Civil</label>
-                    <select value={form.estado_civil} onChange={e => setForm({ ...form, estado_civil: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white">
-                      <option value="">Seleccionar...</option>
-                      <option value="soltero">Soltero</option>
-                      <option value="casado">Casado</option>
-                      <option value="divorciado">Divorciado</option>
-                      <option value="viudo">Viudo</option>
-                      <option value="union_libre">Union Libre</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Edad</label>
-                    <input type="number" min={0} max={150} value={form.edad} onChange={e => setForm({ ...form, edad: e.target.value })} placeholder="Ej: 25" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Direccion</label>
-                    <input type="text" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} placeholder="Direccion residencial" className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all" />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 pt-6 mt-4 border-t">
-                  <button type="button" onClick={() => setStep("buscar")} className="px-6 py-3 rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors">Cancelar</button>
-                  <button type="submit" disabled={saving} className="px-8 py-3 rounded-2xl text-sm font-black text-white transition-all active:scale-[0.98] shadow-lg disabled:opacity-60" style={{ backgroundColor: COLORS.ACCENT }}>
-                    {saving ? "Procesando..." : "Finalizar Registro"}
-                  </button>
-                </div>
-              </form>
+                <StudentForm initialValues={EMPTY_STUDENT_FORM} saving={saving} submitLabel="Finalizar registro" onSubmit={handleCreateNew} onCancel={() => setStep("buscar")} />
+              </div>
             )}
           </div>
         </Dialog.Content>

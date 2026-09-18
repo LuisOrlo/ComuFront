@@ -51,7 +51,7 @@ export function CursoGrid({ cursos, selectedId, search, onSearchChange, onSelect
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {cursos.map((curso) => (
             <CursoCardExpanded
               key={curso.id}

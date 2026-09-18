@@ -2,8 +2,7 @@
 import React from "react"
 import { createRoot } from "react-dom/client"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { jsPDF } from "jspdf"
-import html2canvas from "html2canvas-pro"
+import type { jsPDF as JsPdfDocument } from "jspdf"
 import { COLORS } from "@/lib/constants"
 
 const ACCENT = COLORS.ACCENT || "#7c3aed"
@@ -12,6 +11,7 @@ const ACCENT_RGB = hexToRgb(ACCENT)
 
 const CAT_COLORS: Record<string, string> = {
   "Cursos": "#059669", "Talleres": "#0891b2", "Podcast": "#4f46e5",
+  "Cursos personalizados": "#7c3aed",
   "Alquiler de Aulas": "#7c3aed", "Radio": "#a21caf", "Edición de Video": "#d97706",
   "Alquiler de Equipos": "#dc2626", "Streaming": "#0d9488",
   "Producción Audiovisual": "#65a30d", "Asesorías": "#ca8a04", "Otros": "#6b7280",
@@ -26,6 +26,13 @@ function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
 }
 
+function formatConcepto(item: any): string {
+  if (item.concepto && !/^\s*[—–-]?\s*0\s*$/.test(String(item.concepto))) {
+    return String(item.concepto)
+  }
+  return item.es_personalizado ? "Curso personalizado" : "—"
+}
+
 interface PDFOptions {
   includeChart: boolean
   chartType: string
@@ -33,7 +40,7 @@ interface PDFOptions {
   includeTable: boolean
 }
 
-function drawHeader(pdf: jsPDF, filtros: any) {
+function drawHeader(pdf: JsPdfDocument, filtros: any) {
   const [r, g, b] = ACCENT_RGB
   pdf.setFillColor(r, g, b)
   pdf.rect(0, 0, 210, 28, "F")
@@ -70,7 +77,7 @@ function drawHeader(pdf: jsPDF, filtros: any) {
   if (filtros.metodo_pago) pdf.text(`Método: ${filtros.metodo_pago}`, 130, 42)
 }
 
-function drawKPIBox(pdf: jsPDF, x: number, y: number, w: number, label: string, value: string, color: string, pct?: string) {
+function drawKPIBox(pdf: JsPdfDocument, x: number, y: number, w: number, label: string, value: string, color: string, pct?: string) {
   const [cr, cg, cb] = hexToRgb(color)
   pdf.setDrawColor(cr, cg, cb)
   pdf.setLineWidth(1.5)
@@ -100,6 +107,7 @@ async function captureChart(type: string, data: any[]): Promise<string | null> {
   let root: ReturnType<typeof createRoot> | null = null
 
   try {
+    const { default: html2canvas } = await import("html2canvas-pro")
     const PIE_COLORS = ["#059669", "#4f46e5", "#0891b2", "#d97706", "#dc2626"]
 
     root = createRoot(div)
@@ -135,6 +143,7 @@ export async function generarIngresosPDF(
   data: any[], totales: any, grafico: any[], graficoCategorias: any[],
   filtros: any, options: PDFOptions
 ) {
+  const { jsPDF } = await import("jspdf")
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
   let page = 1
 
@@ -207,7 +216,7 @@ export async function generarIngresosPDF(
 
       const rowData = [
         fmtDate(item.fecha_pago),
-        (item.concepto || "—").substring(0, 25),
+        formatConcepto(item).substring(0, 25),
         (item.estudiante_nombre || "—").substring(0, 25),
         item.categoria || "—",
         item.metodo_pago || "—",

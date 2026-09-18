@@ -5,11 +5,27 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AiFolderIcon,
   Cancel01Icon,
-  ArrowRight01Icon,
-  ArrowUp01Icon,
-  ArrowDown01Icon,
   LayersIcon,
 } from "@hugeicons/core-free-icons"
+import {
+  Mic,
+  School,
+  Camera,
+  Film,
+  Radio,
+  Tv,
+  Clapperboard,
+  GraduationCap,
+  UserCheck,
+  Layers,
+  ArrowRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+} from "lucide-react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -58,32 +74,105 @@ const TIPO_LABEL: Record<string, string> = {
   asesoria: "Asesoría",
 }
 
-const TIPO_BADGE: Record<string, string> = {
-  "Podcast": "bg-blue-50 text-blue-700",
-  "Aula": "bg-violet-50 text-violet-700",
-  "Equipo": "bg-amber-50 text-amber-700",
-  "Edición de Video": "bg-orange-50 text-orange-700",
-  "Radio": "bg-pink-50 text-pink-700",
-  "Streaming": "bg-teal-50 text-teal-700",
-  "Producción": "bg-lime-50 text-lime-700",
-  "Clase Extra": "bg-cyan-50 text-cyan-700",
-  "Asesoría": "bg-yellow-50 text-yellow-700",
+function getIniciales(nombre?: string | null) {
+  if (!nombre || nombre === "—") return "—"
+  const clean = nombre.trim()
+  const parts = clean.split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return clean.slice(0, 2).toUpperCase()
 }
 
-const TIPO_BADGE_FALLBACK = "bg-gray-50 text-gray-700"
+const SERVICIO_CONFIG: Record<
+  string,
+  {
+    bg: string
+    iconBg: string
+    iconColor: string
+    icon: any
+  }
+> = {
+  Podcast: {
+    bg: "bg-blue-50 text-blue-700 border-blue-200/60",
+    iconBg: "bg-blue-100/80 text-blue-600",
+    iconColor: "text-blue-600",
+    icon: Mic,
+  },
+  Aula: {
+    bg: "bg-violet-50 text-violet-700 border-violet-200/60",
+    iconBg: "bg-violet-100/80 text-violet-600",
+    iconColor: "text-violet-600",
+    icon: School,
+  },
+  Equipo: {
+    bg: "bg-amber-50 text-amber-700 border-amber-200/60",
+    iconBg: "bg-amber-100/80 text-amber-600",
+    iconColor: "text-amber-600",
+    icon: Camera,
+  },
+  "Edición de Video": {
+    bg: "bg-orange-50 text-orange-700 border-orange-200/60",
+    iconBg: "bg-orange-100/80 text-orange-600",
+    iconColor: "text-orange-600",
+    icon: Film,
+  },
+  Radio: {
+    bg: "bg-pink-50 text-pink-700 border-pink-200/60",
+    iconBg: "bg-pink-100/80 text-pink-600",
+    iconColor: "text-pink-600",
+    icon: Radio,
+  },
+  Streaming: {
+    bg: "bg-teal-50 text-teal-700 border-teal-200/60",
+    iconBg: "bg-teal-100/80 text-teal-600",
+    iconColor: "text-teal-600",
+    icon: Tv,
+  },
+  Producción: {
+    bg: "bg-lime-50 text-lime-800 border-lime-200/60",
+    iconBg: "bg-lime-100/80 text-lime-700",
+    iconColor: "text-lime-700",
+    icon: Clapperboard,
+  },
+  "Clase Extra": {
+    bg: "bg-cyan-50 text-cyan-700 border-cyan-200/60",
+    iconBg: "bg-cyan-100/80 text-cyan-600",
+    iconColor: "text-cyan-600",
+    icon: GraduationCap,
+  },
+  Asesoría: {
+    bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+    iconBg: "bg-emerald-100/80 text-emerald-600",
+    iconColor: "text-emerald-600",
+    icon: UserCheck,
+  },
+}
 
 type EstadoServicio = "pendiente" | "en_progreso" | "completado"
 
-const ESTADO_BADGE: Record<EstadoServicio, string> = {
-  pendiente: "bg-amber-50 text-amber-700",
-  en_progreso: "bg-blue-50 text-blue-700",
-  completado: "bg-green-50 text-green-700",
-}
-
-const ESTADO_LABEL: Record<EstadoServicio, string> = {
-  pendiente: "Pendiente",
-  en_progreso: "En progreso",
-  completado: "Completado",
+const ESTADO_CONFIG: Record<
+  EstadoServicio,
+  { bg: string; dot: string; icon: any; label: string }
+> = {
+  completado: {
+    bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+    dot: "bg-emerald-600",
+    icon: CheckCircle2,
+    label: "Completado",
+  },
+  en_progreso: {
+    bg: "bg-blue-50 text-blue-700 border-blue-200/80",
+    dot: "bg-blue-600",
+    icon: Clock,
+    label: "En progreso",
+  },
+  pendiente: {
+    bg: "bg-amber-50 text-amber-700 border-amber-200/80",
+    dot: "bg-amber-600",
+    icon: AlertCircle,
+    label: "Pendiente",
+  },
 }
 
 interface ServicioRow {
@@ -254,12 +343,29 @@ export function ServiciosCuentasPage() {
       header: "Servicio",
       cell: ({ row }) => {
         const r = row.original
+        const cfg = SERVICIO_CONFIG[r.tipo] || {
+          bg: "bg-slate-50 text-slate-700 border-slate-200/80",
+          iconBg: "bg-slate-100 text-slate-600",
+          iconColor: "text-slate-600",
+          icon: Layers,
+        }
+        const ServiceIcon = cfg.icon
+
         return (
-          <div className="flex items-center gap-2 min-w-0">
-            <span className={cn("inline-block text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap shrink-0", TIPO_BADGE[r.tipo] || TIPO_BADGE_FALLBACK)}>
-              {r.tipo}
-            </span>
-            <span className="text-xs font-medium truncate">{r.name}</span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs", cfg.iconBg)}>
+              <ServiceIcon className={cn("w-4 h-4", cfg.iconColor)} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-slate-900 truncate">
+                {r.name && r.name !== "—" ? r.name : r.tipo}
+              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase border", cfg.bg)}>
+                  {r.tipo}
+                </span>
+              </div>
+            </div>
           </div>
         )
       },
@@ -269,16 +375,37 @@ export function ServiciosCuentasPage() {
       id: "cliente",
       accessorFn: (r) => r.cliente.toLowerCase(),
       header: "Cliente",
-      cell: ({ row }) => (
-        <span className="text-xs font-medium truncate block max-w-[180px]">{row.original.cliente}</span>
-      ),
+      cell: ({ row }) => {
+        const r = row.original
+        const iniciales = getIniciales(r.cliente)
+        return (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60 font-bold text-[10px] flex items-center justify-center shrink-0">
+              {iniciales}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-semibold text-slate-800 truncate max-w-[200px]" title={r.cliente}>
+                {r.cliente}
+              </span>
+              <span className="text-[10px] text-slate-400">Titular</span>
+            </div>
+          </div>
+        )
+      },
       enableSorting: true,
     },
     {
       id: "total",
       accessorFn: (r) => r.total,
       header: "Total",
-      cell: ({ row }) => <span className="text-xs font-bold block text-right">${row.original.total.toLocaleString()}</span>,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <span className="text-xs font-bold text-slate-900 block">
+            ${Number(row.original.total || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium">USD</span>
+        </div>
+      ),
       enableSorting: true,
     },
     {
@@ -287,13 +414,28 @@ export function ServiciosCuentasPage() {
       header: "Saldo",
       cell: ({ row }) => {
         const r = row.original
+        const isCompletado = r.estado === "completado" || r.saldo <= 0
+        const pct = r.total > 0 ? Math.min(100, Math.round((r.cobrado / r.total) * 100)) : 0
         return (
-          <span
-            className="text-xs font-bold block text-right"
-            style={{ color: r.estado === "completado" ? CHARCOAL : "#dc2626" }}
-          >
-            ${r.saldo.toLocaleString()}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-baseline gap-1">
+              <span
+                className={cn(
+                  "text-xs font-extrabold",
+                  isCompletado ? "text-emerald-600" : "text-rose-600"
+                )}
+              >
+                ${Number(r.saldo || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">USD</span>
+            </div>
+            <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden flex" title={`${pct}% cobrado ($${Number(r.cobrado).toFixed(2)})`}>
+              <div
+                className={cn("h-full rounded-full transition-all", isCompletado ? "bg-emerald-500" : "bg-[#fd761a]")}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
         )
       },
       enableSorting: true,
@@ -304,10 +446,18 @@ export function ServiciosCuentasPage() {
       header: "Estado",
       cell: ({ row }) => {
         const est = row.original.estado
+        const cfg = ESTADO_CONFIG[est] || {
+          bg: "bg-slate-100 text-slate-700 border-slate-200",
+          dot: "bg-slate-500",
+          icon: Clock,
+          label: est,
+        }
+        const IconComponent = cfg.icon
         return (
-          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold", ESTADO_BADGE[est])}>
-            <span className="size-1.5 rounded-full bg-current" />
-            {ESTADO_LABEL[est]}
+          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap", cfg.bg)}>
+            <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
+            <IconComponent className="w-3 h-3" />
+            {cfg.label}
           </span>
         )
       },
@@ -326,11 +476,10 @@ export function ServiciosCuentasPage() {
                 state: { tipo: r.tipo, name: r.name, cliente: r.cliente, total: r.total, cobrado: r.cobrado, saldo: r.saldo, entry: r.entry },
               })
             }
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
-            style={{ color: ACCENT, backgroundColor: `${ACCENT}12` }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#fd761a] bg-orange-50 hover:bg-[#fd761a] hover:text-white transition-all shadow-2xs active:scale-95 whitespace-nowrap cursor-pointer group"
           >
-            Ver detalle
-            <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
+            <span>Ver detalle</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </button>
         )
       },
@@ -448,34 +597,44 @@ export function ServiciosCuentasPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border bg-white overflow-hidden"
-          style={{ borderColor: BORDER }}
+          className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-left [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
+            <table className="w-full text-left border-collapse">
               <thead>
                 {table.getHeaderGroups().map((hg) => (
-                  <tr key={hg.id} style={{ backgroundColor: "oklch(0.97 0 0)" }}>
+                  <tr key={hg.id} className="bg-slate-50/80 border-b border-slate-200/80">
                     {hg.headers.map((header) => {
                       const canSort = header.column.getCanSort()
                       const sorted = header.column.getIsSorted()
                       const alignRight = header.id === "total" || header.id === "saldo"
+                      const isCenter = header.id === "estado" || header.id === "acciones"
                       return (
                         <th
                           key={header.id}
                           onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                           className={cn(
-                            "px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40",
-                            canSort && "cursor-pointer hover:opacity-70 select-none"
+                            "px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-slate-500",
+                            canSort && "cursor-pointer hover:text-slate-800 select-none transition-colors"
                           )}
-                          style={{ color: CHARCOAL, textAlign: alignRight ? "right" : "left" }}
+                          style={{ textAlign: alignRight ? "right" : isCenter ? "center" : "left" }}
                         >
-                          <div className={cn("flex items-center gap-1", alignRight && "justify-end")}>
+                          <div
+                            className={cn(
+                              "flex items-center gap-1.5",
+                              alignRight ? "justify-end" : isCenter ? "justify-center" : "justify-start"
+                            )}
+                          >
                             <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                             {canSort && (
-                              <span className="inline-flex flex-col leading-none">
-                                <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sorted === "asc" ? "" : "opacity-40"} />
-                                <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sorted === "desc" ? "" : "opacity-40"} />
+                              <span className="inline-flex items-center text-slate-400">
+                                {sorted === "asc" ? (
+                                  <ArrowUp className="w-3 h-3 text-[#fd761a]" />
+                                ) : sorted === "desc" ? (
+                                  <ArrowDown className="w-3 h-3 text-[#fd761a]" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 opacity-40 hover:opacity-100" />
+                                )}
                               </span>
                             )}
                           </div>
@@ -485,32 +644,35 @@ export function ServiciosCuentasPage() {
                   </tr>
                 ))}
               </thead>
-              <tbody className="divide-y" style={{ borderColor: BORDER }}>
+              <tbody className="divide-y divide-slate-100">
                 {table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="transition-colors hover:bg-gray-50"
-                    style={{ backgroundColor: row.index % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}
+                    className="hover:bg-slate-50/70 transition-colors group"
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          "px-3",
-                          dense ? "py-1.5" : "py-3",
-                          (cell.column.id === "total" || cell.column.id === "saldo") && "text-right"
-                        )}
-                        style={{ color: CHARCOAL }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                      const alignRight = cell.column.id === "total" || cell.column.id === "saldo"
+                      const isCenter = cell.column.id === "estado" || cell.column.id === "acciones"
+                      return (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            "px-4",
+                            dense ? "py-2" : "py-3.5",
+                            alignRight && "text-right",
+                            isCenter && "text-center"
+                          )}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      )
+                    })}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
             <PaginationControls table={table} pageSizes={[10, 25, 50]} />
           </div>
         </motion.div>

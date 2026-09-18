@@ -1,26 +1,61 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react"
-import { motion } from "motion/react"
-import { HugeiconsIcon } from "@hugeicons/react"
+import { motion, AnimatePresence } from "motion/react"
 import {
-  ArrowLeft01Icon,
-  Money02Icon,
-  Calendar02Icon,
-  CheckmarkCircle02Icon,
-  Cancel01Icon,
-  Clock01Icon,
-  Download01Icon,
-  ImageIcon,
-  UserIcon,
-  Note01Icon,
-  Delete02Icon,
-} from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
+  ArrowLeft,
+  Printer,
+  Copy,
+  Check,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  CreditCard,
+  Receipt,
+  Calendar,
+  Layers,
+  FileText,
+  AlertCircle,
+  Info,
+  Camera,
+  Download,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  X,
+  Paperclip,
+  CheckCircle,
+} from "lucide-react"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
-import { useParams, useNavigate } from "react-router"
+import { useParams, useNavigate } from "react-router-dom"
+
+function getIniciales(nombre?: string | null) {
+  if (!nombre || nombre === "—") return "—"
+  const clean = nombre.trim()
+  const parts = clean.split(/\s+/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return clean.slice(0, 2).toUpperCase()
+}
+
+function formatFecha(fecha?: string | null) {
+  if (!fecha) return "—"
+  try {
+    const d = new Date(fecha)
+    return d.toLocaleDateString("es-EC", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  } catch {
+    return fecha
+  }
+}
 
 export function PagoDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -30,6 +65,11 @@ export function PagoDetallePage() {
   const [modalImage, setModalImage] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [copiedId, setCopiedId] = useState(false)
+
+  // Lightbox modal zoom and rotation states
+  const [zoomScale, setZoomScale] = useState(1)
+  const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
     const load = async () => {
@@ -46,23 +86,33 @@ export function PagoDetallePage() {
     load()
   }, [id])
 
-  const badgeEstado = (estado: string) => {
-    if (estado === "aprobado") return "bg-green-100 text-green-700"
-    if (estado === "rechazado") return "bg-red-100 text-red-700"
-    return "bg-amber-100 text-amber-700"
+  const handleCopyId = () => {
+    if (!id) return
+    navigator.clipboard.writeText(id)
+    setCopiedId(true)
+    toast.success("ID de transacción copiado al portapapeles")
+    setTimeout(() => setCopiedId(false), 2000)
   }
 
-  const estadoIcon = (estado: string) => {
-    if (estado === "aprobado") return CheckmarkCircle02Icon
-    if (estado === "rechazado") return Cancel01Icon
-    return Clock01Icon
+  const openLightbox = (url: string) => {
+    setZoomScale(1)
+    setRotation(0)
+    setModalImage(url)
   }
 
-  const estadoColor = (estado: string) => {
-    if (estado === "aprobado") return "oklch(0.55 0.15 150)"
-    if (estado === "rechazado") return "oklch(0.5 0.15 20)"
-    return "oklch(0.65 0.15 75)"
+  const closeLightbox = () => {
+    setModalImage(null)
+    setZoomScale(1)
+    setRotation(0)
   }
+
+  const zoomIn = () => setZoomScale((prev) => Math.min(prev + 0.25, 3))
+  const zoomOut = () => setZoomScale((prev) => Math.max(prev - 0.25, 0.5))
+  const resetZoom = () => {
+    setZoomScale(1)
+    setRotation(0)
+  }
+  const rotateRight = () => setRotation((prev) => (prev + 90) % 360)
 
   const getNombreEstudiante = () => {
     if (data?.estudiante_nombre) return data.estudiante_nombre
@@ -159,19 +209,21 @@ export function PagoDetallePage() {
     setDeleting(true)
     try {
       await financeService.deleteComprobante(id, "ingreso")
-      toast.success("Comprobante eliminado")
-      setData((prev: any) => prev ? { ...prev, comprobante_url: null, comprobante_purgado: true } : prev)
-    } catch { toast.error("Error al eliminar comprobante") }
-    finally { setDeleting(false) }
+      toast.success("Comprobante eliminado del almacenamiento")
+      setData((prev: any) => (prev ? { ...prev, comprobante_url: null, comprobante_purgado: true } : prev))
+    } catch {
+      toast.error("Error al eliminar comprobante")
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (loading) {
     return (
-      <div className="px-8 py-6">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-sm font-medium opacity-40" style={{ color: COLORS.CHARCOAL }}>
-            Cargando detalle...
-          </div>
+      <div className="w-full min-h-[500px] flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-[#fd761a] animate-spin" />
+          <p className="text-sm font-medium text-slate-500">Cargando detalle de pago...</p>
         </div>
       </div>
     )
@@ -179,245 +231,609 @@ export function PagoDetallePage() {
 
   if (!data) {
     return (
-      <div className="px-8 py-6">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-sm font-medium opacity-40" style={{ color: COLORS.CHARCOAL }}>
-            Transacción no encontrada
+      <div className="w-full min-h-[500px] flex items-center justify-center p-8">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 max-w-md text-center shadow-sm">
+          <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
+            <XCircle className="w-6 h-6" />
           </div>
+          <h2 className="text-base font-bold text-slate-900 mb-1">Transacción no encontrada</h2>
+          <p className="text-sm text-slate-500 mb-4">No se localizó el comprobante o registro financiero solicitado.</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+          >
+            Volver a pagos
+          </button>
         </div>
       </div>
     )
   }
 
+  const estado = data.estado_verificacion || "pendiente"
   const registradoPor = data?.registrado_por || "—"
   const verificadoPor = data?.verificado_por || "—"
+  const estudianteNombre = getNombreEstudiante()
+  const tipoLabel = getTipoLabel()
+  const cursoNombre = getCursoNombre()
+
+  const estadoConfig = {
+    aprobado: {
+      bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+      dot: "bg-emerald-600",
+      icon: CheckCircle2,
+      label: "Aprobado",
+      iconBox: "bg-emerald-500/10 text-emerald-600",
+    },
+    rechazado: {
+      bg: "bg-rose-50 text-rose-700 border-rose-200/80",
+      dot: "bg-rose-600",
+      icon: XCircle,
+      label: "Rechazado",
+      iconBox: "bg-rose-500/10 text-rose-600",
+    },
+    pendiente: {
+      bg: "bg-amber-50 text-amber-700 border-amber-200/80",
+      dot: "bg-amber-600",
+      icon: Clock,
+      label: "Pendiente",
+      iconBox: "bg-amber-500/10 text-amber-600",
+    },
+  }[estado as "aprobado" | "rechazado" | "pendiente"] || {
+    bg: "bg-slate-100 text-slate-700 border-slate-200",
+    dot: "bg-slate-500",
+    icon: Clock,
+    label: estado,
+    iconBox: "bg-slate-100 text-slate-600",
+  }
+
+  const StatusIcon = estadoConfig.icon
 
   return (
-    <div className="px-8 py-6">
-      
-
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
-        style={{ color: COLORS.CHARCOAL }}
-      >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver
-      </button>
-
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl space-y-6"
-      >
-        <div
-          className="rounded-2xl border bg-white p-8 flex items-center justify-between"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* Top Navigation Bar: Breadcrumbs & Action Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-[#fd761a] transition-colors group cursor-pointer"
         >
-          <div className="flex items-center gap-4">
-            <div
-              className="size-12 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: `${estadoColor(data.estado_verificacion)}20` }}
-            >
-              <HugeiconsIcon
-                icon={estadoIcon(data.estado_verificacion)}
-                size={24}
-                style={{ color: estadoColor(data.estado_verificacion) }}
-              />
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span>Volver a pagos y cobros</span>
+        </button>
+
+        <div className="flex items-center gap-2.5 self-start sm:self-center">
+          {/* Audit ID copy badge */}
+          <button
+            onClick={handleCopyId}
+            title="Copiar ID de transacción"
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors cursor-pointer group"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+            <span className="font-mono tracking-tight font-medium">
+              {id?.slice(0, 8).toUpperCase()}...
+            </span>
+            {copiedId ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700" />
+            )}
+          </button>
+
+          {/* Print voucher proof */}
+          <button
+            onClick={() => window.print()}
+            type="button"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm border border-slate-200/80 transition-colors cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden sm:inline">Imprimir constancia</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Page Title & Operational Header */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Pagos y Cobros
+          </h1>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+            Liquidación de cuota
+          </span>
+        </div>
+        <p className="text-sm text-slate-500">
+          Detalle de comprobante y liquidación de cuota registrada en el sistema.
+        </p>
+      </div>
+
+      {/* Payment Hero Summary Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6"
+      >
+        <div className="flex items-start gap-4">
+          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm", estadoConfig.iconBox)}>
+            <StatusIcon className="w-6 h-6" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                ${Number(data.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                <span className="text-lg font-normal text-slate-500">USD</span>
+              </span>
+              <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border", estadoConfig.bg)}>
+                <span className={cn("w-1.5 h-1.5 rounded-full", estadoConfig.dot)} />
+                {estadoConfig.label}
+              </span>
             </div>
-            <div>
-              <p className="text-3xl font-black" style={{ color: COLORS.CHARCOAL }}>
-                ${Number(data.monto || 0).toLocaleString()}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm font-bold capitalize" style={{ color: COLORS.CHARCOAL }}>
-                  {data.metodo_pago}
+            <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+              <span className="font-semibold text-slate-700">
+                Pago #{id?.slice(0, 8).toUpperCase()}
+              </span>
+              <span>•</span>
+              <span className="inline-flex items-center gap-1 capitalize font-medium text-slate-700">
+                <CreditCard className="w-3.5 h-3.5 text-[#fd761a]" />
+                {data.metodo_pago}
+              </span>
+              {data.tiene_multiples_modulos && (
+                <>
+                  <span>•</span>
+                  <span className="px-2 py-0.5 rounded bg-orange-50 text-[#fd761a] font-semibold text-[11px]">
+                    Pago múltiple ({data.modulos?.length || 2} módulos)
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Metadata Strip */}
+        <div className="flex flex-wrap md:flex-col items-start md:items-end justify-between gap-2.5 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-[11px] font-bold shrink-0">
+              {getIniciales(registradoPor)}
+            </div>
+            <div className="flex flex-col text-left md:text-right">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Registrado por:
+              </span>
+              <span className="text-xs font-semibold text-slate-800 leading-none">
+                {registradoPor}{" "}
+                <span className="text-slate-400 font-normal">
+                  • {formatFecha(data.fecha_pago || data.created_at)}
                 </span>
-                <span className="size-1 rounded-full bg-current opacity-30" />
-                <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full", badgeEstado(data.estado_verificacion))}>
-                  {data.estado_verificacion}
+              </span>
+            </div>
+          </div>
+
+          {registradoPor !== verificadoPor && (
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 text-[11px] font-bold shrink-0">
+                {getIniciales(verificadoPor)}
+              </div>
+              <div className="flex flex-col text-left md:text-right">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Verificado por:
+                </span>
+                <span className="text-xs font-semibold text-slate-800 leading-none">
+                  {data.estado_verificacion === "pendiente" ? "Pendiente" : verificadoPor}{" "}
+                  {data.fecha_verificacion && (
+                    <span className="text-slate-400 font-normal">
+                      • {formatFecha(data.fecha_verificacion)}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
+          )}
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <Paperclip className="w-3.5 h-3.5 text-[#fd761a]" />
+            <span>
+              {data.comprobante_purgado
+                ? "Comprobante purgado"
+                : data.comprobante_url
+                ? "Comprobante digital adjunto"
+                : "Sin comprobante digital"}
+            </span>
+            <span
+              className={cn(
+                "inline-block w-1.5 h-1.5 rounded-full ml-0.5",
+                data.comprobante_url && !data.comprobante_purgado
+                  ? "bg-[#fd761a]"
+                  : "bg-slate-300"
+              )}
+            />
           </div>
-          <div className="text-right shrink-0 ml-6">
-            {registradoPor === verificadoPor ? (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
-                  Registrado y verificado por
-                </p>
-                <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{registradoPor}</p>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
-                    Registrado por
-                  </p>
-                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{registradoPor}</p>
+        </div>
+      </motion.div>
+
+      {/* Main Grid: Section 1 (Payment Details) & Section 2 (Voucher Preview) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Payment Details Data Sheet (5 cols) */}
+        <div className="lg:col-span-5 flex flex-col gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-[#fd761a]" />
+                <h2 className="text-base font-bold text-slate-900">
+                  Información del pago
+                </h2>
+              </div>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                {data.estado_verificacion === "aprobado" ? "Cotejado" : "En auditoría"}
+              </span>
+            </div>
+
+            {/* Key-Value Specifications */}
+            <div className="space-y-4 text-sm">
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
+                  Fecha de pago
+                </span>
+                <div className="flex items-center gap-2 text-slate-900 font-medium">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span>{formatFecha(data.fecha_pago || data.created_at)}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
+                  Método de pago
+                </span>
+                <div className="flex items-center gap-2 text-slate-900 font-medium capitalize">
+                  <CreditCard className="w-4 h-4 text-slate-400" />
+                  <span>{data.metodo_pago}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Estudiante / Titular
+                </span>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="w-9 h-9 rounded-full bg-orange-100 text-[#fd761a] font-bold flex items-center justify-center text-xs shrink-0">
+                    {getIniciales(estudianteNombre)}
+                  </div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-semibold text-slate-900 truncate">
+                      {estudianteNombre}
+                    </span>
+                    
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  {tipoLabel}
+                </span>
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-900 text-sm truncate">
+                      {cursoNombre}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-[#fd761a] tracking-wide uppercase shrink-0">
+                      {tipoLabel}
+                    </span>
+                  </div>
+                  {data.modulo_nombre && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                      <Layers className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Módulo: {data.modulo_nombre}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Multiple modules breakdown if applicable */}
+              {data.tiene_multiples_modulos && data.modulos?.length > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Desglose de módulos cubiertos
+                  </span>
+                  <div className="space-y-1.5">
+                    {data.modulos.map((mod: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 border border-slate-100"
+                      >
+                        <span className="font-medium text-slate-700 truncate mr-2">
+                          {mod.modulo_nombre}
+                        </span>
+                        <span className="font-bold text-slate-900 shrink-0">
+                          ${Number(mod.monto || 0).toFixed(2)} USD
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Observations if available */}
+              {data.observaciones && (
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Observaciones
+                  </span>
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700 font-normal leading-relaxed">
+                    {data.observaciones}
+                  </div>
+                </div>
+              )}
+
+              {/* Rejection notice if rejected */}
+              {data.motivo_rechazo && (
+                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200/80 flex items-start gap-2.5 text-rose-700">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <span className="font-bold block uppercase tracking-wider mb-0.5">
+                      Motivo de rechazo:
+                    </span>
+                    <span>{data.motivo_rechazo}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Verification note card */}
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-start gap-3 text-slate-600">
+            <Info className="w-5 h-5 text-[#fd761a] shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed">
+              La transacción fue procesada a través del módulo de finanzas y asociada al expediente contable del estudiante.
+            </p>
+          </div>
+        </div>
+
+        {/* Right Column: Section 2 - Comprobante de pago (7 cols) */}
+        <div className="lg:col-span-7 flex flex-col gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col gap-4">
+            {/* Header and Action Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-[#fd761a]" />
+                  <h2 className="text-base font-bold text-slate-900">
+                    Comprobante de pago
+                  </h2>
+                </div>
+                
+              </div>
+
+              {/* Header Action CTAs */}
+              {data.comprobante_url && !data.comprobante_purgado && (
+                <div className="flex items-center gap-2 self-start sm:self-center">
+                  <a
+                    href={getStorageUrl(data.comprobante_url)}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:bg-[#e06512] text-white font-semibold text-xs transition-colors shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar</span>
+                  </a>
+                  <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    disabled={deleting}
+                    title="Eliminar solo el archivo adjunto"
+                    type="button"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-600 font-semibold text-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Eliminar adjunto</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Dedicated Receipt Preview Container */}
+            {data.comprobante_purgado ? (
+              <div className="w-full bg-rose-50/50 rounded-xl p-8 border border-rose-200/80 flex flex-col items-center justify-center text-center gap-3 min-h-[380px]">
+                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shadow-sm">
+                  <Trash2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
-                    Verificado por
+                  <h3 className="text-sm font-bold text-rose-900 mb-1">
+                    Comprobante eliminado del almacenamiento
+                  </h3>
+                  <p className="text-xs text-rose-700/80 max-w-sm">
+                    El archivo digital fue depurado. El registro histórico y financiero se conserva íntegramente como constancia de auditoría.
                   </p>
-                  <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                    {data.estado_verificacion === "pendiente" ? "Pendiente" : verificadoPor}
+                </div>
+              </div>
+            ) : data.comprobante_url ? (
+              <div className="flex flex-col gap-3">
+                <div
+                  className="relative group w-full bg-slate-50 rounded-xl p-6 flex flex-col items-center justify-center overflow-hidden min-h-[440px] border border-slate-100 cursor-pointer"
+                  onClick={() => openLightbox(getStorageUrl(data.comprobante_url))}
+                >
+                  {/* Subtle decorative dot pattern */}
+                  <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                  {/* Receipt Photo Card */}
+                  <div className="relative transition-transform duration-200 group-hover:scale-[1.01]">
+                    <img
+                      src={getStorageUrl(data.comprobante_url)}
+                      alt="Comprobante de pago"
+                      className="w-auto max-w-[280px] sm:max-w-[340px] max-h-[460px] object-contain rounded-lg shadow-md group-hover:shadow-xl transition-shadow bg-white"
+                    />
+
+                    {/* Hover Overlay with Zoom Button */}
+                    <div className="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 backdrop-blur-[1px] rounded-lg transition-opacity flex items-center justify-center">
+                      <span className="px-4 py-2 rounded-full bg-white text-slate-900 font-semibold text-xs shadow-lg flex items-center gap-1.5">
+                        <ZoomIn className="w-4 h-4 text-[#fd761a]" />
+                        Ver comprobante en detalle
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Under-preview notification badge */}
+                  <div className="mt-4 flex items-center gap-1.5 text-slate-500 text-xs bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Comprobante registrado. Haz clic sobre la imagen para inspeccionar en alta resolución.</span>
+                  </div>
+                </div>
+
+               
+              </div>
+            ) : (
+              <div className="w-full bg-slate-50 rounded-xl p-8 border border-slate-100 flex flex-col items-center justify-center text-center gap-3 min-h-[380px]">
+                <div className="w-12 h-12 rounded-full bg-slate-200/60 text-slate-400 flex items-center justify-center">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 mb-1">
+                    Sin comprobante digital adjunto
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-sm">
+                    Esta transacción fue liquidada directamente o en efectivo, por lo cual no requiere comprobante adjunto.
                   </p>
                 </div>
               </div>
             )}
           </div>
         </div>
+      </div>
 
-        <div
-          className="rounded-2xl border bg-white p-6 space-y-4"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-        >
-          <h3 className="text-sm font-black uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>
-            Información General
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <DetailRow icon={Calendar02Icon} label="Fecha de Pago" value={new Date(data.fecha_pago || data.created_at).toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })} />
-            <DetailRow icon={Money02Icon} label="Método" value={data.metodo_pago} capitalize />
-            <DetailRow icon={UserIcon} label="Estudiante" value={getNombreEstudiante()} />
-            <DetailRow icon={UserIcon} label={getTipoLabel()} value={getCursoNombre()} />
-          </div>
-
-          {data.observaciones && (
-            <DetailRow icon={Note01Icon} label="Observaciones" value={data.observaciones} />
-          )}
-          {data.motivo_rechazo && (
-            <DetailRow icon={Cancel01Icon} label="Motivo de Rechazo" value={data.motivo_rechazo} error />
-          )}
-        </div>
-
-        {data.comprobante_purgado ? (
+      {/* Interactive Lightbox Modal for Full Receipt Inspection (from code.html) */}
+      <AnimatePresence>
+        {modalImage && (
           <div
-            className="rounded-2xl border bg-white p-6"
-            style={{ borderColor: COLORS.BORDER_SUBTLE }}
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
+            onClick={closeLightbox}
           >
-            <h3 className="text-sm font-black uppercase tracking-wider opacity-40 flex items-center gap-2 mb-4" style={{ color: COLORS.CHARCOAL }}>
-              <HugeiconsIcon icon={ImageIcon} size={16} />
-              Comprobante de Pago
-            </h3>
-            <div className="p-4 rounded-xl border bg-red-50/50 text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-red-200 bg-white">
-                <HugeiconsIcon icon={ImageIcon} size={14} style={{ color: "oklch(0.5 0.15 20)" }} />
-                <span className="text-xs font-bold text-red-500">Comprobante eliminado del almacenamiento</span>
-              </div>
-              <p className="text-[10px] opacity-50 mt-2">El registro histórico se conserva como constancia</p>
-            </div>
-          </div>
-        ) : data.comprobante_url ? (
-          <div
-            className="rounded-2xl border bg-white p-6"
-            style={{ borderColor: COLORS.BORDER_SUBTLE }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black uppercase tracking-wider opacity-40 flex items-center gap-2" style={{ color: COLORS.CHARCOAL }}>
-                <HugeiconsIcon icon={ImageIcon} size={16} />
-                Comprobante de Pago
-              </h3>
-              <div className="flex items-center gap-2">
-                <a
-                  href={data.comprobante_url}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                  style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}15` }}
-                >
-                  <HugeiconsIcon icon={Download01Icon} size={14} />
-                  Descargar
-                </a>
-                <button
-                  onClick={() => setDeleteModalOpen(true)}
-                  disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                >
-                  <HugeiconsIcon icon={Delete02Icon} size={14} />
-                  {deleting ? "Eliminando..." : "Eliminar"}
-                </button>
-              </div>
-            </div>
-            <div
-              className="rounded-xl border overflow-hidden cursor-pointer relative group"
-              style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              onClick={() => setModalImage(getStorageUrl(data.comprobante_url))}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
             >
-              <img
-                src={getStorageUrl(data.comprobante_url)}
-                alt="Comprobante de pago"
-                className="w-full max-h-[400px] object-contain bg-gray-50 group-hover:opacity-80 transition-opacity"
-              />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
-                <span className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-white/90 shadow-lg" style={{ color: COLORS.CHARCOAL }}>
-                  <HugeiconsIcon icon={ImageIcon} size={14} />
-                  Ver completo
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </motion.div>
+              {/* Modal Header */}
+              <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100 bg-white shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-orange-50 text-[#fd761a] flex items-center justify-center">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Visor de Comprobante en Alta Resolución
+                    </h3>
+                    
+                  </div>
+                </div>
 
-      {modalImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
-          onClick={() => setModalImage(null)}
-        >
-          <div className="relative flex items-center justify-center p-6" style={{ maxWidth: "min(90vw, 1200px)", maxHeight: "90vh" }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setModalImage(null); }}
-              className="absolute -top-8 right-0 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors"
-            >
-              Cerrar [X]
-            </button>
-            <img
-              src={modalImage}
-              alt="Comprobante"
-              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl"
-            />
+                {/* Zoom and inspection controls */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={zoomIn}
+                      title="Acercar"
+                      className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-700 transition-colors cursor-pointer"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={zoomOut}
+                      title="Alejar"
+                      className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-700 transition-colors cursor-pointer"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetZoom}
+                      title="Ajuste original (100%)"
+                      className="px-2 h-7 flex items-center justify-center rounded hover:bg-white text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      {Math.round(zoomScale * 100)}%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={rotateRight}
+                      title="Girar 90°"
+                      className="w-7 h-7 flex items-center justify-center rounded hover:bg-white text-slate-700 transition-colors cursor-pointer"
+                    >
+                      <RotateCw className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closeLightbox}
+                    aria-label="Cerrar modal"
+                    className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors ml-1 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Image Viewport with Pan/Zoom Canvas */}
+              <div className="flex-1 bg-slate-100/70 overflow-auto p-4 sm:p-8 flex items-center justify-center relative select-none min-h-[350px]">
+                <div
+                  className="transition-transform duration-150 ease-out origin-center inline-block"
+                  style={{
+                    transform: `scale(${zoomScale}) rotate(${rotation}deg)`,
+                  }}
+                >
+                  <img
+                    src={modalImage}
+                    alt="Comprobante en detalle"
+                    className="max-h-[65vh] w-auto object-contain rounded shadow-lg bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3.5 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 shrink-0">
+                <div className="flex items-center gap-2 text-slate-500 text-xs">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  <span>Documento verificado y resguardado en el campus</span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={closeLightbox}
+                    className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    Cerrar vista previa
+                  </button>
+                  <a
+                    href={modalImage}
+                    download={`comprobante_${id?.slice(0, 8)}.jpg`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar archivo</span>
+                  </a>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
+      {/* Delete voucher confirmation modal */}
       <ConfirmationModal
         isOpen={deleteModalOpen}
         title="Eliminar comprobante"
-        message="¿Eliminar la imagen del comprobante del almacenamiento? El registro histórico se conservará como constancia."
-        confirmText="Eliminar"
+        message="¿Deseas eliminar la imagen del comprobante del almacenamiento? El registro histórico y financiero se conservará intacto como constancia de auditoría."
+        confirmText="Eliminar adjunto"
         cancelText="Cancelar"
         isLoading={deleting}
         icon="danger"
         onConfirm={handleDeleteComprobante}
         onCancel={() => setDeleteModalOpen(false)}
       />
-    </div>
-  )
-}
-
-function DetailRow({ icon: Icon, label, value, capitalize, error }: {
-  icon: any
-  label: string
-  value: string
-  capitalize?: boolean
-  error?: boolean
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <HugeiconsIcon icon={Icon} size={16} className="shrink-0 mt-0.5" style={{ color: error ? "oklch(0.5 0.15 20)" : COLORS.TEXT_MUTED }} />
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>
-          {label}
-        </p>
-        <p
-          className={cn("text-sm font-bold", capitalize && "capitalize")}
-          style={{ color: error ? "oklch(0.5 0.15 20)" : COLORS.CHARCOAL }}
-        >
-          {value}
-        </p>
-      </div>
     </div>
   )
 }

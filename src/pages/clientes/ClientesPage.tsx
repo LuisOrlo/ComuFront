@@ -32,33 +32,37 @@ export function ClientesPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50/30">
-      <header className="shrink-0 px-8 py-8 border-b bg-white/80 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="text-4xl font-bold tracking-tighter leading-none" style={{ color: COLORS.CHARCOAL }}>
-              Clientes
-            </h1>
-            <p className="text-sm opacity-50 mt-1">Registro de clientes de servicios</p>
-          </div>
+    <div className="flex min-h-full flex-col overflow-y-auto bg-[#f8f9ff] text-[#0b1c30]">
+      <header className="sticky top-0 z-20 shrink-0 border-b bg-white/95 px-4 py-4 shadow-[0_1px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        <div className="mx-auto flex max-w-7xl flex-col gap-4">
+          
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: COLORS.CHARCOAL }}>Clientes</h1>
+                <span className="hidden rounded-full bg-[#e5eeff] px-2.5 py-1 text-[11px] font-semibold text-[#45464d] sm:inline">Directorio</span>
+              </div>
+             
+            </div>
           <button
             onClick={() => navigate("/clientes/nuevo")}
-            className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.97] shadow-xl shadow-emerald-500/20"
-            style={{ backgroundColor: "oklch(0.55 0.18 160)" }}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
+            style={{ backgroundColor: COLORS.ACCENT }}
           >
             <Plus size={18} strokeWidth={2.5} color="white" />
             Nuevo Cliente
           </button>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 p-6 lg:p-8">
-        <div className="bg-white rounded-xl border shadow-2xl shadow-black/5 flex flex-col min-h-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-4 p-4 sm:p-6 lg:p-8">
           <ClientesFilters search={search} onSearchChange={handleSearch} />
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-3">
-              <Loader2 size={32} className="animate-spin" style={{ color: COLORS.ACCENT }} />
-              <p className="text-sm font-medium opacity-50">Cargando clientes...</p>
+            <div className="flex flex-col items-center justify-center gap-3 py-24">
+              <Loader2 size={30} className="animate-spin" style={{ color: COLORS.ACCENT }} />
+              <p className="text-sm font-medium text-[#73747b]">Cargando clientes...</p>
             </div>
           ) : (
             <ClientesTable
@@ -69,7 +73,7 @@ export function ClientesPage() {
             />
           )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

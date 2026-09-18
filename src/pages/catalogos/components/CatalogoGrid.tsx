@@ -27,8 +27,9 @@ export function CatalogoGrid({
   isAdmin,
 }: CatalogoGridProps) {
   return (
-    <div className="space-y-3">
-      <div className="relative max-w-sm">
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between bg-white p-2 rounded-xl shadow-sm">
+      <div className="relative flex-1 max-w-md">
         <HugeiconsIcon
           icon={SearchIcon}
           className="absolute left-3 top-1/2 -translate-y-1/2"
@@ -40,9 +41,10 @@ export function CatalogoGrid({
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Buscar catálogo..."
-          className="w-full pl-9 pr-4 py-2 rounded-xl border bg-white/70 text-sm outline-none transition-all focus:bg-white focus:ring-2"
-          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
+          className="w-full pl-9 pr-4 py-2 rounded-lg border-0 text-sm outline-none transition-colors focus:ring-0"
+          style={{ backgroundColor: "#eff4ff", color: COLORS.CHARCOAL }}
         />
+      </div>
       </div>
 
       {catalogos.length === 0 ? (
@@ -53,7 +55,7 @@ export function CatalogoGrid({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {catalogos.map((cat) => (
             <CatalogoCard
               key={cat.id}

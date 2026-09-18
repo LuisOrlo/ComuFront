@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons"
 import { Dialog } from "radix-ui"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
@@ -17,7 +17,7 @@ interface IconPickerModalProps {
 const normalize = (value: string) =>
   value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
-const CATEGORIES = ["Todas", ...Array.from(new Set(CATALOG_ICONS.map((i) => i.category)))]
+const CATEGORIES = ["Todas", ...Array.from(new Set(CATALOG_ICONS.map((item) => item.category)))]
 
 function IconCard({ option, isSelected, catalogColor, onSelect }: {
   option: CatalogIconOption
@@ -29,21 +29,18 @@ function IconCard({ option, isSelected, catalogColor, onSelect }: {
     <button
       type="button"
       onClick={() => onSelect(option.name)}
-      className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all hover:shadow-md active:scale-95"
+      className={cn(
+        "p-3 rounded-xl flex flex-col items-center justify-center gap-1 min-w-0 hover:bg-[#e5eeff]",
+        isSelected && "ring-2"
+      )}
       style={{
-        borderColor: isSelected ? catalogColor : COLORS.BORDER_SUBTLE,
-        backgroundColor: isSelected ? `color-mix(in srgb, ${catalogColor} 12%, transparent)` : "transparent",
+        backgroundColor: isSelected ? `color-mix(in srgb, ${catalogColor} 16%, white)` : undefined,
+        color: isSelected ? catalogColor : COLORS.CHARCOAL,
+        ["--tw-ring-color" as string]: isSelected ? catalogColor : "transparent",
       }}
     >
-      <HugeiconsIcon
-        icon={option.icon}
-        size={28}
-        style={{ color: isSelected ? catalogColor : "oklch(0.55 0.01 0)" }}
-      />
-      <span
-        className="text-[10px] font-medium text-center leading-tight line-clamp-2"
-        style={{ color: isSelected ? catalogColor : COLORS.TEXT_MUTED }}
-      >
+      <HugeiconsIcon icon={option.icon} size={28} />
+      <span className="text-[10px] font-medium text-center leading-tight truncate max-w-full" style={{ color: isSelected ? catalogColor : COLORS.CHARCOAL }}>
         {option.label}
       </span>
     </button>
@@ -64,13 +61,12 @@ export function IconPickerModal({ open, onOpenChange, selectedIcon, catalogColor
   }, [open, selectedIcon])
 
   const query = normalize(search.trim())
-  const filtered = CATALOG_ICONS.filter((opt) => {
-    const matchesCategory = activeCategory === "Todas" || opt.category === activeCategory
-    const matchesSearch = !query
-      || normalize(opt.label).includes(query)
-      || normalize(opt.name).includes(query)
+  const filtered = CATALOG_ICONS.filter((option) => {
+    const matchesCategory = activeCategory === "Todas" || option.category === activeCategory
+    const matchesSearch = !query || normalize(option.label).includes(query) || normalize(option.name).includes(query)
     return matchesCategory && matchesSearch
   })
+  const pendingOption = pendingIcon ? CATALOG_ICONS.find((option) => option.name === pendingIcon) : undefined
 
   const handleApply = () => {
     if (!pendingIcon) return
@@ -81,99 +77,79 @@ export function IconPickerModal({ open, onOpenChange, selectedIcon, catalogColor
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-[2rem] w-full max-w-2xl p-0 z-50 shadow-2xl max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between px-8 py-6 border-b bg-gray-50/50 shrink-0">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-xl max-h-[85vh] bg-white rounded-xl shadow-xl overflow-hidden flex flex-col">
+          <div className="p-5 sm:p-6 border-b flex items-start justify-between gap-4 shrink-0" style={{ borderColor: "rgba(118,119,125,.3)" }}>
             <div>
-              <Dialog.Title className="text-xl font-black text-gray-900">Seleccionar ícono</Dialog.Title>
-              <Dialog.Description className="text-sm text-gray-500 mt-1">
-                Busca y elige el ícono representativo del catálogo.
+              <Dialog.Title className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Seleccionar ícono</Dialog.Title>
+              <Dialog.Description className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>
+                Elige el glifo visual que mejor represente la disciplina de este catálogo.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
-              <button className="size-10 flex items-center justify-center rounded-2xl bg-white border shadow-sm hover:bg-red-50 hover:text-red-500 transition-all">
-                <HugeiconsIcon icon={Cancel01Icon} size={18} />
+              <button type="button" className="size-8 rounded-lg flex items-center justify-center hover:bg-[#e5eeff]" aria-label="Cerrar selección de ícono">
+                <HugeiconsIcon icon={Cancel01Icon} size={19} style={{ color: COLORS.TEXT_MUTED }} />
               </button>
             </Dialog.Close>
           </div>
 
-          <div className="p-6 space-y-5 overflow-y-auto">
+          <div className="p-4 bg-[#eff4ff] flex flex-col gap-3 shrink-0">
             <div className="relative">
-              <HugeiconsIcon
-                icon={Search01Icon}
-                size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-              />
+              <HugeiconsIcon icon={Search01Icon} size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: COLORS.TEXT_MUTED }} />
               <input
                 type="text"
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
+                onChange={(event) => {
+                  setSearch(event.target.value)
                   setActiveCategory("Todas")
                 }}
-                placeholder="Buscar por nombre (ej: cámara, video, radio)"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border bg-gray-50/50 text-sm outline-none transition-all focus:bg-white focus:ring-4 focus:ring-tomato/5"
-                style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                placeholder="Buscar por nombre o palabra clave..."
+                className="w-full h-10 pl-10 pr-3 rounded-lg bg-white text-sm outline-none focus:ring-2"
+                style={{ color: COLORS.CHARCOAL, border: "1px solid transparent" }}
               />
             </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-              {CATEGORIES.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setActiveCategory(category)}
-                  className={cn(
-                    "shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-all active:scale-95",
-                    activeCategory === category
-                      ? "text-white shadow-sm"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  )}
-                  style={activeCategory === category ? { backgroundColor: catalogColor } : undefined}
-                >
-                  {category}
-                </button>
-              ))}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {CATEGORIES.map((category) => {
+                const active = activeCategory === category
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveCategory(category)}
+                    className={cn("px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap", active ? "bg-white shadow-sm" : "hover:bg-white/70")}
+                    style={{ color: active ? catalogColor : COLORS.TEXT_MUTED }}
+                  >
+                    {category}
+                  </button>
+                )
+              })}
             </div>
+          </div>
 
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1">
             {filtered.length > 0 ? (
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                 {filtered.map((option) => (
-                  <IconCard
-                    key={option.name}
-                    option={option}
-                    isSelected={pendingIcon === option.name}
-                    catalogColor={catalogColor}
-                    onSelect={setPendingIcon}
-                  />
+                  <IconCard key={option.name} option={option} isSelected={pendingIcon === option.name} catalogColor={catalogColor} onSelect={setPendingIcon} />
                 ))}
               </div>
             ) : (
-              <p className="text-center text-sm py-10" style={{ color: COLORS.TEXT_MUTED }}>
-                Sin resultados para &quot;{search}&quot;
-              </p>
+              <p className="text-center text-sm py-10" style={{ color: COLORS.TEXT_MUTED }}>Sin resultados para &quot;{search}&quot;</p>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 px-8 py-5 border-t bg-gray-50/50 shrink-0">
-            <Dialog.Close asChild>
-              <button
-                type="button"
-                className="px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
-                style={{ color: COLORS.CHARCOAL }}
-              >
-                Cancelar
+          <div className="p-4 bg-[#eff4ff] border-t flex items-center justify-between gap-3 shrink-0" style={{ borderColor: "rgba(118,119,125,.3)" }}>
+            <span className="text-xs truncate" style={{ color: COLORS.TEXT_MUTED }}>
+              Ícono actual: <strong className="font-mono" style={{ color: COLORS.CHARCOAL }}>{pendingOption?.name || "ninguno"}</strong>
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <Dialog.Close asChild>
+                <button type="button" className="px-3 py-2 rounded-lg text-xs font-semibold hover:bg-white" style={{ color: COLORS.CHARCOAL }}>Cancelar</button>
+              </Dialog.Close>
+              <button type="button" onClick={handleApply} disabled={!pendingIcon} className="px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110" style={{ backgroundColor: catalogColor }}>
+                Aplicar selección
               </button>
-            </Dialog.Close>
-            <button
-              type="button"
-              onClick={handleApply}
-              disabled={!pendingIcon}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-50"
-              style={{ backgroundColor: COLORS.ACCENT }}
-            >
-              Aplicar
-            </button>
+            </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

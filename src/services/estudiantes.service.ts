@@ -62,6 +62,7 @@ export interface AcademicProfile {
     fecha_inscripcion: string
     porcentaje_asistencia: number
     promedio: number | null
+    total_modulos?: number
     notas: Array<{
       modulo: string
       calificacion: number
@@ -180,6 +181,8 @@ export interface FinancialProfile {
 
 export interface StudentStats {
   total_estudiantes: number
+  nuevos_este_mes?: number
+  pagos_pendientes_count?: number
   por_ciudad: Array<{ ciudad: string; total: number }>
   matriculas_por_estado: Record<string, number>
   promedio_general: number
@@ -298,14 +301,20 @@ export const estudiantesService = {
     correo?: string
     celular?: string
     ciudad_id?: number | string
+    ciudad?: string
     notas_internas?: string
     ocupacion?: string
     direccion?: string
     estado_civil?: string
     edad?: number
     nivel_educativo?: string
+    archivo_cedula?: File
   }): Promise<Estudiante> {
-    const response = await api.post("/personas/estudiantes", data)
+    const payload = new FormData()
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") payload.append(key, value instanceof File ? value : String(value))
+    })
+    const response = await apiMultipart.post("/personas/estudiantes", payload)
     return response.data.datos
   },
 
@@ -412,11 +421,26 @@ export const estudiantesService = {
     ids?: string[]
     buscar?: string
     estado_pago?: string
+    ciudad?: string
   }): Promise<Blob> {
     const response = await api.post("/personas/estudiantes/exportar", params, {
       responseType: "blob"
     })
     return response.data
+  },
+
+  async getExportData(params: {
+    campos?: string[]
+    ids?: string[]
+    buscar?: string
+    estado_pago?: string
+    ciudad?: string
+  }): Promise<Record<string, unknown>[]> {
+    const response = await api.post("/personas/estudiantes/exportar", {
+      formato: "json",
+      ...params,
+    })
+    return response.data.datos || []
   },
 
   async deleteArchivoCedula(personaId: string) {

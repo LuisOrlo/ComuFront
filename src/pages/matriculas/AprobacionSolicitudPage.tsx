@@ -3,10 +3,18 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useParams, useNavigate, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  CheckmarkCircle04Icon, Cancel01Icon, ArrowLeft01Icon, ArrowLeft02Icon, ArrowRight02Icon,
-  UserIcon, BookOpenIcon, PaymentIcon, Image01Icon, DashboardSquareIcon,
+  CheckmarkCircle04Icon,
+  Cancel01Icon,
+  ArrowLeft01Icon,
+  ArrowLeft02Icon,
+  ArrowRight02Icon,
+  UserIcon,
+  BookOpenIcon,
+  PaymentIcon,
+  Image01Icon,
+  DashboardSquareIcon,
+  Alert02Icon,
 } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
 import { cursosService, type CursoAbierto } from "@/services/cursos.service"
 import { type PagoPreAprobacionRef } from "./PagoPreAprobacionSection"
 import { validarImagen } from "./AprobacionUtils"
@@ -19,6 +27,7 @@ import { SolicitudCursoTab } from "./components/solicitudes/SolicitudCursoTab"
 import { SolicitudPagoTab } from "./components/solicitudes/SolicitudPagoTab"
 import { SolicitudDocumentoTab } from "./components/solicitudes/SolicitudDocumentoTab"
 import { ModalReconciliacionCurso } from "./components/ModalReconciliacionCurso"
+import { CiudadBadge, ModalidadBadge } from "../estudiantes/components/Badges"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
@@ -99,8 +108,7 @@ export function AprobacionSolicitudPage() {
   const [reconciliando, setReconciliando] = useState(false)
   const [nuevosModulos, setNuevosModulos] = useState<any[]>([])
   const [nuevoCursoNombre, setNuevoCursoNombre] = useState("")
-  const montoInscripcion =
-    Number(selected?.lineas_pago?.inscripcion?.monto_ajustado) || 0
+  const montoInscripcion = Number(selected?.lineas_pago?.inscripcion?.monto_ajustado) || 0
 
   useEffect(() => {
     if (!modalReconciliacionOpen || !cursoIdPropuesto) return
@@ -111,7 +119,7 @@ export function AprobacionSolicitudPage() {
         if (precioInscripcion > 0) {
           rawModulos.push({
             id: null,
-            nombre_modulo: "Inscripci\u00f3n / Matr\u00edcula",
+            nombre_modulo: "Inscripción / Matrícula",
             tipo: "inscripcion",
             precio_base: precioInscripcion,
           })
@@ -152,11 +160,13 @@ export function AprobacionSolicitudPage() {
   }, [id, filtros])
 
   const navigateTo = useCallback(async (targetId: string) => {
-    // Navegación real: garantiza que todas las acciones usen el id visible.
     navigate(`/matriculas/aprobacion/solicitud/${targetId}${searchStr}`, { replace: true })
   }, [navigate, searchStr])
 
-  useEffect(() => { fetchDetail(); fetchAdjacent() }, [fetchDetail, fetchAdjacent])
+  useEffect(() => {
+    fetchDetail()
+    fetchAdjacent()
+  }, [fetchDetail, fetchAdjacent])
 
   const loadCursosAbiertos = useCallback(async () => {
     try {
@@ -174,7 +184,7 @@ export function AprobacionSolicitudPage() {
   }, [cursosAbiertosList, searchCursoQuery])
 
   const cursoInicio = selected?.curso?.fechas?.inicio?.split("T")[0] || "—"
-  const cursoPrecio = selected?.curso?.precio_base || 0
+  const cursoPrecio = Number(selected?.curso?.precio_base || 0)
   const cursoModalidad = selected?.curso?.modalidad ? selected.curso.modalidad.charAt(0).toUpperCase() + selected.curso.modalidad.slice(1) : "—"
   const cursoCatalogo = selected?.curso?.nombre_catalogo || "—"
   const cursoDocente = selected?.curso?.docente?.nombre || "—"
@@ -254,17 +264,46 @@ export function AprobacionSolicitudPage() {
   const cancelEditPago = () => { setEditPagoField(null); setEditPagoVal("") }
 
   const saveEditPago = async () => {
-    if (!id || editPagoField !== "fecha_pago_declarada" || !editPagoVal) return
+    if (!id || !editPagoField || !editPagoVal) return
     setSavingPagoEdit(true)
     try {
-      await cursosService.actualizarPago(id, { fecha_pago_declarada: editPagoVal })
-      setSelected((prev: any) => prev ? { ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, fecha_pago_declarada: editPagoVal } } } : prev)
-      toast.success("Fecha de pago actualizada")
-      setEditPagoField(null); setEditPagoVal("")
+      if (editPagoField === "fecha_pago_declarada") {
+        await cursosService.actualizarPago(id, { fecha_pago_declarada: editPagoVal })
+        setSelected((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                pago: {
+                  ...prev.pago,
+                  comprobante: { ...prev.pago?.comprobante, fecha_pago_declarada: editPagoVal },
+                },
+              }
+            : prev
+        )
+        toast.success("Fecha de pago actualizada")
+      } else if (editPagoField === "tipo_pago" || editPagoField === "tipo_comprobante") {
+        await cursosService.actualizarPago(id, { tipo_comprobante: editPagoVal })
+        setSelected((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                pago: {
+                  ...prev.pago,
+                  comprobante: { ...prev.pago?.comprobante, tipo: editPagoVal },
+                },
+              }
+            : prev
+        )
+        toast.success("Tipo de pago actualizado")
+      }
+      setEditPagoField(null)
+      setEditPagoVal("")
       fetchDetail()
     } catch (err) {
-      toast.error((err as any)?.response?.data?.mensaje || "Error al guardar fecha")
-    } finally { setSavingPagoEdit(false) }
+      toast.error((err as any)?.response?.data?.mensaje || "Error al guardar datos de pago")
+    } finally {
+      setSavingPagoEdit(false)
+    }
   }
 
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,7 +315,7 @@ export function AprobacionSolicitudPage() {
     try {
       const res = await cursosService.uploadSolicitudArchivo(id, "cedula", file)
       setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, cedula_url: res.data?.cedula_url || res.cedula_url } } }))
-      toast.success("Cédula subida")
+      toast.success("Cédula subida correctamente")
     } catch { toast.error("Error al subir cédula") }
     finally { setUploadingCedula(false) }
   }
@@ -290,7 +329,7 @@ export function AprobacionSolicitudPage() {
     try {
       const res = await cursosService.uploadSolicitudArchivo(id, "comprobante", file)
       setSelected((prev: any) => ({ ...prev, pago: { ...prev.pago, comprobante: { ...prev.pago?.comprobante, url: res.data?.comprobante_url || res.comprobante_url } } }))
-      toast.success("Comprobante subido")
+      toast.success("Comprobante subido correctamente")
     } catch { toast.error("Error al subir comprobante") }
     finally { setUploadingComprobante(false) }
   }
@@ -319,19 +358,23 @@ export function AprobacionSolicitudPage() {
     finally { setDeletingCedula(false) }
   }
 
-  const handleApprove = async (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => {
+  const handleApprove = async (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string }) => {
     if (!id) return
     setActionLoading(true)
     try {
       const payload: Record<string, unknown> = { pagos, metodo_pago: metodoPago }
-      if (inscripcion && inscripcion.total > 0) { payload.precio_inscripcion = inscripcion.total; payload.inscripcion_cubierta = inscripcion.cubierto }
+      if (inscripcion && inscripcion.total > 0) {
+        payload.precio_inscripcion = inscripcion.total
+        payload.inscripcion_cubierta = inscripcion.cubierto
+        if (inscripcion.motivo_ajuste) payload.motivo_ajuste = inscripcion.motivo_ajuste
+      }
       await cursosService.aprobarSolicitudInscripcion(id, payload)
       setSelected((prev: any) => prev ? { ...prev, estado: { valor: "matricula_creada", descripcion: "Matrícula creada" } } : prev)
       setActionLoading(false)
       toast.success("Matrícula aprobada exitosamente")
       queryClient.invalidateQueries({ queryKey: ["solicitudes-inscripcion"] })
       queryClient.invalidateQueries({ queryKey: ["notifications"] })
-      navigate("/matriculas?tab=cursos&status=aprobados")
+      navigate(`/matriculas?tab=${selected?.curso?.es_personalizado ? "personalizados" : "cursos"}&status=aprobados`)
     } catch (err) {
       setActionLoading(false)
       toast.error((err as any)?.response?.data?.mensaje || "Error al aprobar")
@@ -388,7 +431,6 @@ export function AprobacionSolicitudPage() {
     setEditPreciosValues(prev => ({ ...prev, [lineaId]: nuevoPrecio }))
     setEditMotivosValues(prev => ({ ...prev, [lineaId]: motivo }))
 
-    // Si el monto abonado actual excede el nuevo precio, ajustarlo automáticamente
     const precioNum = parseFloat(nuevoPrecio) || 0
     setEditMontosValues(prev => {
       const abonadoActual = parseFloat(prev[lineaId] || "0")
@@ -447,91 +489,124 @@ export function AprobacionSolicitudPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
-        <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="max-w-[900px] mx-auto px-6 py-6">
-            <div className="flex items-center gap-3">
-              <button onClick={() => navigate("/matriculas")} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors">
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={18} style={{ color: COLORS.CHARCOAL }} />
-              </button>
-              <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Detalle de Solicitud</h1>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Cargando...</p>
-        </div>
+      <div className="min-h-[100dvh] flex flex-col bg-[#f8fafc] items-center justify-center p-6">
+        <div className="w-10 h-10 rounded-full border-3 border-[#fd761a] border-t-transparent animate-spin mb-3" />
+        <p className="text-xs font-semibold text-slate-500">Cargando expediente de la solicitud...</p>
       </div>
     )
   }
 
   if (!selected) {
     return (
-      <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
-        <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="max-w-[900px] mx-auto px-6 py-6">
-            <button onClick={() => navigate("/matriculas")} className="flex items-center gap-2 text-sm font-medium" style={{ color: COLORS.ACCENT }}>
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />Volver
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>No se encontró la solicitud</p>
-        </div>
+      <div className="min-h-[100dvh] flex flex-col bg-[#f8fafc] items-center justify-center p-6 text-center">
+        <HugeiconsIcon icon={Alert02Icon} size={36} className="text-rose-500 mb-2" />
+        <h2 className="text-lg font-bold text-slate-900">No se encontró la solicitud</h2>
+        <p className="text-xs text-slate-500 mt-1 max-w-sm">
+          Es posible que la solicitud haya sido eliminada o ya no esté disponible.
+        </p>
+        <button
+          onClick={() => navigate("/matriculas")}
+          className="mt-4 px-4 py-2 rounded-xl bg-[#fd761a] text-white text-xs font-bold shadow-sm"
+        >
+          Volver a la bandeja
+        </button>
       </div>
     )
   }
 
   const estadoValor = selected?.estado?.valor
   const yaProcesada = estadoValor === "matricula_creada" || estadoValor === "aprobado" || estadoValor === "rechazado" || estadoValor === "cancelado"
+  const isAprobado = estadoValor === "matricula_creada" || estadoValor === "aprobado"
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
-      <div className="bg-white border-b shrink-0" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-[900px] mx-auto px-6 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <button onClick={() => navigate(`/matriculas${searchStr}`)} className="p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors">
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={18} style={{ color: COLORS.CHARCOAL }} />
-              </button>
-              <div>
-                <h1 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>
+    <div className="min-h-[100dvh] flex flex-col bg-[#f8fafc] text-slate-900 antialiased selection:bg-[#fd761a] selection:text-white">
+      {/* 1. Header & Adjacent Navigation (Design from code.html) */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate(`/matriculas${searchStr}`)}
+              className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
+              title="Volver a la bandeja"
+              type="button"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
                   {selected.solicitante?.datos?.nombres || "—"} {selected.solicitante?.datos?.apellidos || ""}
                 </h1>
-                <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>{getCursoNombre()}</p>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                  isAprobado
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : estadoValor === "rechazado" || estadoValor === "cancelado"
+                      ? "bg-rose-50 text-rose-700 border border-rose-200"
+                      : "bg-amber-50 text-amber-700 border border-amber-200/70"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    isAprobado
+                      ? "bg-emerald-500"
+                      : estadoValor === "rechazado" || estadoValor === "cancelado"
+                        ? "bg-rose-500"
+                        : "bg-amber-500"
+                  }`} />
+                  {isAprobado
+                    ? "Aprobada"
+                    : estadoValor === "rechazado" || estadoValor === "cancelado"
+                      ? "Rechazada"
+                      : "Pendiente"}
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-              <span className="font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
-                Solicitud {adjacent.position} de {adjacent.total}
-              </span>
-              <div className="flex gap-1">
-                <button onClick={() => adjacent.prev_id && navigateTo(adjacent.prev_id)} disabled={!adjacent.prev_id}
-                  className="size-7 flex items-center justify-center rounded-lg border hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <HugeiconsIcon icon={ArrowLeft02Icon} size={14} style={{ color: COLORS.CHARCOAL }} />
-                </button>
-                <button onClick={() => adjacent.next_id && navigateTo(adjacent.next_id)} disabled={!adjacent.next_id}
-                  className="size-7 flex items-center justify-center rounded-lg border hover:bg-gray-100 disabled:opacity-30 transition-colors"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <HugeiconsIcon icon={ArrowRight02Icon} size={14} style={{ color: COLORS.CHARCOAL }} />
-                </button>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">{getCursoNombre()}</span>
+                <span>•</span>
+                <CiudadBadge ciudad={cursoCiudad} />
+                <ModalidadBadge modalidad={cursoModalidad} />
               </div>
             </div>
           </div>
+
+          {/* Adjacent Pagination controls */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+              <span className="text-xs font-semibold text-slate-600 px-2 whitespace-nowrap">
+                Solicitud {adjacent.position} de {adjacent.total || 1}
+              </span>
+              <button
+                onClick={() => adjacent.prev_id && navigateTo(adjacent.prev_id)}
+                disabled={!adjacent.prev_id}
+                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                title="Solicitud anterior"
+                type="button"
+              >
+                <HugeiconsIcon icon={ArrowLeft02Icon} size={15} />
+              </button>
+              <button
+                onClick={() => adjacent.next_id && navigateTo(adjacent.next_id)}
+                disabled={!adjacent.next_id}
+                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                title="Siguiente solicitud"
+                type="button"
+              >
+                <HugeiconsIcon icon={ArrowRight02Icon} size={15} />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
 
       {adjacent.stale && (
-        <div className="bg-amber-50 border-b" style={{ borderColor: "oklch(0.85 0.12 80)" }}>
-          <div className="max-w-[900px] mx-auto px-6 py-3 flex items-center justify-between">
-            <span className="text-sm font-medium" style={{ color: "oklch(0.5 0.1 70)" }}>
-              Esta solicitud ya fue procesada — Estado: <span className="font-bold capitalize">{adjacent.stale_estado?.replace(/_/g, " ") || "—"}</span>
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between text-xs sm:text-sm text-amber-900 font-medium">
+            <span>
+              Esta solicitud ya fue procesada anteriormente — Estado: <strong className="capitalize">{adjacent.stale_estado?.replace(/_/g, " ") || "—"}</strong>
             </span>
             {adjacent.first_id && (
-              <button onClick={() => navigateTo(adjacent.first_id!)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors hover:bg-amber-100"
-                style={{ borderColor: "oklch(0.85 0.12 80)", color: "oklch(0.5 0.1 70)" }}>
+              <button
+                onClick={() => navigateTo(adjacent.first_id!)}
+                className="px-3 py-1 rounded-lg text-xs font-bold border border-amber-300 bg-white hover:bg-amber-100 transition-colors cursor-pointer"
+              >
                 Ir a siguiente pendiente
               </button>
             )}
@@ -539,107 +614,232 @@ export function AprobacionSolicitudPage() {
         </div>
       )}
 
-      <div className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-[900px] mx-auto px-6">
-          <div role="tablist" aria-label="Secciones de la solicitud" className="flex gap-1 overflow-x-auto scrollbar-hide">
-            {TABS.map(tab => (
-              <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-3 sm:px-4 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap shrink-0"
-                style={{ borderColor: activeTab === tab.id ? COLORS.ACCENT : "transparent", color: activeTab === tab.id ? COLORS.CHARCOAL : COLORS.TEXT_MUTED }}>
-                <HugeiconsIcon icon={tab.icon} size={14} /><span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </div>
+      {/* 2. Sticky Persistent Tabs Bar */}
+      <aside className="sticky top-[61px] z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav aria-label="Pestañas de solicitud" className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar pt-1">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  type="button"
+                  className={`relative flex items-center gap-2 py-3 px-3.5 text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer border-b-2 font-bold ${
+                    isActive
+                      ? "text-[#fd761a] border-[#fd761a]"
+                      : "text-slate-500 hover:text-slate-900 border-transparent font-semibold"
+                  }`}
+                >
+                  <HugeiconsIcon icon={tab.icon} size={17} />
+                  <span>{tab.label}</span>
+                  {tab.id === "pago" && !isAprobado && (
+                    <span className="w-2 h-2 rounded-full bg-[#fd761a]" />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
         </div>
-      </div>
+      </aside>
 
-      <div className="flex-1 max-w-[900px] mx-auto w-full px-6 py-6">
-          <div role="tabpanel" className="bg-white rounded-2xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <div className="p-6">
-              {activeTab === "resumen" && (
-                <SolicitudResumenTab selected={selected} getCursoNombre={getCursoNombre}
-                  setExpandedImageUrl={setExpandedImageUrl} cursoCatalogo={cursoCatalogo}
-                  cursoPrecio={cursoPrecio} cursoModalidad={cursoModalidad} cursoCiudad={cursoCiudad} cursoHorario={cursoHorario} />
-              )}
-              {activeTab === "estudiante" && (
-                <SolicitudEstudianteTab selected={selected} editField={editField} editVal={editVal}
-                  startEdit={startEdit} setEditVal={setEditVal} saveEdit={saveEdit} cancelEdit={cancelEdit} savingEdit={savingEdit} />
-              )}
-              {activeTab === "curso" && (
-                <SolicitudCursoTab selected={selected} getCursoNombre={getCursoNombre}
-                  cursosAbiertosList={cursosAbiertosList} filteredCursosAbiertos={filteredCursosAbiertos}
-                  searchCursoQuery={searchCursoQuery} setSearchCursoQuery={setSearchCursoQuery}
-                  editCursoField={editCursoField} editCursoVal={editCursoVal}
-                  setEditCursoField={setEditCursoField} setEditCursoVal={setEditCursoVal}
-                  saveCursoEdit={saveCursoEdit} savingCursoEdit={savingCursoEdit} loadCursosAbiertos={loadCursosAbiertos}
-                  cursoCatalogo={cursoCatalogo} cursoModalidad={cursoModalidad} cursoDocente={cursoDocente}
-                  cursoCiudad={cursoCiudad} cursoHorario={cursoHorario} cursoInicio={cursoInicio} cursoFin={cursoFin} cursoPrecio={cursoPrecio}
-                  yaProcesada={yaProcesada} totalAbonado={selected?.lineas_pago?.total_abonado || 0} />
-              )}
-              {activeTab === "pago" && (
-                <SolicitudPagoTab selected={selected} yaProcesada={yaProcesada}
-                  editPagoField={editPagoField} editPagoVal={editPagoVal}
-                  startEditPago={startEditPago} setEditPagoVal={setEditPagoVal}
-                  saveEditPago={saveEditPago} cancelEditPago={cancelEditPago} savingPagoEdit={savingPagoEdit}
-                  comprobanteRef={comprobanteRef} handleUploadComprobante={handleUploadComprobante}
-                  uploadingComprobante={uploadingComprobante} expandedComprobante={expandedComprobante}
-                  setExpandedComprobante={setExpandedComprobante}
-                  setDeleteArchivoModal={setDeleteArchivoModal} deletingComprobante={deletingComprobante}
-                  setExpandedImageUrl={setExpandedImageUrl} pagoRef={pagoRef} getCursoNombre={getCursoNombre}
-                  setMontoValido={setMontoValido}
-                  setTotalPrecioModulos={setTotalPrecioModulos} handleApprove={handleApprove} setSelected={setSelected}
-                  editandoMontos={editandoMontos} editMontosValues={editMontosValues}
-                  editPreciosValues={editPreciosValues} editMotivosValues={editMotivosValues}
-                  onStartEditMontos={startEditMontos} onCancelMontos={cancelEditMontos}
-                  onEditMontoChange={editMontoChange} onEditPrecioChange={editPrecioChange}
-                  onSaveMontos={saveEditMontos}
-                  savingMontos={savingMontos} />
-              )}
-              {activeTab === "documento" && (
-                <SolicitudDocumentoTab selected={selected} cedulaRef={cedulaRef}
-                  handleUploadCedula={handleUploadCedula} uploadingCedula={uploadingCedula}
-                  deletingCedula={deletingCedula} setDeleteArchivoModal={setDeleteArchivoModal}
-                  setExpandedImageUrl={setExpandedImageUrl} />
-              )}
-            </div>
+      {/* 3. Main Content Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8">
+        {activeTab === "resumen" && (
+          <SolicitudResumenTab
+            selected={selected}
+            getCursoNombre={getCursoNombre}
+            setExpandedImageUrl={setExpandedImageUrl}
+            cursoCatalogo={cursoCatalogo}
+            cursoPrecio={cursoPrecio}
+            cursoModalidad={cursoModalidad}
+            cursoCiudad={cursoCiudad}
+            cursoHorario={cursoHorario}
+            onSelectTab={(t) => setActiveTab(t)}
+          />
+        )}
+
+        {activeTab === "estudiante" && (
+          <SolicitudEstudianteTab
+            selected={selected}
+            editField={editField}
+            editVal={editVal}
+            startEdit={startEdit}
+            setEditVal={setEditVal}
+            saveEdit={saveEdit}
+            cancelEdit={cancelEdit}
+            savingEdit={savingEdit}
+          />
+        )}
+
+        {activeTab === "curso" && (
+          <SolicitudCursoTab
+            selected={selected}
+            getCursoNombre={getCursoNombre}
+            cursosAbiertosList={cursosAbiertosList}
+            filteredCursosAbiertos={filteredCursosAbiertos}
+            searchCursoQuery={searchCursoQuery}
+            setSearchCursoQuery={setSearchCursoQuery}
+            editCursoField={editCursoField}
+            editCursoVal={editCursoVal}
+            setEditCursoField={setEditCursoField}
+            setEditCursoVal={setEditCursoVal}
+            saveCursoEdit={saveCursoEdit}
+            savingCursoEdit={savingCursoEdit}
+            loadCursosAbiertos={loadCursosAbiertos}
+            cursoCatalogo={cursoCatalogo}
+            cursoModalidad={cursoModalidad}
+            cursoDocente={cursoDocente}
+            cursoCiudad={cursoCiudad}
+            cursoHorario={cursoHorario}
+            cursoInicio={cursoInicio}
+            cursoFin={cursoFin}
+            cursoPrecio={cursoPrecio}
+            yaProcesada={yaProcesada}
+            totalAbonado={selected?.lineas_pago?.total_abonado || 0}
+          />
+        )}
+
+        {activeTab === "pago" && (
+          <SolicitudPagoTab
+            selected={selected}
+            yaProcesada={yaProcesada}
+            editPagoField={editPagoField}
+            editPagoVal={editPagoVal}
+            startEditPago={startEditPago}
+            setEditPagoVal={setEditPagoVal}
+            saveEditPago={saveEditPago}
+            cancelEditPago={cancelEditPago}
+            savingPagoEdit={savingPagoEdit}
+            comprobanteRef={comprobanteRef}
+            handleUploadComprobante={handleUploadComprobante}
+            uploadingComprobante={uploadingComprobante}
+            expandedComprobante={expandedComprobante}
+            setExpandedComprobante={setExpandedComprobante}
+            setDeleteArchivoModal={setDeleteArchivoModal}
+            deletingComprobante={deletingComprobante}
+            setExpandedImageUrl={setExpandedImageUrl}
+            pagoRef={pagoRef}
+            getCursoNombre={getCursoNombre}
+            setMontoValido={setMontoValido}
+            setTotalPrecioModulos={setTotalPrecioModulos}
+            handleApprove={handleApprove}
+            setSelected={setSelected}
+            editandoMontos={editandoMontos}
+            editMontosValues={editMontosValues}
+            editPreciosValues={editPreciosValues}
+            editMotivosValues={editMotivosValues}
+            onStartEditMontos={startEditMontos}
+            onCancelMontos={cancelEditMontos}
+            onEditMontoChange={editMontoChange}
+            onEditPrecioChange={editPrecioChange}
+            onSaveMontos={saveEditMontos}
+            savingMontos={savingMontos}
+          />
+        )}
+
+        {activeTab === "documento" && (
+          <SolicitudDocumentoTab
+            selected={selected}
+            cedulaRef={cedulaRef}
+            handleUploadCedula={handleUploadCedula}
+            uploadingCedula={uploadingCedula}
+            deletingCedula={deletingCedula}
+            setDeleteArchivoModal={setDeleteArchivoModal}
+            setExpandedImageUrl={setExpandedImageUrl}
+          />
+        )}
+      </main>
+
+      {/* 4. Sticky Bottom Approval Bar (Persistent across all tabs) */}
+      <footer className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Validation Checklist Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} className="text-emerald-600" />
+              Estudiante verificado
+            </span>
+
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-900 border border-orange-200 whitespace-nowrap">
+              <HugeiconsIcon icon={PaymentIcon} size={14} className="text-[#fd761a]" />
+              {montoValido ? `Distribución: $${Number(selected.pago?.monto_solicitado || 0).toFixed(2)}` : "Configurar distribución"}
+            </span>
+
+            {selected.pago?.comprobante?.cedula_url && !selected.pago?.comprobante?.cedula_purgado ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} className="text-emerald-600" />
+                Cédula adjunta
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+                Cédula no adjunta
+              </span>
+            )}
           </div>
-      </div>
 
-      <div className="sticky bottom-0 bg-white border-t z-10" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-[900px] mx-auto px-6 py-4">
-          <div className="flex gap-3">
-            <button onClick={() => setConfirmReject(true)} disabled={actionLoading || yaProcesada}
-              className="flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all hover:bg-red-50 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ borderColor: "oklch(0.50 0.15 10 / 0.3)", color: "oklch(0.50 0.15 10)" }}>
-              <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline mr-1.5" />Rechazar
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+            <button
+              onClick={() => setConfirmReject(true)}
+              disabled={actionLoading || yaProcesada}
+              type="button"
+              className="px-4 py-2.5 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={17} />
+              <span>Rechazar matrícula</span>
             </button>
-            <button onClick={() => pagoRef.current?.submit()}
+
+            <button
+              onClick={() => pagoRef.current?.submit()}
               disabled={actionLoading || !montoValido || yaProcesada}
-              className="flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-60"
-              style={{ backgroundColor: COLORS.ACCENT }}>
+              type="button"
+              className="px-6 py-2.5 rounded-xl bg-[#fd761a] hover:bg-[#ea580c] active:scale-[0.99] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-md shadow-orange-600/30 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {actionLoading ? (
                 <>
-                  <Loader2 size={16} className="inline mr-1.5 animate-spin" />Procesando...
+                  <Loader2 size={17} className="animate-spin" />
+                  <span>Procesando...</span>
                 </>
               ) : (
                 <>
-                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Aprobar
+                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={18} />
+                  <span>
+                    {yaProcesada ? "Matrícula procesada" : "Aprobar matrícula"}
+                  </span>
                 </>
               )}
             </button>
           </div>
         </div>
-      </div>
+      </footer>
 
-      <RejectModal isOpen={confirmReject} isLoading={actionLoading} onConfirm={handleReject} onCancel={() => setConfirmReject(false)} />
-      <ConfirmationModal isOpen={deleteArchivoModal !== null} title="Eliminar archivo del almacenamiento"
+      {/* Modals */}
+      <RejectModal
+        isOpen={confirmReject}
+        isLoading={actionLoading}
+        onConfirm={handleReject}
+        onCancel={() => setConfirmReject(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteArchivoModal !== null}
+        title="Eliminar archivo del almacenamiento"
         message={`¿Eliminar la imagen de la ${deleteArchivoModal?.label} del almacenamiento? El registro se conservará como constancia histórica. Esta acción es irreversible.`}
-        confirmText="Eliminar archivo" cancelText="Cancelar"
+        confirmText="Eliminar archivo"
+        cancelText="Cancelar"
         isLoading={deleteArchivoModal?.type === "comprobante" ? deletingComprobante : deletingCedula}
-        icon="danger" onConfirm={() => deleteArchivoModal?.type === "comprobante" ? handleDeleteComprobante() : handleDeleteCedula()}
-        onCancel={() => setDeleteArchivoModal(null)} />
-      {expandedImageUrl && <ImageZoom url={expandedImageUrl} onClose={() => setExpandedImageUrl(null)} />}
-      <ModalReconciliacionCurso isOpen={modalReconciliacionOpen}
+        icon="danger"
+        onConfirm={() => deleteArchivoModal?.type === "comprobante" ? handleDeleteComprobante() : handleDeleteCedula()}
+        onCancel={() => setDeleteArchivoModal(null)}
+      />
+
+      {expandedImageUrl && (
+        <ImageZoom url={expandedImageUrl} onClose={() => setExpandedImageUrl(null)} />
+      )}
+
+      <ModalReconciliacionCurso
+        isOpen={modalReconciliacionOpen}
         oldCursoNombre={getCursoNombre()}
         newCursoNombre={nuevoCursoNombre}
         modulosNuevoCurso={nuevosModulos.map((m: any) => ({
@@ -655,7 +855,8 @@ export function AprobacionSolicitudPage() {
         ]}
         onConfirm={handleReconciliarCurso}
         onCancel={() => { setModalReconciliacionOpen(false); setCursoIdPropuesto(null) }}
-        loading={reconciliando} />
+        loading={reconciliando}
+      />
     </div>
   )
 }

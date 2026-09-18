@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Delete02Icon, Download04Icon, Cancel01Icon, ImageIcon } from "@hugeicons/core-free-icons"
+import { Delete02Icon, Download04Icon, ImageIcon } from "@hugeicons/core-free-icons"
 import { usePermission } from "@/hooks/usePermission"
 
 interface BulkActionsBarProps {
@@ -15,40 +15,50 @@ export function BulkActionsBar({ selectedCount, onClear, onDelete, onExport, onD
   if (selectedCount === 0) return null
 
   return (
-    <div className="flex items-center gap-4 px-6 py-3 bg-blue-50/80 border border-blue-100 rounded-2xl mb-4">
-      <span className="text-sm font-bold text-blue-700">
-        {selectedCount} seleccionado{selectedCount !== 1 ? 's' : ''}
-      </span>
-      <div className="flex items-center gap-2 ml-auto">
+    <div className="p-2.5 px-4 rounded-xl bg-[#e5eeff] mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-[#c6c6cd]/20">
+      <div className="flex items-center gap-2">
+        <span className="w-6 h-6 rounded bg-[#fd761a] text-white flex items-center justify-center font-bold text-xs">
+          {selectedCount}
+        </span>
+        <span className="text-xs font-semibold text-[#0b1c30]">
+          estudiante{selectedCount !== 1 ? "s" : ""} seleccionado{selectedCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
         {onDeleteCedulas && (
           <button
             onClick={onDeleteCedulas}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+            type="button"
+            className="h-8 px-3 rounded-lg bg-white text-[#783200] text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
-            <HugeiconsIcon icon={ImageIcon} size={14} />
-            Eliminar cédulas
+            <HugeiconsIcon icon={ImageIcon} size={15} />
+            <span>Eliminar cédulas</span>
           </button>
         )}
         <button
           onClick={onExport}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
+          type="button"
+          className="h-8 px-3 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold hover:bg-[#dce9ff] transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
         >
-          <HugeiconsIcon icon={Download04Icon} size={14} />
-          Exportar
+          <HugeiconsIcon icon={Download04Icon} size={15} />
+          <span>Exportar</span>
         </button>
-        {isAdmin && (<button
-          onClick={onDelete}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
-        >
-          <HugeiconsIcon icon={Delete02Icon} size={14} />
-          Eliminar
-        </button>)}
+        {isAdmin && (
+          <button
+            onClick={onDelete}
+            type="button"
+            className="h-8 px-3 rounded-lg bg-white text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+          >
+            <HugeiconsIcon icon={Delete02Icon} size={15} />
+            <span>Eliminar</span>
+          </button>
+        )}
         <button
           onClick={onClear}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+          type="button"
+          className="h-8 px-2.5 rounded-lg text-[#45464d] hover:text-[#0b1c30] text-xs font-semibold transition-colors cursor-pointer"
         >
-          <HugeiconsIcon icon={Cancel01Icon} size={14} />
-          Deseleccionar
+          Desmarcar todos
         </button>
       </div>
     </div>

@@ -1,10 +1,12 @@
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
 import type { EstadisticasResponse } from "@/types/estadisticas"
 
 const money = (value: number) => `$${Number(value || 0).toLocaleString("es-EC", { minimumFractionDigits: 2 })}`
 
 export async function exportarEstadisticasPDF(data: EstadisticasResponse): Promise<void> {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ])
   const pdf = new jsPDF("p", "mm", "a4")
   const margin = 14
   const title = "Informe de estadísticas financieras"

@@ -312,7 +312,7 @@ export function CursoEstudiantePagoPage() {
                         {t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES") : "—"}
                       </p>
                       <p className="text-[10px] opacity-40 truncate">
-                        {t.metodo_pago} · {t.modulo_nombre || "—"}
+                        {t.metodo_pago} · {t.modulo_nombre || (curso.es_personalizado ? "Pago inicial" : "—")}
                       </p>
                     </div>
                   </div>

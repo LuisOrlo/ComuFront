@@ -11,9 +11,14 @@ import {
   type SortingState,
 } from "@tanstack/react-table"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { GraduationCapIcon, Clock04Icon, ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
+import {
+  Clock04Icon,
+  ArrowUp01Icon,
+  ArrowDown01Icon,
+  Coins01Icon,
+} from "@hugeicons/core-free-icons"
 import { PaginationControls } from "@/components/table/PaginationControls"
+import { CiudadBadge } from "./Badges"
 
 export interface StudentRow {
   id: string
@@ -42,202 +47,183 @@ interface StudentTableProps {
   onPageChange?: (page: number) => void
 }
 
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
-const TEXT_MUTED = COLORS.TEXT_MUTED
-
-const COLUMN_ALIGN: Record<string, "center" | "right"> = {
-  estado: "center",
-  ciudad: "center",
-  cursos: "center",
-  saldo: "center",
-  acciones: "right",
-}
-
-const CIUDAD_COLORS: Array<{ bg: string; text: string; dot: string }> = [
-  { bg: "oklch(0.95 0.04 260)", text: "oklch(0.45 0.12 260)", dot: "oklch(0.50 0.20 260)" },
-  { bg: "oklch(0.95 0.04 180)", text: "oklch(0.42 0.12 180)", dot: "oklch(0.48 0.18 180)" },
-  { bg: "oklch(0.95 0.05 80)", text: "oklch(0.50 0.15 80)", dot: "oklch(0.55 0.20 80)" },
-  { bg: "oklch(0.95 0.05 20)", text: "oklch(0.48 0.15 20)", dot: "oklch(0.52 0.20 20)" },
-  { bg: "oklch(0.95 0.04 300)", text: "oklch(0.46 0.12 300)", dot: "oklch(0.52 0.18 300)" },
-  { bg: "oklch(0.95 0.04 140)", text: "oklch(0.45 0.12 140)", dot: "oklch(0.50 0.18 140)" },
-  { bg: "oklch(0.95 0.04 40)", text: "oklch(0.50 0.12 40)", dot: "oklch(0.55 0.18 40)" },
-  { bg: "oklch(0.95 0.04 340)", text: "oklch(0.48 0.12 340)", dot: "oklch(0.53 0.18 340)" },
-]
-
-function getCiudadColor(ciudad: string) {
-  let hash = 0
-  for (let i = 0; i < ciudad.length; i++) {
-    hash = ((hash << 5) - hash) + ciudad.charCodeAt(i)
-    hash |= 0
+function FinancialCell({ saldo_pendiente, estado_pago }: { saldo_pendiente?: number; estado_pago?: string }) {
+  if (estado_pago === "al_dia") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dce9ff] text-[#009668] text-xs font-semibold">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#009668]"></span>
+        Al día
+      </span>
+    )
   }
-  return CIUDAD_COLORS[Math.abs(hash) % CIUDAD_COLORS.length]
-}
-
-function CiudadBadge({ ciudad }: { ciudad: string | undefined }) {
-  if (!ciudad) {
-    return <span className="text-xs" style={{ color: TEXT_MUTED }}>—</span>
+  if (estado_pago === "deudor") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ffdbca] text-[#783200] text-xs font-semibold">
+        <HugeiconsIcon icon={Clock04Icon} size={13} />
+        Pendiente {saldo_pendiente ? `($${saldo_pendiente.toLocaleString()})` : ""}
+      </span>
+    )
   }
-  const colors = getCiudadColor(ciudad)
+  if (estado_pago === "abonado") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dce9ff] text-[#0b1c30] text-xs font-semibold">
+        <HugeiconsIcon icon={Coins01Icon} size={13} className="text-[#9d4300]" />
+        Abonado {saldo_pendiente ? `(Saldo $${saldo_pendiente.toLocaleString()})` : ""}
+      </span>
+    )
+  }
   return (
-    <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold"
-      style={{ backgroundColor: colors.bg, color: colors.text }}
-    >
-      <span className="size-1.5 rounded-full" style={{ backgroundColor: colors.dot }} />
-      {ciudad}
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#eff4ff] text-[#45464d] text-xs font-medium">
+      Sin actividad
     </span>
   )
 }
 
-function SaldoCell({ saldo_pendiente, estado_pago }: { saldo_pendiente?: number; estado_pago?: string }) {
-  if (saldo_pendiente === undefined || saldo_pendiente === null) {
-    return <span className="text-sm font-medium" style={{ color: TEXT_MUTED }}>Sin registro</span>
-  }
-  if (saldo_pendiente > 0) {
-    return <span className="text-sm font-bold" style={{ color: "oklch(0.50 0.12 10)" }}>${saldo_pendiente.toLocaleString()}</span>
-  }
-  if (saldo_pendiente === 0 && estado_pago === "al_dia") {
-    return <span className="text-sm font-bold" style={{ color: "oklch(0.50 0.12 150)" }}>Completo</span>
-  }
-  if (saldo_pendiente === 0 && estado_pago === "ninguno") {
-    return <span className="text-sm font-medium" style={{ color: TEXT_MUTED }}>Sin registro</span>
-  }
-  return <span className="text-sm font-bold">$0</span>
-}
-
-function getAlignment(columnId: string): "center" | "right" | undefined {
-  return COLUMN_ALIGN[columnId]
-}
-
-export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect, onToggleSelectAll, variant = "estudiantes", meta, onPageChange }: StudentTableProps) {
+export function StudentTable({
+  estudiantes,
+  loading,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  variant = "estudiantes",
+  meta,
+  onPageChange,
+}: StudentTableProps) {
   const isEstudiantes = variant === "estudiantes"
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 })
 
   useEffect(() => {
     if (loading) {
-      setPagination(p => ({ ...p, pageIndex: 0 }))
+      setPagination((p) => ({ ...p, pageIndex: 0 }))
     }
   }, [loading])
 
-  const columns = useMemo<ColumnDef<StudentRow>[]>(() => [
-    {
-      id: "seleccion",
-      header: () => (
-        <input
-          type="checkbox"
-          checked={estudiantes.length > 0 && selectedIds.size === estudiantes.length}
-          onChange={onToggleSelectAll}
-          className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-          aria-label="Seleccionar todos los estudiantes visibles"
-        />
-      ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          checked={selectedIds.has(row.original.id)}
-          onChange={() => onToggleSelect(row.original.id)}
-          className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-          aria-label={`Seleccionar ${row.original.nombres} ${row.original.apellidos}`}
-        />
-      ),
-      enableSorting: false,
-      size: 48,
-    },
-    {
-      id: "estudiante",
-      accessorFn: (r) => `${r.nombres} ${r.apellidos}`,
-      header: "Estudiante",
-      cell: ({ row }) => {
-        const e = row.original
-        return (
-          <div className="flex items-center gap-4">
-            <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-sm uppercase">
-              {e.nombres.charAt(0)}{e.apellidos.charAt(0)}
+  const columns = useMemo<ColumnDef<StudentRow>[]>(
+    () => [
+      {
+        id: "seleccion",
+        header: () => (
+          <input
+            type="checkbox"
+            checked={estudiantes.length > 0 && selectedIds.size === estudiantes.length}
+            onChange={onToggleSelectAll}
+            className="w-4 h-4 rounded border-[#c6c6cd] cursor-pointer accent-[#fd761a]"
+            aria-label="Seleccionar todos los estudiantes visibles"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(row.original.id)}
+            onChange={() => onToggleSelect(row.original.id)}
+            className="w-4 h-4 rounded border-[#c6c6cd] cursor-pointer accent-[#fd761a]"
+            aria-label={`Seleccionar ${row.original.nombres} ${row.original.apellidos}`}
+          />
+        ),
+        enableSorting: false,
+        size: 40,
+      },
+      {
+        id: "estudiante",
+        accessorFn: (r) => `${r.nombres} ${r.apellidos}`,
+        header: "Estudiante",
+        cell: ({ row }) => {
+          const e = row.original
+          return (
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#e5eeff] text-[#0b1c30] font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+                {e.nombres.charAt(0)}
+                {e.apellidos.charAt(0)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-[#0b1c30] truncate">
+                  {e.nombres} {e.apellidos}
+                </span>
+                <span className="text-[11px] text-[#45464d] truncate">
+                  {e.correo || "Sin correo registrado"}
+                </span>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-semibold leading-tight" style={{ color: CHARCOAL }}>{e.nombres} {e.apellidos}</div>
-              <div className="text-xs mt-0.5" style={{ color: TEXT_MUTED }}>{e.correo || 'Sin correo registrado'}</div>
+          )
+        },
+        enableSorting: true,
+      },
+      {
+        id: "identificacion",
+        accessorFn: (r) => r.cedula,
+        header: "Identificación",
+        cell: ({ getValue }) => {
+          const cedula = getValue<string>()
+          return (
+            <span className="font-mono text-xs text-[#45464d] bg-[#f8f9ff] px-2.5 py-1 rounded-md border border-[#c6c6cd]/25 inline-block">
+              {cedula || "—"}
+            </span>
+          )
+        },
+        enableSorting: true,
+      },
+      {
+        id: "ciudad",
+        accessorFn: (r) => r.ciudad ?? "—",
+        header: "Ciudad / Sede",
+        cell: ({ row }) => <CiudadBadge ciudad={row.original.ciudad} />,
+        enableSorting: true,
+      },
+      {
+        id: "cursos",
+        accessorFn: (r) => r.total_cursos ?? 0,
+        header: "Inscripciones",
+        cell: ({ row }) => {
+          const total = row.original.total_cursos
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#e5eeff] text-[#0b1c30] text-xs font-medium">
+              {isEstudiantes ? `${total ?? 0} ${total === 1 ? "curso" : "cursos"}` : total ?? "N/A"}
+            </span>
+          )
+        },
+        enableSorting: true,
+      },
+      {
+        id: "estado",
+        accessorFn: (r) => r.estado_pago ?? "ninguno",
+        header: "Estado financiero",
+        cell: ({ row }) => (
+          <FinancialCell
+            saldo_pendiente={row.original.saldo_pendiente}
+            estado_pago={row.original.estado_pago}
+          />
+        ),
+        enableSorting: true,
+      },
+      {
+        id: "acciones",
+        header: "",
+        cell: ({ row }) => {
+          const e = row.original
+          return e.id && !e.id.startsWith("mat-") ? (
+            <div className="text-right">
+              <Link
+                to={`/estudiantes/${e.id}/academico`}
+                className="text-xs text-[#9d4300] hover:text-[#783200] font-semibold transition-colors inline-flex items-center gap-1 hover:underline cursor-pointer"
+              >
+                <span>Ver perfil</span>
+                <span aria-hidden="true">→</span>
+              </Link>
             </div>
-          </div>
-        )
+          ) : (
+            <div className="text-right">
+              <span className="text-xs text-[#45464d]">—</span>
+            </div>
+          )
+        },
+        enableSorting: false,
+        size: 100,
       },
-      enableSorting: true,
-    },
-    {
-      id: "identificacion",
-      accessorFn: (r) => r.cedula,
-      header: "Identificacion",
-      cell: ({ getValue }) => {
-        const cedula = getValue<string>()
-        return (
-          <div className="text-sm font-mono px-3 py-1 rounded-lg inline-block" style={{ color: CHARCOAL, backgroundColor: "oklch(0.97 0 0)" }}>{cedula || '—'}</div>
-        )
-      },
-      enableSorting: true,
-    },
-    {
-      id: "ciudad",
-      accessorFn: (r) => r.ciudad ?? "—",
-      header: "Ciudad",
-      cell: ({ row }) => <CiudadBadge ciudad={row.original.ciudad} />,
-      enableSorting: true,
-    },
-    {
-      id: "cursos",
-      accessorFn: (r) => r.total_cursos ?? 0,
-      header: "Cursos",
-      cell: ({ row }) => {
-        const total = row.original.total_cursos
-        return (
-          <span className="text-base font-semibold" style={{ color: CHARCOAL }}>
-            {isEstudiantes ? (total ?? 0) : (total !== undefined && total !== null ? total : "N/A")}
-          </span>
-        )
-      },
-      enableSorting: true,
-    },
-    {
-      id: "saldo",
-      accessorFn: (r) => r.saldo_pendiente,
-      header: "Saldo",
-      cell: ({ row }) => <SaldoCell saldo_pendiente={row.original.saldo_pendiente} estado_pago={row.original.estado_pago} />,
-      enableSorting: true,
-    },
-    {
-      id: "acciones",
-      header: "",
-      cell: ({ row }) => {
-        const e = row.original
-        return e.id && !e.id.startsWith("mat-") ? (
-          <Link
-            to={`/estudiantes/${e.id}/academico`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-150 shadow-sm"
-            style={{
-              backgroundColor: "oklch(0.97 0 0)",
-              color: TEXT_MUTED,
-            }}
-            onMouseEnter={(ev) => {
-              ev.currentTarget.style.backgroundColor = COLORS.ACCENT
-              ev.currentTarget.style.color = "white"
-            }}
-            onMouseLeave={(ev) => {
-              ev.currentTarget.style.backgroundColor = "oklch(0.97 0 0)"
-              ev.currentTarget.style.color = TEXT_MUTED
-            }}
-          >
-            <HugeiconsIcon icon={GraduationCapIcon} size={14} />
-            Ver Perfil
-          </Link>
-        ) : (
-          <span className="text-xs" style={{ color: TEXT_MUTED }}>—</span>
-        )
-      },
-      enableSorting: false,
-    },
+    ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [estudiantes.length, selectedIds.size, onToggleSelect, onToggleSelectAll, isEstudiantes])
+    [estudiantes.length, selectedIds.size, onToggleSelect, onToggleSelectAll, isEstudiantes]
+  )
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -253,91 +239,109 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
     autoResetAll: false,
   })
 
+  const totalCount = meta?.total ?? estudiantes.length
+  const currentPage = meta?.actual ?? pagination.pageIndex + 1
+  const pageSize = meta?.per_page ?? pagination.pageSize
+  const startRange = totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0
+  const endRange = Math.min(currentPage * pageSize, totalCount)
+
   return (
-    <div>
+    <div className="rounded-xl bg-white shadow-sm overflow-hidden mb-4 border border-[#c6c6cd]/20">
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
+        <table className="w-full text-left border-collapse">
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="bg-gray-50/80 border-b" style={{ borderColor: BORDER }}>
+              <tr key={hg.id} className="bg-[#eff4ff] border-b border-[#c6c6cd]/30 text-[11px] font-bold uppercase tracking-wider text-[#45464d]">
                 {hg.headers.map((header) => {
                   const canSort = header.column.getCanSort()
                   const sorted = header.column.getIsSorted()
-                  const align = getAlignment(header.id)
+                  const isActions = header.id === "acciones"
                   return (
-                    <th key={header.id}
+                    <th
+                      key={header.id}
                       aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : "none"}
+                      className={`py-3.5 px-4 ${isActions ? "text-right" : ""}`}
                       style={{
                         width: header.getSize() !== 150 ? header.getSize() : undefined,
-                        padding: "12px 16px",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
                         whiteSpace: "nowrap",
-                        color: TEXT_MUTED,
-                      }}>
-                      <button type="button" onClick={canSort ? header.column.getToggleSortingHandler() : undefined} disabled={!canSort} className={`flex items-center gap-1 ${canSort ? "cursor-pointer" : "cursor-default"}`}
-                        style={{ justifyContent: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start" }}>
-                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                        {canSort && (
-                          <span className="inline-flex flex-col leading-none ml-1">
-                            <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "" : "opacity-40"} />
-                            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "" : "opacity-40"} />
-                          </span>
-                        )}
-                      </button>
+                      }}
+                    >
+                      {header.id === "seleccion" ? (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                          disabled={!canSort}
+                          className={`inline-flex items-center gap-1 font-bold ${
+                            canSort ? "cursor-pointer hover:text-[#fd761a]" : "cursor-default"
+                          } ${isActions ? "ml-auto" : ""}`}
+                        >
+                          <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                          {canSort && (
+                            <span className="inline-flex flex-col leading-none ml-1">
+                              <HugeiconsIcon
+                                icon={ArrowUp01Icon}
+                                size={10}
+                                className={sorted === "asc" ? "text-[#fd761a]" : "opacity-40"}
+                              />
+                              <HugeiconsIcon
+                                icon={ArrowDown01Icon}
+                                size={10}
+                                className={sorted === "desc" ? "text-[#fd761a]" : "opacity-40"}
+                              />
+                            </span>
+                          )}
+                        </button>
+                      )}
                     </th>
                   )
                 })}
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y" style={{ borderColor: BORDER }}>
+          <tbody className="divide-y divide-[#e5eeff]/60 text-xs text-[#0b1c30]">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-3"><div className="size-4 rounded bg-gray-100 animate-pulse mx-auto" /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-4">
-                      <div className="size-10 rounded-xl bg-gray-100 animate-pulse" />
-                      <div className="space-y-2">
-                        <div className="h-4 w-32 bg-gray-100 animate-pulse rounded" />
+                <tr key={i} className="hover:bg-[#eff4ff]/30">
+                  <td className="py-3 px-4"><div className="w-4 h-4 rounded bg-gray-100 animate-pulse" /></td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse shrink-0" />
+                      <div className="space-y-1.5">
+                        <div className="h-3.5 w-32 bg-gray-100 animate-pulse rounded" />
                         <div className="h-3 w-24 bg-gray-50 animate-pulse rounded" />
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3"><div className="h-6 w-20 bg-gray-100 animate-pulse rounded-lg" /></td>
-                  <td className="px-4 py-3"><div className="h-6 w-24 bg-gray-100 animate-pulse rounded-lg mx-auto" /></td>
-                  <td className="px-4 py-3"><div className="h-8 w-12 bg-gray-100 animate-pulse rounded-lg mx-auto" /></td>
-                  <td className="px-4 py-3"><div className="h-5 w-16 bg-gray-100 animate-pulse rounded mx-auto" /></td>
-                  <td className="px-4 py-3"><div className="h-8 w-24 bg-gray-100 animate-pulse rounded-xl float-right" /></td>
+                  <td className="py-3 px-4"><div className="h-6 w-24 bg-gray-100 animate-pulse rounded-md" /></td>
+                  <td className="py-3 px-4"><div className="h-4 w-20 bg-gray-100 animate-pulse rounded" /></td>
+                  <td className="py-3 px-4"><div className="h-5 w-16 bg-gray-100 animate-pulse rounded-full" /></td>
+                  <td className="py-3 px-4"><div className="h-6 w-20 bg-gray-100 animate-pulse rounded-full" /></td>
+                  <td className="py-3 px-4 text-right"><div className="h-4 w-16 bg-gray-100 animate-pulse rounded ml-auto" /></td>
                 </tr>
               ))
             ) : table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-8 py-20 text-center">
-                  <div className="size-16 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <HugeiconsIcon icon={Clock04Icon} size={24} className="text-gray-300" />
+                  <div className="w-16 h-16 bg-[#eff4ff] rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <HugeiconsIcon icon={Clock04Icon} size={26} className="text-[#45464d]/60" />
                   </div>
-                  <h3 className="text-gray-900 font-bold">No se encontraron estudiantes</h3>
-                  <p className="text-sm text-gray-400 mt-1">Intenta con otros criterios de busqueda o filtros.</p>
+                  <h3 className="text-[#0b1c30] font-bold text-sm">No se encontraron estudiantes</h3>
+                  <p className="text-xs text-[#45464d] mt-1">Intenta con otros criterios de búsqueda o filtros.</p>
                 </td>
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="transition-colors duration-150"
-                  onMouseEnter={(ev) => (ev.currentTarget.style.backgroundColor = "oklch(0.98 0 0)")}
-                  onMouseLeave={(ev) => (ev.currentTarget.style.backgroundColor = "transparent")}
+                <tr
+                  key={row.id}
+                  className="hover:bg-[#eff4ff]/40 transition-colors"
                 >
-                  {row.getVisibleCells().map((cell) => {
-                    const align = getAlignment(cell.column.id)
-                    return (
-                      <td key={cell.id} style={{ padding: "12px 16px", textAlign: align === "center" ? "center" : align === "right" ? "right" : "left" }}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    )
-                  })}
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="py-3 px-4">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               ))
             )}
@@ -345,19 +349,50 @@ export function StudentTable({ estudiantes, loading, selectedIds, onToggleSelect
         </table>
       </div>
 
+      {/* Pagination Footer */}
       {!loading && table.getRowModel().rows.length > 0 && meta && onPageChange && (
-        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between text-sm" style={{ color: TEXT_MUTED }}>
-            <span>{meta.total} estudiante{meta.total !== 1 ? "s" : ""} · Página {meta.actual} de {meta.ultima_pagina}</span>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => onPageChange(meta.actual - 1)} disabled={meta.actual <= 1} className="px-3 py-1.5 border rounded-lg disabled:opacity-40" style={{ borderColor: BORDER }}>Anterior</button>
-              <button type="button" onClick={() => onPageChange(meta.actual + 1)} disabled={meta.actual >= meta.ultima_pagina} className="px-3 py-1.5 border rounded-lg disabled:opacity-40" style={{ borderColor: BORDER }}>Siguiente</button>
-            </div>
+        <div className="p-3.5 px-4 bg-[#eff4ff] flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#c6c6cd]/20 text-xs">
+          <div className="flex items-center gap-1.5 text-[#45464d]">
+            <span>
+              Mostrando <span className="font-semibold text-[#0b1c30]">{startRange}–{endRange}</span> de{" "}
+              <span className="font-semibold text-[#0b1c30]">{meta.total}</span> estudiantes
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onPageChange(meta.actual - 1)}
+              disabled={meta.actual <= 1}
+              className="h-8 px-2.5 rounded bg-white text-[#45464d] hover:text-[#0b1c30] text-xs font-semibold shadow-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 border border-[#c6c6cd]/30"
+            >
+              Anterior
+            </button>
+            <span className="h-8 min-w-[32px] px-2 rounded bg-[#fd761a] text-white text-xs font-bold shadow-sm flex items-center justify-center">
+              {meta.actual}
+            </span>
+            {meta.actual < meta.ultima_pagina && (
+              <button
+                type="button"
+                onClick={() => onPageChange(meta.actual + 1)}
+                className="h-8 min-w-[32px] px-2 rounded bg-white hover:bg-[#e5eeff] text-[#0b1c30] text-xs font-semibold shadow-sm transition-colors border border-[#c6c6cd]/30 flex items-center justify-center cursor-pointer"
+              >
+                {meta.actual + 1}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onPageChange(meta.actual + 1)}
+              disabled={meta.actual >= meta.ultima_pagina}
+              className="h-8 px-2.5 rounded bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 border border-[#c6c6cd]/30"
+            >
+              Siguiente
+            </button>
           </div>
         </div>
       )}
+
       {!loading && table.getRowModel().rows.length > 0 && !meta && (
-        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+        <div className="px-4 py-3 border-t border-[#c6c6cd]/20 bg-[#eff4ff]">
           <PaginationControls table={table} />
         </div>
       )}

@@ -28,6 +28,10 @@ interface ClientesTableProps {
 const BORDER = COLORS.BORDER_SUBTLE
 const CHARCOAL = COLORS.CHARCOAL
 
+function getInitials(cliente: ClienteExterno) {
+  return `${cliente.nombres?.[0] ?? ""}${cliente.apellidos?.[0] ?? ""}`.toUpperCase()
+}
+
 export function ClientesTable({ clientes, loading, search, onSearchChange }: ClientesTableProps) {
   const navigate = useNavigate()
   const [sorting, setSorting] = useState<SortingState>([])
@@ -44,7 +48,10 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
       header: "Nombres",
       cell: ({ row }) => {
         const c = row.original
-        return <span className="font-bold">{c.nombres} {c.apellidos || ""}</span>
+        return <div className="flex min-w-[180px] items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#131b2e] text-xs font-bold text-white">{getInitials(c)}</span>
+          <div className="min-w-0"><span className="block truncate font-bold">{c.nombres} {c.apellidos || ""}</span><span className="block truncate text-[11px] text-[#73747b]">Cliente externo</span></div>
+        </div>
       },
       enableSorting: true,
     },
@@ -84,8 +91,8 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
         return (
           <div className="flex items-center justify-center gap-1">
             <button onClick={() => navigate(`/clientes/${c.id}`)}
-              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-xs font-medium"
-              style={{ color: "#6b7280" }}>
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[#ffdbca]"
+              style={{ color: COLORS.ACCENT }}>
               <Eye size={13} />
               Ver detalle
             </button>
@@ -132,10 +139,10 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
   return (
     <>
       <div className="flex-1 overflow-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[780px] border-separate border-spacing-y-1">
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b text-[9px] font-bold uppercase tracking-wider opacity-40" style={{ borderColor: BORDER }}>
+              <tr key={hg.id} className="border-b bg-[#eff4ff] text-[10px] font-bold uppercase tracking-wider text-[#45464d]" style={{ borderColor: BORDER }}>
                 {hg.headers.map((header) => {
                   const canSort = header.column.getCanSort()
                   const sorted = header.column.getIsSorted()
@@ -146,7 +153,7 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
                       className={canSort ? "cursor-pointer select-none" : ""}
                       style={{
                         textAlign: isCenter ? "center" : "left",
-                        padding: "12px 24px",
+                        padding: "13px 18px",
                       }}>
                       <div className="flex items-center gap-1"
                         style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
@@ -164,7 +171,7 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y text-sm" style={{ borderColor: BORDER }}>
+          <tbody className="text-sm">
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-16 text-center">
@@ -175,10 +182,10 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
             ) : (
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id}
-                  className="hover:bg-gray-50/50 transition-colors">
+                  className="transition-colors [&>td]:bg-[#f8f9ff] [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl hover:[&>td]:bg-[#eff4ff]">
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id}
-                      className={cell.column.id === "acciones" ? "px-6 py-4 text-center" : "px-6 py-4"}
+                      className={cell.column.id === "acciones" ? "px-4 py-4 text-center" : "px-4 py-4"}
                       style={{ color: CHARCOAL }}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>

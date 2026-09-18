@@ -8,10 +8,12 @@ import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
 interface PagoPreAprobacionSectionProps {
   cursoAbiertoId: string
   cursoNombre: string
+  esPersonalizado?: boolean
+  precioCurso?: number
   metodoPagoInicial?: string
   onMontoValidoChange?: (valido: boolean) => void
   onTotalPrecioChange?: (total: number) => void
-  onSubmit: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number }) => void
+  onSubmit: (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string }) => void
 }
 
 export type PagoPreAprobacionRef = {
@@ -21,7 +23,7 @@ export type PagoPreAprobacionRef = {
 }
 
 export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSection({
-  cursoAbiertoId, metodoPagoInicial, onMontoValidoChange, onTotalPrecioChange, onSubmit,
+  cursoAbiertoId, esPersonalizado = false, precioCurso = 0, metodoPagoInicial, onMontoValidoChange, onTotalPrecioChange, onSubmit,
 }: PagoPreAprobacionSectionProps, ref) {
   const [montos, setMontos] = useState<Record<string, string>>({})
   const [modulos, setModulos] = useState<any[]>([])
@@ -30,6 +32,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   const [incluirInscripcion, setIncluirInscripcion] = useState(false)
   const [precioInscripcionManual, setPrecioInscripcionManual] = useState("")
   const [pagoInscripcion, setPagoInscripcion] = useState("")
+  const [pagoCurso, setPagoCurso] = useState("")
+  const [ajustePersonalizado, setAjustePersonalizado] = useState({ expandido: false, nuevoPrecio: "", motivo: "" })
 
   useEffect(() => {
     const load = async () => {
@@ -63,9 +67,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   useEffect(() => {
     if (modulosCargados) {
-      onTotalPrecioChange?.(totalPrecio)
+      onTotalPrecioChange?.(esPersonalizado && modulos.length === 0 ? Number(precioCurso) || 0 : totalPrecio)
     }
-  }, [totalPrecio, onTotalPrecioChange, modulosCargados])
+  }, [totalPrecio, onTotalPrecioChange, modulosCargados, esPersonalizado, modulos.length, precioCurso])
 
   const inscripcionVal = useMemo(
     () => (incluirInscripcion ? (parseFloat(precioInscripcionManual) || 0) : 0),
@@ -92,7 +96,10 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   const totalIngresado = totalARegistrar + inscripcionCubierta
 
-  const montoValido = totalARegistrar > 0 || (inscripcionVal > 0 && inscripcionCubierta > 0)
+  const precioPersonalizadoActual = Number(ajustePersonalizado.nuevoPrecio || precioCurso) || 0
+  const montoValido = esPersonalizado && modulos.length === 0
+    ? (parseFloat(pagoCurso) || 0) > 0 && (parseFloat(pagoCurso) || 0) <= precioPersonalizadoActual
+    : totalARegistrar > 0 || (inscripcionVal > 0 && inscripcionCubierta > 0)
 
   useEffect(() => {
     onMontoValidoChange?.(montoValido)
@@ -132,6 +139,15 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }
 
   const handleSubmit = useCallback(() => {
+    if (esPersonalizado && modulos.length === 0) {
+      onSubmit([], metodoPagoInicial || "efectivo", {
+        total: Number(ajustePersonalizado.nuevoPrecio || precioCurso) || 0,
+        cubierto: parseFloat(pagoCurso) || 0,
+        motivo_ajuste: ajustePersonalizado.nuevoPrecio ? ajustePersonalizado.motivo : undefined,
+      })
+      return
+    }
+
     const pagos = modulos
       .filter((m: any) => {
         const monto = parseFloat(montos[m.id] || "0")
@@ -156,7 +172,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     } else {
       onSubmit(pagos, metodoPagoInicial || "efectivo")
     }
-  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, inscripcionVal, inscripcionCubierta])
+  }, [modulos, montos, ajustes, onSubmit, metodoPagoInicial, inscripcionVal, inscripcionCubierta, esPersonalizado, precioCurso, pagoCurso, ajustePersonalizado])
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -173,6 +189,47 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   }
 
   if (modulos.length === 0) {
+    if (esPersonalizado) {
+      const precio = Number(precioCurso) || 0
+      const precioEfectivo = Number(ajustePersonalizado.nuevoPrecio || precio)
+      return (
+        <div className="pt-4 space-y-3">
+          <div className="p-4 rounded-xl border space-y-3 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>Curso personalizado</p>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Precio total:</span>
+                <AjustePrecioPanel
+                  precioOriginal={precio}
+                  precioActual={precioEfectivo}
+                  motivoActual={ajustePersonalizado.motivo}
+                  expandido={ajustePersonalizado.expandido}
+                  labelButton="Aplicar descuento"
+                  onToggleExpandir={() => setAjustePersonalizado(prev => ({ ...prev, expandido: true }))}
+                  onCancelar={() => setAjustePersonalizado(prev => ({ ...prev, expandido: false }))}
+                  onConfirmar={(nuevoPrecio, motivo) => setAjustePersonalizado({ expandido: false, nuevoPrecio: String(nuevoPrecio), motivo })}
+                />
+              </div>
+            </div>
+            <label className="block text-xs font-semibold" style={{ color: COLORS.CHARCOAL }}>
+              Pago inicial a registrar
+              <input
+                type="number"
+                min="0.01"
+                max={precioEfectivo}
+                step="0.01"
+                value={pagoCurso}
+                onChange={e => setPagoCurso(e.target.value)}
+                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm outline-none"
+                placeholder="0.00"
+              />
+            </label>
+            {(parseFloat(pagoCurso) || 0) > precioEfectivo && <p className="text-xs text-red-600">El pago no puede superar el precio total ajustado.</p>}
+            {(parseFloat(pagoCurso) || 0) <= 0 && <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Ingresa un pago mayor que cero para aprobar.</p>}
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="pt-4 space-y-3">
         <p className="text-xs opacity-40">Este curso no tiene módulos configurados</p>

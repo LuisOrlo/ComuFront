@@ -30,7 +30,7 @@ export function useCursosAbiertos({ modalidad, ciudadId, catalogoFilter, enabled
     queryKey: ["cursos-abiertos", modalidad, ciudadId, catalogoFilter],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        per_page: 50,
+        per_page: 200,
         dias_desde_inicio: 7,
       }
       if (catalogoFilter) params.catalogo_curso_id = catalogoFilter
@@ -49,7 +49,7 @@ export function useTalleres({ modalidad, ciudadId, enabled }: UseTalleresParams)
     queryKey: ["talleres", modalidad, ciudadId],
     queryFn: async () => {
       const params: Record<string, unknown> = {
-        per_page: 50,
+        per_page: 200,
         tab: "proximos",
       }
       if (modalidad) params.modalidad = modalidad

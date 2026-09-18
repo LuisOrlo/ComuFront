@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type CSSProperties } from "react"
+import { useNavigate } from "react-router"
 import { createPortal } from "react-dom"
 import { AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -9,6 +10,8 @@ import {
 import { COLORS } from "@/lib/constants"
 import { cursosService } from "@/services/cursos.service"
 import { tallerService } from "@/services/taller.service"
+import { estudiantesService } from "@/services/estudiantes.service"
+import { cursosPersonalizadosService, type CursoPersonalizado } from "@/services/cursosPersonalizados.service"
 import { toast } from "sonner"
 import { StepIndicator } from "./components/StepIndicator"
 import { ModalidadStep } from "./components/ModalidadStep"
@@ -25,9 +28,18 @@ const pasos = [
   { num: 3 as Paso, label: "Método de Pago", icon: CreditCardIcon },
 ]
 
-export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean; onSuccess?: () => void }) {
+const getLocalDateString = () => {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPublic?: boolean; adminMode?: boolean; onSuccess?: () => void }) {
+  const navigate = useNavigate()
   const [paso, setPaso] = useState<Paso>(1)
-  const [subStep, setSubStep] = useState<"modalidad" | "ciudad" | "lista">("modalidad")
+  const [subStep, setSubStep] = useState<"modalidad" | "ciudad" | "lista">(adminMode ? "lista" : "modalidad")
   const [selectedModalidad, setSelectedModalidad] = useState("")
   const [selectedCiudadId, setSelectedCiudadId] = useState<number | null>(null)
   const [selectedCourseId, setSelectedCourseId] = useState("")
@@ -41,11 +53,15 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const [cedulaFile, setCedulaFile] = useState<File | null>(null)
   const [cedulaPreview, setCedulaPreview] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState("")
+  const [montoDeclarado, setMontoDeclarado] = useState("")
+  const [fechaPago, setFechaPago] = useState(getLocalDateString())
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
   const [loadingSubmit, setLoadingSubmit] = useState(false)
   const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({})
   const [paymentTouched, setPaymentTouched] = useState<Record<string, boolean>>({})
+  const [cursosPersonalizados, setCursosPersonalizados] = useState<CursoPersonalizado[]>([])
+  const [loadingPersonalizados, setLoadingPersonalizados] = useState(false)
 
 
   const metodosPago = [
@@ -60,7 +76,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   } = useCursosAbiertos({
     modalidad: selectedModalidad,
     ciudadId: selectedCiudadId,
-    enabled: !!selectedModalidad,
+    enabled: adminMode || !!selectedModalidad,
   })
 
   const {
@@ -70,8 +86,19 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   } = useTalleres({
     modalidad: selectedModalidad,
     ciudadId: selectedCiudadId,
-    enabled: !!selectedModalidad,
+    enabled: adminMode || !!selectedModalidad,
   })
+
+  useEffect(() => {
+    setLoadingPersonalizados(true)
+    const request = adminMode
+      ? cursosPersonalizadosService.listar({ per_page: 200 })
+      : cursosPersonalizadosService.listarDisponibles({ per_page: 200 })
+    request
+      .then(response => setCursosPersonalizados(response.data ?? []))
+      .catch(() => toast.error("No se pudieron cargar los cursos personalizados disponibles"))
+      .finally(() => setLoadingPersonalizados(false))
+  }, [adminMode])
 
   useEffect(() => {
     if (cursosError) toast.error("No se pudieron cargar los cursos disponibles")
@@ -81,7 +108,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (talleresError) toast.error("No se pudieron cargar los talleres disponibles")
   }, [talleresError])
 
-  const isLoadingData = loadingCursos || loadingTalleres
+  const isLoadingData = loadingCursos || loadingTalleres || loadingPersonalizados
 
   const ciudades = useMemo(() => {
     const seen = new Set<number>()
@@ -98,12 +125,38 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         result.push({ id: t.ciudad.id, nombre: t.ciudad.nombre })
       }
     }
+    for (const c of cursosPersonalizados) {
+      if ((!selectedModalidad || c.modalidad === selectedModalidad) && c.ciudad_id && c.ciudad && !seen.has(c.ciudad_id)) {
+        seen.add(c.ciudad_id)
+        result.push({ id: c.ciudad_id, nombre: c.ciudad })
+      }
+    }
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre))
-  }, [cursosAbiertos, talleres])
+  }, [cursosAbiertos, talleres, cursosPersonalizados, selectedModalidad])
 
   const curso = cursosAbiertos.find(c => c.id === selectedCourseId)
   const tallerSel = talleres.find(t => t.id === selectedCourseId)
-  const esTaller = !!tallerSel && !curso
+  const personalizadoSel = cursosPersonalizados.find(c => c.id === selectedCourseId)
+  const cursosPersonalizadosVisibles = cursosPersonalizados.filter(c =>
+    (!selectedModalidad || c.modalidad === selectedModalidad) &&
+    (!selectedCiudadId || c.ciudad_id === selectedCiudadId)
+  )
+  const cursoPago = curso || (personalizadoSel ? {
+    id: personalizadoSel.id,
+    nombre_instancia: personalizadoSel.nombre,
+    fecha_inicio: personalizadoSel.fecha_inicio,
+    fecha_fin: personalizadoSel.fecha_fin,
+    precio_base: personalizadoSel.precio_total,
+    modalidad: personalizadoSel.modalidad,
+    es_activo: personalizadoSel.es_activo,
+    estado: "confirmado",
+    capacidad_maxima: personalizadoSel.capacidad,
+    horario: personalizadoSel.hora_inicio && personalizadoSel.hora_fin ? {
+      id: `${personalizadoSel.id}-horario`, curso_abierto_id: personalizadoSel.id,
+      dia_semana: personalizadoSel.dias_semana ?? [], hora_inicio: personalizadoSel.hora_inicio, hora_fin: personalizadoSel.hora_fin,
+    } : undefined,
+  } : undefined) as typeof curso
+  const esTaller = !!tallerSel && !curso && !personalizadoSel
 
   const step1CanProceed = useMemo(() => {
     const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo"]
@@ -233,8 +286,42 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
   const handleSubmit = async () => {
     if (!validateStep3()) return
     setLoadingSubmit(true)
+    const localDate = fechaPago || getLocalDateString()
     try {
-      if (esTaller) {
+      if (adminMode) {
+        const estudianteCreado = await estudiantesService.createEstudiante({
+          nombres: estudiante.nombres, apellidos: estudiante.apellidos,
+          cedula: estudiante.cedula || undefined, correo: estudiante.correo || undefined,
+          celular: estudiante.telefono || undefined, ciudad: estudiante.ciudad || undefined,
+          ocupacion: estudiante.ocupacion || undefined, direccion: estudiante.direccion || undefined,
+          estado_civil: estudiante.estado_civil || undefined, edad: estudiante.edad ? Number(estudiante.edad) : undefined,
+          nivel_educativo: estudiante.nivel_educativo || undefined, archivo_cedula: cedulaFile || undefined,
+        })
+        const metodo = metodoPago === "transferencia" ? "transferencia" : "efectivo"
+        if (esTaller) {
+          const comprobante = comprobanteFile ? await cursosService.uploadComprobante(comprobanteFile) : undefined
+          await tallerService.inscribirEstudianteDesdePerfil({ estudiante_id: estudianteCreado.id, taller_id: selectedCourseId, monto_pagado: Number(montoDeclarado || 0), metodo_pago: metodo, comprobante_url: comprobante?.url })
+        } else {
+          const solicitud = new FormData()
+          solicitud.append("persona_id", estudianteCreado.id)
+          solicitud.append("curso_abierto_id", selectedCourseId)
+          solicitud.append("monto_solicitado", montoDeclarado || "0")
+          solicitud.append("monto_declarado", montoDeclarado || "0")
+          solicitud.append("tipo_pago", "abono")
+          solicitud.append("tipo_comprobante", metodo)
+          if (comprobanteFile) solicitud.append("archivo_comprobante", comprobanteFile)
+          if (cedulaFile) solicitud.append("archivo_cedula", cedulaFile)
+          const respuesta = await cursosService.crearSolicitudInscripcion(solicitud)
+          const respuestaData = respuesta.data as Record<string, unknown> | undefined
+          const solicitudId = (respuestaData?.id ?? (respuestaData?.datos as Record<string, unknown> | undefined)?.id) as string | undefined
+          toast.success("Solicitud enviada a aprobación")
+          if (solicitudId) navigate(`/matriculas/aprobacion/solicitud/${solicitudId}`)
+        }
+        if (esTaller) {
+          toast.success("Inscripción enviada a revisión")
+          navigate("/matriculas?tab=talleres")
+        }
+      } else if (esTaller) {
         const formData = new FormData()
         formData.append("taller_id", selectedCourseId)
         formData.append("nombres", estudiante.nombres)
@@ -249,10 +336,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         formData.append("estado_civil", estudiante.estado_civil)
         formData.append("edad", estudiante.edad)
         formData.append("nivel_educativo", estudiante.nivel_educativo)
-        formData.append("tipo_pago", "abono")
-        formData.append("monto_pagado", "0")
+        const precioTaller = Number(tallerSel?.precio || 0)
+        const montoNum = parseFloat(montoDeclarado) || 0
+        const esCompleto = precioTaller > 0 && montoNum >= precioTaller
+        formData.append("tipo_pago", esCompleto ? "completo" : "abono")
+        formData.append("monto_pagado", montoDeclarado || "0")
+        formData.append("monto_declarado", montoDeclarado || "0")
         formData.append("metodo_pago", metodoPago)
-        formData.append("fecha_pago", new Date().toISOString().split("T")[0])
+        formData.append("fecha_pago", localDate)
         if (comprobanteFile) formData.append("comprobante", comprobanteFile)
         if (cedulaFile) formData.append("archivo_cedula", cedulaFile)
         await tallerService.inscribir(formData)
@@ -260,9 +351,12 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       } else {
         const formData = new FormData()
         formData.append("curso_abierto_id", selectedCourseId)
-        formData.append("tipo_pago", "abono")
+        const precioCurso = Number(curso?.precio_base || 0)
+        const montoNum = parseFloat(montoDeclarado) || 0
+        const esCompleto = precioCurso > 0 && montoNum >= precioCurso
+        formData.append("tipo_pago", esCompleto ? "completo" : "abono")
         formData.append("tipo_comprobante", metodoPago)
-        formData.append("fecha_pago_declarada", new Date().toISOString().split("T")[0])
+        formData.append("fecha_pago_declarada", localDate)
         formData.append("nombres", estudiante.nombres)
         formData.append("apellidos", estudiante.apellidos)
         formData.append("cedula", estudiante.cedula)
@@ -276,7 +370,8 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
         formData.append("estado_civil", estudiante.estado_civil)
         formData.append("edad", estudiante.edad)
         formData.append("nivel_educativo", estudiante.nivel_educativo)
-        formData.append("monto_solicitado", "0")
+        formData.append("monto_solicitado", montoDeclarado || "0")
+        formData.append("monto_declarado", montoDeclarado || "0")
         if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
         if (cedulaFile) formData.append("archivo_cedula", cedulaFile)
         await cursosService.crearSolicitudInscripcion(formData)
@@ -287,6 +382,11 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       else if (localStorage.getItem("auth_token")) window.location.assign("/matriculas")
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data
+      if (adminMode && typeof data?.estudiante_id === "string") {
+        toast.error("Ya existe un estudiante con esta cédula. Puedes continuar con su inscripción.")
+        navigate(`/estudiantes/${data.estudiante_id}/inscribir`)
+        return
+      }
       const msg = String(data?.mensaje || data?.message || "Error al enviar la solicitud")
       const erroresRaw = data?.errores
       const errorsRaw = data?.errors
@@ -319,7 +419,8 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
     if (subStep === "modalidad") setPaso(1)
     else if (subStep === "ciudad") setSubStep("modalidad")
     else if (subStep === "lista") {
-      if (selectedModalidad === "virtual") setSubStep("modalidad")
+      if (adminMode) setPaso(1)
+      else if (selectedModalidad === "virtual") setSubStep("modalidad")
       else setSubStep("ciudad")
     }
   }
@@ -377,14 +478,14 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
             <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: COLORS.TEXT_MUTED }}>
               <span>Matrículas</span><span>/</span><span className="font-medium" style={{ color: COLORS.CHARCOAL }}>Nueva</span>
             </div>
-            <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>Completa tu Matrícula</h1>
-            <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>Completa los datos para inscribir a un estudiante</p>
+            <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>{adminMode ? "Registrar e inscribir estudiante" : "Completa tu Matrícula"}</h1>
+            <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>{adminMode ? "Registra los datos, selecciona una oferta y configura el pago." : "Completa los datos para inscribir a un estudiante"}</p>
           </div>
-          <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/matricula/nueva`); toast.success("Enlace copiado") }}
+          {!adminMode && <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/matricula/nueva`); toast.success("Enlace copiado") }}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold border transition-all hover:bg-black/5"
             style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
             <HugeiconsIcon icon={Link03Icon} size={14} />Compartir enlace público
-          </button>
+          </button>}
         </div>
       )}
 
@@ -426,7 +527,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
 
       {paso === 2 && (
         <div className="rounded-xl border p-4 sm:p-6 space-y-6 bg-white shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <StepIndicator subStep={subStep} selectedModalidad={selectedModalidad} />
+          {!adminMode && <StepIndicator subStep={subStep} selectedModalidad={selectedModalidad} />}
 
           <AnimatePresence mode="wait">
             {subStep === "modalidad" && (
@@ -436,7 +537,7 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
               <CiudadStep ciudades={ciudades} selectedCiudadId={selectedCiudadId} loadingCursos={isLoadingData} onSelect={handleCiudadSelect} onBack={() => setSubStep("modalidad")} />
             )}
             {subStep === "lista" && (
-              <ListaStep talleres={talleres} cursosAbiertos={cursosAbiertos} selectedCourseId={selectedCourseId} loadingCursos={isLoadingData} onSelect={handleCursoSelect} onBack={() => selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} />
+              <ListaStep talleres={talleres} cursosAbiertos={cursosAbiertos} cursosPersonalizados={cursosPersonalizadosVisibles} modoDirecto={adminMode} selectedCourseId={selectedCourseId} loadingCursos={isLoadingData} onSelect={handleCursoSelect} onBack={() => adminMode ? setPaso(1) : selectedModalidad === "virtual" ? setSubStep("modalidad") : setSubStep("ciudad")} />
             )}
           </AnimatePresence>
 
@@ -455,17 +556,23 @@ export function NuevaMatriculaPage({ isPublic, onSuccess }: { isPublic?: boolean
       {paso === 3 && (
         <PagoForm
           metodoPago={metodoPago}
+          montoDeclarado={montoDeclarado}
+          fechaPago={fechaPago}
+          showFechaPago={false}
+          hideAmount
           comprobanteFile={comprobanteFile}
           comprobantePreview={comprobantePreview}
           paymentErrors={paymentErrors}
           paymentTouched={paymentTouched}
           esTaller={esTaller}
           tallerSel={tallerSel}
-          curso={curso}
+          curso={cursoPago}
           loadingSubmit={loadingSubmit}
           metodosPago={metodosPago}
           canSubmit={step3CanSubmit}
           onMetodoPagoChange={(key) => { setMetodoPago(key); touchPaymentField("metodoPago") }}
+          onMontoDeclaradoChange={(value) => { setMontoDeclarado(value); setPaymentTouched(prev => ({ ...prev, monto: true })); setPaymentErrors(prev => { const next = { ...prev }; delete next.monto; return next }) }}
+          onFechaPagoChange={setFechaPago}
           onComprobanteChange={(file) => {
             if (!file) {
               setComprobanteFile(null)

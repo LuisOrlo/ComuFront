@@ -8,7 +8,7 @@ import {
   Calendar03Icon, Clock01Icon, Money01Icon,
   Note03Icon, AlertCircleIcon, UserGroupIcon,
 } from "@hugeicons/core-free-icons"
-import { UserPlus, Loader2, X } from "lucide-react"
+import { UserPlus, Loader2, X, Tag } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { getCachedAvailability } from "@/lib/availabilityCache"
@@ -71,7 +71,7 @@ export function NuevaReservaPage() {
   const [clienteSearch, setClienteSearch] = useState("")
 
   // Descuentos
-  const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [descuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
   const [descuentoValor, setDescuentoValor] = useState<string>("")
   const [motivoDescuento, setMotivoDescuento] = useState<string>("")
   const [showDescuento, setShowDescuento] = useState(false)
@@ -451,41 +451,81 @@ export function NuevaReservaPage() {
                   </div>
 
                   {!showDescuento ? (
-                    <button type="button" onClick={() => setShowDescuento(true)} className="text-xs font-medium text-violet-600 hover:text-violet-700 text-left mt-1 self-start">
-                      + Aplicar descuento
+                    <button
+                      type="button"
+                      onClick={() => setShowDescuento(true)}
+                      className="mt-1 inline-flex items-center gap-1.5 self-start rounded-lg border border-dashed border-violet-300 bg-violet-50/60 px-3 py-1.5 text-xs font-semibold text-violet-700 transition hover:border-violet-400 hover:bg-violet-100/70"
+                    >
+                      <Tag size={13} />
+                      <span>+ Aplicar descuento a la reserva</span>
                     </button>
                   ) : (
-                    <div className="mt-2 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="flex gap-2">
-                        <select 
-                          value={descuentoTipo} 
-                          onChange={(e) => setDescuentoTipo(e.target.value as "fijo" | "porcentaje")}
-                          className="px-3 py-2 rounded-lg border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-violet-400 w-24 shrink-0"
+                    <div className="mt-3 rounded-xl border border-violet-200/80 bg-violet-50/40 p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b border-violet-100 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 text-violet-700 shadow-xs">
+                            <Tag size={13} />
+                          </span>
+                          <span className="text-xs font-bold text-slate-800">Descuento a la reserva</span>
+                          <span className="rounded-full bg-violet-100/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700">
+                            Monto fijo
+                          </span>
+                          {montoDescuento > 0 && (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                              -${montoDescuento.toFixed(2)} USD
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowDescuento(false)
+                            setDescuentoValor("")
+                            setMotivoDescuento("")
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                          title="Quitar descuento"
                         >
-                          <option value="fijo">$ Fijo</option>
-                          <option value="porcentaje">% Porc</option>
-                        </select>
-                        <input 
-                          type="number" 
-                          min="0"
-                          step="0.01"
-                          placeholder={descuentoTipo === "fijo" ? "Monto a descontar" : "Porcentaje (ej: 10)"}
-                          value={descuentoValor}
-                          onChange={(e) => setDescuentoValor(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-violet-400"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Motivo (ej: Estudiante VIP)"
-                          value={motivoDescuento}
-                          onChange={(e) => setMotivoDescuento(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-violet-400"
-                        />
-                        <button type="button" onClick={() => { setShowDescuento(false); setDescuentoValor(""); setMotivoDescuento(""); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                          <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                          <X size={14} />
+                          <span>Quitar</span>
                         </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-0.5">
+                        {/* 1. Monto fijo */}
+                        <div className="sm:col-span-5 space-y-1">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Monto fijo a descontar ($ USD)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                              $
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={descuentoValor}
+                              onChange={(e) => setDescuentoValor(e.target.value)}
+                              className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-7 pr-3 text-xs font-semibold text-slate-800 outline-none transition hover:border-slate-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+                            />
+                          </div>
+                        </div>
+
+                        {/* 2. Motivo */}
+                        <div className="sm:col-span-7 space-y-1">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Motivo o justificación
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ej: Cliente frecuente, convenio, estudiante VIP..."
+                            value={motivoDescuento}
+                            onChange={(e) => setMotivoDescuento(e.target.value)}
+                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none transition hover:border-slate-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}

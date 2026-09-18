@@ -1,13 +1,15 @@
 import type { AgendaEvent } from "@/services/agenda.service"
 
-const EVENT_TYPES: Record<string, { label: string; color: string }> = {
-  CLASE_CURSO: { label: "Curso", color: "#6366f1" },
-  TALLER: { label: "Taller", color: "#f59e0b" },
-  ALQUILER_AULA: { label: "Aula", color: "#10b981" },
-  PODCAST: { label: "Podcast", color: "#ec4899" },
-  STREAMING: { label: "Streaming", color: "#06b6d4" },
-  ASESORIA: { label: "Asesoría", color: "#8b5cf6" },
-  RADIO: { label: "Radio", color: "#ef4444" },
+export const EVENT_TYPES: Record<string, { label: string; color: string; bg: string; text: string; border: string }> = {
+  CLASE_CURSO: { label: "Curso", color: "#2563eb", bg: "#eff6ff", text: "#1e40af", border: "#3b82f6" },
+  CURSO: { label: "Curso", color: "#2563eb", bg: "#eff6ff", text: "#1e40af", border: "#3b82f6" },
+  CURSO_PERSONALIZADO: { label: "Curso personalizado", color: "#0f766e", bg: "#f0fdfa", text: "#115e59", border: "#14b8a6" },
+  TALLER: { label: "Taller", color: "#9333ea", bg: "#faf5ff", text: "#6b21a8", border: "#a855f7" },
+  ALQUILER_AULA: { label: "Alquiler Aula", color: "#059669", bg: "#ecfdf5", text: "#065f46", border: "#10b981" },
+  PODCAST: { label: "Podcast", color: "#d97706", bg: "#fffbeb", text: "#92400e", border: "#f59e0b" },
+  STREAMING: { label: "Streaming", color: "#e11d48", bg: "#fff1f2", text: "#9f1239", border: "#f43f5e" },
+  ASESORIA: { label: "Asesoría", color: "#0891b2", bg: "#ecfeff", text: "#155e75", border: "#06b6d4" },
+  RADIO: { label: "Radio", color: "#db2777", bg: "#fdf2f8", text: "#9d174d", border: "#ec4899" },
 }
 
 export const DAYS = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO']
@@ -15,6 +17,8 @@ export const MONTHS = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'J
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
   CLASE_CURSO: 'CURSO',
+  CURSO: 'CURSO',
+  CURSO_PERSONALIZADO: 'CURSO PERSONALIZADO',
   TALLER: 'TALLER',
   ALQUILER_AULA: 'AULA',
   PODCAST: 'PODCAST',
@@ -33,6 +37,67 @@ export function formatDayMonth(date: Date): string {
 
 export function formatDayMonthYear(date: Date): string {
   return `${DAYS[date.getDay()]} ${date.getDate()} DE ${MONTHS[date.getMonth()]} DE ${date.getFullYear()}`
+}
+
+export function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+export function getWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
+export interface WeekDayInfo {
+  date: Date
+  dateStr: string
+  dayShort: string
+  dayLong: string
+  dayNumber: number
+  isToday: boolean
+}
+
+export function getWeekDays(referenceDate: Date): WeekDayInfo[] {
+  const d = new Date(referenceDate)
+  const day = d.getDay() // 0 = Sunday, 1 = Monday, ...
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  const monday = new Date(d.getFullYear(), d.getMonth(), diff)
+  monday.setHours(0, 0, 0, 0)
+
+  const todayStr = toLocalDateStr(new Date())
+  const shortNames = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+  const longNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+  const result: WeekDayInfo[] = []
+  for (let i = 0; i < 7; i++) {
+    const current = new Date(monday)
+    current.setDate(monday.getDate() + i)
+    const dateStr = toLocalDateStr(current)
+    result.push({
+      date: current,
+      dateStr,
+      dayShort: shortNames[i],
+      dayLong: longNames[i],
+      dayNumber: current.getDate(),
+      isToday: dateStr === todayStr,
+    })
+  }
+  return result
+}
+
+export function formatDuration(startStr?: string, endStr?: string): string {
+  if (!startStr || !endStr) return ""
+  const [sh, sm] = startStr.split(":").map(Number)
+  const [eh, em] = endStr.split(":").map(Number)
+  const diffMinutes = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0))
+  if (diffMinutes <= 0) return ""
+  const hours = diffMinutes / 60
+  return hours % 1 === 0 ? `(${hours} ${hours === 1 ? "hora" : "horas"})` : `(${hours.toFixed(1)} horas)`
 }
 
 interface CardEvent {
@@ -81,7 +146,7 @@ export function buildCardScheduleElement(
     } else {
       for (const ev of dayEvents) {
         const card = document.createElement('div')
-        const color = ev.backgroundColor || '#6366f1'
+        const color = ev.backgroundColor || '#2563eb'
         card.style.cssText = 'display:flex;align-items:stretch;margin-bottom:6px;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);'
 
         const bar = document.createElement('div')
@@ -111,18 +176,30 @@ export function buildCardScheduleElement(
   return container
 }
 
+export function getEventStyles(tipoEvento: string) {
+  return EVENT_TYPES[tipoEvento] ?? {
+    label: tipoEvento?.replace(/_/g, ' ') || "Evento",
+    color: "#64748b",
+    bg: "#f8fafc",
+    text: "#334155",
+    border: "#94a3b8",
+  }
+}
+
 export function getEventColor(event: AgendaEvent): string {
-  return EVENT_TYPES[event.tipo_evento]?.color ?? "#6b7280"
+  return EVENT_TYPES[event.tipo_evento]?.color ?? event.color ?? "#64748b"
 }
 
 export function getEventLabel(event: AgendaEvent): string {
-  return EVENT_TYPES[event.tipo_evento]?.label ?? event.tipo_evento
+  if (event.tipo_evento === "CLASE_CURSO") return "Curso"
+  return EVENT_TYPES[event.tipo_evento]?.label ?? event.tipo_label ?? event.tipo_evento
 }
 
 export function getEventTypeColor(tipo: string): string {
-  return EVENT_TYPES[tipo]?.color ?? "#6b7280"
+  return EVENT_TYPES[tipo]?.color ?? "#64748b"
 }
 
 export function getEventTypeLabel(tipo: string): string {
+  if (tipo === "CLASE_CURSO") return "Curso"
   return EVENT_TYPES[tipo]?.label ?? tipo
 }

@@ -180,6 +180,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
         { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
         { icon: AiLearningIcon, label: "Matrículas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
         { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
+        { icon: AiLearningIcon, label: "Cursos personalizados", path: "/cursos-personalizados" },
         { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
         { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
       ],
@@ -200,7 +201,6 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
         { icon: CalendarDaysIcon, label: "Agenda", path: "/agenda" },
         { icon: ClipboardCheckIcon, label: "Tareas", path: "/tareas" },
         { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
-        { icon: UserCheckIcon, label: "Solicitudes", path: "/secretaria/solicitudes" },
       ],
     },
     {
@@ -221,6 +221,7 @@ if (isAdmin) {
         { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
         { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
         { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
+        { icon: AiLearningIcon, label: "Cursos personalizados", path: "/cursos-personalizados" },
         { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
         { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
         { icon: AiFolderIcon, label: "Categorías", path: "/catalogos" },

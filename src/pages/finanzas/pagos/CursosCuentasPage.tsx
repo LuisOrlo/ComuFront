@@ -16,7 +16,7 @@ import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
 
-export function CursosCuentasPage() {
+export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonalizados?: boolean }) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [cuentas, setCuentas] = useState<any[]>([])
@@ -33,7 +33,7 @@ export function CursosCuentasPage() {
   }, [searchInput])
 
   useEffect(() => {
-    setClientPage(1)  
+    setClientPage(1)
   }, [filter, modalidad, search])
 
   useEffect(() => {
@@ -86,6 +86,9 @@ export function CursosCuentasPage() {
         c.solicitud_inscripcion?.curso_abierto ||
         null
 
+      const esPersonalizado = curso?.es_personalizado === true
+      if (soloPersonalizados !== esPersonalizado) return
+
       let name = curso?.nombre_instancia || ""
 
       if (!name && curso) {
@@ -111,6 +114,7 @@ export function CursosCuentasPage() {
           personas: 0,
           modulos: 0,
           cursoId,
+          esPersonalizado,
           entries: [],
         }
       }
@@ -123,17 +127,18 @@ export function CursosCuentasPage() {
       g.entries.push(c)
     })
     return Object.entries(groups)
-  }, [cuentas])
+  }, [cuentas, soloPersonalizados])
 
   const filtered = useMemo(() => {
     return grouped.filter(([, g]) => {
+      if (soloPersonalizados !== Boolean(g.esPersonalizado)) return false
       const pct = g.total > 0 ? (g.cobrado / g.total) * 100 : 0
       if (filter === "pendiente") return g.saldo > 0 && pct < 50
       if (filter === "en_progreso") return g.saldo > 0 && pct >= 50 && pct < 100
       if (filter === "completado") return g.saldo <= 0
       return true
     })
-  }, [grouped, filter])
+  }, [grouped, filter, soloPersonalizados])
 
   const searchFiltered = useMemo(() => {
     if (!search) return filtered
@@ -185,7 +190,7 @@ export function CursosCuentasPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black" style={{ color: COLORS.CHARCOAL }}>
-              Cursos
+              {soloPersonalizados ? "Cursos personalizados" : "Cursos"}
             </h2>
             <p className="text-xs opacity-40 mt-1">
               {searchFiltered.length} curso{searchFiltered.length !== 1 ? "s" : ""} con cuentas por cobrar
@@ -267,12 +272,12 @@ export function CursosCuentasPage() {
               return (
                 <motion.div
                   key={name}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.04 }}
-                  className="rounded-2xl border bg-white p-5"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                >
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    className="rounded-2xl border bg-white p-5"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div
@@ -328,7 +333,7 @@ export function CursosCuentasPage() {
                   </div>
 
                   <button
-                    onClick={() => navigate(`/finanzas/pagos/cuentas/cursos/${g.cursoId || name}`)}
+                    onClick={() => navigate(`/finanzas/pagos/cuentas/${soloPersonalizados ? "cursos-personalizados" : "cursos"}/${g.cursoId || name}`)}
                     className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
                     style={{ color: COLORS.ACCENT, backgroundColor: `${COLORS.ACCENT}12` }}
                   >
@@ -369,4 +374,8 @@ export function CursosCuentasPage() {
       </motion.div>
     </div>
   )
+}
+
+export function CursosPersonalizadosCuentasPage() {
+  return <CursosCuentasPage soloPersonalizados />
 }

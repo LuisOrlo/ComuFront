@@ -11,11 +11,11 @@ interface ServiciosContratadosProps {
 }
 
 const serviceIcons: Record<string, { icon: typeof MusicNote01Icon; color: string; bg: string; label: string }> = {
-  radio: { icon: MusicNote01Icon, color: "oklch(0.55 0.18 160)", bg: "oklch(0.95 0.02 160)", label: "Radio" },
-  aulas: { icon: Building04Icon, color: "oklch(0.55 0.15 220)", bg: "oklch(0.95 0.02 220)", label: "Aulas" },
-  podcast: { icon: AiPhone01Icon, color: "oklch(0.55 0.12 280)", bg: "oklch(0.95 0.02 280)", label: "Podcast" },
-  equipos: { icon: Camera01Icon, color: "oklch(0.55 0.12 40)", bg: "oklch(0.95 0.02 40)", label: "Equipos" },
-  edicion: { icon: VideoIcon, color: "oklch(0.55 0.16 260)", bg: "oklch(0.95 0.02 260)", label: "Edición de Video" },
+  radio: { icon: MusicNote01Icon, color: "#db2777", bg: "#fdf2f8", label: "Radio" },
+  aulas: { icon: Building04Icon, color: "#059669", bg: "#ecfdf5", label: "Aulas" },
+  podcast: { icon: AiPhone01Icon, color: "#d97706", bg: "#fffbeb", label: "Podcast" },
+  equipos: { icon: Camera01Icon, color: "#9333ea", bg: "#faf5ff", label: "Equipos" },
+  edicion: { icon: VideoIcon, color: "#0891b2", bg: "#ecfeff", label: "Edición de Video" },
 }
 
 type ReservasData = {
@@ -65,30 +65,55 @@ export function ServiciosContratados({ clienteId }: ServiciosContratadosProps) {
     )
   }
 
+  const totalServicios = sections.reduce((total, section) => total + section.items.length, 0)
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <div className="rounded-2xl bg-white p-5 shadow-sm" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Servicios contratados</h2>
+            <p className="text-sm text-[#73747b]">Historial de reservas y servicios registrados para este cliente.</p>
+          </div>
+          <span className="w-fit rounded-full bg-[#ffdbca] px-2.5 py-1 text-[11px] font-bold text-[#783200]">
+            {totalServicios} {totalServicios === 1 ? "servicio" : "servicios"}
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {sections.map(({ key, items }) => {
+            const cfg = serviceIcons[key]
+            return (
+              <div key={key} className="rounded-xl bg-[#f8f9ff] p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#73747b]">{cfg.label}</div>
+                <div className="mt-1 text-xl font-bold" style={{ color: cfg.color }}>{items.length}</div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       {sections.map(({ key, items }) => {
         const cfg = serviceIcons[key]
         const Icon = cfg.icon
         return (
           <div key={key}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="size-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: cfg.bg }}>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: cfg.bg }}>
                 <HugeiconsIcon icon={Icon} size={14} style={{ color: cfg.color }} />
               </div>
               <h3 className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{cfg.label}</h3>
-              <span className="text-[10px] opacity-30 font-medium">({items.length})</span>
+              <span className="rounded-full bg-[#e5eeff] px-2 py-0.5 text-[10px] font-semibold text-[#73747b]">{items.length}</span>
             </div>
             <div className="space-y-2">
               {items.map((item, idx) => (
                 <div key={String(item.id || idx)}
-                  className="flex items-center justify-between rounded-lg border px-4 py-3 text-sm"
+                  className="flex flex-col gap-3 rounded-xl border bg-white px-4 py-4 text-sm shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
                   style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <div className="space-y-0.5">
-                    <p className="font-medium" style={{ color: COLORS.CHARCOAL }}>
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-bold" style={{ color: COLORS.CHARCOAL }}>
                       {formatReservaTitle(key, item)}
                     </p>
-                    <p className="text-xs opacity-40">
+                    <p className="text-xs text-[#73747b]">
                       {formatReservaDate(key, item)}
                     </p>
                   </div>

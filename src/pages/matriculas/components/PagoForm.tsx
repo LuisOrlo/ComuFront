@@ -7,6 +7,10 @@ import type { Taller, HorarioTaller } from "@/services/taller.service"
 
 interface PagoFormProps {
   metodoPago: string
+  montoDeclarado?: string
+  fechaPago?: string
+  showFechaPago?: boolean
+  hideAmount?: boolean
   comprobanteFile: File | null
   comprobantePreview: string | null
   paymentErrors: Record<string, string>
@@ -18,6 +22,8 @@ interface PagoFormProps {
   canSubmit: boolean
   metodosPago: Array<{ key: string; label: string }>
   onMetodoPagoChange: (key: string) => void
+  onMontoDeclaradoChange?: (val: string) => void
+  onFechaPagoChange?: (val: string) => void
   onComprobanteChange: (file: File | null) => void
   onQuitarComprobante: () => void
   onSubmit: () => void
@@ -62,13 +68,36 @@ function descHorarioCurso(horario: CursoAbierto["horario"]): string {
   return [days.join(", "), t].filter(Boolean).join(" | ")
 }
 
-export function PagoForm({ metodoPago, comprobanteFile, comprobantePreview, paymentErrors, paymentTouched, esTaller, tallerSel, curso, loadingSubmit, canSubmit, metodosPago, onMetodoPagoChange, onComprobanteChange, onQuitarComprobante, onSubmit, onBack }: PagoFormProps) {
+export function PagoForm({
+  metodoPago,
+  montoDeclarado,
+  fechaPago,
+  showFechaPago = true,
+  hideAmount = false,
+  comprobanteFile,
+  comprobantePreview,
+  paymentErrors,
+  paymentTouched,
+  esTaller,
+  tallerSel,
+  curso,
+  loadingSubmit,
+  canSubmit,
+  metodosPago,
+  onMetodoPagoChange,
+  onMontoDeclaradoChange,
+  onFechaPagoChange,
+  onComprobanteChange,
+  onQuitarComprobante,
+  onSubmit,
+  onBack,
+}: PagoFormProps) {
   const comprobanteInputRef = useRef<HTMLInputElement>(null)
 
   return (
     <div className="rounded-xl border p-4 sm:p-6 space-y-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
       <h2 className="text-sm font-semibold flex items-center gap-2"><HugeiconsIcon icon={CreditCardIcon} size={16} style={{ color: COLORS.ACCENT }} />Método de Pago</h2>
-      <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu método de pago y sube el comprobante con el pago completo o el adelanto para finalizar tu matrícula. </p>
+      <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu método de pago y sube el comprobante con el pago completo o el adelanto para finalizar tu matrícula.</p>
       <div className="space-y-6">
         <div>
           <label className="block text-xs font-medium mb-1.5">Método de pago</label>
@@ -83,6 +112,35 @@ export function PagoForm({ metodoPago, comprobanteFile, comprobantePreview, paym
           </div>
           {paymentTouched.metodoPago && paymentErrors.metodoPago && <p className="text-[11px] mt-1 text-red-500">{paymentErrors.metodoPago}</p>}
         </div>
+
+        <div className={`grid grid-cols-1 ${showFechaPago && !hideAmount ? "sm:grid-cols-2" : ""} gap-4`}>
+          {!hideAmount && <div>
+            <label className="block text-xs font-medium mb-1.5">Monto abonado / pagado ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={montoDeclarado ?? ""}
+              onChange={e => onMontoDeclaradoChange?.(e.target.value)}
+              placeholder={esTaller ? (tallerSel?.precio ? `Total: $${tallerSel.precio}` : "0.00") : (curso?.precio_base ? `Total: $${curso.precio_base}` : "0.00")}
+              className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 transition-all bg-white"
+              style={{ borderColor: COLORS.BORDER_SUBTLE }}
+            />
+            <p className="text-[10px] text-gray-500 mt-1">Declara el valor real abonado o depositado.</p>
+            {paymentTouched.monto && paymentErrors.monto && <p className="text-[11px] mt-1 text-red-500">{paymentErrors.monto}</p>}
+          </div>}
+          {showFechaPago && <div>
+            <label className="block text-xs font-medium mb-1.5">Fecha del pago</label>
+            <input
+              type="date"
+              value={fechaPago ?? ""}
+              onChange={e => onFechaPagoChange?.(e.target.value)}
+              className="w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 transition-all bg-white"
+              style={{ borderColor: COLORS.BORDER_SUBTLE }}
+            />
+          </div>}
+        </div>
+
         <div>
           <label className="block text-xs font-medium mb-1.5">Comprobante</label>
           <p className="text-[11px] text-gray-500 mb-2">

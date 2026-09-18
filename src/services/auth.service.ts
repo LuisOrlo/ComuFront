@@ -129,17 +129,24 @@ interface LoginErrorResponse {
 
 export const authService = {
   async login(username: string, password: string): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse | LoginErrorResponse>(
-      "/auth/iniciar-sesion",
-      { username, password }
-    )
-    const data = response.data
-    if (!("datos" in data) || !data.datos) {
-      throw new Error(data.mensaje || "Credenciales incorrectas")
+    try {
+      const response = await api.post<LoginResponse | LoginErrorResponse>(
+        "/auth/iniciar-sesion",
+        { username, password }
+      )
+      const data = response.data
+      if (!("datos" in data) || !data.datos) {
+        throw new Error(data.mensaje || "Credenciales incorrectas")
+      }
+      localStorage.setItem("auth_token", data.datos.token)
+      localStorage.setItem("user_persona_id", data.datos.usuario.persona?.id ?? "")
+      return data as LoginResponse
+    } catch (err: any) {
+      if (err.response?.data?.mensaje) {
+        throw new Error(err.response.data.mensaje, { cause: err })
+      }
+      throw err
     }
-    localStorage.setItem("auth_token", data.datos.token)
-    localStorage.setItem("user_persona_id", data.datos.usuario.persona?.id ?? "")
-    return data as LoginResponse
   },
 
   async getProfile() {

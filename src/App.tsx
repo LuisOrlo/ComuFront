@@ -1,112 +1,128 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router"
-import { useState, useRef } from "react"
+import { lazy, Suspense, useState, useRef } from "react"
+import type { ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
-import { LoginPage } from "@/pages/login/LoginPage"
-import { HomePage } from "@/pages/home/HomePage"
-import { CursosPage } from "@/pages/cursos/CursosPage"
-import { CursoFormPage } from "@/pages/cursos/CursoFormPage"
-import { CursoDetailPage } from "@/pages/cursos/detalle/CursoDetailPage"
-import { CatalogosConCursosPage } from "@/pages/catalogos/CatalogosConCursosPage"
-import { CatalogoFormPage } from "@/pages/catalogos/CatalogoFormPage"
-import { CiudadesPage } from "@/pages/admin/ciudades/CiudadesPage"
-import { PersonasPage } from "@/pages/personas/PersonasPage"
-import { PagosPersonaPage } from "@/pages/personas/PagosPersonaPage"
+function lazyNamed<T>(load: () => Promise<T>, exportName: string) {
+  return lazy(async () => {
+    const module = await load()
+    const component = (module as Record<string, unknown>)[exportName]
+    if (typeof component !== "function") throw new Error(`No se encontró la exportación ${exportName}`)
+    return { default: component as ComponentType<unknown> }
+  })
+}
 
-import { TareasPage } from "@/pages/tareas/TareasPage"
-import { CuentasPage } from "@/pages/cuentas/CuentasPage"
+function PageLoader() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
+      Cargando…
+    </div>
+  )
+}
 
-import { NuevaMatriculaPublicaPage } from "@/pages/matriculas/NuevaMatriculaPublicaPage"
-import { AprobacionMatriculasPage } from "@/pages/matriculas/AprobacionMatriculasPage"
-import { AprobacionSolicitudPage } from "@/pages/matriculas/AprobacionSolicitudPage"
-import { AprobacionTallerPage } from "@/pages/matriculas/AprobacionTallerPage"
-import { InscribirEstudiantePage } from "@/pages/matriculas/InscribirEstudiantePage"
-import { SolicitudesInscripcionPage } from "@/pages/solicitudes-inscripcion/SolicitudesInscripcionPage"
-import { SolicitudInscripcionDetallePage } from "@/pages/solicitudes-inscripcion/SolicitudInscripcionDetallePage"
-import { AulasPage } from "@/pages/servicios/aulas/AulasPage"
-import { AulasGestionPage } from "@/pages/servicios/aulas/AulasGestionPage"
-import { HistorialAulasPage } from "@/pages/servicios/aulas/HistorialAulasPage"
-import { EquiposPage } from "@/pages/servicios/equipos/EquiposPage"
-import { NuevoEquipoPage } from "@/pages/servicios/equipos/NuevoEquipoPage"
-import { AlquileresListPage } from "@/pages/servicios/equipos/AlquileresListPage"
-import { NuevoAlquilerPage } from "@/pages/servicios/equipos/NuevoAlquilerPage"
-import { HistorialEquipoPage } from "@/pages/servicios/equipos/HistorialEquipoPage"
-import { AlquilerDetallePage } from "@/pages/servicios/equipos/AlquilerDetallePage"
-import { PodcastPage } from "@/pages/servicios/podcast/PodcastPage"
-import { PaquetesPage } from "@/pages/servicios/podcast/PaquetesPage"
-import { NuevaReservaPage } from "@/pages/servicios/podcast/NuevaReservaPage"
-import { HistorialPodcastPage } from "@/pages/servicios/podcast/HistorialPodcastPage"
-import { ReservaPodcastDetallePage } from "@/pages/servicios/podcast/ReservaPodcastDetallePage"
-import { NuevaReservaPage as NuevaReservaAulaPage } from "@/pages/servicios/aulas/NuevaReservaPage"
-
-import { EdicionVideoPage } from "@/pages/servicios/edicion-video/EdicionVideoPage"
-import { EdicionVideoFormPage } from "@/pages/servicios/edicion-video/EdicionVideoFormPage"
-import { EdicionVideoDetallePage } from "@/pages/servicios/edicion-video/EdicionVideoDetallePage"
-import { HistorialEdicionVideoPage } from "@/pages/servicios/edicion-video/HistorialEdicionVideoPage"
-import { RadioPage } from "@/pages/servicios/radio/RadioPage"
-import { RadioHistorialPage } from "@/pages/servicios/radio/RadioHistorialPage"
-import { ReservaRadioDetallePage } from "@/pages/servicios/radio/ReservaRadioDetallePage"
-import { ClientesPage } from "@/pages/clientes/ClientesPage"
-import { NuevoClientePage } from "@/pages/clientes/NuevoClientePage"
-import { ClienteDetallePage } from "@/pages/clientes/detalle/ClienteDetallePage"
-import { ClientePagoPage } from "@/pages/clientes/detalle/ClientePagoPage"
-import { TarifasPage as RadioTarifasPage } from "@/pages/servicios/radio/TarifasPage"
-import { InstructorDashboardPage } from "@/pages/instructor-portal/InstructorDashboardPage"
-import { InstructorCursosPage } from "@/pages/instructor-portal/InstructorCursosPage"
-import { InstructorCursoDetailPage } from "@/pages/instructor-portal/detalle/InstructorCursoDetailPage"
-import { AsistenciaRegistroPage } from "@/pages/instructor-portal/AsistenciaRegistroPage"
-import { NotasRegistroPage } from "@/pages/instructor-portal/NotasRegistroPage"
-import { ClasesModuloPage } from "@/pages/instructor-portal/ClasesModuloPage"
-import { InstructorHorarioPage } from "@/pages/instructor-portal/InstructorHorarioPage"
-import { DetalleEstudiantePage } from "@/pages/instructor-portal/detalle/DetalleEstudiantePage"
-import { InstructorTallerDetailPage } from "@/pages/instructor-portal/InstructorTallerDetailPage"
-import { FinancePagosPage, FinanceResumenWrapper } from "@/pages/finanzas/pagos/FinancePagosPage"
-import { CuentasCobrarLayout } from "@/pages/finanzas/pagos/CuentasCobrarLayout"
-import { TalleresCuentasPage } from "@/pages/finanzas/pagos/TalleresCuentasPage"
-import { TallerCuentasDetallePage } from "@/pages/finanzas/pagos/TallerCuentasDetallePage"
-import { TallerParticipantePage } from "@/pages/finanzas/pagos/TallerParticipantePage"
-import { CursosCuentasPage } from "@/pages/finanzas/pagos/CursosCuentasPage"
-import { CursoCuentasDetallePage } from "@/pages/finanzas/pagos/CursoCuentasDetallePage"
-import { CursoEstudiantePagoPage } from "@/pages/finanzas/pagos/CursoEstudiantePagoPage"
-import { ServiciosCuentasPage } from "@/pages/finanzas/pagos/ServiciosCuentasPage"
-import { ServicioCuentaDetallePage } from "@/pages/finanzas/pagos/ServicioCuentaDetallePage"
-import { ServicioPagoPage } from "@/pages/finanzas/pagos/ServicioPagoPage"
-import { HistorialPage } from "@/pages/finanzas/pagos/HistorialPage"
-import { PagoDetallePage } from "@/pages/finanzas/pagos/PagoDetallePage"
-import { IngresosPage } from "@/pages/finanzas/ingresos/IngresosPage"
-import { IngresoDetallePage } from "@/pages/finanzas/ingresos/IngresoDetallePage"
-import { EgresosPage } from "@/pages/finanzas/egresos/EgresosPage"
-import { EgresoFormPage } from "@/pages/finanzas/egresos/EgresoFormPage"
-import { EgresoDetallePage } from "@/pages/finanzas/egresos/EgresoDetallePage"
-import { EstadisticasPage } from "@/pages/finanzas/estadisticas/EstadisticasPage"
-import { CatalogoDetallePage } from "@/pages/finanzas/estadisticas/CatalogoDetallePage"
-import { EstudianteDetallePage } from "@/pages/finanzas/estadisticas/EstudianteDetallePage"
-import { EstudiantesPage } from "@/pages/estudiantes/EstudiantesPage"
-import { NuevoEstudiantePage } from "@/pages/estudiantes/NuevoEstudiantePage"
-import {
-  SecretariaDashboardPage,
-  SecretariaSolicitudesPage,
-} from "@/pages/secretaria"
-import { EstudiantePerfilAcademicoPage } from "@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"
-import { RegistrarPagoPage } from "@/pages/estudiantes/perfil-academico/RegistrarPagoPage"
-import { EstudiantesCursoDetallePage } from "@/pages/estudiantes/detalle/EstudiantesCursoDetallePage"
-import { EstudiantesTallerDetallePage } from "@/pages/estudiantes/detalle/EstudiantesTallerDetallePage"
-import { EstudiantesCiudadDetallePage } from "@/pages/estudiantes/detalle/EstudiantesCiudadDetallePage"
-import {
-  TalleresPage,
-  TallerFormPage,
-  TallerDetallePage,
-  InstructorTalleresPage,
-  AsistenciaTallerPage,
-  ParticipantesTallerPage,
-} from "@/pages/admin/talleres"
-import { CertificadosPage } from "@/pages/certificados/CertificadosPage"
-import { CargaMasivaCertificadosPage } from "@/pages/certificados/CargaMasivaCertificadosPage"
-import { VerificarCertificadosPage } from "@/pages/certificados/VerificarCertificadosPage"
-import { EstudianteStatsPage } from "@/pages/estudiantes/EstudianteStatsPage"
-import { EstudianteSegmentsPage } from "@/pages/estudiantes/EstudianteSegmentsPage"
-import { AgendaPage } from "@/pages/agenda/AgendaPage"
+const LoginPage = lazyNamed(() => import("@/pages/login/LoginPage"), "LoginPage")
+const HomePage = lazyNamed(() => import("@/pages/home/HomePage"), "HomePage")
+const CursosPage = lazyNamed(() => import("@/pages/cursos/CursosPage"), "CursosPage")
+const CursoFormPage = lazyNamed(() => import("@/pages/cursos/CursoFormPage"), "CursoFormPage")
+const CursoDetailPage = lazyNamed(() => import("@/pages/cursos/detalle/CursoDetailPage"), "CursoDetailPage")
+const CursosPersonalizadosPage = lazyNamed(() => import("@/pages/cursos-personalizados/CursosPersonalizadosPage"), "CursosPersonalizadosPage")
+const CursoPersonalizadoFormPage = lazyNamed(() => import("@/pages/cursos-personalizados/CursoPersonalizadoFormPage"), "CursoPersonalizadoFormPage")
+const CursoPersonalizadoDetailPage = lazyNamed(() => import("@/pages/cursos-personalizados/CursoPersonalizadoDetailPage"), "CursoPersonalizadoDetailPage")
+const CatalogosConCursosPage = lazyNamed(() => import("@/pages/catalogos/CatalogosConCursosPage"), "CatalogosConCursosPage")
+const CatalogoFormPage = lazyNamed(() => import("@/pages/catalogos/CatalogoFormPage"), "CatalogoFormPage")
+const CiudadesPage = lazyNamed(() => import("@/pages/admin/ciudades/CiudadesPage"), "CiudadesPage")
+const PersonasPage = lazyNamed(() => import("@/pages/personas/PersonasPage"), "PersonasPage")
+const PagosPersonaPage = lazyNamed(() => import("@/pages/personas/PagosPersonaPage"), "PagosPersonaPage")
+const TareasPage = lazyNamed(() => import("@/pages/tareas/TareasPage"), "TareasPage")
+const CuentasPage = lazyNamed(() => import("@/pages/cuentas/CuentasPage"), "CuentasPage")
+const NuevaMatriculaPublicaPage = lazyNamed(() => import("@/pages/matriculas/NuevaMatriculaPublicaPage"), "NuevaMatriculaPublicaPage")
+const AprobacionMatriculasPage = lazyNamed(() => import("@/pages/matriculas/AprobacionMatriculasPage"), "AprobacionMatriculasPage")
+const AprobacionSolicitudPage = lazyNamed(() => import("@/pages/matriculas/AprobacionSolicitudPage"), "AprobacionSolicitudPage")
+const AprobacionTallerPage = lazyNamed(() => import("@/pages/matriculas/AprobacionTallerPage"), "AprobacionTallerPage")
+const InscribirEstudiantePage = lazyNamed(() => import("@/pages/matriculas/InscribirEstudiantePage"), "InscribirEstudiantePage")
+const SolicitudesInscripcionPage = lazyNamed(() => import("@/pages/solicitudes-inscripcion/SolicitudesInscripcionPage"), "SolicitudesInscripcionPage")
+const SolicitudInscripcionDetallePage = lazyNamed(() => import("@/pages/solicitudes-inscripcion/SolicitudInscripcionDetallePage"), "SolicitudInscripcionDetallePage")
+const AulasPage = lazyNamed(() => import("@/pages/servicios/aulas/AulasPage"), "AulasPage")
+const AulasGestionPage = lazyNamed(() => import("@/pages/servicios/aulas/AulasGestionPage"), "AulasGestionPage")
+const HistorialAulasPage = lazyNamed(() => import("@/pages/servicios/aulas/HistorialAulasPage"), "HistorialAulasPage")
+const EquiposPage = lazyNamed(() => import("@/pages/servicios/equipos/EquiposPage"), "EquiposPage")
+const NuevoEquipoPage = lazyNamed(() => import("@/pages/servicios/equipos/NuevoEquipoPage"), "NuevoEquipoPage")
+const AlquileresListPage = lazyNamed(() => import("@/pages/servicios/equipos/AlquileresListPage"), "AlquileresListPage")
+const NuevoAlquilerPage = lazyNamed(() => import("@/pages/servicios/equipos/NuevoAlquilerPage"), "NuevoAlquilerPage")
+const HistorialEquipoPage = lazyNamed(() => import("@/pages/servicios/equipos/HistorialEquipoPage"), "HistorialEquipoPage")
+const AlquilerDetallePage = lazyNamed(() => import("@/pages/servicios/equipos/AlquilerDetallePage"), "AlquilerDetallePage")
+const PodcastPage = lazyNamed(() => import("@/pages/servicios/podcast/PodcastPage"), "PodcastPage")
+const PaquetesPage = lazyNamed(() => import("@/pages/servicios/podcast/PaquetesPage"), "PaquetesPage")
+const NuevaReservaPage = lazyNamed(() => import("@/pages/servicios/podcast/NuevaReservaPage"), "NuevaReservaPage")
+const HistorialPodcastPage = lazyNamed(() => import("@/pages/servicios/podcast/HistorialPodcastPage"), "HistorialPodcastPage")
+const ReservaPodcastDetallePage = lazyNamed(() => import("@/pages/servicios/podcast/ReservaPodcastDetallePage"), "ReservaPodcastDetallePage")
+const NuevaReservaAulaPage = lazyNamed(() => import("@/pages/servicios/aulas/NuevaReservaPage"), "NuevaReservaPage")
+const EdicionVideoPage = lazyNamed(() => import("@/pages/servicios/edicion-video/EdicionVideoPage"), "EdicionVideoPage")
+const EdicionVideoFormPage = lazyNamed(() => import("@/pages/servicios/edicion-video/EdicionVideoFormPage"), "EdicionVideoFormPage")
+const EdicionVideoDetallePage = lazyNamed(() => import("@/pages/servicios/edicion-video/EdicionVideoDetallePage"), "EdicionVideoDetallePage")
+const HistorialEdicionVideoPage = lazyNamed(() => import("@/pages/servicios/edicion-video/HistorialEdicionVideoPage"), "HistorialEdicionVideoPage")
+const RadioPage = lazyNamed(() => import("@/pages/servicios/radio/RadioPage"), "RadioPage")
+const RadioHistorialPage = lazyNamed(() => import("@/pages/servicios/radio/RadioHistorialPage"), "RadioHistorialPage")
+const ReservaRadioDetallePage = lazyNamed(() => import("@/pages/servicios/radio/ReservaRadioDetallePage"), "ReservaRadioDetallePage")
+const ClientesPage = lazyNamed(() => import("@/pages/clientes/ClientesPage"), "ClientesPage")
+const NuevoClientePage = lazyNamed(() => import("@/pages/clientes/NuevoClientePage"), "NuevoClientePage")
+const ClienteDetallePage = lazyNamed(() => import("@/pages/clientes/detalle/ClienteDetallePage"), "ClienteDetallePage")
+const ClientePagoPage = lazyNamed(() => import("@/pages/clientes/detalle/ClientePagoPage"), "ClientePagoPage")
+const RadioTarifasPage = lazyNamed(() => import("@/pages/servicios/radio/TarifasPage"), "TarifasPage")
+const InstructorDashboardPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorDashboardPage"), "InstructorDashboardPage")
+const InstructorCursosPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorCursosPage"), "InstructorCursosPage")
+const InstructorCursoDetailPage = lazyNamed(() => import("@/pages/instructor-portal/detalle/InstructorCursoDetailPage"), "InstructorCursoDetailPage")
+const AsistenciaRegistroPage = lazyNamed(() => import("@/pages/instructor-portal/AsistenciaRegistroPage"), "AsistenciaRegistroPage")
+const NotasRegistroPage = lazyNamed(() => import("@/pages/instructor-portal/NotasRegistroPage"), "NotasRegistroPage")
+const ClasesModuloPage = lazyNamed(() => import("@/pages/instructor-portal/ClasesModuloPage"), "ClasesModuloPage")
+const InstructorHorarioPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorHorarioPage"), "InstructorHorarioPage")
+const DetalleEstudiantePage = lazyNamed(() => import("@/pages/instructor-portal/detalle/DetalleEstudiantePage"), "DetalleEstudiantePage")
+const InstructorTallerDetailPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorTallerDetailPage"), "InstructorTallerDetailPage")
+const FinancePagosPage = lazyNamed(() => import("@/pages/finanzas/pagos/FinancePagosPage"), "FinancePagosPage")
+const FinanceResumenWrapper = lazyNamed(() => import("@/pages/finanzas/pagos/FinancePagosPage"), "FinanceResumenWrapper")
+const CuentasCobrarLayout = lazyNamed(() => import("@/pages/finanzas/pagos/CuentasCobrarLayout"), "CuentasCobrarLayout")
+const TalleresCuentasPage = lazyNamed(() => import("@/pages/finanzas/pagos/TalleresCuentasPage"), "TalleresCuentasPage")
+const TallerCuentasDetallePage = lazyNamed(() => import("@/pages/finanzas/pagos/TallerCuentasDetallePage"), "TallerCuentasDetallePage")
+const TallerParticipantePage = lazyNamed(() => import("@/pages/finanzas/pagos/TallerParticipantePage"), "TallerParticipantePage")
+const CursosCuentasPage = lazyNamed(() => import("@/pages/finanzas/pagos/CursosCuentasPage"), "CursosCuentasPage")
+const CursosPersonalizadosCuentasPage = lazyNamed(() => import("@/pages/finanzas/pagos/CursosCuentasPage"), "CursosPersonalizadosCuentasPage")
+const CursoCuentasDetallePage = lazyNamed(() => import("@/pages/finanzas/pagos/CursoCuentasDetallePage"), "CursoCuentasDetallePage")
+const CursoEstudiantePagoPage = lazyNamed(() => import("@/pages/finanzas/pagos/CursoEstudiantePagoPage"), "CursoEstudiantePagoPage")
+const ServiciosCuentasPage = lazyNamed(() => import("@/pages/finanzas/pagos/ServiciosCuentasPage"), "ServiciosCuentasPage")
+const ServicioCuentaDetallePage = lazyNamed(() => import("@/pages/finanzas/pagos/ServicioCuentaDetallePage"), "ServicioCuentaDetallePage")
+const ServicioPagoPage = lazyNamed(() => import("@/pages/finanzas/pagos/ServicioPagoPage"), "ServicioPagoPage")
+const HistorialPage = lazyNamed(() => import("@/pages/finanzas/pagos/HistorialPage"), "HistorialPage")
+const PagoDetallePage = lazyNamed(() => import("@/pages/finanzas/pagos/PagoDetallePage"), "PagoDetallePage")
+const IngresosPage = lazyNamed(() => import("@/pages/finanzas/ingresos/IngresosPage"), "IngresosPage")
+const IngresoDetallePage = lazyNamed(() => import("@/pages/finanzas/ingresos/IngresoDetallePage"), "IngresoDetallePage")
+const EgresosPage = lazyNamed(() => import("@/pages/finanzas/egresos/EgresosPage"), "EgresosPage")
+const EgresoFormPage = lazyNamed(() => import("@/pages/finanzas/egresos/EgresoFormPage"), "EgresoFormPage")
+const EgresoDetallePage = lazyNamed(() => import("@/pages/finanzas/egresos/EgresoDetallePage"), "EgresoDetallePage")
+const EstadisticasPage = lazyNamed(() => import("@/pages/finanzas/estadisticas/EstadisticasPage"), "EstadisticasPage")
+const CatalogoDetallePage = lazyNamed(() => import("@/pages/finanzas/estadisticas/CatalogoDetallePage"), "CatalogoDetallePage")
+const EstudianteDetalleFinanzasPage = lazyNamed(() => import("@/pages/finanzas/estadisticas/EstudianteDetallePage"), "EstudianteDetallePage")
+const EstudiantesPage = lazyNamed(() => import("@/pages/estudiantes/EstudiantesPage"), "EstudiantesPage")
+const NuevoEstudiantePage = lazyNamed(() => import("@/pages/estudiantes/NuevoEstudiantePage"), "NuevoEstudiantePage")
+const NuevoEstudianteInscripcionPage = lazyNamed(() => import("@/pages/estudiantes/NuevoEstudiantePage"), "NuevoEstudianteInscripcionPage")
+const SecretariaDashboardPage = lazyNamed(() => import("@/pages/secretaria"), "SecretariaDashboardPage")
+const EstudiantePerfilAcademicoPage = lazyNamed(() => import("@/pages/estudiantes/perfil-academico/EstudiantePerfilAcademicoPage"), "EstudiantePerfilAcademicoPage")
+const RegistrarPagoPage = lazyNamed(() => import("@/pages/estudiantes/perfil-academico/RegistrarPagoPage"), "RegistrarPagoPage")
+const EstudiantesCursoDetallePage = lazyNamed(() => import("@/pages/estudiantes/detalle/EstudiantesCursoDetallePage"), "EstudiantesCursoDetallePage")
+const EstudiantesTallerDetallePage = lazyNamed(() => import("@/pages/estudiantes/detalle/EstudiantesTallerDetallePage"), "EstudiantesTallerDetallePage")
+const EstudiantesCiudadDetallePage = lazyNamed(() => import("@/pages/estudiantes/detalle/EstudiantesCiudadDetallePage"), "EstudiantesCiudadDetallePage")
+const TalleresPage = lazyNamed(() => import("@/pages/admin/talleres"), "TalleresPage")
+const TallerFormPage = lazyNamed(() => import("@/pages/admin/talleres"), "TallerFormPage")
+const TallerDetallePage = lazyNamed(() => import("@/pages/admin/talleres"), "TallerDetallePage")
+const InstructorTalleresPage = lazyNamed(() => import("@/pages/admin/talleres"), "InstructorTalleresPage")
+const AsistenciaTallerPage = lazyNamed(() => import("@/pages/admin/talleres"), "AsistenciaTallerPage")
+const ParticipantesTallerPage = lazyNamed(() => import("@/pages/admin/talleres"), "ParticipantesTallerPage")
+const CertificadosPage = lazyNamed(() => import("@/pages/certificados/CertificadosPage"), "CertificadosPage")
+const CargaMasivaCertificadosPage = lazyNamed(() => import("@/pages/certificados/CargaMasivaCertificadosPage"), "CargaMasivaCertificadosPage")
+const VerificarCertificadosPage = lazyNamed(() => import("@/pages/certificados/VerificarCertificadosPage"), "VerificarCertificadosPage")
+const EstudianteStatsPage = lazyNamed(() => import("@/pages/estudiantes/EstudianteStatsPage"), "EstudianteStatsPage")
+const EstudianteSegmentsPage = lazyNamed(() => import("@/pages/estudiantes/EstudianteSegmentsPage"), "EstudianteSegmentsPage")
+const AgendaPage = lazyNamed(() => import("@/pages/agenda/AgendaPage"), "AgendaPage")
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
@@ -173,6 +189,10 @@ function AppLayout() {
             <Route path="/cursos/nuevo" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
             <Route path="/cursos/:id/editar" element={<RoleGuard roles={["Administrador"]}><CursoFormPage /></RoleGuard>} />
             <Route path="/cursos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoDetailPage /></RoleGuard>} />
+            <Route path="/cursos-personalizados" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursosPersonalizadosPage /></RoleGuard>} />
+            <Route path="/cursos-personalizados/nuevo" element={<RoleGuard roles={["Administrador"]}><CursoPersonalizadoFormPage /></RoleGuard>} />
+            <Route path="/cursos-personalizados/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoPersonalizadoFormPage /></RoleGuard>} />
+            <Route path="/cursos-personalizados/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoPersonalizadoDetailPage /></RoleGuard>} />
             <Route path="/catalogos" element={<RoleGuard roles={["Administrador"]}><CatalogosConCursosPage /></RoleGuard>} />
             <Route path="/catalogos/nuevo" element={<RoleGuard roles={["Administrador"]}><CatalogoFormPage /></RoleGuard>} />
             <Route path="/catalogos/:id/editar" element={<RoleGuard roles={["Administrador"]}><CatalogoFormPage /></RoleGuard>} />
@@ -186,6 +206,7 @@ function AppLayout() {
             <Route path="/clientes/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoClientePage /></RoleGuard>} />
             <Route path="/estudiantes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesPage /></RoleGuard>} />
             <Route path="/estudiantes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEstudiantePage /></RoleGuard>} />
+            <Route path="/estudiantes/nuevo/inscribir" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEstudianteInscripcionPage /></RoleGuard>} />
             <Route path="/estudiantes/cursos/:cursoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCursoDetallePage /></RoleGuard>} />
             <Route path="/estudiantes/talleres/:tallerId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesTallerDetallePage /></RoleGuard>} />
             <Route path="/estudiantes/ciudades/:ciudadId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCiudadDetallePage /></RoleGuard>} />
@@ -244,7 +265,9 @@ function AppLayout() {
                 <Route path="talleres/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TallerCuentasDetallePage /></RoleGuard>} />
                 <Route path="talleres/:id/participante/:pid" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TallerParticipantePage /></RoleGuard>} />
                 <Route path="cursos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursosCuentasPage /></RoleGuard>} />
+                <Route path="cursos-personalizados" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursosPersonalizadosCuentasPage /></RoleGuard>} />
                 <Route path="cursos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoCuentasDetallePage /></RoleGuard>} />
+                <Route path="cursos-personalizados/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoCuentasDetallePage /></RoleGuard>} />
                 <Route path="servicios" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServiciosCuentasPage /></RoleGuard>} />
                 <Route path="servicios/:name" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServicioCuentaDetallePage /></RoleGuard>} />
                 <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador"]}><ServicioPagoPage /></RoleGuard>} />
@@ -259,7 +282,7 @@ function AppLayout() {
             <Route path="/finanzas/egresos/:id" element={<RoleGuard roles={["Administrador"]}><EgresoDetallePage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas" element={<RoleGuard roles={["Administrador"]}><EstadisticasPage /></RoleGuard>} />
             <Route path="/finanzas/estadisticas/catalogo/:id" element={<RoleGuard roles={["Administrador"]}><CatalogoDetallePage /></RoleGuard>} />
-            <Route path="/finanzas/estadisticas/estudiante/:id" element={<RoleGuard roles={["Administrador"]}><EstudianteDetallePage /></RoleGuard>} />
+            <Route path="/finanzas/estadisticas/estudiante/:id" element={<RoleGuard roles={["Administrador"]}><EstudianteDetalleFinanzasPage /></RoleGuard>} />
             <Route path="/certificados" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CertificadosPage /></RoleGuard>} />
             <Route path="/certificados/carga-masiva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CargaMasivaCertificadosPage /></RoleGuard>} />
 
@@ -274,7 +297,6 @@ function AppLayout() {
 
             {/* Secretaria routes */}
             <Route path="/secretaria" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaDashboardPage /></RoleGuard>} />
-            <Route path="/secretaria/solicitudes" element={<RoleGuard roles={["Secretaria", "Administrador"]}><SecretariaSolicitudesPage /></RoleGuard>} />
 
             {/* Instructor portal (Admin + Instructor) */}
             <Route path="/instructor" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorDashboardPage /></RoleGuard>} />
@@ -329,18 +351,20 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Toaster position="top-right" richColors closeButton />
-        <Routes>
-          <Route path="/matricula/nueva" element={<NuevaMatriculaPublicaPage />} />
-          <Route path="/verificar-certificados" element={<VerificarCertificadosPage />} />
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/matricula/nueva" element={<NuevaMatriculaPublicaPage />} />
+            <Route path="/verificar-certificados" element={<VerificarCertificadosPage />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   )

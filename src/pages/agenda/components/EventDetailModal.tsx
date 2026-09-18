@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import {
   Cancel01Icon,
-  Clock01Icon,
   UserIcon,
   Home02Icon,
   Calendar03Icon,
   SignalIcon,
   UserGroupIcon,
+  Link01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { type AgendaEvent, type AgendaEventDetail, agendaService } from "@/services/agenda.service"
@@ -81,6 +82,7 @@ export function EventDetailModal({
   event: AgendaEvent
   onClose: () => void
 }) {
+  const navigate = useNavigate()
   const [detail, setDetail] = useState<AgendaEventDetail | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -107,35 +109,33 @@ export function EventDetailModal({
   const data = detail ?? event
   const color = getEventColor(data)
 
+  const cursoId = data.curso_id ?? (typeof data.detalle?.curso_id === "string" ? data.detalle.curso_id : null)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="agenda-event-title">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="agenda-event-title">
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" onClick={onClose} />
       <div
-        className="relative bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-xl"
+        className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-y-auto bg-white shadow-2xl sm:top-4 sm:right-4 sm:h-[calc(100%-2rem)] sm:rounded-2xl"
         style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
       >
-        <div className="p-5 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="flex items-start gap-3">
-            <div
-              className="size-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ backgroundColor: color }}
-            >
-              <HugeiconsIcon icon={Calendar03Icon} size={20} style={{ color: "white" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 id="agenda-event-title" className="text-base font-bold pr-6" style={{ color: COLORS.CHARCOAL }}>
-                {data.tipo_evento === "CLASE_CURSO" && data.nombre_instancia
-                  ? `Clase: ${data.nombre_instancia}`
-                  : data.titulo}
+        <div className="border-b p-5 sm:p-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ backgroundColor: `color-mix(in srgb, ${color} 16%, white)`, color }}>
+                  {getEventLabel(data)}
+                </span>
+                {data.modalidad && <span className="rounded-md bg-[#e5eeff] px-2 py-1 text-[11px] font-semibold text-[#45464d]">{data.modalidad}</span>}
+              </div>
+              <h2 id="agenda-event-title" className="pr-8 text-xl font-bold leading-tight tracking-tight" style={{ color: COLORS.CHARCOAL }}>
+                {data.titulo}
               </h2>
-              <p className="text-xs mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                {getEventLabel(data)}
-              </p>
+              {data.estado && <div className="mt-3 flex items-center gap-2"><span className="size-2 rounded-full" style={{ backgroundColor: color }} />{estadoBadge(data.estado)}</div>}
             </div>
             <button
               onClick={onClose}
               aria-label="Cerrar detalle del evento"
-              className="absolute top-5 right-5 size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              className="shrink-0 size-8 flex items-center justify-center rounded-lg hover:bg-[#eff4ff] transition-colors"
               style={{ color: COLORS.TEXT_MUTED }}
             >
               <HugeiconsIcon icon={Cancel01Icon} size={18} />
@@ -148,10 +148,9 @@ export function EventDetailModal({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: color }} />
           </div>
         ) : (
-          <div className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <InfoField icon={Clock01Icon} label="Horario" value={`${formatTime(data.hora_inicio)} – ${formatTime(data.hora_fin)}`} />
-              <InfoField icon={Calendar03Icon} label="Fecha" value={formatDate(data.fecha)} />
+          <div className="space-y-5 p-5 sm:p-6">
+            <div className="space-y-4 rounded-xl bg-[#eff4ff] p-4">
+              <InfoField icon={Calendar03Icon} label="Fecha y horario" value={`${formatDate(data.fecha)} · ${formatTime(data.hora_inicio)} – ${formatTime(data.hora_fin)}`} />
               {data.instructor_nombre && (
                 <InfoField icon={UserIcon} label="Instructor" value={data.instructor_nombre} />
               )}
@@ -164,12 +163,22 @@ export function EventDetailModal({
               {data.participantes_count != null && (
                 <InfoField icon={UserGroupIcon} label="Participantes" value={String(data.participantes_count)} />
               )}
+              {data.ciudad_nombre && (
+                <InfoField icon={Home02Icon} label="Ciudad" value={data.ciudad_nombre} />
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold" style={{ color: COLORS.TEXT_MUTED }}>Estado:</span>
-              {estadoBadge(data.estado)}
-            </div>
+            {data.capacidad_maxima != null && data.capacidad_maxima > 0 && data.participantes_count != null && (
+              <div className="space-y-2 rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <div className="flex items-center justify-between text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>
+                  <span>Capacidad</span>
+                  <span>{data.participantes_count} / {data.capacidad_maxima}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-[#e5eeff]">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min((data.participantes_count / data.capacidad_maxima) * 100, 100)}%`, backgroundColor: color }} />
+                </div>
+              </div>
+            )}
 
             {data.detalle && (
               <div>
@@ -194,6 +203,13 @@ export function EventDetailModal({
                   })}
                 </div>
               </div>
+            )}
+
+            {cursoId && (
+              <button type="button" onClick={() => navigate(`/cursos/${cursoId}`)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#eff4ff] px-4 py-2.5 text-xs font-bold transition-colors hover:bg-[#e5eeff]" style={{ color: COLORS.CHARCOAL }}>
+                <HugeiconsIcon icon={Link01Icon} size={16} />
+                Ver curso
+              </button>
             )}
           </div>
         )}

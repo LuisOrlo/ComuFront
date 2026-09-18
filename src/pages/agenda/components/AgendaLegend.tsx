@@ -18,46 +18,37 @@ export function AgendaLegend({
     <div className="flex flex-wrap items-center gap-2">
       <button
         onClick={onClearAll}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all border"
+        className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-sm transition-all"
         style={{
-          backgroundColor: activeTypes.length === 0 ? COLORS.CHARCOAL + "18" : "transparent",
-          borderColor: activeTypes.length === 0 ? COLORS.CHARCOAL : COLORS.BORDER_SUBTLE,
-          color: activeTypes.length === 0 ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
-          opacity: activeTypes.length === 0 ? 1 : 0.5,
+          backgroundColor: activeTypes.length === 0 ? COLORS.CHARCOAL : "#e5eeff",
+          color: activeTypes.length === 0 ? "white" : COLORS.TEXT_MUTED,
         }}
       >
         Todos
+        <span className="flex size-5 items-center justify-center rounded-full bg-white/20 text-[10px] text-white">{eventCount ?? 0}</span>
       </button>
-      {tipos.map(({ tipo, label, color }) => {
+      {tipos.map(({ tipo, label, color, count }) => {
         const isActive = activeTypes.length === 0 || activeTypes.includes(tipo)
         return (
           <button
             key={tipo}
             onClick={() => onToggle(tipo)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all border"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all"
             style={{
-              backgroundColor: isActive ? color + "18" : "transparent",
-              borderColor: isActive ? color : COLORS.BORDER_SUBTLE,
-              color: isActive ? color : COLORS.TEXT_MUTED,
-              opacity: isActive ? 1 : 0.5,
+              backgroundColor: isActive ? "#e5eeff" : "#f8f9ff",
+              color: isActive ? COLORS.CHARCOAL : COLORS.TEXT_MUTED,
+              opacity: isActive ? 1 : 0.55,
             }}
           >
             <span
-              className="size-2 rounded-full shrink-0"
+              className="size-2.5 rounded-full shrink-0"
               style={{ backgroundColor: color }}
             />
             {label}
+            <span className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>({count})</span>
           </button>
         )
       })}
-      {eventCount !== undefined && (
-        <span
-          className="text-[11px] font-bold px-2 py-0.5 rounded-full ml-1"
-          style={{ backgroundColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
-        >
-          {eventCount} {eventCount === 1 ? "evento" : "eventos"}
-        </span>
-      )}
     </div>
   )
 }

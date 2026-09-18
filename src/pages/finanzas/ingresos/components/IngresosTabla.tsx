@@ -20,6 +20,7 @@ const CHARCOAL = COLORS.CHARCOAL
 
 const CAT_COLORS: Record<string, string> = {
   "Cursos": "oklch(0.55 0.15 150 / 0.12)",
+  "Cursos personalizados": "oklch(0.58 0.16 285 / 0.14)",
   "Talleres": "oklch(0.6 0.15 200 / 0.12)",
   "Podcast": "oklch(0.5 0.15 260 / 0.12)",
   "Alquiler de Aulas": "oklch(0.5 0.15 280 / 0.12)",
@@ -33,6 +34,7 @@ const CAT_COLORS: Record<string, string> = {
 
 const CAT_TEXT: Record<string, string> = {
   "Cursos": "#059669", "Talleres": "#0891b2", "Podcast": "#4f46e5",
+  "Cursos personalizados": "#7c3aed",
   "Alquiler de Aulas": "#7c3aed", "Radio": "#a21caf", "Edición de Video": "#d97706",
   "Alquiler de Equipos": "#dc2626", "Streaming": "#0d9488", "Producción Audiovisual": "#65a30d",
   "Asesorías": "#ca8a04", "Otros": "#6b7280",
@@ -49,6 +51,7 @@ interface IngresoRow {
   metodo_pago?: string
   modulos_count?: number
   modulos_detalle?: { id: string; modulo_nombre: string; monto: number }[]
+  es_personalizado?: boolean
 }
 
 interface Props {
@@ -88,9 +91,14 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
       header: "Concepto",
       cell: ({ row }) => {
         const item = row.original
+        // Un curso personalizado no tiene módulos. No mostrar placeholders
+        // como "—0" ni iconos/valores derivados de una línea sin módulo.
+        const concepto = item.concepto && !/^\s*[—–-]?\s*0\s*$/.test(item.concepto)
+          ? item.concepto
+          : item.es_personalizado ? "Curso personalizado" : "—"
         return (
           <span className="text-xs truncate max-w-[160px] block" style={{ color: CHARCOAL }}>
-            {item.concepto || "—"}
+            {concepto}
             {item.modulos_count && item.modulos_count > 1 && (
               <span className="block text-[9px] opacity-50 truncate mt-0.5">
                 {item.modulos_detalle?.map(m => m.modulo_nombre).join(" · ")}

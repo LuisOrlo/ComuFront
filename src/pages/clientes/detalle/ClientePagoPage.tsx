@@ -63,109 +63,97 @@ export function ClientePagoPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-gray-50/50">
-      <div className="sticky top-0 z-10 bg-white border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-[640px] mx-auto px-4 py-3">
-          <Link to={`/clientes/${clienteId}?tab=pagos`}
-            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-            Volver al perfil del cliente
+    <div className="min-h-[100dvh] overflow-y-auto bg-[#f8f9ff] text-[#0b1c30]">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <div className="flex flex-col gap-3 pb-5 sm:flex-row sm:items-center sm:justify-between">
+          
+          <Link to={`/clientes/${clienteId}?tab=pagos`} className="inline-flex items-center gap-1.5 self-start py-1 text-xs font-bold text-[#73747b] transition-colors hover:text-[#fd761a] sm:self-auto">
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={17} />
+            Volver a pagos
           </Link>
         </div>
-      </div>
 
-      <div className="max-w-[640px] mx-auto px-4 py-6">
-        <div className="bg-white border rounded-2xl overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="px-6 py-5 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <h2 className="text-lg font-black text-gray-900">Registrar Pago</h2>
-            {state?.concepto && <p className="text-sm text-gray-500 mt-0.5">{state.concepto}</p>}
+        <section className="mb-6 flex flex-col gap-4 rounded-xl bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+          <div className="flex items-center gap-4">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-[#ffdbca] text-[#fd761a]"><HugeiconsIcon icon={Coins02Icon} size={25} /></div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: COLORS.CHARCOAL }}>Registrar pago</h1>
+              <p className="mt-1 text-sm text-[#73747b]">{state?.concepto || "Aplicar un pago a la cuenta seleccionada del cliente."}</p>
+            </div>
           </div>
+          <span className="w-fit rounded-full bg-[#ffe4e6] px-3 py-1.5 text-[11px] font-bold text-[#be123c]">Saldo abierto</span>
+        </section>
 
-          <div className="p-6 space-y-5">
-            <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="rounded-xl bg-white p-6 shadow-sm" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+            <div className="mb-6 border-b pb-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Información del pago</h2>
+              <p className="mt-1 text-sm text-[#73747b]">Completa los datos para registrar la transacción.</p>
+            </div>
+
+            <div className="space-y-5">
+              <div className="rounded-xl bg-[#eff4ff] p-4">
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#fd761a]">Monto a pagar</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-[#73747b]">$</span>
+                  <input type="number" min="0" step="0.01" max={saldoActual} value={monto} onChange={e => setMonto(e.target.value)} placeholder={`0.00 (máx. $${saldoActual.toLocaleString()})`} className="w-full rounded-lg border-2 border-[#d3e4fe] bg-white py-3.5 pl-10 pr-4 font-mono text-xl font-bold outline-none transition-colors focus:border-[#fd761a]" />
+                </div>
+                {montoNum > saldoActual && <p className="mt-2 text-xs font-semibold text-[#be123c]">El monto excede el saldo pendiente.</p>}
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#73747b]">Método de pago</label>
+                  <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)} className="min-h-[46px] w-full rounded-lg border bg-white px-4 text-sm font-semibold outline-none transition-colors focus:border-[#fd761a]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#73747b]">Fecha de pago</label>
+                  <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)} className="min-h-[46px] w-full rounded-lg border bg-white px-4 text-sm font-semibold outline-none transition-colors focus:border-[#fd761a]" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+                </div>
+              </div>
+
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Saldo pendiente</span>
-                <p className="text-xl font-black text-red-500 mt-0.5">${saldoActual.toLocaleString()}</p>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total cuenta</span>
-                <p className="text-xl font-black text-gray-900 mt-0.5">${(state?.montoTotal ?? 0).toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl border-2 border-blue-100 bg-blue-50/40 space-y-3">
-              <label className="text-xs font-bold text-blue-600 uppercase tracking-wider">Monto a pagar</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">$</span>
-                <input type="number" min="0" step="0.01" max={saldoActual}
-                  value={monto} onChange={e => setMonto(e.target.value)}
-                  placeholder={`0.00 (mx $${saldoActual.toLocaleString()})`}
-                  className="w-full pl-10 pr-4 py-3.5 min-h-[44px] border-2 border-blue-200 rounded-2xl text-lg font-black font-mono outline-none focus:border-blue-500 bg-white" />
-              </div>
-              {montoNum > saldoActual && (
-                <p className="text-xs text-red-500 font-medium">El monto excede el saldo pendiente</p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Método de pago</label>
-              <select value={metodoPago} onChange={e => setMetodoPago(e.target.value)}
-                className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-2xl text-sm outline-none bg-white">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Fecha de pago</label>
-              <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-2xl text-sm outline-none bg-white" />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Comprobante</label>
-              <div onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-3 p-4 min-h-[44px] border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                {comprobantePreview ? (
-                  <>
-                    <img src={comprobantePreview} alt="Comprobante" className="size-14 rounded-xl object-cover border" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-700 truncate">{comprobanteFile?.name}</p>
-                      <p className="text-xs text-gray-400">Toca para cambiar</p>
-                    </div>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setComprobanteFile(null); setComprobantePreview(null) }}
-                      className="text-xs font-bold text-red-400 hover:text-red-600">Quitar</button>
-                  </>
-                ) : (
-                  <>
-                    <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                      <HugeiconsIcon icon={UploadIcon} size={20} className="text-gray-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
-                      <p className="text-xs text-gray-400">Mximo 5MB, JPG o PNG</p>
-                    </div>
-                  </>
-                )}
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-[#73747b]">Comprobante</label>
+                <div onClick={() => fileInputRef.current?.click()} className="flex min-h-[92px] cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-[#d3e4fe] bg-[#f8f9ff] p-4 transition-all hover:border-[#fd761a] hover:bg-[#eff4ff]">
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  {comprobantePreview ? <>
+                    <img src={comprobantePreview} alt="Comprobante" className="size-16 rounded-xl border object-cover" />
+                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-[#45464d]">{comprobanteFile?.name}</p><p className="text-xs text-[#73747b]">Haz clic para cambiar el archivo</p></div>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setComprobanteFile(null); setComprobantePreview(null) }} className="text-xs font-bold text-[#be123c] hover:underline">Quitar</button>
+                  </> : <>
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e5eeff] text-[#fd761a]"><HugeiconsIcon icon={UploadIcon} size={20} /></div>
+                    <div><p className="text-sm font-bold text-[#45464d]">Subir foto del comprobante</p><p className="mt-1 text-xs text-[#73747b]">Máximo 5MB, JPG o PNG</p></div>
+                  </>}
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <Link to={`/clientes/${clienteId}?tab=pagos`}
-                className="flex items-center justify-center px-6 py-3 min-h-[44px] rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                Cancelar
-              </Link>
-              <button type="button" onClick={handlePagar} disabled={saving || montoNum <= 0}
-                className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                style={{ backgroundColor: COLORS.ACCENT }}>
-                <HugeiconsIcon icon={Coins02Icon} size={16} />
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <Link to={`/clientes/${clienteId}?tab=pagos`} className="flex min-h-[46px] items-center justify-center rounded-xl px-6 text-sm font-bold text-[#73747b] transition-colors hover:bg-[#eff4ff] hover:text-[#0b1c30]">Cancelar</Link>
+              <button type="button" onClick={handlePagar} disabled={saving || montoNum <= 0} className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-lg px-6 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" style={{ backgroundColor: COLORS.ACCENT }}>
+                <HugeiconsIcon icon={Coins02Icon} size={17} />
                 {saving ? "Registrando..." : montoNum > 0 ? `Pagar $${montoNum.toLocaleString()}` : "Registrar pago"}
               </button>
             </div>
-          </div>
+          </section>
+
+          <aside className="space-y-4">
+            <div className="rounded-xl bg-white p-6 shadow-sm" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+              <h2 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>Resumen de la cuenta</h2>
+              <div className="mt-4 space-y-4">
+                <div><span className="text-[10px] font-bold uppercase tracking-wider text-[#73747b]">Total de la cuenta</span><p className="mt-1 text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>${(state?.montoTotal ?? 0).toLocaleString()}</p></div>
+                <div className="border-t pt-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}><span className="text-[10px] font-bold uppercase tracking-wider text-[#73747b]">Saldo pendiente</span><p className="mt-1 text-2xl font-bold text-[#be123c]">${saldoActual.toLocaleString()}</p></div>
+              </div>
+            </div>
+            <div className="rounded-xl bg-[#eff4ff] p-5">
+              <p className="text-xs leading-5 text-[#45464d]">El pago se aplicará a la cuenta del servicio seleccionado. Verifica el monto y la fecha antes de confirmar.</p>
+            </div>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

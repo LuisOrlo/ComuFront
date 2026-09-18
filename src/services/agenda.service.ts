@@ -20,6 +20,7 @@ export interface AgendaEvent {
   ciudad_nombre: string | null
   catalogo_nombre: string | null
   nombre_instancia: string | null
+  curso_id: string | null
   detalle?: Record<string, unknown>
 }
 
@@ -31,6 +32,7 @@ export interface TipoDisponible {
   tipo: string
   label: string
   color: string
+  count: number
 }
 
 export interface AgendaResponse {

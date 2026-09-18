@@ -67,10 +67,10 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
   }, [id, financialData, financialLoading])
 
   useEffect(() => {
-    if (activeTab === "academico") void loadAcademicData()
-    if (activeTab === "financiero") void loadFinancialData()
-    if (activeTab === "resumen") {
+    if (activeTab === "informacion" || activeTab === "academico" || activeTab === "resumen") {
       void loadAcademicData()
+    }
+    if (activeTab === "financiero" || activeTab === "resumen") {
       void loadFinancialData()
     }
   }, [activeTab, loadAcademicData, loadFinancialData])
@@ -106,14 +106,15 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
     setSaving(true)
     try {
       await estudiantesService.updateStudent(id, fields)
-      toast.success("Informacion actualizada")
-      loadData()
+      toast.success("Información actualizada")
+      await loadData()
+      void refreshData()
     } catch (err) {
       toast.error((err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al actualizar")
     } finally {
       setSaving(false)
     }
-  }, [id, loadData])
+  }, [id, loadData, refreshData])
 
   return {
     studentData,

@@ -13,9 +13,9 @@ interface PagosRealizadosProps {
 }
 
 const estadoConfig: Record<string, { icon: typeof CreditCardIcon; color: string; bg: string; label: string }> = {
-  pagado: { icon: CheckmarkCircle01Icon, color: "oklch(0.55 0.18 160)", bg: "oklch(0.95 0.02 160)", label: "Pagado" },
-  abonado: { icon: TimeHalfPassIcon, color: "oklch(0.55 0.18 80)", bg: "oklch(0.95 0.02 80)", label: "Abonado" },
-  pendiente: { icon: Cancel01Icon, color: "oklch(0.55 0.18 30)", bg: "oklch(0.95 0.02 30)", label: "Pendiente" },
+  pagado: { icon: CheckmarkCircle01Icon, color: "#047857", bg: "#d1fae5", label: "Pagado" },
+  abonado: { icon: TimeHalfPassIcon, color: "#b45309", bg: "#ffdbca", label: "Abonado" },
+  pendiente: { icon: Cancel01Icon, color: "#be123c", bg: "#ffe4e6", label: "Pendiente" },
 }
 
 const PAGOS_POR_PAGINA = 5
@@ -92,24 +92,48 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
   const totalPendiente = cuentas
     .filter(c => c.estado !== "pagado")
     .reduce((sum, c) => sum + (Number(c.monto_total) - Number(c.monto_abonado || 0)), 0)
+  const totalFacturado = cuentas.reduce((sum, c) => sum + (Number(c.monto_total) || 0), 0)
+  const totalAbonado = cuentas.reduce((sum, c) => sum + (Number(c.monto_abonado) || 0), 0)
+  const porcentajePagado = totalFacturado > 0 ? Math.min(100, (totalAbonado / totalFacturado) * 100) : 0
+  const cuentasPendientes = cuentas.filter(c => Number(c.monto_total || 0) > Number(c.monto_abonado || 0)).length
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 p-4 rounded-lg border" style={{ borderColor: COLORS.BORDER_SUBTLE, backgroundColor: "oklch(0.98 0 0)" }}>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="opacity-50">Total cuentas:</span>
-          <span className="font-bold">{cuentas.length}</span>
+      <div>
+        <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Pagos realizados y estado financiero</h2>
+        <p className="text-sm text-[#73747b]">Resumen de cuentas, abonos y transacciones asociadas a los servicios.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Total cuentas", value: String(cuentas.length), detail: "Contratos registrados", color: COLORS.CHARCOAL },
+          { label: "Total facturado", value: `$${totalFacturado.toFixed(2)}`, detail: "Valor total de servicios", color: COLORS.CHARCOAL },
+          { label: "Total abonado", value: `$${totalAbonado.toFixed(2)}`, detail: `${porcentajePagado.toFixed(1)}% cancelado`, color: "#047857" },
+          { label: "Saldo pendiente", value: `$${totalPendiente.toFixed(2)}`, detail: `${cuentasPendientes} ${cuentasPendientes === 1 ? "cuenta abierta" : "cuentas abiertas"}`, color: totalPendiente > 0 ? COLORS.ACCENT : "#047857" },
+        ].map(card => (
+          <div key={card.label} className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[#73747b]">{card.label}</div>
+            <div className="mt-2 text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
+            <div className="mt-1 text-xs text-[#73747b]">{card.detail}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl bg-[#eff4ff] p-4" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
+        <div className="flex items-center justify-between text-xs font-semibold text-[#45464d]">
+          <span>Progreso de pagos</span><span>{porcentajePagado.toFixed(1)}%</span>
         </div>
-        <div className="w-px h-6" style={{ backgroundColor: COLORS.BORDER_SUBTLE }} />
-        <div className="flex items-center gap-2 text-sm">
-          <span className="opacity-50">Saldo pendiente:</span>
-          <span className="font-bold" style={{ color: totalPendiente > 0 ? "oklch(0.55 0.18 30)" : "oklch(0.55 0.18 160)" }}>
-            ${totalPendiente.toFixed(2)}
-          </span>
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#d3e4fe]">
+          <div className="h-full rounded-full" style={{ width: `${porcentajePagado}%`, backgroundColor: COLORS.ACCENT }} />
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div>
+        <h3 className="text-base font-bold" style={{ color: COLORS.CHARCOAL }}>Cuentas por servicio y recibos</h3>
+        <p className="mb-3 text-sm text-[#73747b]">Desglose individual por servicio, comprobantes y transacciones aplicadas.</p>
+      </div>
+
+      <div className="space-y-3">
         {cuentas.slice((paginaActual - 1) * PAGOS_POR_PAGINA, paginaActual * PAGOS_POR_PAGINA).map((cuenta) => {
           const estado = String(cuenta.estado || "pendiente")
           const cfg = estadoConfig[estado] || estadoConfig.pendiente
@@ -129,7 +153,7 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
 
           return (
             <div key={String(cuenta.id)}
-              className="rounded-lg border p-4 space-y-3"
+              className="space-y-3 rounded-2xl border bg-white p-5 shadow-sm"
               style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -150,7 +174,7 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
                     <button onClick={() => navigate(`/clientes/${clienteId}/pagar/${cuenta.id}`, {
                       state: { montoSaldo: saldo, montoTotal: total, concepto }
                     })}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors hover:bg-gray-100"
+                      className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors hover:bg-[#eff4ff]"
                       style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
                       <HugeiconsIcon icon={PaymentIcon} size={12} />
                       Pagar
@@ -163,14 +187,14 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-xs">
+              <div className="grid grid-cols-3 gap-2 rounded-xl bg-[#f8f9ff] p-3 text-xs">
                 <span>Total: <strong>${total.toFixed(2)}</strong></span>
                 {abonado > 0 && <span>Abonado: <strong>${abonado.toFixed(2)}</strong></span>}
                 {saldo > 0 && <span style={{ color: "oklch(0.55 0.18 30)" }}>Saldo: <strong>${saldo.toFixed(2)}</strong></span>}
               </div>
 
               {transacciones.length > 0 && (
-                <div className="pt-2 border-t space-y-1.5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                <div className="space-y-1.5 border-t pt-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider opacity-30">Transacciones</p>
                   {transacciones.map((tx: Record<string, unknown>, idx: number) => (
                     <div key={idx} className="flex items-center justify-between text-xs">
@@ -244,10 +268,10 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
             <h3 className="text-xs font-bold uppercase tracking-wider opacity-50 mb-3" style={{ color: COLORS.CHARCOAL }}>
               Historial de pagos ({allTransacciones.length})
             </h3>
-            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <div className="overflow-x-auto rounded-2xl border bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                  <tr className="border-b bg-[#eff4ff]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Fecha</th>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase">Concepto</th>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Mtodo</th>

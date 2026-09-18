@@ -17,6 +17,7 @@ export interface CatalogoCurso {
   categoria: "regular" | "taller" | "personalizado"
   imagen?: string
   color?: string
+  cursos_count?: number
   created_at?: string
   updated_at?: string
 }
@@ -64,7 +65,8 @@ export interface CursoAbierto {
   fecha_inicio: string | null
   fecha_fin: string | null
   capacidad_maxima: number
-  docente_id: string
+  docente_id?: string | null
+  es_personalizado?: boolean
   precio_base?: number
   es_activo: boolean
   modalidad?: "presencial" | "virtual"
@@ -111,6 +113,7 @@ export interface CursoAbierto {
     fecha_fin?: string | null
   }>
   observaciones?: string
+  total_matriculas?: number
 }
 
 export interface Curso {
@@ -130,6 +133,7 @@ export interface Curso {
   horaInicio: string
   horaFin: string
   precioBase: number
+  horasTotales: number
   observaciones: string
   catalogoNombre?: string
   colorCatalogo?: string
@@ -273,8 +277,12 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     }
   }
 
-  const docenteNombre = typed.docente
-    ? `${typed.docente.nombres} ${typed.docente.apellidos}`.trim()
+  const docente = typed.docente as (CursoAbierto["docente"] & { nombre?: string }) | undefined
+  const docenteNombre = typed.docente_id && docente
+    ? ([
+        docente.nombres || docente.nombre,
+        docente.apellidos,
+      ].filter(Boolean).join(" ") || "Sin asignar")
     : "Sin asignar"
 
   const modalidad = typed.modalidad || "presencial"
@@ -283,13 +291,13 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
   return {
     id: typed.id,
     nombre: typed.nombre_instancia || typed.catalogo?.nombre || "Sin nombre",
-    tipo: (typed.catalogo?.categoria || "regular") as "regular" | "taller" | "personalizado",
+    tipo: (typed.es_personalizado ? "personalizado" : (typed.catalogo?.categoria || "regular")) as "regular" | "taller" | "personalizado",
     modalidad,
     ciudad,
     instructor: docenteNombre,
     moduloActual: calculateModuloActual(typed.modulos || []),
     totalModulos: typed.modulos?.length || typed.catalogo?.modulos_default || 0,
-    estudiantes: typed.estudiantes_inscritos ?? typed.matriculas?.length ?? 0,
+    estudiantes: typed.estudiantes_inscritos ?? typed.total_matriculas ?? typed.matriculas?.length ?? 0,
     capacidad: typed.capacidad_maxima,
     estado: mapEstadoCurso(typed.estado, typed.modulos),
     fechaInicio: typed.fecha_inicio?.split("T")[0] || null,
@@ -297,6 +305,7 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     horaInicio: typed.horario?.hora_inicio?.substring(0, 5) || "",
     horaFin: typed.horario?.hora_fin?.substring(0, 5) || "",
     precioBase: Number(typed.precio_base) || 0,
+    horasTotales: Number(typed.catalogo?.horas_totales) || 0,
     observaciones: typed.observaciones || "",
     colorCatalogo: typed.catalogo?.color,
     catalogoNombre: typed.catalogo?.nombre || "",
@@ -374,7 +383,7 @@ function mapEstadoCurso(
 // ============================================================================
 
 export const cursosService = {
-  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; curso_abierto_id: string; pagos: Record<string, unknown>[]; metodo_pago: string }) {
+  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; curso_abierto_id: string; pagos?: Record<string, unknown>[]; pago_inicial?: number; metodo_pago: string; archivo_comprobante_url?: string }) {
     const response = await api.post("/academic/matriculas/inscribir-desde-perfil", data)
     return response.data
   },

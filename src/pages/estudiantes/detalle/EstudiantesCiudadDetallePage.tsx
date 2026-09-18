@@ -99,9 +99,11 @@ export function EstudiantesCiudadDetallePage() {
       cedula: r.cedula ?? "",
       correo: r.correo,
       telefono: r.telefono,
-      ciudad: r.ciudad,
+      ciudad: ciudadNombre,
       direccion: r.direccion,
       ocupacion: r.ocupacion,
+      saldo: r.saldo_pendiente,
+      estado_financiero: r.estado_pago,
       total_cursos: r.total_cursos,
     }))
 

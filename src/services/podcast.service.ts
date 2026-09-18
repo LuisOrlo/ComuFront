@@ -72,8 +72,9 @@ export const podcastService = {
     await api.delete(`/academic/servicios/paquetes-podcast/${id}`)
   },
 
-  getReservas: async (filters?: { fecha?: string; paquete_id?: string; estado?: string }) => {
-    const { data } = await api.get<{ data: ReservaPodcast[] }>("/academic/servicios/reservas-podcast", { params: filters })
+  getReservas: async (filters?: { fecha?: string; fecha_desde?: string; fecha_hasta?: string; paquete_id?: string; estado?: string; per_page?: number | string }) => {
+    const params = { per_page: "all", ...filters }
+    const { data } = await api.get<{ data: ReservaPodcast[] }>("/academic/servicios/reservas-podcast", { params })
     return data.data
   },
 

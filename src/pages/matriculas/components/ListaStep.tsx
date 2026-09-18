@@ -1,4 +1,5 @@
 import { motion } from "motion/react"
+import { useMemo, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   CheckCircle, GraduationCapIcon, BookOpen01Icon,
@@ -10,6 +11,7 @@ import { iconMap } from "@/pages/catalogos/components/catalog-icons"
 const SEL = "oklch(0.55 0.16 145)"
 import type { CursoAbierto } from "@/services/cursos.service"
 import type { Taller, HorarioTaller } from "@/services/taller.service"
+import type { CursoPersonalizado } from "@/services/cursosPersonalizados.service"
 
 const DAY_MAP: Record<number, string> = {
   1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado", 7: "Domingo",
@@ -66,22 +68,55 @@ function parseHorario(horarioStr: string) {
   return { days, time, hasDays: days.length > 0 }
 }
 
+function horarioPersonalizado(curso: CursoPersonalizado): string {
+  const days = (curso.dias_semana ?? []).map(d => DAY_NAMES[d] || `D${d}`)
+  const time = curso.hora_inicio && curso.hora_fin ? `${curso.hora_inicio.substring(0, 5)} - ${curso.hora_fin.substring(0, 5)}` : ""
+  return [days.join(" · "), time].filter(Boolean).join("  ·  ")
+}
+
 interface ListaStepProps {
   talleres: Taller[]
   cursosAbiertos: CursoAbierto[]
+  cursosPersonalizados?: CursoPersonalizado[]
+  modoDirecto?: boolean
   selectedCourseId: string
   loadingCursos: boolean
   onSelect: (id: string) => void
   onBack: () => void
 }
 
-export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, loadingCursos, onSelect, onBack }: ListaStepProps) {
-  const items: { tipo: "curso" | "taller"; id: string }[] = [
-    ...cursosAbiertos.map(c => ({ tipo: "curso" as const, id: c.id })),
-    ...talleres.map(t => ({ tipo: "taller" as const, id: t.id })),
+function matchesText(text: string, query: string) {
+  return text.toLowerCase().includes(query.toLowerCase())
+}
+
+export function ListaStep({ talleres, cursosAbiertos, cursosPersonalizados = [], modoDirecto = false, selectedCourseId, loadingCursos, onSelect, onBack }: ListaStepProps) {
+  const [busqueda, setBusqueda] = useState("")
+  const [tipo, setTipo] = useState<"todos" | "curso" | "personalizado" | "taller">("todos")
+  const [modalidad, setModalidad] = useState("todos")
+  const [ciudad, setCiudad] = useState("")
+  const cursosFiltrados = useMemo(() => cursosAbiertos.filter(c =>
+    matchesText(`${c.nombre_instancia} ${c.catalogo?.nombre ?? ""}`, busqueda) &&
+    (modalidad === "todos" || c.modalidad === modalidad) &&
+    (!ciudad || c.ciudad?.nombre === ciudad) && (tipo === "todos" || tipo === "curso")
+  ), [cursosAbiertos, busqueda, modalidad, ciudad, tipo])
+  const personalizadosFiltrados = useMemo(() => cursosPersonalizados.filter(c =>
+    matchesText(c.nombre, busqueda) && (modalidad === "todos" || c.modalidad === modalidad) &&
+    (!ciudad || (c.ciudad ?? "") === ciudad) && (tipo === "todos" || tipo === "personalizado")
+  ), [cursosPersonalizados, busqueda, modalidad, ciudad, tipo])
+  const talleresFiltrados = useMemo(() => talleres.filter(t =>
+    matchesText(t.nombre, busqueda) && (modalidad === "todos" || t.modalidad === modalidad) &&
+    (!ciudad || t.ciudad?.nombre === ciudad) && (tipo === "todos" || tipo === "taller")
+  ), [talleres, busqueda, modalidad, ciudad, tipo])
+  const visibleCursos = modoDirecto ? cursosFiltrados : cursosAbiertos
+  const visiblePersonalizados = personalizadosFiltrados
+  const visibleTalleres = modoDirecto ? talleresFiltrados : talleres
+  const items: { tipo: "curso" | "personalizado" | "taller"; id: string }[] = [
+    ...visibleCursos.map(c => ({ tipo: "curso" as const, id: c.id })),
+    ...visiblePersonalizados.map(c => ({ tipo: "personalizado" as const, id: c.id })),
+    ...visibleTalleres.map(t => ({ tipo: "taller" as const, id: t.id })),
   ]
 
-  const totalItems = cursosAbiertos.length + talleres.length
+  const totalItems = items.length
 
   return (
     <motion.div
@@ -92,6 +127,18 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, loadingC
       transition={{ duration: 0.15 }}
       className="space-y-4"
     >
+      {modoDirecto && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-lg border p-3 bg-[#fbfcff]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar curso, personalizado o taller..." className="sm:col-span-3 rounded-lg border px-3 py-2 text-xs outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+          <select value={tipo} onChange={e => setTipo(e.target.value as typeof tipo)} className="rounded-lg border px-3 py-2 text-xs bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <option value="todos">Todos los tipos</option><option value="curso">Cursos</option><option value="personalizado">Cursos personalizados</option><option value="taller">Talleres</option>
+          </select>
+          <select value={modalidad} onChange={e => setModalidad(e.target.value)} className="rounded-lg border px-3 py-2 text-xs bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <option value="todos">Todas las modalidades</option><option value="presencial">Presencial</option><option value="virtual">Virtual</option>
+          </select>
+          <input value={ciudad} onChange={e => setCiudad(e.target.value)} placeholder="Filtrar por ciudad" className="rounded-lg border px-3 py-2 text-xs outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+        </div>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
           {totalItems} disponible{totalItems !== 1 ? "s" : ""}
@@ -175,6 +222,20 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, loadingC
                 </div>
               )
             }
+            if (item.tipo === "personalizado") {
+              const cp = cursosPersonalizados.find(c => c.id === item.id)
+              if (!cp) return null
+              const selectedCustom = selectedCourseId === cp.id
+              const schedule = horarioPersonalizado(cp)
+              return (
+                <div key={cp.id} onClick={() => onSelect(cp.id)} className="rounded-lg border p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98] hover-orange" style={{ borderColor: selectedCustom ? SEL : COLORS.BORDER_SUBTLE, backgroundColor: selectedCustom ? `color-mix(in srgb, ${SEL} 4%, transparent)` : "white", borderLeft: `3px solid ${selectedCustom ? SEL : "#e5e7eb"}` }}>
+                  <div className="flex items-center gap-2 mb-1.5"><div className="size-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.08 280)" }}><HugeiconsIcon icon={GraduationCapIcon} size={12} style={{ color: "oklch(0.45 0.12 280)" }} /></div><span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: "oklch(0.92 0.08 280)", color: "oklch(0.45 0.12 280)" }}>Curso personalizado</span></div>
+                  <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selectedCustom ? SEL : COLORS.CHARCOAL }}>{cp.nombre}</h3>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs"><div><span style={{ color: COLORS.TEXT_MUTED }}>Fecha: </span><span style={{ color: COLORS.CHARCOAL }}>{formatDate(cp.fecha_inicio)}{cp.fecha_fin && cp.fecha_fin !== cp.fecha_inicio ? ` → ${formatDate(cp.fecha_fin)}` : ""}</span></div><div><span style={{ color: COLORS.TEXT_MUTED }}>Precio: </span><span style={{ color: COLORS.CHARCOAL }}>${Number(cp.precio_total).toFixed(2)}</span></div>{schedule && <div className="col-span-2"><span style={{ color: COLORS.TEXT_MUTED }}>Horario: </span><span style={{ color: COLORS.CHARCOAL }}>{schedule}</span></div>}<div><span style={{ color: COLORS.TEXT_MUTED }}>Cupos: </span><span style={{ color: COLORS.CHARCOAL }}>{cp.cupos_disponibles} de {cp.capacidad}</span></div></div>
+                  {selectedCustom && <div className="absolute top-1.5 right-1.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: SEL }} /></div>}
+                </div>
+              )
+            }
             const ca = cursosAbiertos.find(c => c.id === item.id)
             if (!ca) return null
             const catColor = ca.catalogo?.color || "oklch(0.45 0.08 280)"
@@ -203,6 +264,11 @@ export function ListaStep({ talleres, cursosAbiertos, selectedCourseId, loadingC
                   <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selected ? SEL : COLORS.CHARCOAL }}>{ca.nombre_instancia || ca.catalogo?.nombre}</h3>
                   {ca.catalogo?.descripcion && (
                     <p className="text-[11px] mb-2 line-clamp-2" style={{ color: COLORS.TEXT_MUTED }}>{ca.catalogo.descripcion}</p>
+                  )}
+                  {ca.es_personalizado && (
+                    <p className="text-xs font-semibold mb-2" style={{ color: COLORS.CHARCOAL }}>
+                      Precio: ${Number(ca.precio_base || 0).toFixed(2)}
+                    </p>
                   )}
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                     <div className="flex items-center gap-1.5 min-w-0">

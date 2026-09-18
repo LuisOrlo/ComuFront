@@ -8,6 +8,7 @@ const PIE_COLORS = ["#059669", "#4f46e5", "#0891b2", "#d97706", "#dc2626"]
 
 const CAT_BAR_COLORS: Record<string, string> = {
   "Cursos": "#059669", "Talleres": "#0891b2", "Podcast": "#4f46e5",
+  "Cursos personalizados": "#7c3aed",
   "Aulas": "#7c3aed", "Radio": "#a21caf", "Edición": "#d97706",
   "Equipos": "#dc2626", "Streaming": "#0d9488", "Producción": "#65a30d",
   "Otros": "#6b7280",

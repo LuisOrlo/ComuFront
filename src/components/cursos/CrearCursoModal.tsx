@@ -245,7 +245,6 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
 
     // Paso 1
     if (!form.catalogo_curso_id) newErrors.catalogo_curso_id = "Selecciona un catálogo"
-    if (!form.docente_id) newErrors.docente_id = "Selecciona un docente"
 
     // Paso 2
     if (!form.nombre_instancia.trim()) newErrors.nombre_instancia = "El nombre es obligatorio"
@@ -326,7 +325,6 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
 
     if (currentStep === 1) {
       if (!form.catalogo_curso_id) newErrors.catalogo_curso_id = "Selecciona un catálogo"
-      if (!form.docente_id) newErrors.docente_id = "Selecciona un docente"
     } else if (currentStep === 2) {
       if (!form.nombre_instancia.trim()) newErrors.nombre_instancia = "El nombre es obligatorio"
       if (!form.fecha_inicio) newErrors.fecha_inicio = "La fecha de inicio es obligatoria"
@@ -559,7 +557,7 @@ export function CrearCursoModal({ isOpen, onClose, onSuccess, editingId }: Props
                 {/* Docente */}
                 <div>
                   <label className={label} style={{ color: COLORS.CHARCOAL }}>
-                    Docente Responsable <span style={{ color: "#ef4444" }}>*</span>
+                    Docente Responsable <span className="text-xs font-normal" style={{ color: COLORS.TEXT_MUTED }}>(opcional)</span>
                   </label>
                   <div className="relative mb-2.5">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: COLORS.TEXT_MUTED }} />

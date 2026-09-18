@@ -34,6 +34,11 @@ export interface DocumentoSolicitud {
 }
 
 export interface SolicitudInscripcionDetallada extends SolicitudInscripcionResumen {
+  solicitante?: {
+    tipo?: string
+    datos_declarados?: Record<string, string | number | null>
+    datos?: Record<string, string | number | null>
+  }
   estudiante?: {
     id: string
     nombres: string
