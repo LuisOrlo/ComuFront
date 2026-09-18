@@ -1430,10 +1430,12 @@ export function CursoFormPage() {
                             <button
                               type="button"
                               onClick={() => eliminarModulo(i)}
-                              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors ml-1"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors ml-1 text-[11px] font-bold"
                               title="Eliminar módulo"
+                              aria-label={`Quitar módulo ${i + 1}`}
                             >
                               <Trash2 size={16} />
+                              <span>Quitar módulo</span>
                             </button>
                           )}
                         </div>
