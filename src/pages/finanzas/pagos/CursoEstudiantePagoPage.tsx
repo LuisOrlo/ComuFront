@@ -104,6 +104,7 @@ export function CursoEstudiantePagoPage() {
       await financeService.registrarPagosIniciales({
         matricula_id: matriculaId,
         pagos: pagos.map(p => ({ ...p, comprobante_url: comprobanteUrl })),
+        pago_unificado: pagos.length > 1,
       })
 
       toast.success("Pago registrado correctamente")

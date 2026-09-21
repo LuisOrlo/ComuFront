@@ -304,7 +304,7 @@ function AppLayout() {
             <Route path="/instructor/cursos/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursoDetailPage /></RoleGuard>} />
             <Route path="/instructor/clases/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><ClasesModuloPage /></RoleGuard>} />
             <Route path="/instructor/asistencia/:cursoId/:claseId" element={<RoleGuard roles={["Administrador", "Instructor"]}><AsistenciaRegistroPage /></RoleGuard>} />
-            <Route path="/instructor/notas/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><NotasRegistroPage /></RoleGuard>} />
+            <Route path="/instructor/notas/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Secretaria", "Instructor"]}><NotasRegistroPage /></RoleGuard>} />
             <Route path="/instructor/estudiantes/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><DetalleEstudiantePage /></RoleGuard>} />
             <Route path="/instructor/horario" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorHorarioPage /></RoleGuard>} />
 

@@ -938,6 +938,7 @@ export function CursoFormPage() {
                     <label className="text-sm font-semibold text-slate-800">
                       Fecha de inicio <span className="text-[#fd761a]">*</span>
                     </label>
+                    <p className="text-xs text-slate-500">Se permiten fechas pasadas para registrar cursos ya impartidos.</p>
                     <div className="relative">
                       <Calendar className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
                       <input
@@ -1226,6 +1227,7 @@ export function CursoFormPage() {
                     {getError("precio_base") && (
                       <p className="text-xs text-red-500 mt-0.5">{getError("precio_base")}</p>
                     )}
+                    <p className="text-xs text-slate-500">Si no existe información de cobros para el curso, registra $0.00. Al inscribir estudiantes podrás omitir la creación de movimientos financieros.</p>
                   </div>
                 </div>
 

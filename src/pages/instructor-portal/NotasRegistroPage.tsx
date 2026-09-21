@@ -17,8 +17,8 @@ type NotaLocal = { calificacion: string }
 export function NotasRegistroPage() {
   const { cursoId, moduloId } = useParams<{ cursoId: string; moduloId: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = usePermission()
-  const backUrl = isAdmin
+  const { isAdmin, isSecretaria } = usePermission()
+  const backUrl = isAdmin || isSecretaria
     ? `/cursos/${cursoId}?tab=modulos`
     : `/instructor/cursos/${cursoId}?tab=grades`
   const [curso, setCurso] = useState<InstructorCurso | null>(null)
@@ -106,10 +106,15 @@ export function NotasRegistroPage() {
       </div>
     )
 
-  const aprobadosCount = Object.values(notasLocal).filter(
-    (n) => parseFloat(n.calificacion) >= 6.5,
-  ).length
-  const reprobadosCount = estudiantes.length - aprobadosCount
+  const notasEvaluadas = Object.values(notasLocal)
+    .map((nota) => parseFloat(nota.calificacion))
+    .filter(Number.isFinite)
+  const aprobadosCount = notasEvaluadas.filter((nota) => nota >= 6.5).length
+  const reprobadosCount = notasEvaluadas.length - aprobadosCount
+  const pendientesCount = estudiantes.length - notasEvaluadas.length
+  const promedio = notasEvaluadas.length
+    ? (notasEvaluadas.reduce((total, nota) => total + nota, 0) / notasEvaluadas.length).toFixed(2)
+    : "—"
 
   const getEstudianteName = (e: EstudianteCurso) => {
     if (e.estudiante) {
@@ -122,236 +127,102 @@ export function NotasRegistroPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <Link
-        to={backUrl}
-        className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
-        style={{ color: COLORS.TEXT_MUTED }}
-      >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver al curso
-      </Link>
+    <main className="min-h-full bg-[#f8f9ff] px-4 py-7 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        <Link to={backUrl} className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-[#45464d] transition-colors hover:text-[#9d4300]">
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+          {isAdmin || isSecretaria ? "Volver a módulos del curso" : "Volver al curso"}
+        </Link>
 
-      <div
-        className="bg-white rounded-2xl overflow-hidden shadow-sm"
-        style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
-      >
-        <div
-          className="p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-          style={{
-            borderBottomColor: COLORS.BORDER_SUBTLE,
-            borderBottomWidth: 1,
-            backgroundColor: "oklch(0.97 0 0)",
-          }}
-        >
-          <div>
-            <span
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: COLORS.ACCENT }}
-            >
-              Registro de Notas
-            </span>
-            <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
-              {modulo.nombre_modulo}
-            </h1>
-            <p className="text-sm flex items-center gap-1.5" style={{ color: COLORS.TEXT_MUTED }}>
-              {curso?.catalogo?.color && (
-                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
-              )}
-              {curso?.catalogo?.nombre ?? "Curso"} - {curso?.nombre_instancia ?? ""}
-            </p>
-          </div>
-          <div className="flex gap-4">
-            <div
-              className="text-center px-4 py-2 rounded-xl"
-              style={{
-                backgroundColor: "oklch(0.95 0.03 150)",
-                borderColor: "oklch(0.88 0.04 150)",
-                borderWidth: 1,
-              }}
-            >
-              <span
-                className="block text-[10px] font-bold uppercase"
-                style={{ color: "oklch(0.5 0.1 150)" }}
-              >
-                Aprobados
-              </span>
-              <span
-                className="text-xl font-bold"
-                style={{ color: "oklch(0.45 0.1 150)" }}
-              >
-                {aprobadosCount}
-              </span>
-            </div>
-            <div
-              className="text-center px-4 py-2 rounded-xl"
-              style={{
-                backgroundColor: "oklch(0.95 0.04 20)",
-                borderColor: "oklch(0.88 0.05 20)",
-                borderWidth: 1,
-              }}
-            >
-              <span
-                className="block text-[10px] font-bold uppercase"
-                style={{ color: "oklch(0.45 0.15 20)" }}
-              >
-                Reprobados
-              </span>
-              <span
-                className="text-xl font-bold"
-                style={{ color: "oklch(0.45 0.15 20)" }}
-              >
-                {reprobadosCount}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8">
-          <div
-            className="rounded-xl p-4 mb-8"
-            style={{
-              backgroundColor: "oklch(0.95 0.04 65)",
-              borderColor: "oklch(0.88 0.05 65)",
-              borderWidth: 1,
-            }}
-          >
-            <p className="text-sm" style={{ color: "oklch(0.4 0.06 65)" }}>
-              Recuerda que la nota mínima de aprobación es <b>6.5</b>. El sistema
-              validará automáticamente el resultado académico.
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {estudiantes.length === 0 ? (
-              <div
-                className="text-center py-12"
-                style={{ color: COLORS.TEXT_MUTED }}
-              >
-                No hay estudiantes matriculados en este curso.
+        <section className="overflow-hidden rounded-2xl border border-[#e5eeff] bg-white shadow-[0_8px_28px_rgba(11,28,48,0.05)]">
+          <header className="border-b border-[#e5eeff] bg-white px-5 py-6 sm:px-8 sm:py-8">
+            <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
+              <div>
+                <span className="inline-flex rounded-full bg-[#fff0e6] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#9d4300]">Registro de notas</span>
+                <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#0b1c30] sm:text-3xl">{modulo.nombre_modulo}</h1>
+                <p className="mt-2 flex items-center gap-2 text-sm text-[#45464d]">
+                  {curso?.catalogo?.color && <span className="size-2.5 rounded-full" style={{ backgroundColor: curso.catalogo.color }} />}
+                  {curso?.catalogo?.nombre ?? "Curso"}{curso?.nombre_instancia ? ` · ${curso.nombre_instancia}` : ""}
+                </p>
               </div>
-            ) : (
-              estudiantes.map((e) => {
-                const nota = parseFloat(notasLocal[e.id]?.calificacion || "0")
-                const isApproved = nota >= 6.5
+              <div className="rounded-xl border border-[#e5eeff] bg-[#f8f9ff] px-4 py-3 sm:min-w-40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#45464d]">Estudiantes</p>
+                <p className="mt-1 text-2xl font-bold text-[#0b1c30]">{estudiantes.length}</p>
+              </div>
+            </div>
 
-                return (
-                  <div
-                    key={e.id}
-                    className="grid md:grid-cols-10 gap-4 items-center p-4 rounded-xl transition-colors"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
-                  >
-                    <div className="md:col-span-4">
-                      <div
-                        className="font-bold"
-                        style={{ color: COLORS.CHARCOAL }}
-                      >
-                        {getEstudianteName(e)}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                          style={{
-                            backgroundColor: "oklch(0.95 0.03 150)",
-                            color: "oklch(0.45 0.1 150)",
-                          }}
-                        >
-                          {e.porcentaje_asistencia}% Asistencia
-                        </span>
-                      </div>
-                    </div>
+            <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[
+                { label: "Aprobados", value: aprobadosCount, color: "#009668", bg: "#e7f7f0" },
+                { label: "Reprobados", value: reprobadosCount, color: "#ba1a1a", bg: "#fff0ef" },
+                { label: "Pendientes", value: pendientesCount, color: "#9d4300", bg: "#fff3e9" },
+                { label: "Promedio", value: promedio, color: "#0b1c30", bg: "#eff4ff" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-[#e5eeff] px-4 py-3" style={{ backgroundColor: item.bg }}>
+                  <p className="text-xs font-semibold text-[#45464d]">{item.label}</p>
+                  <p className="mt-1 text-xl font-bold" style={{ color: item.color }}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </header>
 
-                    <div className="md:col-span-3">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={notasLocal[e.id]?.calificacion || ""}
-                          onChange={(ev) =>
-                            handleNotaChange(e.id, ev.target.value)
-                          }
-                          placeholder="0.00"
-                          className="w-full h-12 text-center text-lg font-bold rounded-xl outline-none transition-all"
-                          style={{
-                            borderWidth: 1,
-                            borderColor:
-                              nota > 0
-                                ? isApproved
-                                  ? "oklch(0.7 0.1 150)"
-                                  : "oklch(0.6 0.15 20)"
-                                : COLORS.BORDER_SUBTLE,
-                            backgroundColor:
-                              nota > 0
-                                ? isApproved
-                                  ? "oklch(0.95 0.03 150)"
-                                  : "oklch(0.95 0.04 20)"
-                                : "white",
-                            color:
-                              nota > 0
-                                ? isApproved
-                                  ? "oklch(0.45 0.1 150)"
-                                  : "oklch(0.45 0.15 20)"
-                                : COLORS.CHARCOAL,
-                          }}
-                        />
-                        <span
-                          className="absolute -top-2 -right-1 bg-white px-1 text-[8px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Nota
-                        </span>
-                      </div>
-                    </div>
+          <div className="p-5 sm:p-8">
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-[#ffdfc7] bg-[#fff7f0] p-4">
+              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#fd761a] text-xs font-bold text-white">!</span>
+              <p className="text-sm leading-6 text-[#5c2400]">La nota mínima de aprobación es <strong>6.5</strong>. Las calificaciones se registran sobre 10.</p>
+            </div>
 
-                    <div className="md:col-span-3 text-center">
-                      {nota > 0 && (
-                        <div
-                          className="text-xs font-bold uppercase"
-                          style={{
-                            color:
-                              isApproved
-                                ? "oklch(0.45 0.1 150)"
-                                : "oklch(0.45 0.15 20)",
-                          }}
-                        >
-                          {isApproved ? "Aprobado" : "Reprobado"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          <div className="mt-12 flex justify-end gap-4">
-            <Link
-              to={backUrl}
-              className="px-6 py-3 rounded-xl font-bold transition-all"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.TEXT_MUTED }}
-            >
-              Cancelar
-            </Link>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-8 py-3 rounded-xl text-white font-bold transition-all flex items-center gap-2 disabled:opacity-50"
-              style={{
-                backgroundColor: COLORS.ACCENT,
-                boxShadow: `0 4px 12px ${COLORS.ACCENT}40`,
-              }}
-            >
-              {saving ? (
-                "Guardando..."
+            <div className="overflow-hidden rounded-xl border border-[#e5eeff]">
+              <div className="hidden grid-cols-[minmax(0,1fr)_150px_150px] gap-4 bg-[#eff4ff] px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#45464d] md:grid">
+                <span>Estudiante</span><span>Asistencia</span><span className="text-center">Calificación / 10</span>
+              </div>
+              {estudiantes.length === 0 ? (
+                <div className="px-5 py-14 text-center text-sm text-[#45464d]">No hay estudiantes matriculados en este curso.</div>
               ) : (
-                <>
-                  <HugeiconsIcon icon={SaveIcon} size={20} />
-                  Guardar Notas
-                </>
+                estudiantes.map((e, index) => {
+                  const rawNota = notasLocal[e.id]?.calificacion || ""
+                  const nota = rawNota === "" ? null : parseFloat(rawNota)
+                  const isApproved = nota !== null && nota >= 6.5
+                  return (
+                    <div key={e.id} className={`grid gap-4 px-5 py-4 md:grid-cols-[minmax(0,1fr)_150px_150px] md:items-center ${index ? "border-t border-[#e5eeff]" : ""}`}>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-[#0b1c30]">{getEstudianteName(e)}</p>
+                        <p className="mt-1 text-xs text-[#45464d] md:hidden">Asistencia: {e.porcentaje_asistencia}%</p>
+                      </div>
+                      <div className="hidden md:block">
+                        <span className="inline-flex rounded-full bg-[#e7f7f0] px-2.5 py-1 text-xs font-bold text-[#006b4a]">{e.porcentaje_asistencia}%</span>
+                      </div>
+                      <div className="flex items-center gap-3 md:justify-center">
+                        <label className="sr-only" htmlFor={`nota-${e.id}`}>Calificación de {getEstudianteName(e)}</label>
+                        <input
+                          id={`nota-${e.id}`}
+                          type="text"
+                          inputMode="decimal"
+                          value={rawNota}
+                          onChange={(ev) => handleNotaChange(e.id, ev.target.value)}
+                          placeholder="0.00"
+                          className="h-11 w-28 rounded-lg border bg-white px-3 text-center text-base font-bold text-[#0b1c30] outline-none transition focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20"
+                          style={{ borderColor: nota === null ? "#c6d5ee" : isApproved ? "#009668" : "#ba1a1a" }}
+                        />
+                        <span className={`min-w-20 text-xs font-bold ${nota === null ? "text-[#797a82]" : isApproved ? "text-[#009668]" : "text-[#ba1a1a]"}`}>
+                          {nota === null ? "Pendiente" : isApproved ? "Aprobado" : "Reprobado"}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
               )}
-            </button>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse justify-end gap-3 sm:flex-row">
+              <Link to={backUrl} className="inline-flex items-center justify-center rounded-lg border border-[#c6d5ee] px-5 py-3 text-sm font-semibold text-[#45464d] transition-colors hover:bg-[#eff4ff]">Cancelar</Link>
+              <button onClick={handleSave} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#fd761a] px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#9d4300] disabled:cursor-not-allowed disabled:opacity-50">
+                <HugeiconsIcon icon={SaveIcon} size={18} />{saving ? "Guardando..." : "Guardar notas"}
+              </button>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router"
-import { useRef, useEffect, useMemo } from "react"
+import { useRef, useEffect, useMemo, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import {
@@ -39,6 +39,7 @@ import "overlayscrollbars/overlayscrollbars.css"
 import { useOverlayScrollbars } from "overlayscrollbars-react"
 
 const ACCENT = COLORS.ACCENT
+const ACTIVE_NEON = ACCENT
 
 interface NavItemData {
   icon: IconSvgElement
@@ -65,7 +66,9 @@ function NavItem({
   onClose?: () => void
 }) {
   const location = useLocation()
-  const isActive = location.pathname === path
+  const isActive = path === "/"
+    ? location.pathname === path
+    : location.pathname === path || location.pathname.startsWith(`${path}/`)
 
   return (
     <li>
@@ -73,26 +76,32 @@ function NavItem({
         to={path}
         onClick={onClose}
         title={collapsed ? label : undefined}
+        aria-current={isActive ? "page" : undefined}
         className="group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium select-none"
         style={{
           backgroundColor: isActive ? `color-mix(in srgb, ${ACCENT} 18%, transparent)` : "transparent",
-          color: isActive ? ACCENT : "rgba(255,255,255,0.55)",
-          transition: "background-color 180ms ease-out, color 180ms ease-out",
+          color: isActive ? ACTIVE_NEON : "rgba(255,255,255,0.55)",
+          boxShadow: isActive ? `inset 0 0 0 1px color-mix(in srgb, ${ACCENT} 65%, transparent), 0 0 14px color-mix(in srgb, ${ACCENT} 28%, transparent)` : "none",
+          transition: "background-color 180ms ease-out, color 180ms ease-out, box-shadow 180ms ease-out",
+        }}
+        onMouseEnter={(event) => {
+          if (isActive) return
+          event.currentTarget.style.backgroundColor = `color-mix(in srgb, ${ACCENT} 12%, transparent)`
+          event.currentTarget.style.color = ACCENT
+          event.currentTarget.style.boxShadow = `inset 0 0 0 1px color-mix(in srgb, ${ACCENT} 30%, transparent)`
+        }}
+        onMouseLeave={(event) => {
+          if (isActive) return
+          event.currentTarget.style.backgroundColor = "transparent"
+          event.currentTarget.style.color = "rgba(255,255,255,0.55)"
+          event.currentTarget.style.boxShadow = "none"
         }}
       >
-        <span
-          className="absolute inset-0 rounded-lg"
-          style={{
-            backgroundColor: isActive ? "transparent" : "rgba(255,255,255,0)",
-            transition: "background-color 180ms ease-out",
-          }}
-        />
-        <span className="absolute inset-0 rounded-lg group-hover:bg-white/[0.06] transition-colors duration-150" />
         <HugeiconsIcon
           icon={icon}
           size={18}
           className="relative shrink-0 transition-transform duration-200 ease-out group-hover:scale-110"
-          style={{ color: isActive ? ACCENT : "currentColor" }}
+          style={{ color: isActive ? ACTIVE_NEON : "currentColor", filter: isActive ? `drop-shadow(0 0 5px color-mix(in srgb, ${ACCENT} 75%, transparent))` : undefined }}
         />
         {!collapsed && (
           <>
@@ -117,6 +126,8 @@ function NavItem({
 
 export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
   const { logout, user } = useAuth()
+  const location = useLocation()
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ "Académico": true })
   const navRef = useRef<HTMLDivElement>(null)
   const [initialize, getInstance] = useOverlayScrollbars({
     options: {
@@ -150,7 +161,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
       groups.push({
         label: "Principal",
         items: [
-          { icon: LayoutDashboard, label: "Dashboard", path: dashboardPath },
+          { icon: LayoutDashboard, label: "Inicio", path: dashboardPath },
         ],
       })
     }
@@ -269,6 +280,18 @@ if (isAdmin) {
     return groups
   }, [isAdmin, isInstructor, isSecretaria, pendientesCount])
 
+  useEffect(() => {
+    const activeGroupIndex = menuGroups.findIndex((group) =>
+      group.items.some((item) => item.path === "/"
+        ? location.pathname === item.path
+        : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
+    )
+    if (activeGroupIndex >= 0) {
+      const activeGroup = menuGroups[activeGroupIndex]
+      setExpandedGroups((current) => ({ ...current, [`${activeGroup.label}-${activeGroupIndex}`]: true }))
+    }
+  }, [location.pathname, menuGroups])
+
   return (
     <aside
       className="relative flex flex-col h-full select-none"
@@ -311,30 +334,56 @@ if (isAdmin) {
       </div>
 
       <div ref={navRef} className="flex-1 px-3 py-5">
-        {menuGroups.map((group) => (
-          <div key={group.label} className="mb-5 last:mb-0">
-            {!collapsed ? (
-              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25">
-                {group.label}
-              </p>
-            ) : (
-              <div
-                className="w-8 h-px mx-auto mb-2.5"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-              />
-            )}
-            <ul className="flex flex-col gap-0.5">
-              {group.items.map((item) => (
-                <NavItem
-                  key={item.path}
-                  {...item}
-                  collapsed={collapsed}
-                  onClose={onClose}
+        {menuGroups.map((group, index) => {
+          const isAcademic = group.label === "Académico"
+          const isExpanded = collapsed || Boolean(expandedGroups[`${group.label}-${index}`] ?? isAcademic)
+          const isGroupActive = group.items.some((item) => item.path === "/"
+            ? location.pathname === item.path
+            : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
+
+          return (
+            <div key={`${group.label}-${index}`} className="mb-5 last:mb-0">
+              {!collapsed ? (
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  aria-current={isGroupActive ? "location" : undefined}
+                  onClick={() => setExpandedGroups((current) => ({ ...current, [`${group.label}-${index}`]: !isExpanded }))}
+                  className="w-full flex items-center justify-between px-3 py-1 mb-1 rounded-md text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors"
+                  style={{
+                    color: isGroupActive ? ACCENT : "rgba(255,255,255,0.45)",
+                  }}
+                  onMouseEnter={(event) => {
+                    event.currentTarget.style.color = ACCENT
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.color = isGroupActive ? ACCENT : "rgba(255,255,255,0.45)"
+                  }}
+                >
+                  <span>{group.label}</span>
+                  <span aria-hidden="true" className="text-sm leading-none transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
+                </button>
+              ) : (
+                <div
+                  className="w-8 h-px mx-auto mb-2.5"
+                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
                 />
-              ))}
-            </ul>
-          </div>
-        ))}
+              )}
+              {isExpanded && (
+                <ul className="flex flex-col gap-0.5">
+                  {group.items.map((item) => (
+                    <NavItem
+                      key={item.path}
+                      {...item}
+                      collapsed={collapsed}
+                      onClose={onClose}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       <div

@@ -248,6 +248,7 @@ export interface MatriculaDetallada {
     calificacion: number
     aprobado: boolean
     modulo_id: string
+    modulo?: { numero_orden: number }
   }>
 }
 
@@ -383,7 +384,7 @@ function mapEstadoCurso(
 // ============================================================================
 
 export const cursosService = {
-  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; curso_abierto_id: string; pagos?: Record<string, unknown>[]; pago_inicial?: number; metodo_pago: string; archivo_comprobante_url?: string }) {
+  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; curso_abierto_id: string; pagos?: Record<string, unknown>[]; pago_inicial?: number; metodo_pago?: string; sin_registro_financiero?: boolean; archivo_comprobante_url?: string }) {
     const response = await api.post("/academic/matriculas/inscribir-desde-perfil", data)
     return response.data
   },
@@ -391,6 +392,11 @@ export const cursosService = {
   async getCursosAbiertosParaInscripcion(params?: Record<string, string | number | boolean>) {
     const response = await api.get("/cursos-abiertos", { params })
     return response.data
+  },
+
+  async getCursosAbiertosGestion(params?: Record<string, string | number | boolean>): Promise<CursoAbierto[]> {
+    const response = await api.get<{ data: CursoAbierto[] }>("/academic/cursos-abiertos", { params })
+    return response.data.data
   },
 
   /**
@@ -425,7 +431,7 @@ export const cursosService = {
     }
 
     const response = await api.get<{ data: CursoAbierto[]; meta: { current_page: number; last_page: number; per_page: number; total: number } }>(
-      "/cursos-abiertos",
+      "/academic/cursos-abiertos",
       { params }
     )
 

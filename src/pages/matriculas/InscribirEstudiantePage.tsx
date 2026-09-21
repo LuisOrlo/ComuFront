@@ -245,6 +245,7 @@ export function InscribirEstudiantePage() {
   const [loadingEstudiante, setLoadingEstudiante] = useState(true)
   const [loadingOfertas, setLoadingOfertas] = useState(false)
   const [search, setSearch] = useState("")
+  const [mostrarCursosHistoricos, setMostrarCursosHistoricos] = useState(false)
   const [cursos, setCursos] = useState<CursoAbierto[]>([])
   const [personalizados, setPersonalizados] = useState<CursoPersonalizado[]>([])
   const [talleres, setTalleres] = useState<Taller[]>([])
@@ -252,6 +253,7 @@ export function InscribirEstudiantePage() {
   const [saving, setSaving] = useState(false)
   const [metodoCurso, setMetodoCurso] = useState("transferencia")
   const [cursoPagoValido, setCursoPagoValido] = useState(false)
+  const [sinRegistroFinanciero, setSinRegistroFinanciero] = useState(false)
   const cursoPagoRef = useRef<PagoPreAprobacionRef>(null)
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [pagoInicial, setPagoInicial] = useState("")
@@ -277,15 +279,20 @@ export function InscribirEstudiantePage() {
     setSelectedId(null)
     setSearch("")
     setCursoPagoValido(false)
+    setSinRegistroFinanciero(false)
     setComprobanteFile(null)
 
     const load =
       tipo === "curso"
-        ? cursosService
-            .getCursosAbiertosParaInscripcion({ per_page: 100, no_iniciados: true })
-            .then((response) =>
-              setCursos(((response as { data?: CursoAbierto[] }).data || []).filter((course) => !course.es_personalizado))
+        ? mostrarCursosHistoricos
+          ? cursosService.getCursosAbiertosGestion({ per_page: 100, historicos: true }).then((courses) =>
+              setCursos(courses.filter((course) => !course.es_personalizado))
             )
+          : cursosService
+              .getCursosAbiertosParaInscripcion({ per_page: 100 })
+              .then((response) =>
+                setCursos(((response as { data?: CursoAbierto[] }).data || []).filter((course) => !course.es_personalizado))
+              )
         : tipo === "personalizado"
           ? cursosPersonalizadosService
               .listar({ per_page: 100 })
@@ -306,7 +313,7 @@ export function InscribirEstudiantePage() {
         if (tipo === "taller") setTalleres([])
       })
       .finally(() => setLoadingOfertas(false))
-  }, [tipo])
+  }, [tipo, mostrarCursosHistoricos])
 
   const selectedCurso = tipo === "curso" ? cursos.find((course) => course.id === selectedId) : undefined
   const selectedPersonalizado =
@@ -333,12 +340,13 @@ export function InscribirEstudiantePage() {
     if (!id || !selectedCurso) return
     setSaving(true)
     try {
-      const comprobante = comprobanteFile ? await cursosService.uploadComprobante(comprobanteFile) : undefined
+      const comprobante = !sinRegistroFinanciero && comprobanteFile ? await cursosService.uploadComprobante(comprobanteFile) : undefined
       await cursosService.inscribirEstudianteDesdePerfil({
         estudiante_id: id,
         curso_abierto_id: selectedCurso.id,
         pagos,
         metodo_pago: metodoPago,
+        sin_registro_financiero: sinRegistroFinanciero,
         archivo_comprobante_url: comprobante?.url,
       })
       toast.success(
@@ -521,6 +529,7 @@ export function InscribirEstudiantePage() {
                 type="button"
                 onClick={() => {
                   setTipo(value)
+                  setMostrarCursosHistoricos(false)
                   setPagoInicial("")
                   setMontoTaller("")
                 }}
@@ -539,6 +548,32 @@ export function InscribirEstudiantePage() {
 
         {/* 3. Buscador y Listado de Ofertas */}
         <section className="space-y-3">
+          {tipo === "curso" && (
+            <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-800">
+                  {mostrarCursosHistoricos ? "Cursos históricos" : "Cursos disponibles para matrícula"}
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {mostrarCursosHistoricos
+                    ? "Listado administrativo para completar registros de cursos anteriores."
+                    : "Incluye cursos futuros y cursos que iniciaron hace siete días o menos."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarCursosHistoricos((current) => !current)
+                  setSelectedId(null)
+                  setSearch("")
+                  setSinRegistroFinanciero(false)
+                }}
+                className="shrink-0 rounded-lg border border-orange-200 px-3 py-2 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-50"
+              >
+                {mostrarCursosHistoricos ? "Volver a cursos disponibles" : "Ver cursos históricos"}
+              </button>
+            </div>
+          )}
           <div className="relative">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -577,7 +612,11 @@ export function InscribirEstudiantePage() {
                     <button
                       key={course.id}
                       type="button"
-                      onClick={() => setSelectedId(isSelected ? null : course.id)}
+                      onClick={() => {
+                        setSelectedId(isSelected ? null : course.id)
+                        setSinRegistroFinanciero(false)
+                        setComprobanteFile(null)
+                      }}
                       className={`group relative flex flex-col justify-between gap-3 rounded-xl border p-4 text-left transition-all sm:flex-row sm:items-center ${
                         isSelected
                           ? "border-orange-500 bg-orange-50/25 ring-1 ring-orange-400 shadow-xs"
@@ -771,21 +810,35 @@ export function InscribirEstudiantePage() {
                 Pago · {selectedCurso.nombre_instancia || selectedCurso.catalogo?.nombre}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Configura los pagos por módulo antes de confirmar la inscripción del estudiante.
+                Registra los pagos por módulo si corresponde o inscribe al estudiante sin movimientos financieros.
               </p>
             </div>
 
-            {/* Componente original de registro de pago intacto */}
-            <PagoPreAprobacionSection
-              ref={cursoPagoRef}
-              cursoAbiertoId={selectedCurso.id}
-              cursoNombre={selectedCurso.nombre_instancia || selectedCurso.catalogo?.nombre || "Curso"}
-              metodoPagoInicial={metodoCurso}
-              onMontoValidoChange={setCursoPagoValido}
-              onSubmit={submitCurso}
-            />
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+              <input
+                type="checkbox"
+                checked={sinRegistroFinanciero}
+                onChange={(event) => setSinRegistroFinanciero(event.target.checked)}
+                className="mt-0.5 size-4 accent-[#fd761a]"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-slate-800">Inscribir sin registrar dinero</span>
+                <span className="mt-0.5 block text-xs leading-5 text-slate-600">Úsalo para cursos históricos o casos sin respaldo financiero. No se crearán cargos, cuentas por cobrar ni transacciones para esta matrícula.</span>
+              </span>
+            </label>
 
-            <div className="border-t border-slate-100 pt-5 space-y-4">
+            <div className={sinRegistroFinanciero ? "hidden" : "block"}>
+              <PagoPreAprobacionSection
+                ref={cursoPagoRef}
+                cursoAbiertoId={selectedCurso.id}
+                cursoNombre={selectedCurso.nombre_instancia || selectedCurso.catalogo?.nombre || "Curso"}
+                metodoPagoInicial={metodoCurso}
+                onMontoValidoChange={setCursoPagoValido}
+                onSubmit={submitCurso}
+              />
+            </div>
+
+            {!sinRegistroFinanciero && <div className="border-t border-slate-100 pt-5 space-y-4">
               {/* Previsualizador de comprobante */}
               <ComprobanteUploader file={comprobanteFile} onChange={setComprobanteFile} />
 
@@ -816,7 +869,19 @@ export function InscribirEstudiantePage() {
                 {saving && <Loader2 size={16} className="animate-spin" />}
                 {saving ? "Inscribiendo..." : "Inscribir al curso"}
               </button>
-            </div>
+            </div>}
+            {sinRegistroFinanciero && (
+              <button
+                type="button"
+                onClick={() => void submitCurso([], "otro")}
+                disabled={saving}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-xs transition hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ backgroundColor: COLORS.ACCENT }}
+              >
+                {saving && <Loader2 size={16} className="animate-spin" />}
+                {saving ? "Inscribiendo..." : "Inscribir sin registro financiero"}
+              </button>
+            )}
           </section>
         )}
 

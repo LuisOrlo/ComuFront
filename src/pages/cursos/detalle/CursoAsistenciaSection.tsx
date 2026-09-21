@@ -413,21 +413,21 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       <div className="space-y-5">
         {/* Stats cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.TEXT_MUTED }}>Total Estudiantes</p>
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <p className="text-[11px] uppercase tracking-wider font-semibold mb-2" style={{ color: COLORS.TEXT_MUTED }}>Total Estudiantes</p>
             <p className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
               <HugeiconsIcon icon={UserGroupIcon} size={20} className="inline mr-1.5" style={{ color: COLORS.ACCENT }} />
               {overviewEstudiantes.length}
             </p>
           </div>
-          <div className="bg-white rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.TEXT_MUTED }}>Total Clases</p>
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <p className="text-[11px] uppercase tracking-wider font-semibold mb-2" style={{ color: COLORS.TEXT_MUTED }}>Total Clases</p>
             <p className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
               {totalClases}
             </p>
           </div>
-          <div className="bg-white rounded-xl border p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.TEXT_MUTED }}>Promedio Asistencia</p>
+          <div className="bg-white rounded-xl shadow-sm p-5">
+            <p className="text-[11px] uppercase tracking-wider font-semibold mb-2" style={{ color: COLORS.TEXT_MUTED }}>Promedio Asistencia</p>
             <p className="text-2xl font-bold" style={{
               color: promedio >= 70 ? "oklch(0.45 0.12 140)" : promedio >= 50 ? "oklch(0.55 0.12 90)" : "oklch(0.5 0.15 25)",
             }}>
@@ -437,9 +437,9 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <p className="text-xs font-semibold" style={{ color: COLORS.CHARCOAL }}>Resumen de Asistencia</p>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-5 border-b flex items-center justify-between" style={{ borderColor: "#e5eeff" }}>
+            <div><p className="text-base font-semibold" style={{ color: "#0b1c30" }}>Resumen de asistencia por participante</p></div>
             {modulos.length > 0 && (
               <button onClick={() => setView("modules")}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all"
@@ -454,14 +454,14 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             ) : overviewEstudiantes.length === 0 ? (
               <div className="p-12 text-center text-sm" style={{ color: COLORS.TEXT_MUTED }}>Sin estudiantes matriculados</div>
             ) : (
-              <table className="w-full text-xs">
+              <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <th className="text-left font-semibold px-4 py-3 w-8" style={{ color: COLORS.TEXT_MUTED }}>#</th>
-                    <th className="text-left font-semibold px-5 py-3" style={{ color: COLORS.TEXT_MUTED }}>Estudiante</th>
-                    <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Asistencia</th>
-                    <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Porcentaje</th>
-                    <th className="text-center font-semibold px-4 py-3" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
+                  <tr className="border-b bg-[#eff4ff] text-[11px] uppercase tracking-wider" style={{ borderColor: "#e5eeff" }}>
+                    <th className="text-left font-semibold px-5 py-3.5 w-12" style={{ color: "#45464d" }}>#</th>
+                    <th className="text-left font-semibold px-5 py-3.5" style={{ color: "#45464d" }}>Estudiante</th>
+                    <th className="text-left font-semibold px-5 py-3.5" style={{ color: "#45464d" }}>Asistencias</th>
+                    <th className="text-left font-semibold px-5 py-3.5" style={{ color: "#45464d" }}>Porcentaje</th>
+                    <th className="text-left font-semibold px-5 py-3.5" style={{ color: "#45464d" }}>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -469,25 +469,26 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                     const asistidas = e.clases_asistidas || 0
                     const totales = e.total_clases || 0
                     const pct = e.porcentaje_asistencia || 0
-                    const badgeColor = pct >= 70 ? { bg: "#d1fae5", text: "#065f46" }
-                      : pct >= 50 ? { bg: "#fef3c7", text: "#92400e" }
-                      : { bg: "#fee2e2", text: "#991b1b" }
+                    const badgeColor = pct >= 70 ? { bg: "#d3e4fe", text: "#005236", label: "Bueno" }
+                      : pct >= 50 ? { bg: "#ffdbca", text: "#5c2400", label: "Regular" }
+                      : pct === 0 ? { bg: "#ffdad6", text: "#93000a", label: "Crítico" }
+                      : { bg: "#ffdbca", text: "#5c2400", label: "Bajo" }
                     return (
-                      <tr key={e.id} className="border-b hover:bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <td className="px-4 py-3 whitespace-nowrap text-xs" style={{ color: COLORS.TEXT_MUTED }}>{idx + 1}</td>
-                        <td className="px-5 py-3 font-semibold whitespace-nowrap" style={{ color: COLORS.CHARCOAL }}>
+                      <tr key={e.id} className="border-b hover:bg-[#eff4ff] transition-colors" style={{ borderColor: "#e5eeff" }}>
+                        <td className="px-5 py-4 whitespace-nowrap text-xs" style={{ color: "#45464d" }}>#{idx + 1}</td>
+                        <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: "#0b1c30" }}>
                           {e.estudiante ? `${e.estudiante.nombres} ${e.estudiante.apellidos}` : e.participante_externo ? `${e.participante_externo.nombres} ${e.participante_externo.apellidos ?? ""}` : "—"}
                         </td>
-                        <td className="px-4 py-3 text-center font-semibold" style={{ color: COLORS.CHARCOAL }}>
-                          {asistidas}/{totales}
+                        <td className="px-5 py-4 font-medium" style={{ color: "#0b1c30" }}>
+                          {asistidas} / {totales} clases
                         </td>
-                        <td className="px-4 py-3 text-center font-semibold" style={{ color: badgeColor.text }}>
-                          {pct}%
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2"><span className="font-bold tabular-nums" style={{ color: pct === 0 ? "#ba1a1a" : "#0b1c30" }}>{pct.toFixed(2)}%</span><div className="w-16 h-1.5 bg-[#e5eeff] rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: pct === 0 ? "#ba1a1a" : "#fd761a" }} /></div></div>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold"
+                        <td className="px-5 py-4">
+                          <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold"
                             style={{ backgroundColor: badgeColor.bg, color: badgeColor.text }}>
-                            {pct >= 70 ? "Bueno" : pct >= 50 ? "Regular" : "Bajo"}
+                            {badgeColor.label}
                           </span>
                         </td>
                       </tr>

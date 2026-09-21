@@ -12,8 +12,9 @@ import {
   type PaginationState,
 } from "@tanstack/react-table"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { MoreVertical } from "lucide-react"
+import { Link } from "react-router"
 import {
-  Search01Icon,
   ArrowUp01Icon,
   ArrowDown01Icon,
   ArrowLeft01Icon,
@@ -25,13 +26,10 @@ import type { MatriculaDetallada } from "@/services/cursos.service"
 interface Props {
   matriculas: MatriculaDetallada[]
   meta?: { total: number; per_page: number; current_page: number; last_page: number }
-  search?: string
-  onSearchChange?: (value: string) => void
   onPageChange?: (page: number) => void
 }
 
 const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
 const TEXT_MUTED = COLORS.TEXT_MUTED
 const ACCENT = COLORS.ACCENT
 
@@ -50,25 +48,19 @@ function getCiudad(row: MatriculaDetallada) {
   return row.estudiante?.ciudad || row.solicitud_inscripcion?.estudiante?.ciudad || row.solicitud_inscripcion?.participante_externo?.ciudad || "—"
 }
 
+function getCorreo(row: MatriculaDetallada) {
+  return row.estudiante?.correo || row.solicitud_inscripcion?.estudiante?.correo || row.solicitud_inscripcion?.participante_externo?.correo || ""
+}
+
 function getOcupacion(row: MatriculaDetallada) {
   return row.estudiante?.perfil_estudiante?.ocupacion || row.solicitud_inscripcion?.estudiante?.perfil_estudiante?.ocupacion || "—"
 }
 
 const PAGE_SIZES = [10, 20, 50]
 
-function Badge({ children, color }: { children: string; color: string }) {
-  return (
-    <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-      style={{ backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`, color }}>
-      {children}
-    </span>
-  )
-}
-
-export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange, onPageChange }: Props) {
+export function CursoEstudiantesTable({ matriculas, meta, onPageChange }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
-  const [globalFilter, setGlobalFilter] = useState("")
 
   const columns = useMemo<ColumnDef<MatriculaDetallada>[]>(() => [
     {
@@ -82,40 +74,42 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
       id: "estudiante",
       header: "Estudiante",
       accessorFn: getStudentName,
+      cell: ({ getValue, row }) => {
+        const nombre = getValue<string>()
+        const correo = getCorreo(row.original)
+        const iniciales = nombre.split(" ").filter(Boolean).slice(0, 2).map((parte) => parte[0]).join("").toUpperCase()
+        return <div className="flex items-center gap-3"><span className="size-9 rounded-full bg-[#ffdbca] text-[#5c2400] font-bold text-xs flex items-center justify-center shrink-0">{iniciales || "—"}</span><span><span className="block font-semibold text-[#0b1c30]">{nombre}</span>{correo && <span className="block text-xs font-normal text-[#45464d] mt-0.5">{correo}</span>}</span></div>
+      },
       enableSorting: true,
     },
     {
       id: "ciudad",
       header: "Ciudad",
       accessorFn: getCiudad,
-      cell: ({ getValue }) => <Badge color={COLORS.ACCENT}>{getValue<string>()}</Badge>,
+      cell: ({ getValue }) => <span className="text-sm text-[#45464d]">{getValue<string>()}</span>,
       enableSorting: true,
     },
     {
       id: "ocupacion",
       header: "Ocupación",
       accessorFn: getOcupacion,
-      cell: ({ getValue }) => <Badge color="oklch(0.50 0.12 260)">{getValue<string>()}</Badge>,
+      cell: ({ getValue }) => <span className="inline-block px-2.5 py-1 rounded-full bg-[#e5eeff] text-[11px] text-[#0b1c30]">{getValue<string>()}</span>,
       enableSorting: true,
     },
     {
       id: "notas",
-      header: "Notas",
+      header: "Notas M1",
       accessorFn: (row) => {
-        const notas = row.notas || []
+        const notas = (row.notas || []).filter((nota) => nota.modulo?.numero_orden === 1)
         if (notas.length === 0) return null
         return notas.reduce((sum, n) => sum + (Number(n.calificacion) || 0), 0) / notas.length
       },
-      cell: ({ getValue, row }) => {
+      cell: ({ getValue }) => {
         const avg = getValue<number | null>()
         if (avg === null || avg === undefined) return <span className="text-xs" style={{ color: TEXT_MUTED }}>—</span>
-        const notas = row.original.notas || []
         const color = avg >= 7 ? "oklch(0.50 0.12 150)" : avg >= 4 ? "oklch(0.65 0.15 80)" : "oklch(0.50 0.12 10)"
         return (
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold" style={{ color }}>{avg.toFixed(1)}</span>
-            <span className="text-[10px]" style={{ color: TEXT_MUTED }}>({notas.length})</span>
-          </div>
+          <span className="inline-block px-2.5 py-1 rounded-lg text-sm font-bold" style={{ backgroundColor: "#d3e4fe", color }}>{avg.toFixed(1)} / 10</span>
         )
       },
       enableSorting: true,
@@ -127,16 +121,23 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
       cell: ({ getValue }) => <span style={{ color: TEXT_MUTED }}>{getValue<string>()}</span>,
       enableSorting: true,
     },
+    {
+      id: "accion",
+      header: () => <span className="block text-right">Acción</span>,
+      cell: ({ row }) => row.original.estudiante?.id
+        ? <div className="text-right"><Link to={`/estudiantes/${row.original.estudiante.id}/academico`} aria-label={`Ver perfil de ${getStudentName(row.original)}`} className="inline-flex p-1.5 rounded-lg text-[#45464d] hover:text-[#0b1c30] hover:bg-[#e5eeff] transition-colors"><MoreVertical size={20}/></Link></div>
+        : <span className="block text-right text-[#c6c6cd]">—</span>,
+      enableSorting: false,
+    },
   ], [])
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: matriculas,
     columns,
-    state: { sorting, ...(meta ? {} : { pagination, globalFilter }) },
+    state: { sorting, ...(meta ? {} : { pagination }) },
     onSortingChange: setSorting,
     onPaginationChange: meta ? undefined : setPagination,
-    onGlobalFilterChange: meta ? undefined : setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     ...(meta ? {} : { getFilteredRowModel: getFilteredRowModel(), getPaginationRowModel: getPaginationRowModel() }),
@@ -156,28 +157,12 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="relative w-full sm:w-72">
-        <HugeiconsIcon icon={Search01Icon} size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: TEXT_MUTED }} />
-        <input
-          type="text"
-          value={search ?? globalFilter}
-          onChange={(e) => {
-            if (onSearchChange) onSearchChange(e.target.value)
-            else { setGlobalFilter(e.target.value); setPagination(p => ({ ...p, pageIndex: 0 })) }
-          }}
-          placeholder="Buscar por nombre o cédula..."
-          className="w-full pl-9 pr-3 py-2.5 rounded-lg text-sm border outline-none"
-          style={{ borderColor: BORDER }}
-        />
-      </div>
-
       {/* Table */}
-      <div style={{ border: `1px solid ${BORDER}` }}>
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} style={{ backgroundColor: ACCENT }}>
+              <tr key={hg.id} style={{ backgroundColor: "#eff4ff" }}>
                 {hg.headers.map((header) => {
                   const canSort = header.column.getCanSort()
                   const sorted = header.column.getIsSorted()
@@ -186,9 +171,9 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
                       key={header.id}
                       style={{
                         width: header.getSize() !== 150 ? header.getSize() : undefined,
-                        color: "white",
+                        color: "#45464d",
                         borderBottom: "none",
-                        padding: "10px 16px",
+                        padding: "14px 20px",
                         textAlign: "left",
                         fontSize: "11px",
                         fontWeight: 700,
@@ -202,8 +187,8 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
                         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                         {canSort && (
                           <span className="inline-flex flex-col leading-none ml-1">
-                            <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "text-white" : "text-white/40"} />
-                            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "text-white" : "text-white/40"} />
+                            <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "text-[#9d4300]" : "text-[#76777d]/40"} />
+                            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "text-[#9d4300]" : "text-[#76777d]/40"} />
                           </span>
                         )}
                       </button>
@@ -221,18 +206,18 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row, idx) => (
+              table.getRowModel().rows.map((row) => (
                 <tr key={row.id} style={{
                   borderBottom: `1px solid ${BORDER}`,
-                  backgroundColor: idx % 2 === 0 ? "white" : `${ACCENT}04`,
+                  backgroundColor: "white",
                 }}
-                  className="hover:bg-amber-50/40 transition-colors"
+                  className="hover:bg-[#eff4ff] transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} style={{
-                      padding: "10px 16px",
-                      fontSize: "13px",
-                      color: CHARCOAL,
+                      padding: "16px 20px",
+                      fontSize: "14px",
+                      color: "#0b1c30",
                     }}>
                       {renderCellContent(cell)}
                     </td>
@@ -242,10 +227,8 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
             )}
           </tbody>
         </table>
-      </div>
-
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: TEXT_MUTED }}>
+      <div className="px-5 py-3.5 bg-[#eff4ff] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: "#45464d" }}>
         {!meta && <div className="flex items-center gap-2">
           <span>Filas por página:</span>
           <select
@@ -303,6 +286,7 @@ export function CursoEstudiantesTable({ matriculas, meta, search, onSearchChange
             <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="-ml-2 rotate-180" />
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

@@ -55,6 +55,55 @@ interface ModuloInfo {
   precio_base: number
 }
 
+interface PagoHistorial {
+  id: string
+  monto: number
+  metodo_pago?: string
+  fecha_pago?: string
+  estado_verificacion?: string
+  modulo_nombre?: string
+  referencia_pago?: string
+}
+
+interface PagoHistorialAgrupado {
+  id: string
+  monto: number
+  metodo_pago: string
+  fecha_pago?: string
+  estado_verificacion?: string
+  asignaciones: Array<{ concepto: string; monto: number }>
+  count: number
+}
+
+function agruparHistorialPagos(pagos: PagoHistorial[]): PagoHistorialAgrupado[] {
+  const grupos = new Map<string, PagoHistorialAgrupado>()
+  pagos.forEach((pago) => {
+    const referenciaBase = pago.referencia_pago?.replace(/-insc$/, "")
+    const key = referenciaBase || `transaccion-${pago.id}`
+    const concepto = pago.modulo_nombre || "Pago"
+    const monto = Number(pago.monto) || 0
+    const grupo = grupos.get(key)
+    if (grupo) {
+      grupo.monto = Math.round((grupo.monto + monto) * 100) / 100
+      grupo.count += 1
+      const asignacion = grupo.asignaciones.find((item) => item.concepto === concepto)
+      if (asignacion) asignacion.monto = Math.round((asignacion.monto + monto) * 100) / 100
+      else grupo.asignaciones.push({ concepto, monto })
+    } else {
+      grupos.set(key, {
+        id: key,
+        monto,
+        metodo_pago: pago.metodo_pago || "Método no especificado",
+        fecha_pago: pago.fecha_pago,
+        estado_verificacion: pago.estado_verificacion,
+        asignaciones: [{ concepto, monto }],
+        count: 1,
+      })
+    }
+  })
+  return [...grupos.values()]
+}
+
 export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: Props) {
   const [loading, setLoading] = useState(true)
   const [estudiantes, setEstudiantes] = useState<EstudianteFinanciero[]>([])
@@ -62,6 +111,8 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
   const [totales, setTotales] = useState({ estudiantes: 0, modulos: 0, esperado_catalogo: 0, recaudado_real: 0 })
   const [expandido, setExpandido] = useState<string | null>(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
+  const [historiales, setHistoriales] = useState<Record<string, PagoHistorial[]>>({})
+  const [historialLoading, setHistorialLoading] = useState<string | null>(null)
 
   const studentIdMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -151,7 +202,18 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
   const pct = esperado > 0 ? Math.round((recaudado / esperado) * 100) : 0
 
   const toggleExpand = (id: string) => {
-    setExpandido(prev => prev === id ? null : id)
+    const abrir = expandido !== id
+    setExpandido(abrir ? id : null)
+    if (abrir && !historiales[id]) {
+      setHistorialLoading(id)
+      financeService.getEstudianteFinancieroCurso(cursoId, id)
+        .then((res) => {
+          const data = res.datos || res.data || res
+          setHistoriales(prev => ({ ...prev, [id]: data.historial || [] }))
+        })
+        .catch(() => toast.error("No se pudo cargar el historial de pagos"))
+        .finally(() => setHistorialLoading(null))
+    }
   }
 
   const modulosOrdenados = [...modulos].sort((a, b) => (a.numero_orden ?? 999) - (b.numero_orden ?? 999))
@@ -165,12 +227,12 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border p-4" style={{ borderColor: BORDER }}>
-          <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Total Recaudado</p>
-          <p className="text-2xl font-bold">
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <p className="text-[11px] uppercase tracking-wider font-semibold mb-2" style={{ color: TEXT_MUTED }}>Total Recaudado</p>
+          <p className="text-2xl font-bold tracking-tight">
             <span style={{ color: "oklch(0.45 0.12 140)" }}>
               ${Number(recaudado).toFixed(2)}
             </span>
@@ -192,15 +254,15 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
             </div>
           )}
         </div>
-        <div className="bg-white rounded-xl border p-4" style={{ borderColor: BORDER }}>
-          <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Estudiantes</p>
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <p className="text-[11px] uppercase tracking-wider font-semibold mb-2" style={{ color: TEXT_MUTED }}>Estudiantes Inscritos</p>
           <p className="text-2xl font-bold" style={{ color: CHARCOAL }}>
             <HugeiconsIcon icon={UserGroupIcon} size={20} className="inline mr-1.5" style={{ color: ACCENT }} />
             {estudiantes.length}
           </p>
         </div>
-        <div className="bg-white rounded-xl border p-4" style={{ borderColor: BORDER }}>
-          <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Módulos</p>
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <p className="text-[11px] uppercase tracking-wider font-semibold mb-2" style={{ color: TEXT_MUTED }}>Módulos Facturables</p>
           <p className="text-2xl font-bold" style={{ color: CHARCOAL }}>
             <HugeiconsIcon icon={Money01Icon} size={20} className="inline mr-1.5" style={{ color: ACCENT }} />
             {modulos.length}
@@ -209,9 +271,9 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
       </div>
 
       {/* Student table */}
-      <div className="bg-white rounded-xl border" style={{ borderColor: BORDER }}>
-        <div className="px-5 py-4 border-b flex items-center justify-between gap-3" style={{ borderColor: BORDER }}>
-          <p className="text-xs font-semibold" style={{ color: CHARCOAL }}>Detalle por Estudiante</p>
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-5 border-b flex items-center justify-between gap-3" style={{ borderColor: BORDER }}>
+          <div><p className="text-base font-semibold" style={{ color: CHARCOAL }}>Estado de cuenta por estudiante</p><p className="text-xs mt-1" style={{ color: TEXT_MUTED }}>Desglose de pagos y saldos por módulo</p></div>
           <button
             onClick={handleDownloadPDF}
             disabled={generatingPDF || estudiantes.length === 0}
@@ -226,19 +288,19 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
           {estudiantes.length === 0 ? (
             <div className="p-12 text-center text-sm" style={{ color: TEXT_MUTED }}>Sin estudiantes matriculados</div>
           ) : (
-            <table className="w-full text-xs">
+            <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="border-b" style={{ borderColor: BORDER }}>
-                  <th className="w-8" />
-                  <th className="text-left font-semibold px-2 py-3 w-8" style={{ color: TEXT_MUTED }}>#</th>
-                  <th className="text-left font-semibold px-2 py-3" style={{ color: TEXT_MUTED }}>Estudiante</th>
+                <tr className="border-b bg-[#eff4ff]" style={{ borderColor: BORDER }}>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-5 py-3.5 w-12" style={{ color: "#45464d" }}>#</th>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-5 py-3.5" style={{ color: "#45464d" }}>Estudiante</th>
                   {modulosOrdenados.map(mod => (
-                    <th key={mod.id} className="text-center font-semibold px-2 py-3" style={{ color: TEXT_MUTED }}>
-                      M{mod.numero_orden ?? ""}
+                    <th key={mod.id} className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>
+                      M{mod.numero_orden ?? ""} (${Number(mod.precio_base ?? 0).toFixed(2)})
                     </th>
                   ))}
-                  <th className="text-right font-semibold px-3 py-3" style={{ color: TEXT_MUTED }}>Total Pagado</th>
-                  <th className="text-right font-semibold px-3 py-3" style={{ color: TEXT_MUTED }}>Deuda</th>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Matrícula (${Number(estudiantes[0]?.inscripcion?.monto_ajustado || 0).toFixed(2)})</th>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Total Pagado</th>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5" style={{ color: "#45464d" }}>Deuda</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,36 +311,37 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                     <Fragment key={est.matricula_id}>
                       <tr
                         onClick={() => toggleExpand(est.matricula_id)}
-                        className="border-b hover:bg-gray-50/50 cursor-pointer transition-colors"
+                        className="border-b hover:bg-[#eff4ff] cursor-pointer transition-colors"
                         style={{ borderColor: BORDER }}>
-                        <td className="px-2 py-3">
-                          {expandido === est.matricula_id ? <ChevronDown size={14} style={{ color: TEXT_MUTED }} /> : <ChevronRight size={14} style={{ color: TEXT_MUTED }} />}
-                        </td>
-                        <td className="px-2 py-3 text-xs" style={{ color: TEXT_MUTED }}>{idx + 1}</td>
-                        <td className="px-2 py-3 font-semibold whitespace-nowrap" style={{ color: CHARCOAL }}>{est.nombre}</td>
+                        <td className="px-5 py-4 text-xs" style={{ color: "#45464d" }}>#{idx + 1}</td>
+                        <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: "#0b1c30" }}><span className="inline-flex items-center gap-2">{expandido === est.matricula_id ? <ChevronDown size={14} style={{ color: TEXT_MUTED }} /> : <ChevronRight size={14} style={{ color: TEXT_MUTED }} />}{est.nombre}</span></td>
                         {modulosOrdenados.map(mod => {
                           const md = modData[mod.id]
                           const abonado = md?.abonado ?? 0
                           const precioMod = md?.precio ?? mod.precio_base ?? 0
                           return (
-                            <td key={mod.id} className="px-2 py-3 text-center">
-                              <span className="font-semibold" style={{ color: abonado >= precioMod ? "oklch(0.45 0.12 140)" : TEXT_MUTED }}>
+                            <td key={mod.id} className="px-4 py-4 font-mono">
+                              <span className="font-semibold" style={{ color: abonado >= precioMod && precioMod > 0 ? "#009668" : "#76777d" }}>
                                 ${Number(abonado).toFixed(2)}
                               </span>
                             </td>
                           )
                         })}
-                        <td className="px-3 py-3 text-right font-bold" style={{ color: CHARCOAL }}>
+                        <td className="px-4 py-4 font-mono" style={{ color: "#0b1c30" }}>
+                          <span className="font-semibold" style={{ color: Number(est.inscripcion?.monto_abonado || 0) >= Number(est.inscripcion?.monto_ajustado || 0) && Number(est.inscripcion?.monto_ajustado || 0) > 0 ? "#009668" : "#76777d" }}>${Number(est.inscripcion?.monto_abonado || 0).toFixed(2)}</span>
+                        </td>
+                        <td className="px-4 py-4 font-mono font-bold" style={{ color: "#0b1c30" }}>
                           ${Number(est.total_pagado ?? 0).toFixed(2)}
                         </td>
-                        <td className="px-3 py-3 text-right font-bold" style={{ color: deuda > 0 ? "oklch(0.5 0.15 25)" : "oklch(0.45 0.12 140)" }}>
-                          ${deuda.toFixed(2)}
+                        <td className="px-4 py-4">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap" style={{ backgroundColor: deuda > 0 ? "#ffdad6" : "#d3e4fe", color: deuda > 0 ? "#93000a" : "#005236" }}>${deuda.toFixed(2)} {deuda > 0 ? "Deuda" : "(Al día)"}</span>
                         </td>
                       </tr>
                       {expandido === est.matricula_id && (
                         <tr key={`${est.matricula_id}-detalle`}>
-                          <td colSpan={modulos.length + 5} className="bg-gray-50/50 px-6 py-4">
-                            <div className="space-y-2">
+                          <td colSpan={modulos.length + 5} className="bg-[#eff4ff] px-6 py-4">
+                            <div className="space-y-3 bg-white rounded-xl p-5 shadow-sm">
+                              <div className="flex items-center justify-between"><p className="text-sm font-semibold" style={{ color: CHARCOAL }}>Historial de transacciones · {est.nombre}</p><span className="text-[11px] text-[#45464d]">Desglose por módulo y pagos recibidos</span></div>
                               <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT_MUTED }}>Desglose por Módulo</p>
                               <div className="grid gap-2">
                                 {modulosOrdenados.map(mod => {
@@ -335,6 +398,10 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                                   </div>
                                 </div>
                               )}
+                              <div className="pt-3 border-t" style={{ borderColor: BORDER }}>
+                                <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT_MUTED }}>Pagos registrados</p>
+                                {historialLoading === est.matricula_id ? <p className="text-xs py-2" style={{ color: TEXT_MUTED }}>Cargando historial…</p> : (historiales[est.matricula_id] || []).length === 0 ? <p className="text-xs py-2" style={{ color: TEXT_MUTED }}>No hay pagos registrados.</p> : <div className="space-y-2">{agruparHistorialPagos(historiales[est.matricula_id]).map((pago) => <div key={pago.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg bg-[#eff4ff] px-4 py-3"><div className="min-w-0"><span className="text-sm font-semibold text-[#0b1c30]">Pago registrado</span><p className="text-xs text-[#45464d] mt-1">{pago.asignaciones.map((asignacion) => `${asignacion.concepto}: $${asignacion.monto.toFixed(2)}`).join(" · ")}</p><p className="text-[11px] text-[#76777d] mt-1">{pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString("es-EC") : "Fecha no disponible"} · {pago.metodo_pago.toLocaleUpperCase("es-EC")}</p></div><div className="flex items-center gap-2 shrink-0"><span className="rounded-full px-2 py-1 text-[10px] font-semibold uppercase" style={{ backgroundColor: pago.estado_verificacion === "aprobado" ? "#d3e4fe" : pago.estado_verificacion === "rechazado" ? "#ffdad6" : "#ffdbca", color: pago.estado_verificacion === "aprobado" ? "#005236" : pago.estado_verificacion === "rechazado" ? "#93000a" : "#5c2400" }}>{pago.estado_verificacion || "Registrado"}</span><strong className="text-base text-emerald-700">${pago.monto.toFixed(2)}</strong></div></div>)}</div>}
+                              </div>
                               <div className="flex justify-end pt-2 border-t mt-2" style={{ borderColor: BORDER }}>
                                 <span className="text-sm font-bold" style={{ color: CHARCOAL }}>
                                   Total Pagado: <span style={{ color: "oklch(0.45 0.12 140)" }}>${Number(est.total_pagado ?? 0).toFixed(2)}</span>
