@@ -31,7 +31,7 @@ export interface AlquilerEquipo {
   created_at?: string
   updated_at?: string
   equipo?: Equipo
-  persona?: { id: string; nombres: string; apellidos: string; correo?: string }
+  persona?: { id: string; nombres: string; apellidos: string; correo?: string; cedula?: string; celular?: string; tipo?: string }
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
   cuenta_por_cobrar?: { id: string; estado: string; monto_total: number; monto_abonado: number; saldo_pendiente?: number }
 }

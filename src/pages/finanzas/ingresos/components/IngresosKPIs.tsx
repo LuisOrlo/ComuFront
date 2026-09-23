@@ -1,8 +1,4 @@
-import { COLORS } from "@/lib/constants"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { GraduationCapIcon, AiFolderIcon, SchoolIcon, InvoiceIcon } from "@hugeicons/core-free-icons"
-
-const BORDER = COLORS.BORDER_SUBTLE
+import { TrendingUp, TrendingDown, Wallet, GraduationCap, Mic, Wrench } from "lucide-react"
 
 interface KPIData {
   total: number
@@ -16,47 +12,124 @@ interface KPIData {
   previo_otros?: number
 }
 
-function Variacion({ actual, previo }: { actual: number; previo?: number }) {
-  if (!previo || previo === 0) return null
-  const pct = ((actual - previo) / previo) * 100
-  const subio = pct >= 0
-  return (
-    <span className="text-[10px] font-bold ml-2" style={{ color: subio ? "oklch(0.55 0.15 150)" : "#dc2626" }}>
-      {subio ? "▲" : "▼"} {Math.abs(Math.round(pct))}%
-    </span>
-  )
-}
-
 export function IngresosKPIs({ totales }: { totales: KPIData }) {
-  const items = [
-    { label: "Total ingresado", value: totales.total, previo: totales.previo_total, color: "#059669", bg: "oklch(0.55 0.15 150 / 0.06)", icon: InvoiceIcon },
-    { label: "Cursos", value: totales.cursos, previo: totales.previo_cursos, color: "#059669", bg: "oklch(0.55 0.15 150 / 0.08)", icon: GraduationCapIcon },
-    { label: "Servicios", value: totales.servicios, previo: totales.previo_servicios, color: "#7c3aed", bg: "oklch(0.5 0.15 280 / 0.08)", icon: AiFolderIcon },
-    { label: "Talleres", value: totales.talleres ?? 0, color: "#0891b2", bg: "oklch(0.6 0.15 200 / 0.08)", icon: SchoolIcon },
-  ]
+  const total = Number(totales.total || 0)
+  const cursos = Number(totales.cursos || 0)
+  const servicios = Number(totales.servicios || 0)
+  const talleres = Number(totales.talleres || 0)
 
-  function KpiCard({ item }: { item: typeof items[number] }) {
-    return (
-      <div className="rounded-2xl border bg-white p-4 relative overflow-hidden" style={{ borderColor: BORDER }}>
-        <div className="absolute top-0 right-0 size-16 rounded-bl-full opacity-10" style={{ backgroundColor: item.color }} />
-        <div className="flex items-center gap-2 mb-1 relative z-10">
-          <HugeiconsIcon icon={item.icon} size={14} style={{ color: item.color, opacity: 0.6 }} />
-          <p className="text-[10px] font-bold uppercase tracking-wider opacity-40">{item.label}</p>
-        </div>
-        <div className="flex items-baseline gap-1 relative z-10">
-          <p className="text-xl font-black" style={{ color: item.color }}>
-            ${(item.value || 0).toLocaleString()}
-          </p>
-          {item.previo !== undefined && <Variacion actual={item.value} previo={item.previo} />}
-        </div>
-      </div>
-    )
+  // Variación del total vs período anterior
+  const calcVariation = (actual: number, previo?: number) => {
+    if (previo === undefined || previo === null || previo === 0) return null
+    const pct = ((actual - previo) / previo) * 100
+    return {
+      subio: pct >= 0,
+      pct: Math.abs(Math.round(pct)),
+    }
   }
 
+  const varTotal = calcVariation(total, totales.previo_total)
+
+  // Proporciones sobre el total
+  const pctCursos = total > 0 ? Math.round((cursos / total) * 100) : 0
+  const pctServicios = total > 0 ? Math.round((servicios / total) * 100) : 0
+  const pctTalleres = total > 0 ? Math.round((talleres / total) * 100) : 0
+
+  const items = [
+    {
+      label: "Total Ingresado",
+      value: total,
+      icon: Wallet,
+      iconBg: "bg-orange-50 text-[#fd761a] border border-orange-100",
+      footer: varTotal ? (
+        <div className={`flex items-center gap-1.5 text-xs font-semibold ${varTotal.subio ? "text-emerald-600" : "text-rose-600"}`}>
+          {varTotal.subio ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+          <span>{varTotal.subio ? "+" : "-"}{varTotal.pct}% vs período anterior</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+          <TrendingUp size={15} />
+          <span>Flujo de caja activo</span>
+        </div>
+      ),
+    },
+    {
+      label: "Cursos",
+      value: cursos,
+      icon: GraduationCap,
+      iconBg: "bg-blue-50 text-blue-700 border border-blue-100",
+      footer: cursos > 0 ? (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#fd761a]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a]"></span>
+          <span>{pctCursos}% de la facturación</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+          <span>Sin movimientos</span>
+        </div>
+      ),
+    },
+    {
+      label: "Servicios",
+      value: servicios,
+      icon: Mic,
+      iconBg: "bg-purple-50 text-purple-700 border border-purple-100",
+      footer: servicios > 0 ? (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+          <span>{pctServicios}% de la facturación</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+          <span>Sin movimientos</span>
+        </div>
+      ),
+    },
+    {
+      label: "Talleres",
+      value: talleres,
+      icon: Wrench,
+      iconBg: "bg-cyan-50 text-cyan-700 border border-cyan-100",
+      footer: talleres > 0 ? (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-cyan-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-600"></span>
+          <span>{pctTalleres}% de la facturación</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+          <span>Sin movimientos</span>
+        </div>
+      ),
+    },
+  ]
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      {items.map((item, i) => <KpiCard key={i} item={item} />)}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {items.map((item, i) => {
+        const Icon = item.icon
+        return (
+          <div
+            key={i}
+            className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col justify-between gap-3 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</span>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}>
+                <Icon size={18} strokeWidth={2.2} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-2xl sm:text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+                ${item.value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              {item.footer}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
-

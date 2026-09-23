@@ -83,6 +83,15 @@ export const podcastService = {
     return data.data
   },
 
+  createReservasBatch: async (payload: {
+    persona_id?: string | null
+    cliente_externo_id?: string | null
+    reservas: Array<Record<string, unknown>>
+  }) => {
+    const { data } = await api.post<{ data: ReservaPodcast[] }>("/academic/servicios/reservas-podcast/lote", payload)
+    return data.data
+  },
+
   updateReserva: async (id: string, reserva: Partial<ReservaPodcast>) => {
     const { data } = await api.put<{ data: ReservaPodcast }>(`/academic/servicios/reservas-podcast/${id}`, reserva)
     return data.data

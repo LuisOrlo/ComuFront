@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
-import { Eye, Pencil, Trash2 } from "lucide-react"
+import { Eye, Pencil, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Landmark, Banknote, CreditCard, Inbox } from "lucide-react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,17 +11,14 @@ import {
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table"
-import { COLORS } from "@/lib/constants"
-
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
-
-function fmtDate(d: string) { return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) }
 
 const CAT_BADGE: Record<string, { bg: string; text: string }> = {
-  "Personal": { bg: "oklch(0.5 0.15 260 / 0.12)", text: "#4f46e5" },
-  "Servicios": { bg: "oklch(0.5 0.15 80 / 0.12)", text: "#d97706" },
-  "Equipos": { bg: "oklch(0.5 0.15 280 / 0.12)", text: "#7c3aed" },
+  "Personal": { bg: "#eef2ff", text: "#4338ca" },
+  "Servicios": { bg: "#fef3c7", text: "#b45309" },
+  "Equipos": { bg: "#faf5ff", text: "#7e22ce" },
+  "Varios": { bg: "#f1f5f9", text: "#475569" },
+  "Honorarios": { bg: "#e0e7ff", text: "#3730a3" },
+  "Mantenimiento": { bg: "#ecfeff", text: "#0e7490" },
 }
 
 interface EgresoRow {
@@ -45,6 +40,26 @@ interface Props {
   onDelete: (id: string) => void
 }
 
+function fmtDate(d: string) {
+  if (!d) return "—"
+  try {
+    return new Date(d + "T00:00:00").toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+  } catch {
+    return d
+  }
+}
+
+function getMethodIcon(method?: string) {
+  const m = (method || "").toLowerCase()
+  if (m.includes("transf") || m.includes("banc")) return Landmark
+  if (m.includes("efect") || m.includes("caja")) return Banknote
+  return CreditCard
+}
+
 export function EgresosTabla({ data, loading, page, lastPage, onPageChange, onDelete }: Props) {
   const navigate = useNavigate()
   const [sorting, setSorting] = useState<SortingState>([{ id: "fecha_pago", desc: true }])
@@ -52,89 +67,141 @@ export function EgresosTabla({ data, loading, page, lastPage, onPageChange, onDe
 
   useEffect(() => {
     if (loading) {
-      setPagination(p => ({ ...p, pageIndex: 0 }))
+      setPagination((p) => ({ ...p, pageIndex: 0 }))
     }
   }, [loading])
 
-  const columns = useMemo<ColumnDef<EgresoRow>[]>(() => [
-    {
-      id: "fecha_pago",
-      accessorFn: (item) => item.fecha_pago,
-      header: "Fecha",
-      cell: ({ getValue }) => <span className="text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(getValue<string>())}</span>,
-      enableSorting: true,
-    },
-    {
-      id: "descripcion",
-      accessorFn: (item) => item.descripcion,
-      header: "Descripción",
-      cell: ({ getValue }) => <span className="text-xs truncate max-w-[180px] block" style={{ color: CHARCOAL }}>{getValue<string>() || "—"}</span>,
-      enableSorting: false,
-    },
-    {
-      id: "categoria",
-      accessorFn: (item) => item.categoria_nombre,
-      header: "Categoría",
-      cell: ({ getValue }) => {
-        const cat = getValue<string>()
-        return (
-          <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
-            style={{ backgroundColor: CAT_BADGE[cat || ""]?.bg || "#dc262618", color: CAT_BADGE[cat || ""]?.text || "#dc2626" }}>
-            {cat || "—"}
+  const columns = useMemo<ColumnDef<EgresoRow>[]>(
+    () => [
+      {
+        id: "fecha_pago",
+        accessorFn: (item) => item.fecha_pago,
+        header: "Fecha",
+        cell: ({ getValue }) => (
+          <span className="text-xs text-slate-700 whitespace-nowrap font-medium">
+            {fmtDate(getValue<string>())}
           </span>
-        )
+        ),
+        enableSorting: true,
       },
-      enableSorting: false,
-    },
-    {
-      id: "proveedor",
-      accessorFn: (item) => item.proveedor_beneficiario,
-      header: "Proveedor",
-      cell: ({ getValue }) => <span className="text-xs opacity-60">{getValue<string>() || "—"}</span>,
-      enableSorting: false,
-    },
-    {
-      id: "monto",
-      accessorFn: (item) => Number(item.monto || 0),
-      header: "Monto",
-      cell: ({ getValue }) => <span className="text-xs font-bold" style={{ color: "#dc2626" }}>${Number(getValue<number>() || 0).toLocaleString()}</span>,
-      enableSorting: true,
-    },
-    {
-      id: "metodo",
-      accessorFn: (item) => item.metodo_pago,
-      header: "Método",
-      cell: ({ getValue }) => <span className="text-xs capitalize opacity-60">{getValue<string>() || "—"}</span>,
-      enableSorting: false,
-    },
-    {
-      id: "acciones",
-      header: "",
-      cell: ({ row }) => {
-        const item = row.original
-        return (
-          <div className="flex items-center justify-center gap-1">
-            <button onClick={() => navigate(`/finanzas/egresos/${item.id}`)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              title="Ver detalle">
-              <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
-            </button>
-            <button onClick={() => navigate(`/finanzas/egresos/${item.id}/editar`)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              title="Editar">
-              <Pencil size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-amber-600 transition-colors" />
-            </button>
-            <button onClick={() => onDelete(item.id)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
-              title="Eliminar">
-              <Trash2 size={14} className="opacity-40 text-red-500 group-hover:opacity-100 group-hover:text-red-600 transition-colors" />
-            </button>
+      {
+        id: "descripcion",
+        accessorFn: (item) => item.descripcion,
+        header: "Descripción",
+        cell: ({ getValue }) => (
+          <span
+            className="text-xs font-semibold text-slate-900 truncate max-w-[220px] block"
+            title={getValue<string>() || ""}
+          >
+            {getValue<string>() || "—"}
+          </span>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "categoria",
+        accessorFn: (item) => item.categoria_nombre,
+        header: "Categoría",
+        cell: ({ getValue }) => {
+          const cat = getValue<string>() || "—"
+          const badgeStyle = CAT_BADGE[cat] || { bg: "#fef2f2", text: "#b91c1c" }
+          return (
+            <span
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
+              style={{
+                backgroundColor: badgeStyle.bg,
+                color: badgeStyle.text,
+              }}
+            >
+              {cat}
+            </span>
+          )
+        },
+        enableSorting: false,
+      },
+      {
+        id: "proveedor",
+        accessorFn: (item) => item.proveedor_beneficiario,
+        header: "Proveedor",
+        cell: ({ getValue }) => (
+          <span className="text-xs font-bold text-slate-800 whitespace-nowrap">
+            {getValue<string>() || "—"}
+          </span>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "monto",
+        accessorFn: (item) => Number(item.monto || 0),
+        header: "Monto",
+        cell: ({ getValue }) => (
+          <div className="text-right">
+            <span className="text-xs font-bold text-rose-600 tabular-nums whitespace-nowrap">
+              -$
+              {Number(getValue<number>() || 0).toLocaleString("es-ES", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
           </div>
-        )
+        ),
+        enableSorting: true,
       },
-      enableSorting: false,
-    },
-  ], [navigate, onDelete])
+      {
+        id: "metodo",
+        accessorFn: (item) => item.metodo_pago,
+        header: "Método",
+        cell: ({ getValue }) => {
+          const val = getValue<string>() || "—"
+          const MethodIcon = getMethodIcon(val)
+          return (
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap capitalize">
+              <MethodIcon size={14} className="text-slate-400 shrink-0" />
+              <span>{val}</span>
+            </div>
+          )
+        },
+        enableSorting: false,
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div className="flex items-center justify-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigate(`/finanzas/egresos/${item.id}`)}
+                className="size-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                title="Ver detalle"
+              >
+                <Eye size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/finanzas/egresos/${item.id}/editar`)}
+                className="size-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                title="Editar egreso"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(item.id)}
+                className="size-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                title="Eliminar egreso"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          )
+        },
+        enableSorting: false,
+      },
+    ],
+    [navigate, onDelete]
+  )
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -150,78 +217,128 @@ export function EgresosTabla({ data, loading, page, lastPage, onPageChange, onDe
     autoResetAll: false,
   })
 
-  const totalFila = data.reduce((s, r) => s + Number(r.monto || 0), 0)
-
   return (
-    <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
-      <table className="w-full">
-        <thead>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="bg-gray-50/80">
-              {hg.headers.map((header) => {
-                const canSort = header.column.getCanSort()
-                const sorted = header.column.getIsSorted()
-                const isCenter = header.id === "acciones"
-                return (
-                  <th key={header.id}
-                    onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                    className={canSort ? "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer hover:opacity-70 select-none" : "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40"}
-                    style={{ textAlign: isCenter ? "center" : "left" }}>
-                    <div className="flex items-center gap-1" style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
-                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                      {canSort && (
-                        <span className="inline-flex flex-col leading-none ml-1">
-                          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sorted === "asc" ? "" : "opacity-40"} />
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sorted === "desc" ? "" : "opacity-40"} />
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                )
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody className="divide-y" style={{ borderColor: BORDER }}>
-          {loading ? (
-            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Cargando...</td></tr>
-          ) : data.length === 0 ? (
-            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Sin egresos registrados</td></tr>
-          ) : table.getRowModel().rows.map((row, i) => (
-            <tr key={row.id} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }} className="hover:bg-gray-100/50 transition-colors">
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}
-                  className={cell.column.id === "acciones" ? "px-3 py-2 text-center" : "px-3 py-2"}
-                  style={{ color: CHARCOAL }}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden flex flex-col">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="bg-slate-50/80 border-b border-slate-200/80">
+                {hg.headers.map((header) => {
+                  const canSort = header.column.getCanSort()
+                  const sorted = header.column.getIsSorted()
+                  const isCenter = header.id === "acciones"
+                  const isRight = header.id === "monto"
+
+                  return (
+                    <th
+                      key={header.id}
+                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      className={`py-3.5 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider ${
+                        canSort ? "cursor-pointer hover:text-slate-800 select-none transition-colors" : ""
+                      }`}
+                      style={{ textAlign: isCenter ? "center" : isRight ? "right" : "left" }}
+                    >
+                      <div
+                        className="inline-flex items-center gap-1.5"
+                        style={{
+                          justifyContent: isCenter ? "center" : isRight ? "flex-end" : "flex-start",
+                        }}
+                      >
+                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                        {canSort && (
+                          <span className="text-slate-400">
+                            {sorted === "asc" ? (
+                              <ArrowUp size={12} className="text-[#fd761a]" />
+                            ) : sorted === "desc" ? (
+                              <ArrowDown size={12} className="text-[#fd761a]" />
+                            ) : (
+                              <ArrowUpDown size={12} className="opacity-50" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="py-16 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="size-6 border-2 border-[#fd761a] border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs font-semibold text-slate-500">Cargando egresos...</span>
+                  </div>
                 </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-        {data.length > 0 && (
-          <tfoot>
-            <tr style={{ backgroundColor: CHARCOAL }}>
-              <td className="px-3 py-2" colSpan={5}>
-                <span className="text-[10px] font-bold text-white/60">Total ({data.length} registros)</span>
-              </td>
-              <td className="px-3 py-2 text-xs font-bold text-white">${totalFila.toLocaleString()}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
-      {data.length > 0 && (
-        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
-          <div className="flex items-center justify-between text-xs font-medium opacity-70">
-            <span>Página {page} de {lastPage}</span>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="px-3 py-1 rounded-lg border disabled:opacity-30">Anterior</button>
-              <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= lastPage || loading} className="px-3 py-1 rounded-lg border disabled:opacity-30">Siguiente</button>
-            </div>
+              </tr>
+            ) : data.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="py-16 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+                    <Inbox size={32} strokeWidth={1.5} />
+                    <span className="text-xs font-semibold text-slate-600">No se encontraron egresos</span>
+                    <span className="text-[11px] text-slate-400">Prueba ajustando los filtros de búsqueda</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="hover:bg-slate-50/60 transition-colors group">
+                  {row.getVisibleCells().map((cell) => {
+                    const isCenter = cell.column.id === "acciones"
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`py-3.5 px-4 ${isCenter ? "text-center" : ""}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Paginación - Total general omitido para mantener coherencia con Ingresos */}
+      <div className="p-4 sm:p-5 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+        <div className="text-xs text-slate-500 flex items-center gap-1">
+          <span>Mostrando</span>
+          <span className="font-semibold text-slate-900">{data.length}</span>
+          <span>egresos</span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <span className="text-xs font-semibold text-slate-700">
+            Página {page} de {lastPage}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1 || loading}
+              className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+            >
+              <ChevronLeft size={14} />
+              <span>Anterior</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= lastPage || loading}
+              className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+            >
+              <span>Siguiente</span>
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

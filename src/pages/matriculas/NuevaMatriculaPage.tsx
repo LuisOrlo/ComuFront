@@ -287,6 +287,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     if (!validateStep3()) return
     setLoadingSubmit(true)
     const localDate = fechaPago || getLocalDateString()
+    let personaCreadaId: string | null = null
     try {
       if (adminMode) {
         const estudianteCreado = await estudiantesService.createEstudiante({
@@ -297,6 +298,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
           estado_civil: estudiante.estado_civil || undefined, edad: estudiante.edad ? Number(estudiante.edad) : undefined,
           nivel_educativo: estudiante.nivel_educativo || undefined, archivo_cedula: cedulaFile || undefined,
         })
+        personaCreadaId = estudianteCreado.id
         const metodo = metodoPago === "transferencia" ? "transferencia" : "efectivo"
         if (esTaller) {
           const comprobante = comprobanteFile ? await cursosService.uploadComprobante(comprobanteFile) : undefined
@@ -310,7 +312,6 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
           solicitud.append("tipo_pago", "abono")
           solicitud.append("tipo_comprobante", metodo)
           if (comprobanteFile) solicitud.append("archivo_comprobante", comprobanteFile)
-          if (cedulaFile) solicitud.append("archivo_cedula", cedulaFile)
           const respuesta = await cursosService.crearSolicitudInscripcion(solicitud)
           const respuestaData = respuesta.data as Record<string, unknown> | undefined
           const solicitudId = (respuestaData?.id ?? (respuestaData?.datos as Record<string, unknown> | undefined)?.id) as string | undefined
@@ -385,6 +386,11 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
       if (adminMode && typeof data?.estudiante_id === "string") {
         toast.error("Ya existe un estudiante con esta cédula. Puedes continuar con su inscripción.")
         navigate(`/estudiantes/${data.estudiante_id}/inscribir`)
+        return
+      }
+      if (adminMode && personaCreadaId) {
+        toast.error("El estudiante fue creado, pero no se pudo completar la matrícula. Puedes reintentarlo.", { duration: 8000 })
+        navigate(`/estudiantes/${personaCreadaId}/inscribir`)
         return
       }
       const msg = String(data?.mensaje || data?.message || "Error al enviar la solicitud")
@@ -475,9 +481,6 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
       {!isPublic && (
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: COLORS.TEXT_MUTED }}>
-              <span>Matrículas</span><span>/</span><span className="font-medium" style={{ color: COLORS.CHARCOAL }}>Nueva</span>
-            </div>
             <h1 className="text-xl font-bold" style={{ color: COLORS.CHARCOAL }}>{adminMode ? "Registrar e inscribir estudiante" : "Completa tu Matrícula"}</h1>
             <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>{adminMode ? "Registra los datos, selecciona una oferta y configura el pago." : "Completa los datos para inscribir a un estudiante"}</p>
           </div>

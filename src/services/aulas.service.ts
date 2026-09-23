@@ -90,6 +90,15 @@ export const aulasService = {
     return data.data
   },
 
+  createReservasBatch: async (payload: {
+    persona_id?: string | null
+    cliente_externo_id?: string | null
+    reservas: Array<Record<string, unknown>>
+  }) => {
+    const { data } = await api.post<{ data: ReservaAula[] }>("/academic/servicios/reservas-aulas/lote", payload)
+    return data.data
+  },
+
   updateReservaEstado: async (id: string, estado: string) => {
     const { data } = await api.put<{ data: ReservaAula }>(`/academic/servicios/reservas-aulas/${id}`, { estado })
     return data.data

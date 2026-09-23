@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowUp01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons"
-import { Eye } from "lucide-react"
+import { Eye, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Landmark, Banknote, CreditCard, Inbox } from "lucide-react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,31 +11,34 @@ import {
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table"
-import { COLORS } from "@/lib/constants"
-
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
 
 const CAT_COLORS: Record<string, string> = {
-  "Cursos": "oklch(0.55 0.15 150 / 0.12)",
-  "Cursos personalizados": "oklch(0.58 0.16 285 / 0.14)",
-  "Talleres": "oklch(0.6 0.15 200 / 0.12)",
-  "Podcast": "oklch(0.5 0.15 260 / 0.12)",
-  "Alquiler de Aulas": "oklch(0.5 0.15 280 / 0.12)",
-  "Radio": "oklch(0.5 0.12 320 / 0.12)",
-  "Edición de Video": "oklch(0.45 0.15 30 / 0.12)",
-  "Alquiler de Equipos": "oklch(0.45 0.12 10 / 0.12)",
-  "Streaming": "oklch(0.5 0.12 170 / 0.12)",
-  "Producción Audiovisual": "oklch(0.5 0.12 140 / 0.12)",
-  "Asesorías": "oklch(0.5 0.12 80 / 0.12)",
+  "Cursos": "#eff6ff",
+  "Cursos personalizados": "#faf5ff",
+  "Talleres": "#ecfeff",
+  "Podcast": "#f5f3ff",
+  "Alquiler de Aulas": "#f5f3ff",
+  "Radio": "#fdf4ff",
+  "Edición de Video": "#fffbeb",
+  "Alquiler de Equipos": "#fef2f2",
+  "Streaming": "#f0fdfa",
+  "Producción Audiovisual": "#f7fee7",
+  "Asesorías": "#fefce8",
 }
 
 const CAT_TEXT: Record<string, string> = {
-  "Cursos": "#059669", "Talleres": "#0891b2", "Podcast": "#4f46e5",
-  "Cursos personalizados": "#7c3aed",
-  "Alquiler de Aulas": "#7c3aed", "Radio": "#a21caf", "Edición de Video": "#d97706",
-  "Alquiler de Equipos": "#dc2626", "Streaming": "#0d9488", "Producción Audiovisual": "#65a30d",
-  "Asesorías": "#ca8a04", "Otros": "#6b7280",
+  "Cursos": "#1d4ed8",
+  "Cursos personalizados": "#7e22ce",
+  "Talleres": "#0e7490",
+  "Podcast": "#4338ca",
+  "Alquiler de Aulas": "#6d28d9",
+  "Radio": "#a21caf",
+  "Edición de Video": "#b45309",
+  "Alquiler de Equipos": "#b91c1c",
+  "Streaming": "#0f766e",
+  "Producción Audiovisual": "#4d7c0f",
+  "Asesorías": "#a16207",
+  "Otros": "#475569",
 }
 
 interface IngresoRow {
@@ -65,7 +66,23 @@ interface Props {
 }
 
 function fmtDate(d: string) {
-  return new Date(d + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+  if (!d) return "—"
+  try {
+    return new Date(d + "T00:00:00").toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    })
+  } catch {
+    return d
+  }
+}
+
+function getMethodIcon(method?: string) {
+  const m = (method || "").toLowerCase()
+  if (m.includes("transf") || m.includes("banc")) return Landmark
+  if (m.includes("efect") || m.includes("caja")) return Banknote
+  return CreditCard
 }
 
 export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: Props) {
@@ -75,14 +92,11 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
 
   useEffect(() => {
     if (loading) {
-      setPagination(p => ({ ...p, pageIndex: 0 }))
+      setPagination((p) => ({ ...p, pageIndex: 0 }))
     }
   }, [loading])
 
-  // Una aprobación puede crear varios movimientos internos para módulos
-  // distintos. En la interfaz financiera se muestran como un único pago,
-  // igual que en el perfil académico, conservando el detalle contable en el
-  // backend.
+  // Agrupación contable en un solo movimiento unificado si comparten los mismos metadatos
   const displayData = useMemo(() => {
     const groups = new Map<string, IngresoRow>()
     for (const item of data) {
@@ -110,102 +124,139 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
     return Array.from(groups.values())
   }, [data])
 
-  const columns = useMemo<ColumnDef<IngresoRow>[]>(() => [
-    {
-      id: "fecha_pago",
-      accessorFn: (item) => item.fecha_pago,
-      header: "Fecha",
-      cell: ({ getValue }) => <span className="text-xs font-medium" style={{ color: CHARCOAL }}>{fmtDate(getValue<string>())}</span>,
-      enableSorting: true,
-    },
-    {
-      id: "concepto",
-      accessorFn: (item) => item.concepto,
-      header: "Concepto",
-      cell: ({ row }) => {
-        const item = row.original
-        // Un curso personalizado no tiene módulos. No mostrar placeholders
-        // como "—0" ni iconos/valores derivados de una línea sin módulo.
-        const concepto = item.concepto && !/^\s*[—–-]?\s*0\s*$/.test(item.concepto)
-          ? item.concepto
-          : item.es_personalizado ? "Curso personalizado" : "—"
-        return (
-          <span className="text-xs truncate max-w-[160px] block" style={{ color: CHARCOAL }}>
-            {concepto}
-            {item.modulos_count && item.modulos_count > 1 && (
-              <span className="block text-[9px] opacity-50 truncate mt-0.5">
-                {item.modulos_detalle?.map(m => m.modulo_nombre).join(" · ")}
+  const columns = useMemo<ColumnDef<IngresoRow>[]>(
+    () => [
+      {
+        id: "fecha_pago",
+        accessorFn: (item) => item.fecha_pago,
+        header: "Fecha",
+        cell: ({ getValue }) => (
+          <span className="text-xs text-slate-700 whitespace-nowrap font-medium">
+            {fmtDate(getValue<string>())}
+          </span>
+        ),
+        enableSorting: true,
+      },
+      {
+        id: "concepto",
+        accessorFn: (item) => item.concepto,
+        header: "Concepto",
+        cell: ({ row }) => {
+          const item = row.original
+          const concepto =
+            item.concepto && !/^\s*[—–-]?\s*0\s*$/.test(item.concepto)
+              ? item.concepto
+              : item.es_personalizado
+                ? "Curso personalizado"
+                : "—"
+          return (
+            <div className="flex flex-col max-w-[220px]">
+              <span className="text-xs font-semibold text-slate-900 truncate" title={concepto}>
+                {concepto}
               </span>
-            )}
+              {item.modulos_count && item.modulos_count > 1 && (
+                <span
+                  className="text-[11px] text-slate-500 truncate mt-0.5"
+                  title={item.modulos_detalle?.map((m) => m.modulo_nombre).join(" · ")}
+                >
+                  {item.modulos_detalle?.map((m) => m.modulo_nombre).join(" · ")}
+                </span>
+              )}
+            </div>
+          )
+        },
+        enableSorting: false,
+      },
+      {
+        id: "estudiante",
+        accessorFn: (item) => item.estudiante_nombre,
+        header: "Estudiante",
+        cell: ({ getValue }) => (
+          <span className="text-xs font-bold text-slate-900 whitespace-nowrap">
+            {getValue<string>() || "—"}
           </span>
-        )
+        ),
+        enableSorting: false,
       },
-      enableSorting: false,
-    },
-    {
-      id: "estudiante",
-      accessorFn: (item) => item.estudiante_nombre,
-      header: "Estudiante",
-      cell: ({ getValue }) => <span className="text-xs" style={{ color: CHARCOAL }}>{getValue<string>() || "—"}</span>,
-      enableSorting: false,
-    },
-    {
-      id: "categoria",
-      accessorFn: (item) => item.categoria,
-      header: "Categoría",
-      cell: ({ row }) => {
-        const item = row.original
-        return (
-          <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase"
-            style={{
-              backgroundColor: CAT_COLORS[item.categoria || ""] || "oklch(0.4 0.02 0 / 0.12)",
-              color: CAT_TEXT[item.categoria || ""] || "#6b7280",
-            }}>
-            {item.categoria || "—"}
-          </span>
-        )
+      {
+        id: "categoria",
+        accessorFn: (item) => item.categoria,
+        header: "Categoría",
+        cell: ({ row }) => {
+          const item = row.original
+          const cat = item.categoria || "—"
+          return (
+            <span
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
+              style={{
+                backgroundColor: CAT_COLORS[cat] || "#f1f5f9",
+                color: CAT_TEXT[cat] || "#475569",
+              }}
+            >
+              {cat}
+            </span>
+          )
+        },
+        enableSorting: false,
       },
-      enableSorting: false,
-    },
-    {
-      id: "monto",
-      accessorFn: (item) => Number(item.monto || 0),
-      header: "Monto",
-      cell: ({ row }) => {
-        const item = row.original
-        return (
-          <span className="text-xs font-bold" style={{ color: "oklch(0.55 0.15 150)" }}>
-            +${Number(item.monto || 0).toLocaleString()}
-          </span>
-        )
+      {
+        id: "monto",
+        accessorFn: (item) => Number(item.monto || 0),
+        header: "Monto",
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div className="text-right">
+              <span className="text-xs font-bold text-emerald-600 tabular-nums whitespace-nowrap">
+                +$
+                {Number(item.monto || 0).toLocaleString("es-ES", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          )
+        },
+        enableSorting: true,
       },
-      enableSorting: true,
-    },
-    {
-      id: "metodo",
-      accessorFn: (item) => item.metodo_pago,
-      header: "Método",
-      cell: ({ getValue }) => <span className="text-xs capitalize opacity-60">{getValue<string>() || "—"}</span>,
-      enableSorting: false,
-    },
-    {
-      id: "acciones",
-      header: "",
-      cell: ({ row }) => {
-        const item = row.original
-        return (
-          <div className="flex items-center justify-center">
-            <button onClick={() => navigate(`/finanzas/ingresos/${item.id}`)}
-              className="size-8 group flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              title="Ver detalle">
-              <Eye size={14} className="opacity-40 group-hover:opacity-100 group-hover:text-blue-600 transition-colors" />
-            </button>
-          </div>
-        )
+      {
+        id: "metodo",
+        accessorFn: (item) => item.metodo_pago,
+        header: "Método",
+        cell: ({ getValue }) => {
+          const val = getValue<string>() || "—"
+          const MethodIcon = getMethodIcon(val)
+          return (
+            <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap capitalize">
+              <MethodIcon size={14} className="text-slate-400 shrink-0" />
+              <span>{val}</span>
+            </div>
+          )
+        },
+        enableSorting: false,
       },
-      enableSorting: false,
-    },
-  ], [navigate])
+      {
+        id: "acciones",
+        header: "Acción",
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div className="flex items-center justify-center">
+              <button
+                onClick={() => navigate(`/finanzas/ingresos/${item.id}`)}
+                className="size-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-[#fd761a] hover:bg-orange-50 transition-colors cursor-pointer"
+                title="Ver detalle del movimiento"
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+          )
+        },
+        enableSorting: false,
+      },
+    ],
+    [navigate]
+  )
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -221,78 +272,128 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
     autoResetAll: false,
   })
 
-  const totalFila = displayData.reduce((s, r) => s + Number(r.monto || 0), 0)
-
   return (
-    <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: BORDER }}>
-      <table className="w-full">
-        <thead>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="bg-gray-50/80">
-              {hg.headers.map((header) => {
-                const canSort = header.column.getCanSort()
-                const sorted = header.column.getIsSorted()
-                const isCenter = header.id === "acciones"
-                return (
-                  <th key={header.id}
-                    onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                    className={canSort ? "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer hover:opacity-70 select-none" : "px-3 py-2 text-left text-[9px] font-bold uppercase tracking-widest opacity-40"}
-                    style={{ textAlign: isCenter ? "center" : "left" }}>
-                    <div className="flex items-center gap-1" style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
-                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                      {canSort && (
-                        <span className="inline-flex flex-col leading-none ml-1">
-                          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sorted === "asc" ? "" : "opacity-40"} />
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sorted === "desc" ? "" : "opacity-40"} />
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                )
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody className="divide-y" style={{ borderColor: BORDER }}>
-          {loading ? (
-            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Cargando...</td></tr>
-          ) : displayData.length === 0 ? (
-            <tr><td colSpan={columns.length} className="p-10 text-center opacity-40">Sin ingresos</td></tr>
-          ) : table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}
-                  className={cell.column.id === "acciones" ? "px-3 py-2 text-center" : "px-3 py-2"}
-                  style={{ color: CHARCOAL }}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden flex flex-col">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="bg-slate-50/80 border-b border-slate-200/80">
+                {hg.headers.map((header) => {
+                  const canSort = header.column.getCanSort()
+                  const sorted = header.column.getIsSorted()
+                  const isCenter = header.id === "acciones"
+                  const isRight = header.id === "monto"
+
+                  return (
+                    <th
+                      key={header.id}
+                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                      className={`py-3.5 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider ${
+                        canSort ? "cursor-pointer hover:text-slate-800 select-none transition-colors" : ""
+                      }`}
+                      style={{ textAlign: isCenter ? "center" : isRight ? "right" : "left" }}
+                    >
+                      <div
+                        className="inline-flex items-center gap-1.5"
+                        style={{
+                          justifyContent: isCenter ? "center" : isRight ? "flex-end" : "flex-start",
+                        }}
+                      >
+                        <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                        {canSort && (
+                          <span className="text-slate-400">
+                            {sorted === "asc" ? (
+                              <ArrowUp size={12} className="text-[#fd761a]" />
+                            ) : sorted === "desc" ? (
+                              <ArrowDown size={12} className="text-[#fd761a]" />
+                            ) : (
+                              <ArrowUpDown size={12} className="opacity-50" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="py-16 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="size-6 border-2 border-[#fd761a] border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs font-semibold text-slate-500">Cargando movimientos...</span>
+                  </div>
                 </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-        {displayData.length > 0 && (
-          <tfoot>
-            <tr style={{ backgroundColor: CHARCOAL }}>
-              <td className="px-3 py-2" colSpan={5}>
-                <span className="text-[10px] font-bold text-white/60">Total ({displayData.length} registros)</span>
-              </td>
-              <td className="px-3 py-2 text-xs font-bold text-white">${totalFila.toLocaleString()}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
-      {displayData.length > 0 && (
-        <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
-          <div className="flex items-center justify-between text-xs font-medium opacity-70">
-            <span>Página {page} de {lastPage}</span>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || loading} className="px-3 py-1 rounded-lg border disabled:opacity-30">Anterior</button>
-              <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= lastPage || loading} className="px-3 py-1 rounded-lg border disabled:opacity-30">Siguiente</button>
-            </div>
+              </tr>
+            ) : displayData.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="py-16 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
+                    <Inbox size={32} strokeWidth={1.5} />
+                    <span className="text-xs font-semibold text-slate-600">No se encontraron movimientos</span>
+                    <span className="text-[11px] text-slate-400">Prueba ajustando los filtros de búsqueda</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="hover:bg-slate-50/60 transition-colors group">
+                  {row.getVisibleCells().map((cell) => {
+                    const isCenter = cell.column.id === "acciones"
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`py-3.5 px-4 ${isCenter ? "text-center" : ""}`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Paginación - Total general omitido explícitamente según requerimiento del usuario */}
+      <div className="p-4 sm:p-5 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+        <div className="text-xs text-slate-500 flex items-center gap-1">
+          <span>Mostrando</span>
+          <span className="font-semibold text-slate-900">{displayData.length}</span>
+          <span>movimientos</span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <span className="text-xs font-semibold text-slate-700">
+            Página {page} de {lastPage}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1 || loading}
+              className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+            >
+              <ChevronLeft size={14} />
+              <span>Anterior</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= lastPage || loading}
+              className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+            >
+              <span>Siguiente</span>
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

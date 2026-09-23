@@ -1,107 +1,121 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useNavigate, useSearchParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Calendar03Icon, SearchIcon, UserIcon, Home02Icon,
-  Alert02Icon, ArrowLeft02Icon, CheckmarkCircle04Icon,
-  Money01Icon, Clock01Icon, ArrowUp01Icon, ArrowDown01Icon,
-  ArrowRight01Icon,
+  Calendar03Icon,
+  Search01Icon,
+  Cancel01Icon,
+  Clock01Icon,
+  CheckmarkCircle04Icon,
+  Alert02Icon,
+  Layers01Icon,
+  Camera01Icon,
+  ArrowReloadHorizontalIcon,
+  ArrowDown01Icon,
+  Image01Icon,
+  Add01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
-import { COLORS } from "@/lib/constants"
-import { cn } from "@/lib/utils"
+import { cn, formatCalendarDate, getStorageUrl } from "@/lib/utils"
 import { equiposService, type AlquilerEquipo } from "@/services/equipos.service"
+import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { toast } from "sonner"
-import { Link, useNavigate, useSearchParams } from "react-router"
 
-const ESTADO_COLORS: Record<string, string> = {
-  pendiente: "bg-blue-100 text-blue-700 border-blue-200",
-  activo: "bg-amber-100 text-amber-700 border-amber-200",
-  entregado: "bg-indigo-100 text-indigo-700 border-indigo-200",
-  devuelto: "bg-green-100 text-green-700 border-green-200",
-  vencido: "bg-red-100 text-red-700 border-red-200",
-}
-
-const ESTADO_LABELS: Record<string, string> = {
-  pendiente: "Pendiente", activo: "Activo", entregado: "Entregado", devuelto: "Devuelto", vencido: "Vencido",
-}
-
-type SortField = "entrega" | "devolucion" | "precio"
-
-function SortHeader({ field, label, sortField, sortDir, onSort }: {
-  field: SortField
-  label: string
-  sortField: SortField | null
-  sortDir: "asc" | "desc"
-  onSort: (field: SortField) => void
-}) {
-  return (
-    <th
-      className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40 cursor-pointer select-none hover:opacity-70"
-      style={{ color: COLORS.CHARCOAL }}
-      onClick={() => onSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {label}
-        <span className="inline-flex flex-col leading-none ml-0.5">
-          <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sortField === field && sortDir === "asc" ? "opacity-100" : "opacity-20"} />
-          <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sortField === field && sortDir === "desc" ? "opacity-100" : "opacity-20"} />
-        </span>
-      </div>
-    </th>
-  )
+const ESTADO_CONFIG: Record<
+  string,
+  { label: string; bg: string; dot: string; text: string }
+> = {
+  pendiente: {
+    label: "Pendiente",
+    bg: "bg-blue-50 border-blue-200/70",
+    dot: "bg-blue-600",
+    text: "text-blue-800",
+  },
+  activo: {
+    label: "Activo",
+    bg: "bg-amber-50 border-amber-200/70",
+    dot: "bg-amber-500",
+    text: "text-amber-800",
+  },
+  entregado: {
+    label: "Entregado",
+    bg: "bg-indigo-50 border-indigo-200/70",
+    dot: "bg-indigo-600",
+    text: "text-indigo-800",
+  },
+  devuelto: {
+    label: "Devuelto",
+    bg: "bg-emerald-50 border-emerald-200/70",
+    dot: "bg-emerald-600",
+    text: "text-emerald-800",
+  },
+  vencido: {
+    label: "Vencido",
+    bg: "bg-red-50 border-red-200/70",
+    dot: "bg-red-500",
+    text: "text-red-800",
+  },
 }
 
 export function AlquileresListPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [alquileres, setAlquileres] = useState<AlquilerEquipo[]>([])
+  const [vencidos, setVencidos] = useState<AlquilerEquipo[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(searchParams.get("search") || "")
-  const [filtroEstado, setFiltroEstado] = useState(searchParams.get("estado") || "")
-  const [vencidos, setVencidos] = useState<AlquilerEquipo[]>([])
+  const [filtroEstado, setFiltroEstado] = useState(searchParams.get("estado") || "todos")
+  const [zoomFoto, setZoomFoto] = useState<string | null>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
-  const [sortField, setSortField] = useState<SortField | null>(null)
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
-
+  // Modals
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedAlquiler, setSelectedAlquiler] = useState<AlquilerEquipo | null>(null)
-
   const [devolverOpen, setDevolverOpen] = useState(false)
-  const [devolverForm, setDevolverForm] = useState({ foto_retorno_url: "", observaciones: "" })
+  const [alquilerADevolver, setAlquilerADevolver] = useState<AlquilerEquipo | null>(null)
+  const [devolverForm, setDevolverForm] = useState({ observaciones: "" })
   const [fotoRetornoFile, setFotoRetornoFile] = useState<File | null>(null)
   const [fotoRetornoPreview, setFotoRetornoPreview] = useState<string | null>(null)
 
-  const [page, setPage] = useState(1)
-  const PER_PAGE = 15
-
-  const loadData = async (silent = false) => {
+  const loadData = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
       const params: { search?: string; estado?: string } = {}
-      if (search) params.search = search
-      if (filtroEstado) params.estado = filtroEstado
+      if (search.trim()) params.search = search.trim()
+      if (filtroEstado && filtroEstado !== "todos" && filtroEstado !== "activos") {
+        params.estado = filtroEstado
+      }
       const [data, venc] = await Promise.all([
         equiposService.getAlquileres(params),
-        equiposService.getVencidos(),
+        equiposService.getVencidos().catch(() => []),
       ])
       setAlquileres(data)
       setVencidos(venc)
-      if (!silent) setPage(1)
-    } catch { toast.error("Error al cargar alquileres") }
-    finally { if (!silent) setLoading(false) }
-  }
+    } catch {
+      toast.error("Error al cargar alquileres")
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [search, filtroEstado])
 
   useEffect(() => {
     loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, filtroEstado])
+  }, [loadData])
 
-  const handleEntregar = async () => {
-    if (!selectedAlquiler) return
+  const getResponsable = (a: AlquilerEquipo) => {
+    if (a.persona) return `${a.persona.nombres} ${a.persona.apellidos}`.trim()
+    if (a.cliente_externo) return `${a.cliente_externo.nombres} ${a.cliente_externo.apellidos || ""}`.trim()
+    return "—"
+  }
+
+  const handleEntregar = async (alquilerId: string) => {
     try {
-      setAlquileres(prev => prev.map(a => a.id === selectedAlquiler.id ? { ...a, estado: "entregado" } : a))
-      await equiposService.entregarEquipo(selectedAlquiler.id)
+      setAlquileres((prev) =>
+        prev.map((a) => (a.id === alquilerId ? { ...a, estado: "entregado" } : a)),
+      )
+      await equiposService.entregarEquipo(alquilerId)
       toast.success("Equipo marcado como entregado")
       setDetailOpen(false)
       loadData(true)
@@ -111,20 +125,33 @@ export function AlquileresListPage() {
     }
   }
 
+  const openDevolverModal = (a: AlquilerEquipo) => {
+    setAlquilerADevolver(a)
+    setDevolverForm({ observaciones: "" })
+    setFotoRetornoFile(null)
+    setFotoRetornoPreview(null)
+    setDevolverOpen(true)
+  }
+
   const handleDevolver = async () => {
-    if (!selectedAlquiler) return
+    if (!alquilerADevolver) return
     try {
-      const payload = fotoRetornoFile ? (() => {
-        const fd = new FormData()
-        fd.append("foto_retorno", fotoRetornoFile)
-        if (devolverForm.observaciones) fd.append("observaciones", devolverForm.observaciones)
-        return fd
-      })() : devolverForm
-      setAlquileres(prev => prev.map(a => a.id === selectedAlquiler.id ? { ...a, estado: "devuelto" } : a))
-      await equiposService.devolverEquipo(selectedAlquiler.id, payload)
+      const payload = fotoRetornoFile
+        ? (() => {
+            const fd = new FormData()
+            fd.append("foto_retorno", fotoRetornoFile)
+            if (devolverForm.observaciones) fd.append("observaciones", devolverForm.observaciones)
+            return fd
+          })()
+        : devolverForm
+      setAlquileres((prev) =>
+        prev.map((a) => (a.id === alquilerADevolver.id ? { ...a, estado: "devuelto" } : a)),
+      )
+      await equiposService.devolverEquipo(alquilerADevolver.id, payload)
       toast.success("Equipo devuelto correctamente")
       setDevolverOpen(false)
       setDetailOpen(false)
+      setAlquilerADevolver(null)
       setFotoRetornoFile(null)
       setFotoRetornoPreview(null)
       loadData(true)
@@ -134,321 +161,899 @@ export function AlquileresListPage() {
     }
   }
 
-  const getResponsable = (a: AlquilerEquipo) => {
-    if (a.persona) return `${a.persona.nombres} ${a.persona.apellidos}`
-    if (a.cliente_externo) return `${a.cliente_externo.nombres} ${a.cliente_externo.apellidos || ""}`
-    return "—"
-  }
+  const filtered = useMemo(() => {
+    let list = alquileres
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDir(d => d === "asc" ? "desc" : "asc")
-    } else {
-      setSortField(field)
-      setSortDir("asc")
+    if (filtroEstado === "activos") {
+      list = list.filter((a) => a.estado === "activo" || a.estado === "entregado")
+    } else if (filtroEstado === "vencido") {
+      list = list.filter(
+        (a) =>
+          a.estado === "vencido" ||
+          ((a.estado === "activo" || a.estado === "entregado") &&
+            new Date(a.fecha_devolucion_esperada) < new Date()),
+      )
+    } else if (filtroEstado !== "todos") {
+      list = list.filter((a) => a.estado === filtroEstado)
     }
-  }
 
-  const sorted = useMemo(() => {
-    if (!sortField) return alquileres
-    return [...alquileres].sort((a, b) => {
-      let va: number, vb: number
-      if (sortField === "entrega") {
-        va = new Date(a.fecha_entrega).getTime()
-        vb = new Date(b.fecha_entrega).getTime()
-      } else if (sortField === "devolucion") {
-        va = new Date(a.fecha_devolucion_esperada).getTime()
-        vb = new Date(b.fecha_devolucion_esperada).getTime()
-      } else {
-        va = Number(a.precio_total)
-        vb = Number(b.precio_total)
-      }
-      return sortDir === "asc" ? va - vb : vb - va
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter((a) => {
+        const equipoNombre = (a.equipo?.nombre || "").toLowerCase()
+        const responsable = getResponsable(a).toLowerCase()
+        return equipoNombre.includes(q) || responsable.includes(q)
+      })
+    }
+
+    return list.sort((a, b) => {
+      const dateDiff = (b.fecha_entrega || "").localeCompare(a.fecha_entrega || "")
+      if (dateDiff !== 0) return dateDiff
+      return (b.fecha_devolucion_esperada || "").localeCompare(a.fecha_devolucion_esperada || "")
     })
-  }, [alquileres, sortField, sortDir])
+  }, [alquileres, filtroEstado, search])
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PER_PAGE))
-  const paginated = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE)
-  const from = sorted.length === 0 ? 0 : (page - 1) * PER_PAGE + 1
-  const to = Math.min(page * PER_PAGE, sorted.length)
+  const stats = useMemo(() => {
+    const activos = alquileres.filter((a) => a.estado === "activo" || a.estado === "entregado").length
+    const vencidosCount = alquileres.filter(
+      (a) =>
+        a.estado === "vencido" ||
+        ((a.estado === "activo" || a.estado === "entregado") &&
+          new Date(a.fecha_devolucion_esperada) < new Date()),
+    ).length
+    const devueltos = alquileres.filter((a) => a.estado === "devuelto").length
 
-  const stats = {
-    total: sorted.length,
-    activos: sorted.filter(a => a.estado === "activo").length,
-    vencidos: sorted.filter(a => a.estado === "vencido" || (a.estado === "activo" && new Date(a.fecha_devolucion_esperada) < new Date())).length,
-    ingresos: sorted.reduce((sum, a) => sum + Number(a.precio_total), 0),
-  }
+    return {
+      total: alquileres.length,
+      activos,
+      vencidos: vencidosCount,
+      devueltos,
+    }
+  }, [alquileres])
 
   const statCards = [
-    { label: "Total", value: stats.total, color: "bg-gray-100 text-gray-500", icon: Home02Icon },
-    { label: "Activos", value: stats.activos, color: "bg-amber-100 text-amber-600", icon: Clock01Icon },
-    { label: "Vencidos", value: stats.vencidos, color: "bg-red-100 text-red-600", icon: Alert02Icon },
-    { label: "Ingresos", value: `$${stats.ingresos.toFixed(0)}`, color: "bg-emerald-100 text-emerald-600", icon: Money01Icon },
+    {
+      key: "todos",
+      label: "TOTAL ALQUILERES",
+      value: stats.total,
+      subtitle: "Periodo actual",
+      icon: Layers01Icon,
+      iconBg: "bg-slate-100 text-slate-600",
+    },
+    {
+      key: "activos",
+      label: "ACTIVOS / ENTREGADOS",
+      value: stats.activos,
+      subtitle: (
+        <span className="inline-flex items-center gap-1 text-[11px] text-[#9d4300] bg-[#ffdbca]/60 px-2 py-0.5 rounded-full font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a]" />
+          En curso
+        </span>
+      ),
+      icon: Clock01Icon,
+      iconBg: "bg-[#ffdbca] text-[#9d4300]",
+    },
+    {
+      key: "vencido",
+      label: "VENCIDOS",
+      value: stats.vencidos,
+      subtitle: "Requieren retorno",
+      icon: Alert02Icon,
+      iconBg: "bg-red-50 text-red-600",
+    },
+    {
+      key: "devuelto",
+      label: "DEVUELTOS",
+      value: stats.devueltos,
+      subtitle: "Finalizados",
+      icon: CheckmarkCircle04Icon,
+      iconBg: "bg-emerald-50 text-emerald-700",
+    },
   ]
 
-  const needsAction = (a: AlquilerEquipo) => {
-    const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
-    const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
-    return a.estado === "entregado" && total - abonado > 0
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, AlquilerEquipo[]> = {}
+    filtered.forEach((a) => {
+      const dateKey = formatCalendarDate(a.fecha_entrega, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).toUpperCase()
+      if (!groups[dateKey]) groups[dateKey] = []
+      groups[dateKey].push(a)
+    })
+    return Object.entries(groups)
+  }, [filtered])
+
+  useEffect(() => {
+    if (Object.keys(expandedGroups).length === 0 && groupedByDate.length > 0) {
+      const initial: Record<string, boolean> = {}
+      groupedByDate.forEach(([date]) => {
+        initial[date] = true
+      })
+      setExpandedGroups(initial)
+    }
+  }, [groupedByDate, expandedGroups])
+
+  const toggleGroup = (date: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [date]: !prev[date] }))
+  }
+
+  const getGroupTotal = (items: AlquilerEquipo[]) => {
+    return items.reduce((sum, a) => sum + Number(a.precio_total || 0), 0)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[450px] bg-[#f8f9ff]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin size-8 border-[3px] border-t-transparent rounded-full border-[#fd761a]" />
+          <p className="text-xs font-semibold text-slate-500">Cargando alquileres...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <header className="shrink-0 px-8 py-4 border-b bg-white sticky top-0 z-20 flex items-center gap-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <Link to="/servicios/equipos" className="size-9 flex items-center justify-center rounded-full hover:bg-gray-100">
-          <HugeiconsIcon icon={ArrowLeft02Icon} size={18} style={{ color: COLORS.TEXT_MUTED }} />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Alquileres de Equipos</h1>
-          <p className="text-[10px] font-medium" style={{ color: COLORS.TEXT_MUTED }}>Registro general de todos los alquileres</p>
-        </div>
-      </header>
+    <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
+        {/* Header de Página */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-col">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+              SERVICIOS
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
+              Alquiler de Equipos
+            </h1>
+          </div>
 
-      {vencidos.length > 0 && (
-        <div className="shrink-0 mx-8 mt-4 p-4 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Alert02Icon} size={20} className="text-red-600" /></div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-red-800">¡Atención! {vencidos.length} equipo{vencidos.length !== 1 ? "s" : ""} vencido{vencidos.length !== 1 ? "s" : ""}</p>
-            <p className="text-[10px] text-red-600">Estos equipos no han sido devueltos a tiempo</p>
+          {/* Action Cluster */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => navigate("/servicios/equipos")}
+              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              type="button"
+            >
+              <HugeiconsIcon icon={Camera01Icon} size={17} className="text-slate-500" />
+              <span>Catálogo de Equipos</span>
+            </button>
+            <button
+              onClick={() => navigate("/servicios/equipos")}
+              className="h-10 px-5 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              type="button"
+            >
+              <HugeiconsIcon icon={Add01Icon} size={17} />
+              <span>Nuevo Alquiler</span>
+            </button>
           </div>
         </div>
-      )}
 
-      <div className="shrink-0 px-8 py-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {statCards.map(card => (
-            <div key={card.label} className="bg-white rounded-2xl border p-3.5 flex items-center gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", card.color.split(" ")[0])}>
-                <HugeiconsIcon icon={card.icon} size={18} className={card.color.split(" ")[1]} />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">{card.label}</p>
-                <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>{card.value}</p>
-              </div>
+        {/* Attention banner if there are overdue rentals */}
+        {vencidos.length > 0 && (
+          <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3.5 shadow-xs">
+            <div className="size-9 rounded-lg bg-red-100 flex items-center justify-center shrink-0 text-red-600">
+              <HugeiconsIcon icon={Alert02Icon} size={18} />
             </div>
-          ))}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-red-900">
+                ¡Atención! Hay {vencidos.length} alquiler{vencidos.length !== 1 ? "es" : ""} vencido{vencidos.length !== 1 ? "s" : ""}
+              </p>
+              <p className="text-[11px] text-red-700 mt-0.5">
+                Estos equipos han sobrepasado la fecha esperada de devolución y requieren retorno inmediato.
+              </p>
+            </div>
+            <button
+              onClick={() => setFiltroEstado("vencido")}
+              className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors shrink-0 cursor-pointer"
+            >
+              Ver vencidos
+            </button>
+          </div>
+        )}
+
+        {/* Summary Metrics (4-Column Bento Card Array) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {statCards.map((card) => {
+            const isActive = filtroEstado === card.key
+            return (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => setFiltroEstado(isActive ? "todos" : card.key)}
+                className={cn(
+                  "p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between h-[108px] text-left transition-all hover:shadow-md cursor-pointer active:scale-[0.99]",
+                  isActive ? "ring-2 ring-[#fd761a]/30 border-[#fd761a]" : "",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                    {card.label}
+                  </span>
+                  <div
+                    className={cn(
+                      "size-7 rounded-lg flex items-center justify-center shrink-0",
+                      card.iconBg,
+                    )}
+                  >
+                    <HugeiconsIcon icon={card.icon} size={16} />
+                  </div>
+                </div>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                    {card.value}
+                  </span>
+                  {typeof card.subtitle === "string" ? (
+                    <span className="text-xs text-slate-500 font-medium">{card.subtitle}</span>
+                  ) : (
+                    card.subtitle
+                  )}
+                </div>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <HugeiconsIcon icon={SearchIcon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar equipo o cliente..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-          </div>
-          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="px-4 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <option value="">Todos los estados</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="entregado">Entregado</option>
-            <option value="activo">Activo</option>
-            <option value="devuelto">Devuelto</option>
-            <option value="vencido">Vencido</option>
-          </select>
-          <span className="text-[10px] font-bold opacity-40">{alquileres.length} alquiler{alquileres.length !== 1 ? "es" : ""}</span>
-        </div>
-      </div>
+        {/* History Workspace Module */}
+        <div className="flex flex-col gap-4 mt-2">
+          {/* History Section Header & Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-lg font-bold text-slate-900">Historial de Alquileres</h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700 text-xs font-semibold">
+                {filtered.length}
+              </span>
+            </div>
 
-      <div className="flex-1 overflow-auto px-8 pb-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-32"><p className="text-sm font-medium opacity-30 animate-pulse">Cargando alquileres...</p></div>
-        ) : alquileres.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-center space-y-4">
-            <div className="size-20 rounded-2xl bg-gray-100 flex items-center justify-center"><HugeiconsIcon icon={Calendar03Icon} size={36} className="opacity-15" style={{ color: COLORS.CHARCOAL }} /></div>
-            <p className="text-sm font-bold opacity-30">No hay alquileres registrados</p>
-            <Link to="/servicios/equipos" className="text-xs font-bold text-amber-600 hover:underline">Ir al catálogo de equipos</Link>
+            {/* Filter Controls (40px Height) */}
+            <div className="flex items-center gap-2.5">
+              <div className="h-10 bg-white border border-slate-200 rounded-xl px-3.5 flex items-center gap-2 shadow-xs w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#fd761a]/25 focus-within:border-[#fd761a] transition-all">
+                <HugeiconsIcon icon={Search01Icon} size={16} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por equipo o responsable…"
+                  className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="text-slate-400 hover:text-slate-700 p-0.5"
+                    title="Limpiar búsqueda"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => loadData(true)}
+                className="h-10 w-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors shadow-xs shrink-0 active:scale-95 cursor-pointer"
+                title="Actualizar datos"
+                type="button"
+              >
+                <HugeiconsIcon icon={ArrowReloadHorizontalIcon} size={16} />
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="overflow-x-auto border rounded-2xl bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <table className="w-full [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
-                <thead>
-                  <tr className="bg-gray-50/80">
-                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Equipo</th>
-                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Cliente</th>
-                    <SortHeader field="entrega" label="Entrega" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                    <SortHeader field="devolucion" label="Devolución" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Estado</th>
-                    <SortHeader field="precio" label="Precio" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
-                    <th className="p-3 text-left text-[9px] font-bold uppercase tracking-widest opacity-40" style={{ color: COLORS.CHARCOAL }}>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  {paginated.map(a => {
-                    const isOverdue = (a.estado === "activo" || a.estado === "entregado") && new Date(a.fecha_devolucion_esperada) < new Date()
-                    const displayEstado = a.estado === "vencido" ? "vencido" : isOverdue ? "vencido" : a.estado
-                    const clienteNombre = getResponsable(a)
-                    const needsAttn = needsAction(a)
-                    return (
-                      <tr
-                        key={a.id}
-                        className={cn("transition-colors cursor-pointer", needsAttn ? "bg-amber-50/60 hover:bg-amber-100/60" : "hover:bg-gray-50/60")}
-                      >
-                        <td className="p-3" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}><div className="flex items-center gap-2"><div className="size-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Home02Icon} size={14} className="text-amber-600" /></div><span className="text-xs font-bold truncate max-w-[120px]" style={{ color: COLORS.CHARCOAL }}>{a.equipo?.nombre || "—"}</span></div></td>
-                        <td className="p-3 text-xs font-medium opacity-70 max-w-[120px] truncate" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{clienteNombre}</td>
-                        <td className="p-3 text-xs font-mono opacity-60" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="p-3 text-xs font-mono opacity-60" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>{new Date(a.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                        <td onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }}>
-                          <div className="flex items-center gap-1.5 flex-wrap p-3">
-                            <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", ESTADO_COLORS[displayEstado] || "bg-gray-100")}>{ESTADO_LABELS[displayEstado] || displayEstado}</span>
-                            {(() => {
+
+          {/* Group by Date Card Assembly */}
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-14 text-center space-y-3 shadow-xs">
+              <div className="size-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                <HugeiconsIcon icon={Camera01Icon} size={28} />
+              </div>
+              <p className="font-bold text-sm text-slate-800">
+                {search ? `Sin resultados para "${search}"` : "No hay alquileres registrados"}
+              </p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Prueba ajustando la búsqueda o registra un nuevo alquiler desde el catálogo de equipos.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {groupedByDate.map(([date, items]) => {
+                const isOpen = expandedGroups[date] !== false
+                const dayTotal = getGroupTotal(items)
+
+                return (
+                  <div
+                    key={date}
+                    className="rounded-xl overflow-hidden shadow-xs bg-white border border-slate-200/90"
+                  >
+                    {/* Date Group Header Bar */}
+                    <div
+                      onClick={() => toggleGroup(date)}
+                      className="bg-slate-50/80 px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 transition-colors select-none border-b border-slate-100"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="text-slate-400" />
+                        </motion.div>
+                        <div className="size-6 rounded-md bg-slate-200/70 flex items-center justify-center text-slate-600">
+                          <HugeiconsIcon icon={Calendar03Icon} size={14} />
+                        </div>
+                        <span className="text-xs uppercase tracking-wider text-slate-900 font-bold">
+                          {date}
+                        </span>
+                        <span className="inline-block size-1 rounded-full bg-slate-300" />
+                        <span className="text-xs text-slate-500">
+                          {items.length} {items.length === 1 ? "alquiler" : "alquileres"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="bg-white px-3 py-1 rounded-md shadow-2xs border border-slate-200/70 flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-500 font-medium">Total día:</span>
+                          <span className="text-xs text-slate-900 font-bold">
+                            ${dayTotal.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Reservation Rows Container */}
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height: "auto" }}
+                          exit={{ height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex flex-col divide-y divide-slate-100">
+                            {items.map((a) => {
+                              const isOverdue =
+                                (a.estado === "activo" || a.estado === "entregado") &&
+                                new Date(a.fecha_devolucion_esperada) < new Date()
+                              const displayEstado = isOverdue ? "vencido" : a.estado
+                              const estado = ESTADO_CONFIG[displayEstado] || ESTADO_CONFIG.pendiente
+                              const responsable = getResponsable(a)
+
                               const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
                               const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
                               const saldo = total - abonado
-                              return (
-                                <span className={cn("inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border", saldo <= 0 ? "bg-green-100 text-green-700 border-green-200" : "bg-amber-100 text-amber-700 border-amber-200")}>
-                                  {saldo <= 0 ? "Pago OK" : `Saldo $${saldo.toFixed(2)}`}
-                                </span>
-                              )
-                            })()}
-                          </div>
-                        </td>
-                        <td className="p-3 text-xs font-bold" onClick={() => { setSelectedAlquiler(a); setDetailOpen(true) }} style={{ color: COLORS.CHARCOAL }}>${Number(a.precio_total).toFixed(2)}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-1.5">
-                            <button onClick={(e) => { e.stopPropagation(); const p = new URLSearchParams(); if (search) p.set("search", search); if (filtroEstado) p.set("estado", filtroEstado); const qs = p.toString(); navigate(`/servicios/equipos/alquileres/${a.id}${qs ? `?${qs}` : ""}`) }}
-                              className="inline-flex items-center gap-1 text-[10px] font-bold opacity-50 hover:opacity-100 transition-opacity"
-                              style={{ color: COLORS.CHARCOAL }}>
-                              Ver detalle completo <HugeiconsIcon icon={ArrowRight01Icon} size={11} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              const isPagado =
+                                a.cuenta_por_cobrar?.estado === "pagado" || saldo <= 0
+                              const isAbonado = !isPagado && abonado > 0
 
-            {sorted.length > 0 && (
-              <div className="flex items-center justify-between gap-4 pt-2">
-                <span className="text-xs font-medium opacity-40">
-                  Mostrando {from} – {to} de {sorted.length} alquiler{sorted.length !== 1 ? "es" : ""}
+                              return (
+                                <div
+                                  key={a.id}
+                                  className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors duration-150 group"
+                                >
+                                  {/* Left Column */}
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="size-11 rounded-xl bg-orange-50 text-[#fd761a] border border-orange-100 flex items-center justify-center shrink-0 shadow-xs group-hover:bg-[#fd761a] group-hover:text-white transition-colors overflow-hidden">
+                                      {a.equipo?.foto_url ? (
+                                        <img
+                                          src={getStorageUrl(a.equipo.foto_url)}
+                                          alt={a.equipo.nombre}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <HugeiconsIcon icon={Camera01Icon} size={20} />
+                                      )}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedAlquiler(a)
+                                            setDetailOpen(true)
+                                          }}
+                                          className="text-[15px] leading-snug font-semibold text-slate-900 group-hover:text-[#fd761a] truncate transition-colors text-left cursor-pointer"
+                                        >
+                                          {a.equipo?.nombre || "Equipo"}
+                                        </button>
+                                        {isOverdue && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
+                                            ¡Vencido!
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
+                                        <span className="inline-flex items-center gap-1">
+                                          <HugeiconsIcon
+                                            icon={UserIcon}
+                                            size={14}
+                                            className="text-[#fd761a]"
+                                          />
+                                          <strong className="font-medium text-slate-800">
+                                            {responsable}
+                                          </strong>
+                                        </span>
+                                        <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                        <span className="inline-flex items-center gap-1">
+                                          <HugeiconsIcon
+                                            icon={Clock01Icon}
+                                            size={14}
+                                            className="text-slate-400"
+                                          />
+                                          <span>
+                                            Retorno: {formatCalendarDate(a.fecha_devolucion_esperada, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                          </span>
+                                        </span>
+                                        {a.foto_salida_url && (
+                                          <>
+                                            <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                            <button
+                                              type="button"
+                                              onClick={() => setZoomFoto(a.foto_salida_url!)}
+                                              className="inline-flex items-center gap-1 text-amber-700 hover:underline cursor-pointer"
+                                            >
+                                              <HugeiconsIcon icon={Image01Icon} size={13} />
+                                              Foto salida
+                                            </button>
+                                          </>
+                                        )}
+                                        {a.foto_retorno_url && (
+                                          <>
+                                            <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                            <button
+                                              type="button"
+                                              onClick={() => setZoomFoto(a.foto_retorno_url!)}
+                                              className="inline-flex items-center gap-1 text-emerald-700 hover:underline cursor-pointer"
+                                            >
+                                              <HugeiconsIcon icon={Image01Icon} size={13} />
+                                              Foto retorno
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Middle Column */}
+                                  <div className="flex items-center gap-6 self-start lg:self-center shrink-0">
+                                    <div className="flex flex-col items-start lg:items-end gap-1">
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border",
+                                          estado.bg,
+                                          estado.text,
+                                        )}
+                                      >
+                                        <span className={cn("size-2 rounded-full", estado.dot)} />
+                                        {estado.label}
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          "text-[11px] font-medium",
+                                          isPagado
+                                            ? "text-emerald-700"
+                                            : isAbonado
+                                              ? "text-amber-700"
+                                              : "text-slate-500",
+                                        )}
+                                      >
+                                        {isPagado
+                                          ? "Pagado"
+                                          : isAbonado
+                                            ? `Abono $${abonado.toFixed(2)} · Saldo $${saldo.toFixed(2)}`
+                                            : "Pago pendiente"}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex flex-col items-end shrink-0 pl-2">
+                                      <span className="text-base font-bold text-slate-900 tracking-tight">
+                                        ${Number(a.precio_total).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </span>
+                                      <span className="text-[11px] text-slate-400 font-medium">
+                                        {a.equipo?.precio_diario
+                                          ? `$${Number(a.equipo.precio_diario).toFixed(0)}/día`
+                                          : "Alquiler"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Right Column */}
+                                  <div className="flex items-center gap-2 self-end lg:self-center shrink-0 pt-2 lg:pt-0">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedAlquiler(a)
+                                        setDetailOpen(true)
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                                      type="button"
+                                    >
+                                      Detalles
+                                    </button>
+
+                                    {a.estado === "pendiente" && (
+                                      <button
+                                        onClick={() => handleEntregar(a.id)}
+                                        className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                        type="button"
+                                      >
+                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                        <span>Entregar</span>
+                                      </button>
+                                    )}
+
+                                    {(a.estado === "activo" || a.estado === "entregado" || a.estado === "vencido") && (
+                                      <button
+                                        onClick={() => openDevolverModal(a)}
+                                        className="px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                        type="button"
+                                      >
+                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                        <span>Devolver</span>
+                                      </button>
+                                    )}
+
+                                    {isPagado ? (
+                                      <button
+                                        onClick={() =>
+                                          navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, {
+                                            state: {
+                                              tipo: "equipo",
+                                              servicioId: a.id,
+                                              cuentaId: a.cuenta_por_cobrar?.id,
+                                              nombre: responsable,
+                                              montoTotal: Number(a.precio_total) || 0,
+                                              montoSaldo: saldo || 0,
+                                              nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
+                                            },
+                                          })
+                                        }
+                                        className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                        type="button"
+                                      >
+                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                        <span>Ver pagos</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() =>
+                                          navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, {
+                                            state: {
+                                              tipo: "equipo",
+                                              servicioId: a.id,
+                                              cuentaId: a.cuenta_por_cobrar?.id,
+                                              nombre: responsable,
+                                              montoTotal: Number(a.precio_total) || 0,
+                                              montoSaldo: saldo || 0,
+                                              nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
+                                            },
+                                          })
+                                        }
+                                        className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                        type="button"
+                                      >
+                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                        <span>Registrar pago</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )
+              })}
+
+              {/* Footnote */}
+              <div className="px-5 py-3 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-xs shadow-2xs">
+                <span className="font-medium">
+                  Mostrando {filtered.length} de {alquileres.length} alquileres registrados
                 </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                  >
-                    Anterior
-                  </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const start = Math.max(1, Math.min(page - 2, totalPages - 4))
-                    const pageNum = start + i
-                    if (pageNum > totalPages) return null
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className="size-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all"
-                        style={{
-                          backgroundColor: page === pageNum ? COLORS.ACCENT : "transparent",
-                          color: page === pageNum ? "white" : COLORS.TEXT_MUTED,
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    )
-                  })}
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="px-3 py-1.5 rounded-lg border text-xs font-bold transition-all hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                  >
-                    Siguiente
-                  </button>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span>Datos sincronizados</span>
+                  <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
                 </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Modal detalle */}
+      {/* Modal Detalle */}
       <AnimatePresence>
         {detailOpen && selectedAlquiler && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetailOpen(false)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-2xl w-full max-w-xl flex flex-col max-h-[85vh] shadow-2xl">
-              <div className="shrink-0 p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <div><h2 className="text-xl font-bold tracking-tighter" style={{ color: COLORS.CHARCOAL }}>Detalle de Alquiler</h2><p className="text-xs opacity-40 mt-0.5">{selectedAlquiler.equipo?.nombre}</p></div>
-                <button onClick={() => setDetailOpen(false)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}><X size={18} /></button>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDetailOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white rounded-2xl w-full max-w-xl flex flex-col max-h-[85vh] shadow-2xl border border-slate-200"
+            >
+              <div className="shrink-0 p-6 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                    Detalle de Alquiler
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {selectedAlquiler.equipo?.nombre}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDetailOpen(false)}
+                  className="size-9 flex items-center justify-center rounded-xl hover:bg-slate-100 border border-slate-200 text-slate-500 transition-colors"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <div className="overflow-y-auto p-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+              <div className="overflow-y-auto p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Entrega</p><p className="text-sm font-bold mt-1" style={{ color: COLORS.CHARCOAL }}>{new Date(selectedAlquiler.fecha_entrega).toLocaleDateString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</p></div>
-                  <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Devolución esperada</p><p className="text-sm font-bold mt-1" style={{ color: COLORS.CHARCOAL }}>{new Date(selectedAlquiler.fecha_devolucion_esperada).toLocaleDateString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</p></div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Entrega
+                    </p>
+                    <p className="text-sm font-bold text-slate-900 mt-1">
+                      {formatCalendarDate(selectedAlquiler.fecha_entrega, {
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Devolución esperada
+                    </p>
+                    <p className="text-sm font-bold text-slate-900 mt-1">
+                      {formatCalendarDate(selectedAlquiler.fecha_devolucion_esperada, {
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                 </div>
-                {selectedAlquiler.fecha_recepcion && (
-                  <div className="p-4 rounded-2xl bg-green-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Devuelto</p><p className="text-sm font-bold mt-1 text-green-700">{new Date(selectedAlquiler.fecha_recepcion).toLocaleDateString("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</p></div>
-                )}
+
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Estado</p><span className={cn("inline-block mt-1 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border", ESTADO_COLORS[selectedAlquiler.estado])}>{ESTADO_LABELS[selectedAlquiler.estado]}</span></div>
-                  <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio</p><p className="text-lg font-black mt-1" style={{ color: COLORS.ACCENT }}>${Number(selectedAlquiler.precio_total).toFixed(2)}</p></div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Estado
+                    </p>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border",
+                        ESTADO_CONFIG[selectedAlquiler.estado]?.bg || "bg-slate-50",
+                        ESTADO_CONFIG[selectedAlquiler.estado]?.text || "text-slate-700",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "size-2 rounded-full",
+                          ESTADO_CONFIG[selectedAlquiler.estado]?.dot || "bg-slate-400",
+                        )}
+                      />
+                      {ESTADO_CONFIG[selectedAlquiler.estado]?.label || selectedAlquiler.estado}
+                    </span>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Precio total
+                    </p>
+                    <p className="text-lg font-black text-slate-900 mt-1">
+                      ${Number(selectedAlquiler.precio_total).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
+
+                {/* Cliente */}
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Responsable / Cliente
+                  </p>
+                  <p className="text-sm font-bold text-slate-900 mt-1">
+                    {getResponsable(selectedAlquiler)}
+                  </p>
+                  {(selectedAlquiler.persona?.correo || selectedAlquiler.cliente_externo?.correo) && (
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {selectedAlquiler.persona?.correo || selectedAlquiler.cliente_externo?.correo}
+                    </p>
+                  )}
+                </div>
+
+                {/* Fotos */}
                 {(selectedAlquiler.foto_salida_url || selectedAlquiler.foto_retorno_url) && (
-                  <div className={cn("grid gap-3", selectedAlquiler.foto_salida_url && selectedAlquiler.foto_retorno_url ? "grid-cols-2" : "grid-cols-1")}>
-                    {selectedAlquiler.foto_salida_url && <div><p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1">Foto salida</p><img src={selectedAlquiler.foto_salida_url} className="w-full aspect-square object-cover rounded-xl" /></div>}
-                    {selectedAlquiler.foto_retorno_url && <div><p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1">Foto retorno</p><img src={selectedAlquiler.foto_retorno_url} className="w-full aspect-square object-cover rounded-xl" /></div>}
+                  <div
+                    className={cn(
+                      "grid gap-3",
+                      selectedAlquiler.foto_salida_url && selectedAlquiler.foto_retorno_url
+                        ? "grid-cols-2"
+                        : "grid-cols-1",
+                    )}
+                  >
+                    {selectedAlquiler.foto_salida_url && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                          Foto salida
+                        </p>
+                        <img
+                          src={selectedAlquiler.foto_salida_url}
+                          alt="Foto salida"
+                          className="w-full aspect-square object-cover rounded-xl border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => setZoomFoto(selectedAlquiler.foto_salida_url!)}
+                        />
+                      </div>
+                    )}
+                    {selectedAlquiler.foto_retorno_url && (
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                          Foto retorno
+                        </p>
+                        <img
+                          src={selectedAlquiler.foto_retorno_url}
+                          alt="Foto retorno"
+                          className="w-full aspect-square object-cover rounded-xl border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => setZoomFoto(selectedAlquiler.foto_retorno_url!)}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
-                <div className="p-4 rounded-2xl bg-gray-50">
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p>
-                  {selectedAlquiler.persona ? (
-                    <div className="flex items-center gap-3 mt-2"><div className="size-10 rounded-xl bg-indigo-100 flex items-center justify-center"><HugeiconsIcon icon={UserIcon} size={18} className="text-indigo-600" /></div><div><p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{selectedAlquiler.persona.nombres} {selectedAlquiler.persona.apellidos}</p>{selectedAlquiler.persona.correo && <p className="text-[10px] opacity-50">{selectedAlquiler.persona.correo}</p>}</div></div>
-                  ) : selectedAlquiler.cliente_externo ? (
-                    <div className="flex items-center gap-3 mt-2"><div className="size-10 rounded-xl bg-emerald-100 flex items-center justify-center"><HugeiconsIcon icon={UserIcon} size={18} className="text-emerald-600" /></div><div><p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{selectedAlquiler.cliente_externo.nombres} {selectedAlquiler.cliente_externo.apellidos}</p><div className="flex flex-wrap gap-x-3 text-[10px] opacity-50">{selectedAlquiler.cliente_externo.cedula && <span>{selectedAlquiler.cliente_externo.cedula}</span>}{selectedAlquiler.cliente_externo.correo && <span>{selectedAlquiler.cliente_externo.correo}</span>}{selectedAlquiler.cliente_externo.celular && <span>{selectedAlquiler.cliente_externo.celular}</span>}</div></div></div>
-                  ) : <p className="text-xs opacity-30 mt-2">No especificado</p>}
-                </div>
-                {selectedAlquiler.observaciones && <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Observaciones</p><p className="text-xs mt-1 opacity-70">{selectedAlquiler.observaciones}</p></div>}
+
+                {selectedAlquiler.observaciones && (
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Observaciones
+                    </p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      {selectedAlquiler.observaciones}
+                    </p>
+                  </div>
+                )}
               </div>
-              <div className="shrink-0 px-6 py-5 bg-gray-50 border-t flex justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <button onClick={() => setDetailOpen(false)} className="px-6 py-3 rounded-xl border text-sm font-bold transition-colors" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cerrar</button>
-                {selectedAlquiler.estado === "pendiente" && (
-                  <button onClick={handleEntregar} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}><HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />Marcar como Entregado</button>
-                )}
-                {(selectedAlquiler.estado === "activo" || selectedAlquiler.estado === "vencido" || selectedAlquiler.estado === "entregado") && (
-                  <button onClick={() => { setDevolverForm({ foto_retorno_url: "", observaciones: "" }); setFotoRetornoFile(null); setFotoRetornoPreview(null); setDevolverOpen(true) }} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>Registrar Devolución</button>
-                )}
+
+              <div className="shrink-0 px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setDetailOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cerrar
+                </button>
+                <div className="flex items-center gap-2">
+                  {selectedAlquiler.estado === "pendiente" && (
+                    <button
+                      onClick={() => handleEntregar(selectedAlquiler.id)}
+                      className="px-4 py-2 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold transition-all flex items-center gap-1.5"
+                    >
+                      <HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} />
+                      Marcar como Entregado
+                    </button>
+                  )}
+                  {(selectedAlquiler.estado === "activo" ||
+                    selectedAlquiler.estado === "entregado" ||
+                    selectedAlquiler.estado === "vencido") && (
+                    <button
+                      onClick={() => {
+                        setDetailOpen(false)
+                        openDevolverModal(selectedAlquiler)
+                      }}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5"
+                    >
+                      <HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} />
+                      Registrar Devolución
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Modal devolver */}
+      {/* Modal Devolver */}
       <AnimatePresence>
         {devolverOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDevolverOpen(false)} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-              <div className="p-6 border-b flex justify-between items-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}><h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registrar Devolución</h2><button onClick={() => setDevolverOpen(false)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}><X size={18} /></button></div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDevolverOpen(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                  Registrar Devolución
+                </h2>
+                <button
+                  onClick={() => setDevolverOpen(false)}
+                  className="size-9 flex items-center justify-center rounded-xl hover:bg-slate-100 border border-slate-200 text-slate-500 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
               <div className="p-6 space-y-4">
-                <div className="space-y-1"><label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Foto retorno</label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Foto retorno (opcional)
+                  </label>
                   <div className="flex items-center gap-3">
                     <label className="flex-1 cursor-pointer">
-                      <div className="px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none hover:bg-gray-100 transition-colors text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        {fotoRetornoFile ? fotoRetornoFile.name : "Seleccionar archivo"}
+                      <div className="px-4 py-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors text-center">
+                        {fotoRetornoFile ? fotoRetornoFile.name : "Seleccionar imagen del equipo devuelto"}
                       </div>
-                      <input type="file" accept="image/jpeg,image/png,image/jpg,image/gif,image/webp" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) { setFotoRetornoFile(file); setFotoRetornoPreview(URL.createObjectURL(file)) } }} />
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setFotoRetornoFile(file)
+                            setFotoRetornoPreview(URL.createObjectURL(file))
+                          }
+                        }}
+                      />
                     </label>
                     {fotoRetornoPreview && (
-                      <div className="size-14 rounded-xl overflow-hidden shrink-0 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <img src={fotoRetornoPreview} className="w-full h-full object-cover" />
+                      <div className="size-14 rounded-xl overflow-hidden shrink-0 border border-slate-200">
+                        <img
+                          src={fotoRetornoPreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="space-y-1"><label className="text-[10px] font-bold uppercase tracking-widest opacity-50">Observaciones</label><textarea value={devolverForm.observaciones} onChange={e => setDevolverForm({ ...devolverForm, observaciones: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border bg-gray-50 text-sm outline-none resize-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} /></div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Observaciones de recepción
+                  </label>
+                  <textarea
+                    value={devolverForm.observaciones}
+                    onChange={(e) =>
+                      setDevolverForm({ ...devolverForm, observaciones: e.target.value })
+                    }
+                    placeholder="Estado físico del equipo, accesorios completos, etc."
+                    rows={3}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-[#fd761a]/20 resize-none"
+                  />
+                </div>
               </div>
-              <div className="px-6 py-5 bg-gray-50 border-t flex justify-end gap-3" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <button onClick={() => setDevolverOpen(false)} className="px-6 py-3 rounded-xl border text-sm font-bold" style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>Cancelar</button>
-                <button onClick={handleDevolver} className="px-6 py-3 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>Confirmar Devolución</button>
+
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2.5">
+                <button
+                  onClick={() => setDevolverOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDevolver}
+                  className="px-4 py-2 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold transition-all active:scale-95"
+                >
+                  Confirmar Devolución
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Modal Zoom Foto */}
+      {zoomFoto && <ImageZoom url={zoomFoto} onClose={() => setZoomFoto(null)} />}
     </div>
   )
 }

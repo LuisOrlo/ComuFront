@@ -452,19 +452,19 @@ export function TallerFormPage() {
               type="button"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#fd761a] transition-colors w-fit"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={14} />
               <span>Volver a talleres</span>
             </button>
-            <div className="flex items-center gap-3 mt-1">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+            <div className="flex items-center gap-2.5 mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                 {isEdit ? "Editar Taller" : "Nuevo Taller"}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#fd761a] text-xs font-bold uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#fd761a] text-[11px] font-bold uppercase tracking-wider">
                 {isEdit ? "Edición" : "Configuración"}
               </span>
             </div>
-            <p className="text-sm text-slate-500">
-              Paso <span className="font-bold text-slate-900">{currentStep}</span> de 3 ·{" "}
+            <p className="text-xs text-slate-500">
+              Paso <span className="font-bold text-slate-800">{currentStep}</span> de 3 ·{" "}
               <span className="text-[#fd761a] font-semibold">{STEP_META[currentStep - 1].title}</span>
             </p>
           </div>
@@ -473,7 +473,7 @@ export function TallerFormPage() {
             <button
               onClick={() => navigate("/talleres")}
               type="button"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold text-xs transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold text-xs transition-colors"
             >
               Cancelar
             </button>
@@ -545,8 +545,8 @@ export function TallerFormPage() {
           {currentStep === 1 && (
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900">Información del taller</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Información del taller</h2>
+                <p className="text-xs text-slate-500">
                   Ingresa el nombre, una descripción detallada y asigna al instructor encargado.
                 </p>
               </div>
@@ -554,7 +554,7 @@ export function TallerFormPage() {
               <div className="flex flex-col gap-5">
                 {/* Nombre del taller */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                     <span>
                       Nombre del taller <span className="text-[#fd761a]">*</span>
                     </span>
@@ -565,13 +565,13 @@ export function TallerFormPage() {
                     value={form.nombre}
                     onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
                     placeholder="Ej: Taller Práctico de Fotografía & Iluminación Digital"
-                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                    className="w-full px-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                   />
                 </div>
 
                 {/* Descripción */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                     <span>Descripción y objetivos del taller</span>
                     <span className="text-xs font-normal text-slate-400">Opcional</span>
                   </label>
@@ -580,7 +580,7 @@ export function TallerFormPage() {
                     value={form.descripcion}
                     onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
                     placeholder="Describe los temas a tratar, requisitos previos o el material que los estudiantes deben llevar..."
-                    className="w-full p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none resize-none transition-all"
+                    className="w-full p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none resize-none transition-all"
                   />
                 </div>
 
@@ -589,18 +589,18 @@ export function TallerFormPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-slate-900">Instructor responsable</h3>
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900">Instructor responsable</h3>
                         <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold uppercase tracking-wider">
                           Opcional
                         </span>
                       </div>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-xs text-slate-500">
                         Selecciona el instructor que dictará el taller. Puedes dejarlo sin asignar y agregarlo luego.
                       </p>
                     </div>
 
                     <div className="relative w-full sm:w-72">
-                      <Search className="absolute left-3 top-2.5 text-slate-400 size-4 pointer-events-none" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
                         type="text"
                         placeholder="Buscar por nombre o correo..."
@@ -609,7 +609,7 @@ export function TallerFormPage() {
                           setInstructorQuery(e.target.value)
                           buscarInstructores(e.target.value)
                         }}
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        className="w-full pl-9 pr-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -708,8 +708,8 @@ export function TallerFormPage() {
           {currentStep === 2 && (
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900">Calendario &amp; Horarios</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Calendario &amp; Horarios</h2>
+                <p className="text-xs text-slate-500">
                   Define si el taller se realizará en una sola fecha o distribuido en varios días.
                 </p>
               </div>
@@ -770,47 +770,47 @@ export function TallerFormPage() {
               {!multiDia ? (
                 <div className="flex flex-col gap-5 pt-2">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Fecha del taller <span className="text-[#fd761a]">*</span>
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
                         type="date"
                         value={form.fecha}
                         onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-semibold text-slate-800">
+                      <label className="text-xs font-semibold text-slate-700">
                         Hora de inicio <span className="text-[#fd761a]">*</span>
                       </label>
                       <div className="relative">
-                        <Clock className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                        <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                         <input
                           type="time"
                           value={form.hora_inicio}
                           onChange={(e) => setForm((f) => ({ ...f, hora_inicio: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-semibold text-slate-800">
+                      <label className="text-xs font-semibold text-slate-700">
                         Hora de finalización <span className="text-[#fd761a]">*</span>
                       </label>
                       <div className="relative">
-                        <Clock className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                        <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                         <input
                           type="time"
                           value={form.hora_fin}
                           onChange={(e) => setForm((f) => ({ ...f, hora_fin: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                         />
                       </div>
                     </div>
@@ -835,32 +835,32 @@ export function TallerFormPage() {
                   {/* Date Range */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-semibold text-slate-800">
+                      <label className="text-xs font-semibold text-slate-700">
                         Fecha de inicio <span className="text-[#fd761a]">*</span>
                       </label>
                       <div className="relative">
-                        <Calendar className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                         <input
                           type="date"
                           value={form.fecha}
                           onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-semibold text-slate-800">
+                      <label className="text-xs font-semibold text-slate-700">
                         Fecha de fin <span className="text-[#fd761a]">*</span>
                       </label>
                       <div className="relative">
-                        <Calendar className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                         <input
                           type="date"
                           value={form.fecha_fin}
                           min={form.fecha || undefined}
                           onChange={(e) => setForm((f) => ({ ...f, fecha_fin: e.target.value }))}
-                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                         />
                       </div>
                     </div>
@@ -879,21 +879,21 @@ export function TallerFormPage() {
                         <button
                           type="button"
                           onClick={selectWeekdays}
-                          className="px-3 py-1.5 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all"
+                          className="h-8 px-3 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all flex items-center justify-center"
                         >
                           Lun – Vie (Laborables)
                         </button>
                         <button
                           type="button"
                           onClick={selectWeekend}
-                          className="px-3 py-1.5 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all"
+                          className="h-8 px-3 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all flex items-center justify-center"
                         >
                           Sáb – Dom (Fines de semana)
                         </button>
                         <button
                           type="button"
                           onClick={resetDays}
-                          className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200 transition-all"
+                          className="h-8 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200 transition-all flex items-center justify-center"
                         >
                           Limpiar selección
                         </button>
@@ -936,7 +936,7 @@ export function TallerFormPage() {
                   {diasSeleccionados.length > 0 && (
                     <div className="flex flex-col gap-3 pt-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-slate-800">
+                        <label className="text-xs font-semibold text-slate-700">
                           Horarios por día seleccionado <span className="text-[#fd761a]">*</span>
                         </label>
                         {horarios.length > 1 && (
@@ -1025,8 +1025,8 @@ export function TallerFormPage() {
           {currentStep === 3 && (
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900">Configuración &amp; Aranceles</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Configuración &amp; Aranceles</h2>
+                <p className="text-xs text-slate-500">
                   Establece el aforo de participantes, arancel de inscripción, modalidad y sede física.
                 </p>
               </div>
@@ -1036,37 +1036,37 @@ export function TallerFormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Capacity */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                       <span>
                         Capacidad máxima <span className="text-[#fd761a]">*</span>
                       </span>
                       <span className="text-xs font-normal text-slate-400">Cupos de inscripción</span>
                     </label>
                     <div className="relative">
-                      <Users className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
                         type="number"
                         min={1}
                         value={form.capacidad_maxima}
                         onChange={(e) => setForm((f) => ({ ...f, capacidad_maxima: e.target.value }))}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-base font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                       />
                     </div>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-[11px] text-slate-500">
                       Límite de asistentes que el taller admitirá en su lista de confirmados.
                     </span>
                   </div>
 
                   {/* Pricing */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                       <span>
                         Precio por participante ($ USD) <span className="text-[#fd761a]">*</span>
                       </span>
                       <span className="text-xs font-semibold text-[#fd761a]">Arancel taller</span>
                     </label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
                         type="number"
                         min={0}
@@ -1074,11 +1074,11 @@ export function TallerFormPage() {
                         placeholder="0.00"
                         value={form.precio}
                         onChange={(e) => setForm((f) => ({ ...f, precio: e.target.value }))}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-base font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                       />
                     </div>
                     {/* Live Financial Projection */}
-                    <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200/90 flex flex-col gap-2 text-xs">
+                    <div className="p-3 rounded-xl bg-orange-50/70 border border-orange-200/90 flex flex-col gap-2 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-slate-600">
                           {precioNum === 0
@@ -1091,10 +1091,10 @@ export function TallerFormPage() {
                       </div>
                       <div className="pt-2 border-t border-orange-200/70 flex items-center justify-between">
                         <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <DollarSign size={15} className="text-[#fd761a]" />
-                          Total esperado a recaudar (aforo completo):
+                          <DollarSign size={14} className="text-[#fd761a]" />
+                          Total esperado a recaudar:
                         </span>
-                        <span className="text-sm font-bold text-[#fd761a]">
+                        <span className="text-xs font-bold text-[#fd761a]">
                           ${totalEsperadoCalculado} USD
                         </span>
                       </div>
@@ -1106,32 +1106,32 @@ export function TallerFormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   {/* Modality */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Modalidad de impartición <span className="text-[#fd761a]">*</span>
                     </label>
-                    <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                    <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200 h-11 items-center">
                       <button
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, modalidad: "presencial" }))}
-                        className={`py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        className={`h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                           form.modalidad === "presencial"
                             ? "bg-[#fd761a] text-white shadow-sm"
                             : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <Building2 size={18} />
+                        <Building2 size={16} />
                         <span>Presencial</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, modalidad: "virtual" }))}
-                        className={`py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        className={`h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                           form.modalidad === "virtual"
                             ? "bg-[#fd761a] text-white shadow-sm"
                             : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <Monitor size={18} />
+                        <Monitor size={16} />
                         <span>Online / Virtual</span>
                       </button>
                     </div>
@@ -1141,7 +1141,7 @@ export function TallerFormPage() {
                   {form.modalidad === "presencial" ? (
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-slate-800">
+                        <label className="text-xs font-semibold text-slate-700">
                           Sede / Ciudad <span className="text-[#fd761a]">*</span>
                         </label>
                         <button
@@ -1157,7 +1157,7 @@ export function TallerFormPage() {
                         </button>
                       </div>
                       <div className="relative">
-                        <MapPin className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                         <select
                           value={form.ciudad_id}
                           onChange={(e) =>
@@ -1166,7 +1166,7 @@ export function TallerFormPage() {
                               ciudad_id: e.target.value ? parseInt(e.target.value, 10) : 0,
                             }))
                           }
-                          className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all cursor-pointer"
+                          className="w-full pl-10 pr-8 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all cursor-pointer"
                         >
                           <option value="0">Seleccionar sede / ciudad...</option>
                           {ciudades.map((c) => (
@@ -1179,8 +1179,8 @@ export function TallerFormPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-semibold text-slate-800">Campus Virtual</label>
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+                      <label className="text-xs font-semibold text-slate-700">Campus Virtual</label>
+                      <div className="h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
                         <Monitor size={16} className="text-[#fd761a]" />
                         <span>Impartición remota mediante enlace de videoconferencia (Zoom / Meet).</span>
                       </div>
@@ -1219,13 +1219,13 @@ export function TallerFormPage() {
               type="button"
               disabled={currentStep === 1}
               onClick={handlePrevStep}
-              className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all ${
+              className={`inline-flex items-center justify-center gap-1.5 px-5 h-11 rounded-xl font-semibold text-xs transition-all ${
                 currentStep === 1
                   ? "bg-slate-100 text-slate-400 opacity-50 cursor-not-allowed"
                   : "bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer active:scale-95"
               }`}
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
               <span>Anterior</span>
             </button>
           </div>
@@ -1247,14 +1247,14 @@ export function TallerFormPage() {
                 type="button"
                 disabled={!currentStepIsValid}
                 onClick={handleNextStep}
-                className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] ${
+                className={`inline-flex items-center justify-center gap-2 px-6 h-11 rounded-xl font-bold text-xs transition-all ${
                   !currentStepIsValid
                     ? "bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed shadow-none"
                     : "bg-[#fd761a] hover:bg-[#e06512] text-white shadow-md active:scale-95 cursor-pointer ring-2 ring-orange-100"
                 }`}
               >
                 <span>{STEP_META[currentStep - 1].nextLabel}</span>
-                <ChevronRight size={18} />
+                <ChevronRight size={16} />
               </button>
             ) : (
               <button
@@ -1263,7 +1263,7 @@ export function TallerFormPage() {
                 onClick={() => {
                   void handleSubmit()
                 }}
-                className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] ${
+                className={`inline-flex items-center justify-center gap-2 px-6 h-11 rounded-xl font-bold text-xs transition-all ${
                   !currentStepIsValid || saving
                     ? "bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed shadow-none"
                     : "bg-[#fd761a] hover:bg-[#e06512] text-white shadow-md active:scale-95 cursor-pointer ring-2 ring-orange-100"
@@ -1271,7 +1271,7 @@ export function TallerFormPage() {
               >
                 {saving && <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin text-white" />}
                 <span>{saving ? "Guardando..." : isEdit ? "Guardar Cambios" : "Finalizar y Crear Taller"}</span>
-                {!saving && <Check size={18} strokeWidth={2.8} />}
+                {!saving && <Check size={16} strokeWidth={2.8} />}
               </button>
             )}
           </div>

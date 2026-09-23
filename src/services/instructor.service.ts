@@ -37,10 +37,13 @@ export interface ModuloResumen {
 
 export interface ClaseItem {
   id: string
+  modulo_id?: string
   fecha_clase: string
   hora_inicio: string
   hora_fin: string
   asistencia_registrada: boolean
+  asistencias_presentes?: number
+  asistencias_total?: number
   observaciones?: string
 }
 

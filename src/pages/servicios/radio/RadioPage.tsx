@@ -13,6 +13,7 @@ import { RadioKPIs } from "./components/RadioKPIs"
 import { RadioCalendar } from "./components/RadioCalendar"
 import { getWeekRange, getWeekDays } from "./components/radio-calendar.utils"
 import { ReservaForm } from "./components/ReservaForm"
+import { ReservaBatchForm } from "./components/ReservaBatchForm"
 import { DetalleReservaModal } from "./components/DetalleReservaModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 
@@ -240,14 +241,22 @@ export function RadioPage() {
       <div className={cn("flex-1 flex flex-col p-6 lg:p-8 min-h-0", !reservaModalOpen && "gap-6")}>
         {reservaModalOpen ? (
           <div className="flex-1 bg-white rounded-[2.5rem] border shadow-2xl shadow-black/5 flex flex-col min-h-0 overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <ReservaForm
-              key={(editingReserva?.id || "new")}
-              isOpen={reservaModalOpen}
-              onClose={() => { setReservaModalOpen(false); setEditingReserva(null) }}
-              tarifas={tarifas}
-              editingReserva={editingReserva}
-              onSaved={handleReservaSaved}
-            />
+            {editingReserva ? (
+              <ReservaForm
+                key={editingReserva.id}
+                isOpen={reservaModalOpen}
+                onClose={() => { setReservaModalOpen(false); setEditingReserva(null) }}
+                tarifas={tarifas}
+                editingReserva={editingReserva}
+                onSaved={handleReservaSaved}
+              />
+            ) : (
+              <ReservaBatchForm
+                tarifas={tarifas}
+                onClose={() => { setReservaModalOpen(false); setEditingReserva(null) }}
+                onSaved={handleReservaSaved}
+              />
+            )}
           </div>
         ) : (
           <>

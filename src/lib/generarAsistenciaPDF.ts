@@ -62,6 +62,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
+import { parseLocalDate } from "@/lib/utils"
+
 function formatDate(date: Date): string {
   return date.toLocaleDateString("es-EC", {
     day: "2-digit",
@@ -71,7 +73,10 @@ function formatDate(date: Date): string {
 }
 
 function formatDateLong(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("es-EC", {
+  if (!dateStr) return "—"
+  const d = parseLocalDate(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  return d.toLocaleDateString("es-EC", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -79,7 +84,10 @@ function formatDateLong(dateStr: string): string {
 }
 
 function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("es-EC", {
+  if (!dateStr) return "—"
+  const d = parseLocalDate(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  return d.toLocaleDateString("es-EC", {
     day: "2-digit",
     month: "short",
   })

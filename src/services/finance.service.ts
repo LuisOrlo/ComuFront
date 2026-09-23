@@ -32,6 +32,18 @@ interface RegistroPagoDto extends PagoInicialDto {
   cuenta_cobrar_id: string
 }
 
+const FINANCE_SERVICE_TYPE_ALIASES: Record<string, string> = {
+  aulas: "aula",
+  equipos: "equipo",
+  podcasts: "podcast",
+  ediciones: "edicion",
+  radios: "radio",
+}
+
+function normalizeFinanceServiceType(tipo: string): string {
+  return FINANCE_SERVICE_TYPE_ALIASES[tipo] || tipo
+}
+
 export const financeService = {
   async getEstadisticas(params: Record<string, string | number | undefined>) {
     const response = await api.get<EstadisticasResponse>("/finanzas/estadisticas", { params })
@@ -129,12 +141,12 @@ export const financeService = {
   },
 
   async getServicioFinanciero(tipo: string, id: string) {
-    const response = await api.get(`/finanzas/servicios/${tipo}/${id}/financiero`)
+    const response = await api.get(`/finanzas/servicios/${normalizeFinanceServiceType(tipo)}/${id}/financiero`)
     return response.data
   },
 
   async pagarServicio(tipo: string, id: string, dto: { monto: number; metodo_pago: string; referencia_pago?: string; comprobante_url?: string; fecha_pago?: string }) {
-    const response = await api.post(`/finanzas/pagar-servicio/${tipo}/${id}`, dto)
+    const response = await api.post(`/finanzas/pagar-servicio/${normalizeFinanceServiceType(tipo)}/${id}`, dto)
     return response.data
   },
 

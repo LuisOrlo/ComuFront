@@ -23,6 +23,7 @@ import { personasService } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
+import { ReservaBatchForm } from "./components/ReservaBatchForm"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -34,7 +35,7 @@ interface ClienteOption {
   personaTipo?: string
 }
 
-export function NuevaReservaPage() {
+export function NuevaReservaIndividualPage() {
   const navigate = useNavigate()
   const { aulaId, id } = useParams<{ aulaId?: string; id?: string }>()
   const isEdit = !!id
@@ -734,5 +735,19 @@ export function NuevaReservaPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export function NuevaReservaPage() {
+  const { id, aulaId } = useParams<{ id?: string; aulaId?: string }>()
+  const location = useLocation()
+  const state = location.state as { fecha_reserva?: string; hora_inicio?: string; hora_fin?: string } | null
+  return id ? <NuevaReservaIndividualPage /> : (
+    <ReservaBatchForm
+      initialAulaId={aulaId}
+      initialDate={state?.fecha_reserva}
+      initialStart={state?.hora_inicio}
+      initialEnd={state?.hora_fin}
+    />
   )
 }

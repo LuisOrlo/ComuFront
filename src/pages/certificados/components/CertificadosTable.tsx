@@ -72,7 +72,7 @@ export function CertificadosTable({
     if (!term) return rows
     return rows.filter(r =>
       [
-        `${r.nombres} ${r.apellidos}`, r.nombres, r.apellidos, r.cedula,
+        [r.nombres, r.apellidos].filter(Boolean).join(" "), r.nombres, r.apellidos, r.cedula,
       ].filter(Boolean).join(" ").toLowerCase().includes(term),
     )
   }, [rows, globalFilter])
@@ -80,10 +80,10 @@ export function CertificadosTable({
   const columns = useMemo<ColumnDef<EstudiantePanel>[]>(() => [
     {
       id: "estudiante",
-      accessorFn: (r) => `${r.nombres} ${r.apellidos}`,
+      accessorFn: (r) => [r.nombres, r.apellidos].filter(Boolean).join(" "),
       header: "Estudiante",
       cell: ({ row }) => {
-        const nombreCompleto = `${row.original.nombres} ${row.original.apellidos}`
+        const nombreCompleto = [row.original.nombres, row.original.apellidos].filter(Boolean).join(" ").trim() || "Estudiante sin nombre"
         return (
           <div className="flex items-center gap-3 min-w-0">
             <div className="size-10 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white"
@@ -92,7 +92,7 @@ export function CertificadosTable({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: CHARCOAL }}>{nombreCompleto}</p>
-              <p className="text-xs opacity-40">{row.original.cedula}</p>
+              <p className="text-xs opacity-40">{row.original.cedula || "—"}</p>
             </div>
           </div>
         )

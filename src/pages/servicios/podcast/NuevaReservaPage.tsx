@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -21,6 +21,7 @@ import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
+import { ReservaBatchForm } from "./components/ReservaBatchForm"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -49,7 +50,7 @@ function SectionHeader({ icon: Icon, title }: { icon: typeof ArrowLeft01Icon; ti
   )
 }
 
-export function NuevaReservaPage() {
+export function NuevaReservaIndividualPage() {
   const navigate = useNavigate()
 
   const [paqueteId, setPaqueteId] = useState("")
@@ -818,4 +819,9 @@ export function NuevaReservaPage() {
       </div>
     </div>
   )
+}
+
+export function NuevaReservaPage() {
+  const { id } = useParams<{ id?: string }>()
+  return id ? <NuevaReservaIndividualPage /> : <ReservaBatchForm />
 }

@@ -604,19 +604,19 @@ export function CursoFormPage() {
               type="button"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#fd761a] transition-colors w-fit"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={14} />
               <span>Volver a cursos</span>
             </button>
-            <div className="flex items-center gap-3 mt-1">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+            <div className="flex items-center gap-2.5 mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                 {isEdit ? "Editar Curso" : "Nuevo Curso"}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#fd761a] text-xs font-bold uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[#fd761a] text-[11px] font-bold uppercase tracking-wider">
                 {isEdit ? "Edición" : "Configuración"}
               </span>
             </div>
-            <p className="text-sm text-slate-500">
-              Paso <span className="font-bold text-slate-900">{currentStep}</span> de 5 ·{" "}
+            <p className="text-xs text-slate-500">
+              Paso <span className="font-bold text-slate-800">{currentStep}</span> de 5 ·{" "}
               <span className="text-[#fd761a] font-semibold">{STEP_META[currentStep - 1].title}</span>
             </p>
           </div>
@@ -625,7 +625,7 @@ export function CursoFormPage() {
             <button
               onClick={() => navigate("/cursos")}
               type="button"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold text-xs transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 h-9 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-semibold text-xs transition-colors"
             >
               Cancelar
             </button>
@@ -700,16 +700,16 @@ export function CursoFormPage() {
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Selecciona el catálogo</h2>
-                    <p className="text-sm text-slate-500">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900">Selecciona el catálogo</h2>
+                    <p className="text-xs text-slate-500">
                       El curso se creará dentro del catálogo seleccionado y adoptará su estructura básica.
                     </p>
                   </div>
                   {/* Search input */}
                   <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-2.5 text-slate-400 size-4 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                     <input
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                      className="w-full pl-9 pr-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                       placeholder="Buscar catálogo..."
                       type="text"
                       value={catalogoSearch}
@@ -797,7 +797,7 @@ export function CursoFormPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-slate-900">Docente responsable</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-slate-900">Docente responsable</h3>
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold uppercase tracking-wider">
                         Opcional
                       </span>
@@ -806,9 +806,9 @@ export function CursoFormPage() {
                   </div>
                   {/* Search input */}
                   <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-2.5 text-slate-400 size-4 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                     <input
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                      className="w-full pl-9 pr-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                       placeholder="Buscar docente..."
                       type="text"
                       value={docenteSearch}
@@ -903,8 +903,8 @@ export function CursoFormPage() {
           {currentStep === 2 && (
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900">Información general del curso</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Información general del curso</h2>
+                <p className="text-xs text-slate-500">
                   Define el identificador institucional, periodicidad del ciclo y rango de fechas global.
                 </p>
               </div>
@@ -912,14 +912,13 @@ export function CursoFormPage() {
               <div className="flex flex-col gap-5">
                 {/* Course Instance Name */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                     <span>
                       Nombre identificativo de la instancia de curso <span className="text-[#fd761a]">*</span>
                     </span>
-                    
                   </label>
                   <input
-                    className={`w-full px-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                    className={`w-full px-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                       getError("nombre_instancia") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                     }`}
                     type="text"
@@ -935,14 +934,13 @@ export function CursoFormPage() {
                 {/* Date Matrix Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Fecha de inicio <span className="text-[#fd761a]">*</span>
                     </label>
-                    <p className="text-xs text-slate-500">Se permiten fechas pasadas para registrar cursos ya impartidos.</p>
                     <div className="relative">
-                      <Calendar className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                           getError("fecha_inicio") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                         }`}
                         type="date"
@@ -950,19 +948,21 @@ export function CursoFormPage() {
                         onChange={(e) => updateField("fecha_inicio", e.target.value)}
                       />
                     </div>
-                    {getError("fecha_inicio") && (
+                    {getError("fecha_inicio") ? (
                       <p className="text-xs text-red-500 mt-0.5">{getError("fecha_inicio")}</p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-0.5">Se permiten fechas pasadas para cursos ya impartidos.</p>
                     )}
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Fecha de fin <span className="text-[#fd761a]">*</span>
                     </label>
                     <div className="relative">
-                      <Calendar className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                           getError("fecha_fin") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                         }`}
                         type="date"
@@ -977,13 +977,13 @@ export function CursoFormPage() {
                 {/* Time Matrix Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Hora de inicio <span className="text-[#fd761a]">*</span>
                     </label>
                     <div className="relative">
-                      <Clock className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                           getError("hora_inicio") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                         }`}
                         type="time"
@@ -997,13 +997,13 @@ export function CursoFormPage() {
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Hora de finalización <span className="text-[#fd761a]">*</span>
                     </label>
                     <div className="relative">
-                      <Clock className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                           getError("hora_fin") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                         }`}
                         type="time"
@@ -1035,8 +1035,8 @@ export function CursoFormPage() {
           {currentStep === 3 && (
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900">Días de clase</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Días de clase</h2>
+                <p className="text-xs text-slate-500">
                   Selecciona los días de la semana en que se impartirá el curso de forma presencial u online.
                 </p>
               </div>
@@ -1052,21 +1052,21 @@ export function CursoFormPage() {
                     <button
                       type="button"
                       onClick={selectWeekdays}
-                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all"
+                      className="h-8 px-3 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all flex items-center justify-center"
                     >
                       Lun – Vie (Laborables)
                     </button>
                     <button
                       type="button"
                       onClick={selectWeekend}
-                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all"
+                      className="h-8 px-3 rounded-lg bg-white hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200 text-slate-700 text-xs font-semibold border border-slate-200 shadow-xs transition-all flex items-center justify-center"
                     >
                       Sáb – Dom (Fines de semana)
                     </button>
                     <button
                       type="button"
                       onClick={resetDays}
-                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200 transition-all"
+                      className="h-8 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-500 text-xs font-semibold border border-slate-200 transition-all flex items-center justify-center"
                     >
                       Limpiar selección
                     </button>
@@ -1083,21 +1083,21 @@ export function CursoFormPage() {
                         key={dia.value}
                         type="button"
                         onClick={() => toggleDia(dia.value)}
-                        className={`p-4 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-150 ${
+                        className={`p-3.5 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all duration-150 ${
                           isActive
                             ? "bg-orange-50/70 border-2 border-[#fd761a] text-slate-900 shadow-sm ring-2 ring-orange-100/60"
                             : "bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-600 hover:text-slate-900"
                         }`}
                       >
                         <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
                             isActive ? "bg-[#fd761a] text-white" : "border border-slate-300 text-transparent"
                           }`}
                         >
-                          <Check size={14} strokeWidth={3} />
+                          <Check size={12} strokeWidth={3} />
                         </span>
-                        <span className="text-lg font-bold">{dia.short}</span>
-                        <span className={`text-xs font-medium ${isActive ? "text-[#fd761a] font-bold" : "text-slate-400"}`}>
+                        <span className="text-base font-bold">{dia.short}</span>
+                        <span className={`text-[11px] font-medium ${isActive ? "text-[#fd761a] font-bold" : "text-slate-400"}`}>
                           {dia.full}
                         </span>
                       </button>
@@ -1145,8 +1145,8 @@ export function CursoFormPage() {
           {currentStep === 4 && (
             <section className="flex flex-col gap-6">
               <div className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold text-slate-900">Configuración del curso</h2>
-                <p className="text-sm text-slate-500">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">Configuración del curso</h2>
+                <p className="text-xs text-slate-500">
                   Parámetros operativos de matrícula, aforo máximo, esquema arancelario y sede.
                 </p>
               </div>
@@ -1156,7 +1156,7 @@ export function CursoFormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Capacity */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                       <span>
                         Capacidad máxima de estudiantes <span className="text-[#fd761a]">*</span>
                       </span>
@@ -1165,9 +1165,9 @@ export function CursoFormPage() {
                       </span>
                     </label>
                     <div className="relative">
-                      <Users className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-base font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                           getError("capacidad_maxima") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                         }`}
                         type="number"
@@ -1182,7 +1182,7 @@ export function CursoFormPage() {
                         }}
                       />
                     </div>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-[11px] text-slate-500">
                       {form.modalidad === "presencial"
                         ? "Capacidad máxima para cursos presenciales: 18 estudiantes."
                         : "Aforo operativo para cursos en modalidad online o virtual."}
@@ -1194,16 +1194,16 @@ export function CursoFormPage() {
 
                   {/* Pricing */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                       <span>
                         Precio base por módulo ($ USD) <span className="text-[#fd761a]">*</span>
                       </span>
                       <span className="text-xs font-semibold text-[#fd761a]">Facturación modular</span>
                     </label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                      <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                       <input
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-base font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                           getError("precio_base") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                         }`}
                         type="number"
@@ -1216,7 +1216,7 @@ export function CursoFormPage() {
                     </div>
 
                     {/* Live Financial Calculator */}
-                    <div className="p-3 rounded-xl bg-orange-50/70 border border-orange-200 flex items-center justify-between text-xs">
+                    <div className="p-2.5 rounded-xl bg-orange-50/70 border border-orange-200 flex items-center justify-between text-xs">
                       <span className="text-slate-700">
                         Cálculo de curso: <strong>{form.modulos.length} módulos</strong> × $
                         {Number(form.precio_base) > 0 ? Number(form.precio_base).toFixed(2) : "0.00"}
@@ -1227,7 +1227,7 @@ export function CursoFormPage() {
                     {getError("precio_base") && (
                       <p className="text-xs text-red-500 mt-0.5">{getError("precio_base")}</p>
                     )}
-                    <p className="text-xs text-slate-500">Si no existe información de cobros para el curso, registra $0.00. Al inscribir estudiantes podrás omitir la creación de movimientos financieros.</p>
+                    <p className="text-[11px] text-slate-500">Si no existe información de cobros para el curso, registra $0.00. Al inscribir estudiantes podrás omitir la creación de movimientos financieros.</p>
                   </div>
                 </div>
 
@@ -1235,35 +1235,35 @@ export function CursoFormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   {/* Modality */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-semibold text-slate-700">
                       Modalidad de impartición <span className="text-[#fd761a]">*</span>
                     </label>
-                    <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                    <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl border border-slate-200 h-11 items-center">
                       <button
                         type="button"
                         onClick={() => {
                           updateField("modalidad", "presencial")
                           if (form.capacidad_maxima > 18) updateField("capacidad_maxima", 18)
                         }}
-                        className={`py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        className={`h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                           form.modalidad === "presencial"
                             ? "bg-[#fd761a] text-white shadow-sm"
                             : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <Building2 size={18} />
+                        <Building2 size={16} />
                         <span>Presencial</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => updateField("modalidad", "virtual")}
-                        className={`py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        className={`h-9 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                           form.modalidad === "virtual"
                             ? "bg-[#fd761a] text-white shadow-sm"
                             : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        <Monitor size={18} />
+                        <Monitor size={16} />
                         <span>Online / Virtual</span>
                       </button>
                     </div>
@@ -1273,7 +1273,7 @@ export function CursoFormPage() {
                   {form.modalidad === "presencial" ? (
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-semibold text-slate-800">
+                        <label className="text-xs font-semibold text-slate-700">
                           Sede / Ciudad <span className="text-[#fd761a]">*</span>
                         </label>
                         <button
@@ -1289,11 +1289,11 @@ export function CursoFormPage() {
                         </button>
                       </div>
                       <div className="relative">
-                        <MapPin className="absolute left-3.5 top-3 text-slate-400 size-4 pointer-events-none" />
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
                         <select
                           value={form.ciudad_id}
                           onChange={(e) => updateField("ciudad_id", e.target.value ? parseInt(e.target.value, 10) : 0)}
-                          className={`w-full pl-10 pr-8 py-2.5 rounded-xl bg-slate-50 border text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all cursor-pointer ${
+                          className={`w-full pl-10 pr-8 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all cursor-pointer ${
                             getError("ciudad_id") ? "border-red-400 bg-red-50/20" : "border-slate-200"
                           }`}
                         >
@@ -1311,8 +1311,8 @@ export function CursoFormPage() {
                     </div>
                   ) : (
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-semibold text-slate-800">Campus Virtual</label>
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+                      <label className="text-xs font-semibold text-slate-700">Campus Virtual</label>
+                      <div className="h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
                         <Monitor size={16} className="text-[#fd761a]" />
                         <span>Sin sede física</span>
                       </div>
@@ -1322,12 +1322,12 @@ export function CursoFormPage() {
 
                 {/* Observaciones textarea */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-slate-800 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                     <span>Observaciones operativas &amp; requisitos del curso</span>
                     <span className="text-xs font-normal text-slate-400">Opcional</span>
                   </label>
                   <textarea
-                    className="w-full p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none resize-none transition-all"
+                    className="w-full p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none resize-none transition-all"
                     rows={3}
                     placeholder="Requerimientos técnicos para el aula (proyector, material impreso, enlaces de Zoom)..."
                     value={form.observaciones}
@@ -1343,15 +1343,15 @@ export function CursoFormPage() {
             <section className="flex flex-col gap-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                  <h2 className="text-xl font-bold text-slate-900">Plan de módulos del curso</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">Plan de módulos del curso</h2>
+                  <p className="text-xs text-slate-500">
                     Las fechas y asignaciones se configuran de acuerdo a la duración del ciclo.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={agregarModulo}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#fd761a] hover:bg-[#e06512] text-white text-xs sm:text-sm font-bold shadow-sm transition-all self-start sm:self-center"
+                  className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-bold shadow-sm transition-all self-start sm:self-center"
                 >
                   <Plus size={16} />
                   <span>Agregar módulo</span>
@@ -1445,9 +1445,9 @@ export function CursoFormPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
                         <div className="flex flex-col gap-1 md:col-span-2">
-                          <label className="text-xs font-semibold text-slate-600">Nombre de la unidad modular</label>
+                          <label className="text-xs font-semibold text-slate-700">Nombre de la unidad modular</label>
                           <input
-                            className={`w-full px-3.5 py-2 rounded-xl bg-white border text-slate-900 text-sm focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none ${
+                            className={`w-full px-3 h-10 rounded-xl bg-white border text-slate-900 text-xs focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                               getError(`modulo_${i}_nombre`) ? "border-red-400" : "border-slate-200"
                             }`}
                             type="text"
@@ -1466,9 +1466,9 @@ export function CursoFormPage() {
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold text-slate-600">Inicio</label>
+                          <label className="text-xs font-semibold text-slate-700">Inicio</label>
                           <input
-                            className={`w-full px-3 py-2 rounded-xl bg-white border text-slate-900 text-sm focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none ${
+                            className={`w-full px-3 h-10 rounded-xl bg-white border text-slate-900 text-xs focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                               getError(`modulo_${i}_inicio`) ? "border-red-400" : "border-slate-200"
                             }`}
                             type="date"
@@ -1477,7 +1477,7 @@ export function CursoFormPage() {
                               setForm((prev) => ({
                                 ...prev,
                                 modulos: prev.modulos.map((m, j) =>
-                                  j === i ? { ...m, fecha_inicio: e.target.value } : m
+                                    j === i ? { ...m, fecha_inicio: e.target.value } : m
                                 ),
                               }))
                             }
@@ -1488,9 +1488,9 @@ export function CursoFormPage() {
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-semibold text-slate-600">Fin</label>
+                          <label className="text-xs font-semibold text-slate-700">Fin</label>
                           <input
-                            className={`w-full px-3 py-2 rounded-xl bg-white border text-slate-900 text-sm focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none ${
+                            className={`w-full px-3 h-10 rounded-xl bg-white border text-slate-900 text-xs focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
                               getError(`modulo_${i}_fin`) ? "border-red-400" : "border-slate-200"
                             }`}
                             type="date"
@@ -1510,7 +1510,7 @@ export function CursoFormPage() {
                             type="number"
                             min={0}
                             step="0.01"
-                            className="w-20 px-2 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#fd761a] outline-none"
+                            className="w-20 px-2 h-7 rounded-lg border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#fd761a] outline-none"
                             placeholder={String(form.precio_base || "0.00")}
                             value={mod.precio_base ?? form.precio_base}
                             onChange={(e) =>
@@ -1580,13 +1580,13 @@ export function CursoFormPage() {
               type="button"
               disabled={currentStep === 1}
               onClick={handlePrevStep}
-              className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all ${
+              className={`inline-flex items-center justify-center gap-1.5 px-5 h-11 rounded-xl font-semibold text-xs transition-all ${
                 currentStep === 1
                   ? "bg-slate-100 text-slate-400 opacity-50 cursor-not-allowed"
                   : "bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer active:scale-95"
               }`}
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} />
               <span>Anterior</span>
             </button>
           </div>
@@ -1608,14 +1608,14 @@ export function CursoFormPage() {
                 type="button"
                 disabled={!currentStepIsValid}
                 onClick={handleNextStep}
-                className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] ${
+                className={`inline-flex items-center justify-center gap-2 px-6 h-11 rounded-xl font-bold text-xs transition-all ${
                   !currentStepIsValid
                     ? "bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed shadow-none"
                     : "bg-[#fd761a] hover:bg-[#e06512] text-white shadow-md active:scale-95 cursor-pointer ring-2 ring-orange-100"
                 }`}
               >
                 <span>{STEP_META[currentStep - 1].nextLabel}</span>
-                <ChevronRight size={18} />
+                <ChevronRight size={16} />
               </button>
             ) : (
               <button
@@ -1624,7 +1624,7 @@ export function CursoFormPage() {
                 onClick={() => {
                   void handleSubmit()
                 }}
-                className={`inline-flex items-center justify-center gap-2 px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] ${
+                className={`inline-flex items-center justify-center gap-2 px-6 h-11 rounded-xl font-bold text-xs transition-all ${
                   !currentStepIsValid || loading
                     ? "bg-slate-200 text-slate-400 opacity-60 cursor-not-allowed shadow-none"
                     : "bg-[#fd761a] hover:bg-[#e06512] text-white shadow-md active:scale-95 cursor-pointer ring-2 ring-orange-100"
@@ -1632,7 +1632,7 @@ export function CursoFormPage() {
               >
                 {loading && <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin text-white" />}
                 <span>{loading ? "Guardando..." : isEdit ? "Guardar Cambios" : "Finalizar y Crear Curso"}</span>
-                {!loading && <Check size={18} strokeWidth={2.8} />}
+                {!loading && <Check size={16} strokeWidth={2.8} />}
               </button>
             )}
           </div>

@@ -3,31 +3,71 @@ import { useNavigate, useSearchParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  ArrowRight02Icon,
-  Calendar03Icon, UserIcon, Clock01Icon, Money01Icon,
-  CheckmarkCircle04Icon, Cancel01Icon, RadioIcon,
-  ArrowDown01Icon, Search01Icon, Add01Icon,
+  Calendar03Icon,
+  Clock01Icon,
+  CheckmarkCircle04Icon,
+  Cancel01Icon,
+  Search01Icon,
+  Add01Icon,
+  ArrowDown01Icon,
+  Layers01Icon,
+  RadioIcon,
+  ArrowReloadHorizontalIcon,
+  Edit01Icon,
+  Money01Icon,
+  UserIcon,
 } from "@hugeicons/core-free-icons"
-import { cn } from "@/lib/utils"
-import { COLORS } from "@/lib/constants"
+import { cn, formatCalendarDate } from "@/lib/utils"
 import { radioService, type ReservaRadio, type TarifaRadio } from "@/services/radio.service"
 import { ReservaForm } from "./components/ReservaForm"
+import { ReservaBatchForm } from "./components/ReservaBatchForm"
 import { toast } from "sonner"
 
-const ESTADO_LABELS: Record<string, string> = {
-  reservado: "Pendiente", confirmado: "Confirmado", en_progreso: "En progreso", completado: "Finalizado", cancelado: "Cancelado",
+const ESTADO_CONFIG: Record<
+  string,
+  { label: string; bg: string; dot: string; text: string }
+> = {
+  reservado: {
+    label: "Pendiente",
+    bg: "bg-blue-50 border-blue-200/70",
+    dot: "bg-blue-600",
+    text: "text-blue-800",
+  },
+  confirmado: {
+    label: "Confirmado",
+    bg: "bg-amber-50 border-amber-200/70",
+    dot: "bg-amber-500",
+    text: "text-amber-800",
+  },
+  en_progreso: {
+    label: "En progreso",
+    bg: "bg-indigo-50 border-indigo-200/70",
+    dot: "bg-indigo-600",
+    text: "text-indigo-800",
+  },
+  completado: {
+    label: "Finalizado",
+    bg: "bg-emerald-50 border-emerald-200/70",
+    dot: "bg-emerald-600",
+    text: "text-emerald-800",
+  },
+  cancelado: {
+    label: "Cancelado",
+    bg: "bg-red-50 border-red-200/70",
+    dot: "bg-red-500",
+    text: "text-red-800",
+  },
 }
 
-const ESTADO_COLORS: Record<string, string> = {
-  reservado: "bg-orange-100 text-orange-700 border-orange-200",
-  confirmado: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  en_progreso: "bg-blue-100 text-blue-700 border-blue-200",
-  completado: "bg-gray-100 text-gray-500 border-gray-300",
-  cancelado: "bg-red-100 text-red-600 border-red-200",
-}
-
-const STRIP_COLORS: Record<string, string> = {
-  reservado: "bg-orange-500", confirmado: "bg-emerald-500", en_progreso: "bg-blue-500", completado: "bg-gray-500", cancelado: "bg-red-500",
+function getDurationText(horaInicio?: string, horaFin?: string): string {
+  if (!horaInicio || !horaFin) return ""
+  const [h1, m1] = horaInicio.slice(0, 5).split(":").map(Number)
+  const [h2, m2] = horaFin.slice(0, 5).split(":").map(Number)
+  if (isNaN(h1) || isNaN(h2)) return ""
+  const mins = h2 * 60 + (m2 || 0) - (h1 * 60 + (m1 || 0))
+  if (mins <= 0) return ""
+  const hrs = mins / 60
+  return Number.isInteger(hrs) ? `${hrs}h` : `${hrs.toFixed(1)}h`
 }
 
 export function RadioHistorialPage() {
@@ -35,323 +75,626 @@ export function RadioHistorialPage() {
   const [searchParams] = useSearchParams()
   const [reservas, setReservas] = useState<ReservaRadio[]>([])
   const [tarifas, setTarifas] = useState<TarifaRadio[]>([])
-  const [reservaModalOpen, setReservaModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [reservaModalOpen, setReservaModalOpen] = useState(false)
+  const [editingReserva, setEditingReserva] = useState<ReservaRadio | null>(null)
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 })
   const [filtroEstado, setFiltroEstado] = useState(searchParams.get("estado") || "todos")
-  const [fechaDesde, setFechaDesde] = useState(searchParams.get("fecha_desde") || "")
-  const [fechaHasta, setFechaHasta] = useState(searchParams.get("fecha_hasta") || "")
   const [search, setSearch] = useState(searchParams.get("search") || "")
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({})
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const loadHistorial = useCallback(async () => {
     setLoading(true)
     try {
-      const filters: Record<string, string | number> = { page, per_page: 15 }
-      if (filtroEstado && filtroEstado !== "todos") filters.estado = filtroEstado
-      if (fechaDesde) filters.fecha_desde = fechaDesde
-      if (fechaHasta) filters.fecha_hasta = fechaHasta
-      const res = await radioService.getReservas(filters)
+      const filters: Record<string, string | number> = { page, per_page: 50 }
+      const [res, tarifasData] = await Promise.all([
+        radioService.getReservas(filters),
+        radioService.getTarifas().catch(() => []),
+      ])
       setReservas(res.data)
       setMeta(res.meta)
-
-      const newExpanded = new Set<string>()
-      res.data.forEach((r: ReservaRadio) => {
-        if (r.estado !== "completado" && r.estado !== "cancelado") newExpanded.add(r.id)
-      })
-      setExpanded(newExpanded)
-    } catch { toast.error("Error al cargar historial") }
-    finally { setLoading(false) }
-  }, [page, filtroEstado, fechaDesde, fechaHasta])
+      setTarifas(tarifasData)
+    } catch {
+      toast.error("Error al cargar historial")
+    } finally {
+      setLoading(false)
+    }
+  }, [page])
 
   useEffect(() => {
     loadHistorial()
-    radioService.getTarifas().then(setTarifas).catch(() => {})
   }, [loadHistorial])
-
-  const toggleExpand = (id: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
 
   const filtered = useMemo(() => {
     let list = reservas
+
+    if (filtroEstado === "activos") {
+      list = list.filter(
+        (r) => r.estado === "reservado" || r.estado === "confirmado" || r.estado === "en_progreso",
+      )
+    } else if (filtroEstado !== "todos") {
+      list = list.filter((r) => r.estado === filtroEstado)
+    }
+
     if (search) {
       const q = search.toLowerCase()
-      list = list.filter(r => {
+      list = list.filter((r) => {
         const cliente = r.cliente_externo
           ? `${r.cliente_externo.nombres || ""}`.toLowerCase()
-          : r.persona ? `${r.persona.nombres} ${r.persona.apellidos}`.toLowerCase() : ""
+          : r.persona
+            ? `${r.persona.nombres} ${r.persona.apellidos}`.toLowerCase()
+            : ""
         const tarifa = (r.tarifa?.nombre || "").toLowerCase()
-        return cliente.includes(q) || tarifa.includes(q)
+        const operador = r.operador ? `${r.operador.nombres} ${r.operador.apellidos}`.toLowerCase() : ""
+        return cliente.includes(q) || tarifa.includes(q) || operador.includes(q)
       })
     }
-    return list
-  }, [reservas, search])
+
+    return list.sort((a, b) => {
+      const dateDiff = (b.fecha_reserva || "").localeCompare(a.fecha_reserva || "")
+      if (dateDiff !== 0) return dateDiff
+      return (b.hora_inicio || "").localeCompare(a.hora_inicio || "")
+    })
+  }, [reservas, filtroEstado, search])
 
   const getCliente = (r: ReservaRadio) => {
-    if (r.persona) return `${r.persona.nombres} ${r.persona.apellidos}`
-    if (r.cliente_externo) return r.cliente_externo.nombres || "—"
+    if (r.persona) return `${r.persona.nombres} ${r.persona.apellidos}`.trim()
+    if (r.cliente_externo) return (r.cliente_externo.nombres || "—").trim()
     return "—"
   }
 
   const handleCambiarEstado = async (id: string, nuevoEstado: string) => {
-    setSavingMap(prev => ({ ...prev, [id]: true }))
+    setSavingMap((prev) => ({ ...prev, [id]: true }))
     try {
       await radioService.cambiarEstado(id, nuevoEstado)
-      toast.success(`Estado cambiado a ${ESTADO_LABELS[nuevoEstado] || nuevoEstado}`)
-      setReservas(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado as ReservaRadio["estado"] } : r))
-    } catch { toast.error("Error al cambiar estado") }
-    finally { setSavingMap(prev => ({ ...prev, [id]: false })) }
+      toast.success(`Estado actualizado a ${ESTADO_CONFIG[nuevoEstado]?.label || nuevoEstado}`)
+      setReservas((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, estado: nuevoEstado as ReservaRadio["estado"] } : r)),
+      )
+    } catch {
+      toast.error("Error al cambiar estado")
+    } finally {
+      setSavingMap((prev) => ({ ...prev, [id]: false }))
+    }
   }
 
   const buildDetailHref = (r: ReservaRadio) => {
     const p = new URLSearchParams()
     if (filtroEstado !== "todos") p.set("estado", filtroEstado)
-    if (fechaDesde) p.set("fecha_desde", fechaDesde)
-    if (fechaHasta) p.set("fecha_hasta", fechaHasta)
     if (search) p.set("search", search)
     const qs = p.toString()
     return `/servicios/radio/reservas/${r.id}${qs ? `?${qs}` : ""}`
   }
 
-  const stats = {
-    total: meta.total,
-    pendientes: reservas.filter(r => r.estado === "reservado" || r.estado === "confirmado" || r.estado === "en_progreso").length,
-    completados: reservas.filter(r => r.estado === "completado").length,
-    cancelados: reservas.filter(r => r.estado === "cancelado").length,
-  }
+  const stats = useMemo(() => {
+    return {
+      total: meta.total || reservas.length,
+      pendientes: reservas.filter(
+        (r) => r.estado === "reservado" || r.estado === "confirmado" || r.estado === "en_progreso",
+      ).length,
+      completados: reservas.filter((r) => r.estado === "completado").length,
+      cancelados: reservas.filter((r) => r.estado === "cancelado").length,
+    }
+  }, [reservas, meta.total])
 
   const statCards = [
-    { key: "todos", label: "Total", value: stats.total, color: "bg-gray-100 text-gray-500", icon: RadioIcon },
-    { key: "activos", label: "Activos", value: stats.pendientes, color: "bg-amber-100 text-amber-600", icon: Clock01Icon },
-    { key: "completado", label: "Finalizados", value: stats.completados, color: "bg-green-100 text-green-600", icon: CheckmarkCircle04Icon },
-    { key: "cancelado", label: "Cancelados", value: stats.cancelados, color: "bg-red-100 text-red-600", icon: Cancel01Icon },
+    {
+      key: "todos",
+      label: "TOTAL RESERVAS",
+      value: stats.total,
+      subtitle: "Periodo actual",
+      icon: Layers01Icon,
+      iconBg: "bg-slate-100 text-slate-600",
+    },
+    {
+      key: "activos",
+      label: "ACTIVAS / EN CURSO",
+      value: stats.pendientes,
+      subtitle: (
+        <span className="inline-flex items-center gap-1 text-[11px] text-[#9d4300] bg-[#ffdbca]/60 px-2 py-0.5 rounded-full font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a]" />
+          En progreso
+        </span>
+      ),
+      icon: Clock01Icon,
+      iconBg: "bg-[#ffdbca] text-[#9d4300]",
+    },
+    {
+      key: "completado",
+      label: "FINALIZADAS",
+      value: stats.completados,
+      subtitle: "Completadas",
+      icon: CheckmarkCircle04Icon,
+      iconBg: "bg-emerald-50 text-emerald-700",
+    },
+    {
+      key: "cancelado",
+      label: "CANCELADAS",
+      value: stats.cancelados,
+      subtitle: "Canceladas",
+      icon: Cancel01Icon,
+      iconBg: "bg-red-50 text-red-600",
+    },
   ]
+
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, ReservaRadio[]> = {}
+    filtered.forEach((r) => {
+      const dateKey = formatCalendarDate(r.fecha_reserva, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).toUpperCase()
+      if (!groups[dateKey]) groups[dateKey] = []
+      groups[dateKey].push(r)
+    })
+    return Object.entries(groups)
+  }, [filtered])
+
+  useEffect(() => {
+    if (Object.keys(expandedGroups).length === 0 && groupedByDate.length > 0) {
+      const initial: Record<string, boolean> = {}
+      groupedByDate.forEach(([date]) => {
+        initial[date] = true
+      })
+      setExpandedGroups(initial)
+    }
+  }, [groupedByDate, expandedGroups])
+
+  const toggleGroup = (date: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [date]: !prev[date] }))
+  }
+
+  const getGroupTotal = (items: ReservaRadio[]) => {
+    return items.reduce((sum, r) => sum + Number(r.precio_total || 0), 0)
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-white">
+      <div className="flex items-center justify-center h-full min-h-[450px] bg-[#f8f9ff]">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin size-8 border-[3px] border-t-transparent rounded-full" style={{ borderColor: COLORS.ACCENT }} />
-          <p className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>Cargando historial...</p>
+          <div className="animate-spin size-8 border-[3px] border-t-transparent rounded-full border-[#fd761a]" />
+          <p className="text-xs font-semibold text-slate-500">Cargando historial de radio...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (reservaModalOpen) {
+    return (
+      <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
+          <div
+            className="flex-1 bg-white rounded-[2.5rem] border shadow-2xl shadow-black/5 flex flex-col min-h-0 overflow-hidden"
+            style={{ borderColor: "#e2e8f0" }}
+          >
+            {editingReserva ? (
+              <ReservaForm
+                key={editingReserva.id}
+                isOpen
+                onClose={() => {
+                  setReservaModalOpen(false)
+                  setEditingReserva(null)
+                }}
+                tarifas={tarifas}
+                editingReserva={editingReserva}
+                onSaved={() => {
+                  setReservaModalOpen(false)
+                  setEditingReserva(null)
+                  loadHistorial()
+                }}
+              />
+            ) : (
+              <ReservaBatchForm
+                tarifas={tarifas}
+                onClose={() => {
+                  setReservaModalOpen(false)
+                  setEditingReserva(null)
+                }}
+                onSaved={() => {
+                  setReservaModalOpen(false)
+                  setEditingReserva(null)
+                  loadHistorial()
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <header className="shrink-0 border-b bg-white sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="px-6 lg:px-8 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest opacity-35" style={{ color: COLORS.CHARCOAL }}>Servicios</p>
-              <h1 className="text-2xl font-black tracking-tight" style={{ color: COLORS.CHARCOAL }}>Radio</h1>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setReservaModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-              >
-                <HugeiconsIcon icon={Add01Icon} size={14} />
-                Nueva Reserva
-              </button>
-              <button
-                onClick={() => navigate("/servicios/radio/tarifas")}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-gray-50 active:scale-95"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-              >
-                <HugeiconsIcon icon={Money01Icon} size={14} />
-                Tarifas
-              </button>
-              <button
-                onClick={() => navigate("/servicios/radio/agenda")}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
-                style={{ backgroundColor: COLORS.ACCENT }}
-              >
-                <HugeiconsIcon icon={Calendar03Icon} size={14} />
-                Agenda
-              </button>
-            </div>
+    <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
+        {/* Header de Página */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-col">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+              SERVICIOS
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
+              Cabina de Radio
+            </h1>
+          </div>
+
+          {/* Action Cluster */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => navigate("/servicios/radio/tarifas")}
+              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              type="button"
+            >
+              <HugeiconsIcon icon={Money01Icon} size={17} className="text-slate-500" />
+              <span>Tarifas</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditingReserva(null)
+                setReservaModalOpen(true)
+              }}
+              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              type="button"
+            >
+              <HugeiconsIcon icon={Add01Icon} size={17} className="text-slate-500" />
+              <span>Nueva Reserva</span>
+            </button>
+            <button
+              onClick={() => navigate("/servicios/radio/agenda")}
+              className="h-10 px-5 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              type="button"
+            >
+              <HugeiconsIcon icon={Calendar03Icon} size={17} />
+              <span>Agenda</span>
+            </button>
           </div>
         </div>
-      </header>
 
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 py-6 space-y-5">
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {statCards.map(card => {
-              const isActive = filtroEstado === card.key
-              return (
-                <button
-                  key={card.key}
-                  type="button"
-                  onClick={() => { setFiltroEstado(isActive ? "todos" : card.key); setPage(1) }}
-                  className={cn(
-                    "bg-white rounded-2xl border p-4 flex items-center gap-3 transition-all active:scale-[0.98] text-left cursor-pointer hover:border-orange-300 hover:shadow-md",
-                    isActive ? "shadow-sm" : ""
+        {/* Summary Metrics (4-Column Bento Card Array) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {statCards.map((card) => {
+            const isActive = filtroEstado === card.key
+            return (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => setFiltroEstado(isActive ? "todos" : card.key)}
+                className={cn(
+                  "p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between h-[108px] text-left transition-all hover:shadow-md cursor-pointer active:scale-[0.99]",
+                  isActive ? "ring-2 ring-[#fd761a]/30 border-[#fd761a]" : "",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                    {card.label}
+                  </span>
+                  <div
+                    className={cn(
+                      "size-7 rounded-lg flex items-center justify-center shrink-0",
+                      card.iconBg,
+                    )}
+                  >
+                    <HugeiconsIcon icon={card.icon} size={16} />
+                  </div>
+                </div>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                    {card.value}
+                  </span>
+                  {typeof card.subtitle === "string" ? (
+                    <span className="text-xs text-slate-500 font-medium">{card.subtitle}</span>
+                  ) : (
+                    card.subtitle
                   )}
-                  style={{ borderColor: isActive ? COLORS.ACCENT : COLORS.BORDER_SUBTLE }}
-                >
-                  <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0", card.color.split(" ")[0])}>
-                    <HugeiconsIcon icon={card.icon} size={18} className={card.color.split(" ")[1]} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">{card.label}</p>
-                    <p className="text-lg font-black" style={{ color: isActive ? COLORS.ACCENT : COLORS.CHARCOAL }}>
-                      {card.value}
-                    </p>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative max-w-sm">
-              <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
-              <input
-                type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar cliente o tarifa..."
-                className="w-full pl-9 pr-8 py-2.5 rounded-xl border bg-gray-50 text-xs font-medium outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20"
-                style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              />
-              {search && (
-                <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-30 hover:opacity-100">
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
-                </button>
-              )}
+        {/* History Workspace Module */}
+        <div className="flex flex-col gap-4 mt-2">
+          {/* History Section Header & Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-lg font-bold text-slate-900">Historial de Reservas</h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700 text-xs font-semibold">
+                {filtered.length}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest opacity-40">Desde</label>
-              <input type="date" value={fechaDesde} onChange={e => { setFechaDesde(e.target.value); setPage(1) }}
-                className="px-3 py-2 rounded-xl border text-xs font-medium outline-none bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest opacity-40">Hasta</label>
-              <input type="date" value={fechaHasta} onChange={e => { setFechaHasta(e.target.value); setPage(1) }}
-                className="px-3 py-2 rounded-xl border text-xs font-medium outline-none bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-            </div>
-          </div>
 
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
-              <div className="size-20 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <HugeiconsIcon icon={Calendar03Icon} size={36} className="opacity-15" style={{ color: COLORS.CHARCOAL }} />
+            {/* Filter Controls (40px Height) */}
+            <div className="flex items-center gap-2.5">
+              <div className="h-10 bg-white border border-slate-200 rounded-xl px-3.5 flex items-center gap-2 shadow-xs w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#fd761a]/25 focus-within:border-[#fd761a] transition-all">
+                <HugeiconsIcon icon={Search01Icon} size={16} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar cliente, tarifa u operador…"
+                  className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="text-slate-400 hover:text-slate-700 p-0.5"
+                    title="Limpiar búsqueda"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                  </button>
+                )}
               </div>
-              <p className="text-sm font-bold opacity-30">No hay reservas en el historial</p>
+
+              <button
+                onClick={loadHistorial}
+                className="h-10 w-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors shadow-xs shrink-0 active:scale-95 cursor-pointer"
+                title="Actualizar datos"
+                type="button"
+              >
+                <HugeiconsIcon icon={ArrowReloadHorizontalIcon} size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Group by Date Card Assembly */}
+          {filtered.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-14 text-center space-y-3 shadow-xs">
+              <div className="size-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                <HugeiconsIcon icon={RadioIcon} size={28} />
+              </div>
+              <p className="font-bold text-sm text-slate-800">
+                {search ? `Sin resultados para "${search}"` : "No hay reservaciones registradas"}
+              </p>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Prueba ajustando la búsqueda o registra una nueva reserva desde el botón superior.
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filtered.map(r => {
-                const isExpanded = expanded.has(r.id)
-                const isCompleted = r.estado === "completado" || r.estado === "cancelado"
-                return (
-                  <div key={r.id} className="bg-white rounded-2xl border hover:shadow-sm transition-all overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <div className={cn("h-1.5 w-full", STRIP_COLORS[r.estado] || "bg-gray-400")} />
+            <div className="space-y-4">
+              {groupedByDate.map(([date, items]) => {
+                const isOpen = expandedGroups[date] !== false
+                const dayTotal = getGroupTotal(items)
 
+                return (
+                  <div
+                    key={date}
+                    className="rounded-xl overflow-hidden shadow-xs bg-white border border-slate-200/90"
+                  >
+                    {/* Date Group Header Bar */}
                     <div
-                      className={cn("px-5 py-4 flex items-start gap-3", isCompleted ? "cursor-pointer hover:bg-gray-50/50 transition-colors" : "border-b")}
-                      onClick={() => isCompleted && toggleExpand(r.id)}
-                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                      onClick={() => toggleGroup(date)}
+                      className="bg-slate-50/80 px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 transition-colors select-none border-b border-slate-100"
                     >
-                      <div className={cn("size-9 rounded-xl flex items-center justify-center shrink-0",
-                        r.estado === "confirmado" ? "bg-emerald-100" : r.estado === "en_progreso" ? "bg-blue-100" : r.estado === "completado" ? "bg-gray-100" : r.estado === "cancelado" ? "bg-red-100" : "bg-orange-100"
-                      )}>
-                        <HugeiconsIcon icon={Calendar03Icon} size={16} className={cn(
-                          r.estado === "confirmado" ? "text-emerald-600" : r.estado === "en_progreso" ? "text-blue-600" : r.estado === "completado" ? "text-gray-500" : r.estado === "cancelado" ? "text-red-600" : "text-orange-600"
-                        )} />
+                      <div className="flex items-center gap-2.5">
+                        <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="text-slate-400" />
+                        </motion.div>
+                        <div className="size-6 rounded-md bg-slate-200/70 flex items-center justify-center text-slate-600">
+                          <HugeiconsIcon icon={Calendar03Icon} size={14} />
+                        </div>
+                        <span className="text-xs uppercase tracking-wider text-slate-900 font-bold">
+                          {date}
+                        </span>
+                        <span className="inline-block size-1 rounded-full bg-slate-300" />
+                        <span className="text-xs text-slate-500">
+                          {items.length} {items.length === 1 ? "reserva" : "reservas"}
+                        </span>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold truncate" style={{ color: COLORS.CHARCOAL }}>
-                          {new Date(r.fecha_reserva + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" })}
-                        </p>
-                        <p className="text-[10px] opacity-40 mt-0.5 flex items-center gap-2 flex-wrap">
-                          <span>{r.hora_inicio.substring(0, 5)} – {r.hora_fin.substring(0, 5)}</span>
-                          <span className="opacity-30">·</span>
-                          <span className="font-medium opacity-60">{getCliente(r)}</span>
-                          <span className="opacity-30">·</span>
-                          <span className="font-medium opacity-60">{r.tarifa?.nombre || "Sin tarifa"}</span>
-                          <span className="opacity-30">·</span>
-                          <span className="font-bold" style={{ color: COLORS.CHARCOAL }}>${r.precio_total.toFixed(2)}</span>
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <select
-                          value={r.estado}
-                          onChange={e => { e.stopPropagation(); handleCambiarEstado(r.id, e.target.value) }}
-                          disabled={savingMap[r.id]}
-                          className={cn("px-2 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer transition-opacity", savingMap[r.id] ? "opacity-50" : "", ESTADO_COLORS[r.estado] || "bg-gray-100")}
-                        >
-                          {Object.entries(ESTADO_LABELS).map(([val, label]) => (
-                            <option key={val} value={val}>{label}</option>
-                          ))}
-                        </select>
-                        {isCompleted && (
-                          <HugeiconsIcon
-                            icon={ArrowDown01Icon}
-                            size={14}
-                            className="opacity-30 shrink-0 transition-transform"
-                            style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
-                          />
-                        )}
+                      <div className="flex items-center gap-2">
+                        <div className="bg-white px-3 py-1 rounded-md shadow-2xs border border-slate-200/70 flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-500 font-medium">Total día:</span>
+                          <span className="text-xs text-slate-900 font-bold">
+                            ${dayTotal.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
+                    {/* Reservation Rows Container */}
                     <AnimatePresence initial={false}>
-                      {isExpanded && (
+                      {isOpen && (
                         <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
+                          initial={{ height: 0 }}
+                          animate={{ height: "auto" }}
+                          exit={{ height: 0 }}
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="px-5 pb-5 space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
-                                <div className="size-8 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={UserIcon} size={14} className="text-indigo-500" /></div>
-                                <div className="min-w-0"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Cliente</p><p className="text-xs font-bold truncate" style={{ color: COLORS.CHARCOAL }}>{getCliente(r)}</p></div>
-                              </div>
-                              <div className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50">
-                                <div className="size-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0"><HugeiconsIcon icon={Money01Icon} size={14} className="text-emerald-500" /></div>
-                                <div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Precio total</p><p className="text-sm font-black" style={{ color: COLORS.CHARCOAL }}>${r.precio_total.toFixed(2)}</p></div>
-                              </div>
-                            </div>
+                          <div className="flex flex-col divide-y divide-slate-100">
+                            {items.map((r) => {
+                              const estado = ESTADO_CONFIG[r.estado] || ESTADO_CONFIG.reservado
+                              const cliente = getCliente(r)
+                              const duration = getDurationText(r.hora_inicio, r.hora_fin)
 
-                            <div className="flex items-center gap-2">
-                              {(() => {
-                                const esPagado = r.cuenta_por_cobrar?.estado === 'pagado' || Number(r.cuenta_por_cobrar?.saldo_pendiente ?? (r.precio_total - (r.cuenta_por_cobrar?.monto_abonado ?? 0))) <= 0
-                                return (
-                                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, { state: { tipo: "radio", servicioId: r.id, cuentaId: r.cuenta_por_cobrar?.id, nombre: getCliente(r), montoTotal: Number(r.precio_total) || 0, montoSaldo: r.cuenta_por_cobrar ? Number(r.cuenta_por_cobrar.saldo_pendiente) : Number(r.precio_total) || 0, nombreServicio: `Reserva de Radio` } })}
-                                    className={cn(
-                                      "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 whitespace-nowrap shrink-0",
-                                      esPagado ? "text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100" : "text-white hover:opacity-90"
+                              const cuenta = r.cuenta_por_cobrar
+                              const saldo = cuenta
+                                ? Number(cuenta.saldo_pendiente)
+                                : Number(r.precio_total) || 0
+                              const isPagado =
+                                cuenta?.estado === "pagado" ||
+                                saldo <= 0 ||
+                                (cuenta && Number(cuenta.monto_abonado) >= Number(r.precio_total))
+                              const isAbonado =
+                                !isPagado && cuenta && Number(cuenta.monto_abonado) > 0
+
+                              return (
+                                <div
+                                  key={r.id}
+                                  className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors duration-150 group"
+                                >
+                                  {/* Left Column */}
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="size-11 rounded-xl bg-orange-50 text-[#fd761a] border border-orange-100 flex items-center justify-center shrink-0 shadow-xs group-hover:bg-[#fd761a] group-hover:text-white transition-colors">
+                                      <HugeiconsIcon icon={RadioIcon} size={20} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => navigate(buildDetailHref(r))}
+                                          className="text-[15px] leading-snug font-semibold text-slate-900 group-hover:text-[#fd761a] truncate transition-colors text-left cursor-pointer"
+                                        >
+                                          {cliente}
+                                        </button>
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
+                                        <span className="inline-flex items-center gap-1">
+                                          <HugeiconsIcon
+                                            icon={Money01Icon}
+                                            size={14}
+                                            className="text-[#fd761a]"
+                                          />
+                                          <strong className="font-medium text-slate-800">
+                                            {r.tarifa?.nombre || "Sin tarifa"}
+                                          </strong>
+                                        </span>
+                                        <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                        <span className="inline-flex items-center gap-1">
+                                          <HugeiconsIcon
+                                            icon={Clock01Icon}
+                                            size={14}
+                                            className="text-slate-400"
+                                          />
+                                          {r.hora_inicio?.substring(0, 5)} – {r.hora_fin?.substring(0, 5)}
+                                          {duration ? ` (${duration})` : ""}
+                                        </span>
+                                        {(r.operador || r.incluye_operador) && (
+                                          <>
+                                            <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                            <span className="inline-flex items-center gap-1">
+                                              <HugeiconsIcon icon={UserIcon} size={14} className="text-slate-400" />
+                                              {r.operador ? `${r.operador.nombres} ${r.operador.apellidos}` : "Con operador"}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Middle Column */}
+                                  <div className="flex items-center gap-6 self-start lg:self-center shrink-0">
+                                    <div className="flex flex-col items-start lg:items-end gap-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <select
+                                          value={r.estado}
+                                          onChange={(e) => {
+                                            e.stopPropagation()
+                                            handleCambiarEstado(r.id, e.target.value)
+                                          }}
+                                          disabled={savingMap[r.id]}
+                                          className={cn(
+                                            "px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border outline-none cursor-pointer transition-opacity",
+                                            savingMap[r.id] ? "opacity-50" : "",
+                                            estado.bg,
+                                            estado.text,
+                                          )}
+                                        >
+                                          {Object.entries(ESTADO_CONFIG).map(([val, cfg]) => (
+                                            <option key={val} value={val}>
+                                              {cfg.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <span
+                                        className={cn(
+                                          "text-[11px] font-medium",
+                                          isPagado
+                                            ? "text-emerald-700"
+                                            : isAbonado
+                                              ? "text-amber-700"
+                                              : "text-slate-500",
+                                        )}
+                                      >
+                                        {isPagado
+                                          ? "Pagado"
+                                          : isAbonado
+                                            ? `Abono $${Number(cuenta?.monto_abonado).toFixed(2)} · Saldo $${saldo.toFixed(2)}`
+                                            : "Pago pendiente"}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex flex-col items-end shrink-0 pl-2">
+                                      <span className="text-base font-bold text-slate-900 tracking-tight">
+                                        ${Number(r.precio_total).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </span>
+                                      <span className="text-[11px] text-slate-400 font-medium">
+                                        {r.tarifa?.precio_por_hora
+                                          ? `$${Number(r.tarifa.precio_por_hora).toFixed(0)}/hora base`
+                                          : duration || "Tarifa plana"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Right Column */}
+                                  <div className="flex items-center gap-2 self-end lg:self-center shrink-0 pt-2 lg:pt-0">
+                                    <button
+                                      onClick={() => navigate(buildDetailHref(r))}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                                      type="button"
+                                    >
+                                      Detalles
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingReserva(r)
+                                        setReservaModalOpen(true)
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                                      type="button"
+                                    >
+                                      <HugeiconsIcon icon={Edit01Icon} size={14} />
+                                      <span>Editar</span>
+                                    </button>
+                                    {isPagado ? (
+                                      <button
+                                        onClick={() =>
+                                          navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, {
+                                            state: {
+                                              tipo: "radio",
+                                              servicioId: r.id,
+                                              cuentaId: r.cuenta_por_cobrar?.id,
+                                              nombre: cliente,
+                                              montoTotal: Number(r.precio_total) || 0,
+                                              montoSaldo: saldo || 0,
+                                              nombreServicio: `Reserva de Radio`,
+                                            },
+                                          })
+                                        }
+                                        className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                        type="button"
+                                      >
+                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                        <span>Ver pagos</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() =>
+                                          navigate(`/finanzas/pagos/cuentas/servicios/pago/${r.id}`, {
+                                            state: {
+                                              tipo: "radio",
+                                              servicioId: r.id,
+                                              cuentaId: r.cuenta_por_cobrar?.id,
+                                              nombre: cliente,
+                                              montoTotal: Number(r.precio_total) || 0,
+                                              montoSaldo: saldo || 0,
+                                              nombreServicio: `Reserva de Radio`,
+                                            },
+                                          })
+                                        }
+                                        className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                        type="button"
+                                      >
+                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                        <span>Registrar pago</span>
+                                      </button>
                                     )}
-                                    style={esPagado ? {} : { backgroundColor: COLORS.ACCENT }}>
-                                    <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                                    {esPagado ? "Ver pagos" : "Registrar pago"}
-                                  </button>
-                                )
-                              })()}
-                              {!isCompleted && (
-                                <button onClick={() => navigate(buildDetailHref(r))}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all hover:bg-gray-50 active:scale-95"
-                                  style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
-                                  <HugeiconsIcon icon={ArrowRight02Icon} size={11} />
-                                  Ver detalle completo
-                                </button>
-                              )}
-                            </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </motion.div>
                       )}
@@ -359,29 +702,71 @@ export function RadioHistorialPage() {
                   </div>
                 )
               })}
-            </div>
-          )}
 
-          {meta.last_page > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Página {meta.current_page} de {meta.last_page} ({meta.total} reservas)</span>
-              <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all" style={{ borderColor: COLORS.BORDER_SUBTLE }}>Anterior</button>
-                <button disabled={page >= meta.last_page} onClick={() => setPage(p => p + 1)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold border disabled:opacity-30 hover:bg-gray-50 transition-all" style={{ borderColor: COLORS.BORDER_SUBTLE }}>Siguiente</button>
+              {/* Footnote */}
+              <div className="px-5 py-3 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-xs shadow-2xs">
+                <span className="font-medium">
+                  Mostrando {filtered.length} de {reservas.length} reservaciones programadas
+                </span>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span>Datos sincronizados</span>
+                  <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
+                </div>
               </div>
+
+              {/* Pagination Controls */}
+              {meta.last_page > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-slate-500 font-medium">
+                    Página {meta.current_page} de {meta.last_page} ({meta.total} reservas)
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => p - 1)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-all cursor-pointer"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      disabled={page >= meta.last_page}
+                      onClick={() => setPage((p) => p + 1)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-700 disabled:opacity-40 hover:bg-slate-50 transition-all cursor-pointer"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* Quick Tariffs Insights Strip */}
+        {tarifas.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+            {tarifas.slice(0, 3).map((tarifa) => (
+              <div
+                key={tarifa.id}
+                className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3.5 hover:border-slate-300 transition-colors"
+              >
+                <div className="size-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
+                  <HugeiconsIcon icon={RadioIcon} size={20} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-slate-900 truncate">
+                    {tarifa.nombre}
+                  </span>
+                  <span className="text-[11px] font-medium text-emerald-700 truncate mt-0.5">
+                    Tarifa: ${Number(tarifa.precio_por_hora).toFixed(0)}/h · {tarifa.incluye_operador ? "Con operador" : "Solo cabina"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <ReservaForm
-        isOpen={reservaModalOpen}
-        onClose={() => setReservaModalOpen(false)}
-        tarifas={tarifas}
-        onSaved={() => { setReservaModalOpen(false); loadHistorial(); }}
-      />
     </div>
   )
 }

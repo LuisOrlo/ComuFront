@@ -255,6 +255,7 @@ export function PagoDetallePage() {
   const estudianteNombre = getNombreEstudiante()
   const tipoLabel = getTipoLabel()
   const cursoNombre = getCursoNombre()
+  const detalleConceptos = data.detalle_conceptos || data.modulos || []
 
   const estadoConfig = {
     aprobado: {
@@ -380,7 +381,7 @@ export function PagoDetallePage() {
                 <>
                   <span>•</span>
                   <span className="px-2 py-0.5 rounded bg-orange-50 text-[#fd761a] font-semibold text-[11px]">
-                    Pago múltiple ({data.modulos?.length || 2} módulos)
+                    Pago múltiple ({detalleConceptos.length || 2} conceptos)
                   </span>
                 </>
               )}
@@ -528,22 +529,22 @@ export function PagoDetallePage() {
               </div>
 
               {/* Multiple modules breakdown if applicable */}
-              {data.tiene_multiples_modulos && data.modulos?.length > 0 && (
+              {data.tiene_multiples_modulos && detalleConceptos.length > 0 && (
                 <div className="pt-2 border-t border-slate-100">
                   <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                    Desglose de módulos cubiertos
+                    Desglose de conceptos cubiertos
                   </span>
                   <div className="space-y-1.5">
-                    {data.modulos.map((mod: any, idx: number) => (
+                    {detalleConceptos.map((concepto: any, idx: number) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 border border-slate-100"
                       >
                         <span className="font-medium text-slate-700 truncate mr-2">
-                          {mod.modulo_nombre}
+                          {concepto.nombre || concepto.modulo_nombre}
                         </span>
                         <span className="font-bold text-slate-900 shrink-0">
-                          ${Number(mod.monto || 0).toFixed(2)} USD
+                          ${Number(concepto.monto || 0).toFixed(2)} USD
                         </span>
                       </div>
                     ))}

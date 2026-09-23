@@ -16,6 +16,7 @@ import { TodosTab } from "./tabs/TodosTab"
 import { CursosTab } from "./tabs/CursosTab"
 import { TalleresTab } from "./tabs/TalleresTab"
 import { estudiantesService } from "@/services/estudiantes.service"
+import { StudentImportWizard } from "./import/StudentImportWizard"
 
 type Tab = "todos" | "cursos" | "talleres"
 
@@ -24,6 +25,7 @@ export function EstudiantesPage() {
   const tabFromUrl = searchParams.get("tab") as Tab | null
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && ["todos", "cursos", "talleres"].includes(tabFromUrl) ? tabFromUrl : "todos")
   const [exportOpen, setExportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   useEffect(() => {
     if (tabFromUrl && ["todos", "cursos", "talleres"].includes(tabFromUrl) && tabFromUrl !== activeTab) {
@@ -67,6 +69,15 @@ export function EstudiantesPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {activeTab === "todos" && (
+                <button
+                  type="button"
+                  onClick={() => setImportOpen(true)}
+                  className="h-10 px-4 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30"
+                >
+                  <span>Importar estudiantes</span>
+                </button>
+              )}
               {activeTab === "todos" && (
                 <button
                   type="button"
@@ -225,6 +236,7 @@ export function EstudiantesPage() {
           </div>
         </div>
       </main>
+      <StudentImportWizard open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   )
 }

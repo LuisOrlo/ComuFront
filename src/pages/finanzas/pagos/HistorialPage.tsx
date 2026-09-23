@@ -167,42 +167,20 @@ export function HistorialPage() {
     return list
   }, [allTransacciones, search, getNombreEstudiante, getCursoNombre, metodoFilter, estadoFilter, tipoFilter])
 
-  // Una aprobación puede generar varios movimientos internos (por ejemplo,
-  // dos líneas de $10 para un único pago efectivo de $20). El perfil
-  // académico los presenta como un solo pago; el historial debe usar el mismo
-  // criterio sin eliminar los movimientos originales.
-  const groupedForDisplay = useMemo(() => {
-    const groups = new Map<string, any>()
-    for (const transaction of clientFiltered) {
-      const date = String(transaction.fecha_pago || transaction.created_at || "").slice(0, 10)
-      const key = [
-        transaction.tipo_movimiento,
-        date,
-        getNombreEstudiante(transaction),
-        getCursoNombre(transaction),
-        transaction.metodo_pago || "",
-        transaction.comprobante_url || "",
-        transaction.estado_verificacion || "",
-      ].join("|")
-
-      const current = groups.get(key)
-      if (current) {
-        current.monto = Number(current.monto || 0) + Number(transaction.monto || 0)
-        current.count += 1
-        current.ids.push(transaction.id)
-      } else {
-        groups.set(key, { ...transaction, count: 1, ids: [transaction.id] })
-      }
-    }
-    return Array.from(groups.values())
-  }, [clientFiltered, getNombreEstudiante, getCursoNombre])
+  // El backend ya entrega operaciones agrupadas y paginadas globalmente.
+  // No volver a agrupar por fecha/nombre/método porque podría mezclar pagos
+  // distintos y volver a desalinear el ID representativo del detalle.
+  const groupedForDisplay = clientFiltered
 
   // Group items by Date (sorted by time within each group)
   const groupedByDate = useMemo(() => {
-    const sorted = [...groupedForDisplay].sort((a, b) =>
-      new Date(b.fecha_pago || b.created_at).getTime() -
-      new Date(a.fecha_pago || a.created_at).getTime()
-    )
+    const sorted = [...groupedForDisplay].sort((a, b) => {
+      const createdDiff = new Date(b.created_at || b.fecha_pago || 0).getTime() - new Date(a.created_at || a.fecha_pago || 0).getTime()
+      if (createdDiff !== 0) return createdDiff
+      const dateDiff = new Date(b.fecha_pago || 0).getTime() - new Date(a.fecha_pago || 0).getTime()
+      if (dateDiff !== 0) return dateDiff
+      return String(b.id).localeCompare(String(a.id))
+    })
     const groups: Record<string, any[]> = {}
     sorted.forEach((t) => {
       const dateKey = new Date(t.fecha_pago || t.created_at).toLocaleDateString("es-ES", {

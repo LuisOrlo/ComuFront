@@ -62,6 +62,9 @@ export function TallerPagoTab({
 
   const rawMetodo = (selected.metodo_pago || "").toLowerCase()
   const tipoPagoNormalizado = rawMetodo === "efectivo" ? "efectivo" : rawMetodo ? "transferencia" : ""
+  const tipoPagoInicial = selected.tipo_pago === "completo" || selected.tipo_pago === "abono"
+    ? selected.tipo_pago
+    : "abono"
 
   const rawFecha = selected.fecha_pago || ""
   const fechaDisplay = rawFecha ? (rawFecha.includes("T") ? rawFecha.split("T")[0] : rawFecha) : ""
@@ -373,7 +376,7 @@ export function TallerPagoTab({
             inscripcionId={selected.id}
             precioBase={precioBase}
             montoInicial={monto}
-            tipoPagoInicial={tipoPagoNormalizado || "efectivo"}
+            tipoPagoInicial={tipoPagoInicial}
             metodoInicial={tipoPagoNormalizado || "efectivo"}
             onSaved={undefined}
           />

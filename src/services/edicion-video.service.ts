@@ -14,7 +14,7 @@ export interface TrabajoEdicion {
   editores?: { id: string; nombres: string; apellidos: string }[]
   persona_id?: string
   cliente_externo_id?: string
-  cliente?: { id: string; nombres: string; apellidos: string }
+  cliente?: { id: string; nombres: string; apellidos: string; correo?: string }
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
   reserva_podcast_id?: string
   precio_cobrado?: number | null
