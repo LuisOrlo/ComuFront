@@ -16,6 +16,9 @@ import {
   Image01Icon,
   Add01Icon,
   UserIcon,
+  MatrixIcon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
 import { cn, formatCalendarDate, getStorageUrl } from "@/lib/utils"
@@ -25,38 +28,64 @@ import { toast } from "sonner"
 
 const ESTADO_CONFIG: Record<
   string,
-  { label: string; bg: string; dot: string; text: string }
+  { label: string; bg: string; dot: string; text: string; borderLeft: string }
 > = {
   pendiente: {
     label: "Pendiente",
     bg: "bg-blue-50 border-blue-200/70",
     dot: "bg-blue-600",
     text: "text-blue-800",
+    borderLeft: "border-l-blue-600",
   },
   activo: {
     label: "Activo",
     bg: "bg-amber-50 border-amber-200/70",
     dot: "bg-amber-500",
     text: "text-amber-800",
+    borderLeft: "border-l-amber-500",
   },
   entregado: {
     label: "Entregado",
     bg: "bg-indigo-50 border-indigo-200/70",
     dot: "bg-indigo-600",
     text: "text-indigo-800",
+    borderLeft: "border-l-indigo-600",
   },
   devuelto: {
     label: "Devuelto",
     bg: "bg-emerald-50 border-emerald-200/70",
     dot: "bg-emerald-600",
     text: "text-emerald-800",
+    borderLeft: "border-l-emerald-600",
   },
   vencido: {
     label: "Vencido",
     bg: "bg-red-50 border-red-200/70",
     dot: "bg-red-500",
     text: "text-red-800",
+    borderLeft: "border-l-red-500",
   },
+}
+
+function getWeekRange(date: Date) {
+  const day = date.getDay()
+  const monday = new Date(date)
+  monday.setDate(date.getDate() - day + (day === 0 ? -6 : 1))
+  monday.setHours(0, 0, 0, 0)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  return { monday, sunday }
+}
+
+function getWeekDays(monday: Date) {
+  const days: Date[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    days.push(d)
+  }
+  return days
 }
 
 export function AlquileresListPage() {
@@ -69,6 +98,13 @@ export function AlquileresListPage() {
   const [filtroEstado, setFiltroEstado] = useState(searchParams.get("estado") || "todos")
   const [zoomFoto, setZoomFoto] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+
+  // Vista mode & calendar reference
+  const [vista, setVista] = useState<"lista" | "calendario">("lista")
+  const [fechaRef, setFechaRef] = useState(() => new Date())
+  const { monday, sunday } = useMemo(() => getWeekRange(fechaRef), [fechaRef])
+  const weekDays = useMemo(() => getWeekDays(monday), [monday])
+  const weekLabel = `${monday.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} – ${sunday.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}`
 
   // Modals
   const [detailOpen, setDetailOpen] = useState(false)
@@ -285,7 +321,7 @@ export function AlquileresListPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[450px] bg-[#f8f9ff]">
+      <div className="flex items-center justify-center h-full min-h-[450px] bg-slate-50/50">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin size-8 border-[3px] border-t-transparent rounded-full border-[#fd761a]" />
           <p className="text-xs font-semibold text-slate-500">Cargando alquileres...</p>
@@ -295,35 +331,40 @@ export function AlquileresListPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
+    <div className="min-h-full bg-slate-50/50 text-slate-800 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
         {/* Header de Página */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col">
-            <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-              SERVICIOS
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+              SERVICIOS / EQUIPOS
             </span>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
-              Alquiler de Equipos
-            </h1>
+            <div className="flex items-center gap-2.5 mt-0.5">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Alquiler de Equipos
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold">
+                Historial y Agenda
+              </span>
+            </div>
           </div>
 
           {/* Action Cluster */}
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => navigate("/servicios/equipos")}
-              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
               type="button"
             >
-              <HugeiconsIcon icon={Camera01Icon} size={17} className="text-slate-500" />
+              <HugeiconsIcon icon={Camera01Icon} size={16} className="text-slate-500" />
               <span>Catálogo de Equipos</span>
             </button>
             <button
               onClick={() => navigate("/servicios/equipos")}
-              className="h-10 px-5 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              className="h-10 px-4 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
               type="button"
             >
-              <HugeiconsIcon icon={Add01Icon} size={17} />
+              <HugeiconsIcon icon={Add01Icon} size={16} />
               <span>Nuevo Alquiler</span>
             </button>
           </div>
@@ -394,20 +435,94 @@ export function AlquileresListPage() {
           })}
         </div>
 
-        {/* History Workspace Module */}
-        <div className="flex flex-col gap-4 mt-2">
-          {/* History Section Header & Filter Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
+        {/* History & Agenda Workspace Module */}
+        <div className="flex flex-col gap-4 mt-1">
+          {/* Section Header & Filter Toolbar */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 py-1">
             <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-slate-900">Historial de Alquileres</h2>
+              <h2 className="text-lg font-bold text-slate-900">
+                {vista === "lista" ? "Historial de Alquileres" : "Agenda Semanal de Equipos"}
+              </h2>
               <span className="px-2.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700 text-xs font-semibold">
                 {filtered.length}
               </span>
             </div>
 
-            {/* Filter Controls (40px Height) */}
-            <div className="flex items-center gap-2.5">
-              <div className="h-10 bg-white border border-slate-200 rounded-xl px-3.5 flex items-center gap-2 shadow-xs w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#fd761a]/25 focus-within:border-[#fd761a] transition-all">
+            {/* Filter Controls & View Switcher */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Segmented selector: Lista | Calendario */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setVista("lista")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    vista === "lista"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  )}
+                >
+                  <HugeiconsIcon icon={MatrixIcon} size={14} />
+                  <span>Lista</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVista("calendario")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    vista === "calendario"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  )}
+                >
+                  <HugeiconsIcon icon={Calendar03Icon} size={14} />
+                  <span>Calendario</span>
+                </button>
+              </div>
+
+              {/* In calendar view: date navigation & period badge */}
+              {vista === "calendario" && (
+                <>
+                  <div className="flex items-center bg-white border border-slate-200/80 rounded-xl p-1 shadow-2xs gap-0.5">
+                    <button
+                      onClick={() => {
+                        const d = new Date(fechaRef)
+                        d.setDate(d.getDate() - 7)
+                        setFechaRef(d)
+                      }}
+                      className="size-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+                      aria-label="Semana anterior"
+                    >
+                      <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
+                    </button>
+                    <button
+                      onClick={() => setFechaRef(new Date())}
+                      className="px-3 h-8 flex items-center justify-center text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                    >
+                      Hoy
+                    </button>
+                    <button
+                      onClick={() => {
+                        const d = new Date(fechaRef)
+                        d.setDate(d.getDate() + 7)
+                        setFechaRef(d)
+                      }}
+                      className="size-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+                      aria-label="Semana siguiente"
+                    >
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 h-10 rounded-xl bg-white border border-slate-200/80 shadow-2xs text-slate-800">
+                    <HugeiconsIcon icon={Calendar03Icon} size={16} className="text-[#fd761a]" />
+                    <span className="text-xs font-bold">{weekLabel}</span>
+                  </div>
+                </>
+              )}
+
+              {/* Search bar */}
+              <div className="h-10 bg-white border border-slate-200 rounded-xl px-3.5 flex items-center gap-2 shadow-xs w-full sm:w-64 focus-within:ring-2 focus-within:ring-[#fd761a]/25 focus-within:border-[#fd761a] transition-all">
                 <HugeiconsIcon icon={Search01Icon} size={16} className="text-slate-400 shrink-0" />
                 <input
                   type="text"
@@ -438,318 +553,410 @@ export function AlquileresListPage() {
             </div>
           </div>
 
-          {/* Group by Date Card Assembly */}
-          {filtered.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-14 text-center space-y-3 shadow-xs">
-              <div className="size-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-                <HugeiconsIcon icon={Camera01Icon} size={28} />
-              </div>
-              <p className="font-bold text-sm text-slate-800">
-                {search ? `Sin resultados para "${search}"` : "No hay alquileres registrados"}
-              </p>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Prueba ajustando la búsqueda o registra un nuevo alquiler desde el catálogo de equipos.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {groupedByDate.map(([date, items]) => {
-                const isOpen = expandedGroups[date] !== false
-                const dayTotal = getGroupTotal(items)
+          {/* Render based on selected View: Calendario vs Lista */}
+          {vista === "calendario" ? (
+            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden p-4 sm:p-5 flex flex-col">
+              {/* Grid 7 days */}
+              <div className="grid grid-cols-1 md:grid-cols-7 border border-slate-200/80 rounded-2xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-slate-200/80">
+                {weekDays.map((day, di) => {
+                  const dStr = day.toISOString().split("T")[0]
+                  const isToday = day.toDateString() === new Date().toDateString()
+                  const dayRentals = filtered.filter((a) => {
+                    const entrega = a.fecha_entrega ? a.fecha_entrega.split("T")[0] : ""
+                    const devolucion = a.fecha_devolucion_esperada ? a.fecha_devolucion_esperada.split("T")[0] : ""
+                    return (entrega === dStr) || (devolucion === dStr) || (entrega && devolucion && entrega <= dStr && devolucion >= dStr)
+                  })
 
-                return (
-                  <div
-                    key={date}
-                    className="rounded-xl overflow-hidden shadow-xs bg-white border border-slate-200/90"
-                  >
-                    {/* Date Group Header Bar */}
-                    <div
-                      onClick={() => toggleGroup(date)}
-                      className="bg-slate-50/80 px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 transition-colors select-none border-b border-slate-100"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="text-slate-400" />
-                        </motion.div>
-                        <div className="size-6 rounded-md bg-slate-200/70 flex items-center justify-center text-slate-600">
-                          <HugeiconsIcon icon={Calendar03Icon} size={14} />
-                        </div>
-                        <span className="text-xs uppercase tracking-wider text-slate-900 font-bold">
-                          {date}
+                  return (
+                    <div key={di} className={cn("min-h-[260px] flex flex-col bg-white", isToday && "bg-orange-50/20")}>
+                      <div className={cn("p-3 border-b border-slate-200/80 text-center relative", isToday ? "bg-orange-50/60" : "bg-slate-50")}>
+                        {isToday && <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#fd761a]" />}
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {day.toLocaleDateString("es-ES", { weekday: "short" })}
                         </span>
-                        <span className="inline-block size-1 rounded-full bg-slate-300" />
-                        <span className="text-xs text-slate-500">
-                          {items.length} {items.length === 1 ? "alquiler" : "alquileres"}
-                        </span>
+                        <p className={cn("text-base font-extrabold mt-0.5", isToday ? "text-[#fd761a]" : "text-slate-800")}>
+                          {day.getDate()}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="bg-white px-3 py-1 rounded-md shadow-2xs border border-slate-200/70 flex items-center gap-1.5">
-                          <span className="text-[11px] text-slate-500 font-medium">Total día:</span>
-                          <span className="text-xs text-slate-900 font-bold">
-                            ${dayTotal.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
+                      <div className="p-2 flex-1 flex flex-col gap-2 overflow-y-auto max-h-[460px]">
+                        {dayRentals.length === 0 ? (
+                          <div className="flex-1 flex items-center justify-center p-3 text-center">
+                            <span className="text-[11px] text-slate-300 font-medium">Sin entregas</span>
+                          </div>
+                        ) : (
+                          dayRentals.map((a) => {
+                            const isOverdue =
+                              (a.estado === "activo" || a.estado === "entregado") &&
+                              new Date(a.fecha_devolucion_esperada) < new Date()
+                            const displayEstado = isOverdue ? "vencido" : a.estado
+                            const estado = ESTADO_CONFIG[displayEstado] || ESTADO_CONFIG.pendiente
+                            const responsable = getResponsable(a)
+
+                            return (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedAlquiler(a)
+                                  setDetailOpen(true)
+                                }}
+                                className={cn(
+                                  "w-full text-left p-2.5 rounded-xl border border-l-[3.5px] shadow-2xs hover:shadow-xs transition-all cursor-pointer",
+                                  estado.bg,
+                                  estado.borderLeft
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[11px] font-bold text-slate-900 truncate">
+                                    {a.equipo?.nombre || "Equipo"}
+                                  </span>
+                                  <span className={cn("size-2 rounded-full shrink-0", estado.dot)} />
+                                </div>
+                                <p className="text-[10px] text-slate-600 truncate mt-0.5 font-medium">
+                                  {responsable}
+                                </p>
+                                <div className="flex items-center justify-between mt-1 text-[9px] text-slate-500 font-medium">
+                                  <span className="truncate">
+                                    Ret: {formatCalendarDate(a.fecha_devolucion_esperada, { day: "numeric", month: "short" })}
+                                  </span>
+                                  <span className="font-bold text-slate-800">
+                                    ${Number(a.precio_total).toFixed(2)}
+                                  </span>
+                                </div>
+                              </button>
+                            )
+                          })
+                        )}
                       </div>
                     </div>
+                  )
+                })}
+              </div>
 
-                    {/* Reservation Rows Container */}
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="flex flex-col divide-y divide-slate-100">
-                            {items.map((a) => {
-                              const isOverdue =
-                                (a.estado === "activo" || a.estado === "entregado") &&
-                                new Date(a.fecha_devolucion_esperada) < new Date()
-                              const displayEstado = isOverdue ? "vencido" : a.estado
-                              const estado = ESTADO_CONFIG[displayEstado] || ESTADO_CONFIG.pendiente
-                              const responsable = getResponsable(a)
-
-                              const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
-                              const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
-                              const saldo = total - abonado
-                              const isPagado =
-                                a.cuenta_por_cobrar?.estado === "pagado" || saldo <= 0
-                              const isAbonado = !isPagado && abonado > 0
-
-                              return (
-                                <div
-                                  key={a.id}
-                                  className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors duration-150 group"
-                                >
-                                  {/* Left Column */}
-                                  <div className="flex items-center gap-3.5 min-w-0">
-                                    <div className="size-11 rounded-xl bg-orange-50 text-[#fd761a] border border-orange-100 flex items-center justify-center shrink-0 shadow-xs group-hover:bg-[#fd761a] group-hover:text-white transition-colors overflow-hidden">
-                                      {a.equipo?.foto_url ? (
-                                        <img
-                                          src={getStorageUrl(a.equipo.foto_url)}
-                                          alt={a.equipo.nombre}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <HugeiconsIcon icon={Camera01Icon} size={20} />
-                                      )}
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setSelectedAlquiler(a)
-                                            setDetailOpen(true)
-                                          }}
-                                          className="text-[15px] leading-snug font-semibold text-slate-900 group-hover:text-[#fd761a] truncate transition-colors text-left cursor-pointer"
-                                        >
-                                          {a.equipo?.nombre || "Equipo"}
-                                        </button>
-                                        {isOverdue && (
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
-                                            ¡Vencido!
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
-                                        <span className="inline-flex items-center gap-1">
-                                          <HugeiconsIcon
-                                            icon={UserIcon}
-                                            size={14}
-                                            className="text-[#fd761a]"
-                                          />
-                                          <strong className="font-medium text-slate-800">
-                                            {responsable}
-                                          </strong>
-                                        </span>
-                                        <span className="inline-block size-1 rounded-full bg-slate-300" />
-                                        <span className="inline-flex items-center gap-1">
-                                          <HugeiconsIcon
-                                            icon={Clock01Icon}
-                                            size={14}
-                                            className="text-slate-400"
-                                          />
-                                          <span>
-                                            Retorno: {formatCalendarDate(a.fecha_devolucion_esperada, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                          </span>
-                                        </span>
-                                        {a.foto_salida_url && (
-                                          <>
-                                            <span className="inline-block size-1 rounded-full bg-slate-300" />
-                                            <button
-                                              type="button"
-                                              onClick={() => setZoomFoto(a.foto_salida_url!)}
-                                              className="inline-flex items-center gap-1 text-amber-700 hover:underline cursor-pointer"
-                                            >
-                                              <HugeiconsIcon icon={Image01Icon} size={13} />
-                                              Foto salida
-                                            </button>
-                                          </>
-                                        )}
-                                        {a.foto_retorno_url && (
-                                          <>
-                                            <span className="inline-block size-1 rounded-full bg-slate-300" />
-                                            <button
-                                              type="button"
-                                              onClick={() => setZoomFoto(a.foto_retorno_url!)}
-                                              className="inline-flex items-center gap-1 text-emerald-700 hover:underline cursor-pointer"
-                                            >
-                                              <HugeiconsIcon icon={Image01Icon} size={13} />
-                                              Foto retorno
-                                            </button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Middle Column */}
-                                  <div className="flex items-center gap-6 self-start lg:self-center shrink-0">
-                                    <div className="flex flex-col items-start lg:items-end gap-1">
-                                      <span
-                                        className={cn(
-                                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border",
-                                          estado.bg,
-                                          estado.text,
-                                        )}
-                                      >
-                                        <span className={cn("size-2 rounded-full", estado.dot)} />
-                                        {estado.label}
-                                      </span>
-                                      <span
-                                        className={cn(
-                                          "text-[11px] font-medium",
-                                          isPagado
-                                            ? "text-emerald-700"
-                                            : isAbonado
-                                              ? "text-amber-700"
-                                              : "text-slate-500",
-                                        )}
-                                      >
-                                        {isPagado
-                                          ? "Pagado"
-                                          : isAbonado
-                                            ? `Abono $${abonado.toFixed(2)} · Saldo $${saldo.toFixed(2)}`
-                                            : "Pago pendiente"}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex flex-col items-end shrink-0 pl-2">
-                                      <span className="text-base font-bold text-slate-900 tracking-tight">
-                                        ${Number(a.precio_total).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                      </span>
-                                      <span className="text-[11px] text-slate-400 font-medium">
-                                        {a.equipo?.precio_diario
-                                          ? `$${Number(a.equipo.precio_diario).toFixed(0)}/día`
-                                          : "Alquiler"}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Right Column */}
-                                  <div className="flex items-center gap-2 self-end lg:self-center shrink-0 pt-2 lg:pt-0">
-                                    <button
-                                      onClick={() => {
-                                        setSelectedAlquiler(a)
-                                        setDetailOpen(true)
-                                      }}
-                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                                      type="button"
-                                    >
-                                      Detalles
-                                    </button>
-
-                                    {a.estado === "pendiente" && (
-                                      <button
-                                        onClick={() => handleEntregar(a.id)}
-                                        className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                                        type="button"
-                                      >
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                                        <span>Entregar</span>
-                                      </button>
-                                    )}
-
-                                    {(a.estado === "activo" || a.estado === "entregado" || a.estado === "vencido") && (
-                                      <button
-                                        onClick={() => openDevolverModal(a)}
-                                        className="px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                                        type="button"
-                                      >
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                                        <span>Devolver</span>
-                                      </button>
-                                    )}
-
-                                    {isPagado ? (
-                                      <button
-                                        onClick={() =>
-                                          navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, {
-                                            state: {
-                                              tipo: "equipo",
-                                              servicioId: a.id,
-                                              cuentaId: a.cuenta_por_cobrar?.id,
-                                              nombre: responsable,
-                                              montoTotal: Number(a.precio_total) || 0,
-                                              montoSaldo: saldo || 0,
-                                              nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
-                                            },
-                                          })
-                                        }
-                                        className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                                        type="button"
-                                      >
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                                        <span>Ver pagos</span>
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() =>
-                                          navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, {
-                                            state: {
-                                              tipo: "equipo",
-                                              servicioId: a.id,
-                                              cuentaId: a.cuenta_por_cobrar?.id,
-                                              nombre: responsable,
-                                              montoTotal: Number(a.precio_total) || 0,
-                                              montoSaldo: saldo || 0,
-                                              nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
-                                            },
-                                          })
-                                        }
-                                        className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                                        type="button"
-                                      >
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                                        <span>Registrar pago</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-4 text-xs font-medium text-slate-500 flex-wrap">
+                {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-1.5">
+                    <div className={cn("size-2.5 rounded-full", v.dot)} />
+                    <span>{v.label}</span>
                   </div>
-                )
-              })}
-
-              {/* Footnote */}
-              <div className="px-5 py-3 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-xs shadow-2xs">
-                <span className="font-medium">
-                  Mostrando {filtered.length} de {alquileres.length} alquileres registrados
-                </span>
-                <div className="flex items-center gap-1.5 font-medium">
-                  <span>Datos sincronizados</span>
-                  <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
-                </div>
+                ))}
               </div>
             </div>
+          ) : (
+            /* Vista Lista: Group by Date Card Assembly */
+            filtered.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-14 text-center space-y-3 shadow-xs">
+                <div className="size-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                  <HugeiconsIcon icon={Camera01Icon} size={28} />
+                </div>
+                <p className="font-bold text-sm text-slate-800">
+                  {search ? `Sin resultados para "${search}"` : "No hay alquileres registrados"}
+                </p>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Prueba ajustando la búsqueda o registra un nuevo alquiler desde el catálogo de equipos.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {groupedByDate.map(([date, items]) => {
+                  const isOpen = expandedGroups[date] !== false
+                  const dayTotal = getGroupTotal(items)
+
+                  return (
+                    <div
+                      key={date}
+                      className="rounded-xl overflow-hidden shadow-xs bg-white border border-slate-200/90"
+                    >
+                      {/* Date Group Header Bar */}
+                      <div
+                        onClick={() => toggleGroup(date)}
+                        className="bg-slate-50/80 px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 transition-colors select-none border-b border-slate-100"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
+                            <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="text-slate-400" />
+                          </motion.div>
+                          <div className="size-6 rounded-md bg-slate-200/70 flex items-center justify-center text-slate-600">
+                            <HugeiconsIcon icon={Calendar03Icon} size={14} />
+                          </div>
+                          <span className="text-xs uppercase tracking-wider text-slate-900 font-bold">
+                            {date}
+                          </span>
+                          <span className="inline-block size-1 rounded-full bg-slate-300" />
+                          <span className="text-xs text-slate-500">
+                            {items.length} {items.length === 1 ? "alquiler" : "alquileres"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="bg-white px-3 py-1 rounded-md shadow-2xs border border-slate-200/70 flex items-center gap-1.5">
+                            <span className="text-[11px] text-slate-500 font-medium">Total día:</span>
+                            <span className="text-xs text-slate-900 font-bold">
+                              ${dayTotal.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Reservation Rows Container */}
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: "auto" }}
+                            exit={{ height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="flex flex-col divide-y divide-slate-100">
+                              {items.map((a) => {
+                                const isOverdue =
+                                  (a.estado === "activo" || a.estado === "entregado") &&
+                                  new Date(a.fecha_devolucion_esperada) < new Date()
+                                const displayEstado = isOverdue ? "vencido" : a.estado
+                                const estado = ESTADO_CONFIG[displayEstado] || ESTADO_CONFIG.pendiente
+                                const responsable = getResponsable(a)
+
+                                const total = Number(a.cuenta_por_cobrar?.monto_total ?? a.precio_total)
+                                const abonado = Number(a.cuenta_por_cobrar?.monto_abonado ?? 0)
+                                const saldo = total - abonado
+                                const isPagado =
+                                  a.cuenta_por_cobrar?.estado === "pagado" || saldo <= 0
+                                const isAbonado = !isPagado && abonado > 0
+
+                                return (
+                                  <div
+                                    key={a.id}
+                                    className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors duration-150 group"
+                                  >
+                                    {/* Left Column */}
+                                    <div className="flex items-center gap-3.5 min-w-0">
+                                      <div className="size-11 rounded-xl bg-orange-50 text-[#fd761a] border border-orange-100 flex items-center justify-center shrink-0 shadow-xs group-hover:bg-[#fd761a] group-hover:text-white transition-colors overflow-hidden">
+                                        {a.equipo?.foto_url ? (
+                                          <img
+                                            src={getStorageUrl(a.equipo.foto_url)}
+                                            alt={a.equipo.nombre}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <HugeiconsIcon icon={Camera01Icon} size={20} />
+                                        )}
+                                      </div>
+                                      <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSelectedAlquiler(a)
+                                              setDetailOpen(true)
+                                            }}
+                                            className="text-[15px] leading-snug font-semibold text-slate-900 group-hover:text-[#fd761a] truncate transition-colors text-left cursor-pointer"
+                                          >
+                                            {a.equipo?.nombre || "Equipo"}
+                                          </button>
+                                          {isOverdue && (
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
+                                              ¡Vencido!
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
+                                          <span className="inline-flex items-center gap-1">
+                                            <HugeiconsIcon
+                                              icon={UserIcon}
+                                              size={14}
+                                              className="text-[#fd761a]"
+                                            />
+                                            <strong className="font-medium text-slate-800">
+                                              {responsable}
+                                            </strong>
+                                          </span>
+                                          <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                          <span className="inline-flex items-center gap-1">
+                                            <HugeiconsIcon
+                                              icon={Clock01Icon}
+                                              size={14}
+                                              className="text-slate-400"
+                                            />
+                                            <span>
+                                              Retorno: {formatCalendarDate(a.fecha_devolucion_esperada, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                            </span>
+                                          </span>
+                                          {a.foto_salida_url && (
+                                            <>
+                                              <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                              <button
+                                                type="button"
+                                                onClick={() => setZoomFoto(a.foto_salida_url!)}
+                                                className="inline-flex items-center gap-1 text-amber-700 hover:underline cursor-pointer"
+                                              >
+                                                <HugeiconsIcon icon={Image01Icon} size={13} />
+                                                Foto salida
+                                              </button>
+                                            </>
+                                          )}
+                                          {a.foto_retorno_url && (
+                                            <>
+                                              <span className="inline-block size-1 rounded-full bg-slate-300" />
+                                              <button
+                                                type="button"
+                                                onClick={() => setZoomFoto(a.foto_retorno_url!)}
+                                                className="inline-flex items-center gap-1 text-emerald-700 hover:underline cursor-pointer"
+                                              >
+                                                <HugeiconsIcon icon={Image01Icon} size={13} />
+                                                Foto retorno
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Middle Column */}
+                                    <div className="flex items-center gap-6 self-start lg:self-center shrink-0">
+                                      <div className="flex flex-col items-start lg:items-end gap-1">
+                                        <span
+                                          className={cn(
+                                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border",
+                                            estado.bg,
+                                            estado.text,
+                                          )}
+                                        >
+                                          <span className={cn("size-2 rounded-full", estado.dot)} />
+                                          {estado.label}
+                                        </span>
+                                        <span
+                                          className={cn(
+                                            "text-[11px] font-medium",
+                                            isPagado
+                                              ? "text-emerald-700"
+                                              : isAbonado
+                                                ? "text-amber-700"
+                                                : "text-slate-500",
+                                          )}
+                                        >
+                                          {isPagado
+                                            ? "Pagado"
+                                            : isAbonado
+                                              ? `Abono $${abonado.toFixed(2)} · Saldo $${saldo.toFixed(2)}`
+                                              : "Pago pendiente"}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex flex-col items-end shrink-0 pl-2">
+                                        <span className="text-base font-bold text-slate-900 tracking-tight">
+                                          ${Number(a.precio_total).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                        <span className="text-[11px] text-slate-400 font-medium">
+                                          {a.equipo?.precio_diario
+                                            ? `$${Number(a.equipo.precio_diario).toFixed(0)}/día`
+                                            : "Alquiler"}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Right Column */}
+                                    <div className="flex items-center gap-2 self-end lg:self-center shrink-0 pt-2 lg:pt-0">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedAlquiler(a)
+                                          setDetailOpen(true)
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                                        type="button"
+                                      >
+                                        Detalles
+                                      </button>
+
+                                      {a.estado === "pendiente" && (
+                                        <button
+                                          onClick={() => handleEntregar(a.id)}
+                                          className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                          type="button"
+                                        >
+                                          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                          <span>Entregar</span>
+                                        </button>
+                                      )}
+
+                                      {(a.estado === "activo" || a.estado === "entregado" || a.estado === "vencido") && (
+                                        <button
+                                          onClick={() => openDevolverModal(a)}
+                                          className="px-3.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                          type="button"
+                                        >
+                                          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                          <span>Devolver</span>
+                                        </button>
+                                      )}
+
+                                      {isPagado ? (
+                                        <button
+                                          onClick={() =>
+                                            navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, {
+                                              state: {
+                                                tipo: "equipo",
+                                                servicioId: a.id,
+                                                cuentaId: a.cuenta_por_cobrar?.id,
+                                                nombre: responsable,
+                                                montoTotal: Number(a.precio_total) || 0,
+                                                montoSaldo: saldo || 0,
+                                                nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
+                                              },
+                                            })
+                                          }
+                                          className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                          type="button"
+                                        >
+                                          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                          <span>Ver pagos</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() =>
+                                            navigate(`/finanzas/pagos/cuentas/servicios/pago/${a.id}`, {
+                                              state: {
+                                                tipo: "equipo",
+                                                servicioId: a.id,
+                                                cuentaId: a.cuenta_por_cobrar?.id,
+                                                nombre: responsable,
+                                                montoTotal: Number(a.precio_total) || 0,
+                                                montoSaldo: saldo || 0,
+                                                nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
+                                              },
+                                            })
+                                          }
+                                          className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                          type="button"
+                                        >
+                                          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
+                                          <span>Registrar pago</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )
+                })}
+
+                {/* Footnote */}
+                <div className="px-5 py-3 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-xs shadow-2xs">
+                  <span className="font-medium">
+                    Mostrando {filtered.length} de {alquileres.length} alquileres registrados
+                  </span>
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span>Datos sincronizados</span>
+                    <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
+                  </div>
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -763,7 +970,7 @@ export function AlquileresListPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDetailOpen(false)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -771,7 +978,7 @@ export function AlquileresListPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white rounded-2xl w-full max-w-xl flex flex-col max-h-[85vh] shadow-2xl border border-slate-200"
             >
-              <div className="shrink-0 p-6 border-b border-slate-100 flex justify-between items-center">
+              <div className="shrink-0 p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 tracking-tight">
                     Detalle de Alquiler
@@ -782,7 +989,7 @@ export function AlquileresListPage() {
                 </div>
                 <button
                   onClick={() => setDetailOpen(false)}
-                  className="size-9 flex items-center justify-center rounded-xl hover:bg-slate-100 border border-slate-200 text-slate-500 transition-colors"
+                  className="size-9 flex items-center justify-center rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 transition-colors"
                 >
                   <X size={18} />
                 </button>
@@ -962,7 +1169,7 @@ export function AlquileresListPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDevolverOpen(false)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -970,13 +1177,13 @@ export function AlquileresListPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
             >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">
                   Registrar Devolución
                 </h2>
                 <button
                   onClick={() => setDevolverOpen(false)}
-                  className="size-9 flex items-center justify-center rounded-xl hover:bg-slate-100 border border-slate-200 text-slate-500 transition-colors"
+                  className="size-9 flex items-center justify-center rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 transition-colors"
                 >
                   <X size={18} />
                 </button>

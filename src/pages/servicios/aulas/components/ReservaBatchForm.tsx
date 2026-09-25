@@ -14,7 +14,7 @@ import {
   AlertCircleIcon,
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { Plus, Trash2, Copy, UserPlus, Loader2, Building2 } from "lucide-react"
+import { Plus, Trash2, Copy, UserPlus, Loader2, Building2, Tag, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { aulasService, type Aula } from "@/services/aulas.service"
 import { personasService } from "@/services/personas.service"
@@ -39,6 +39,7 @@ interface Draft {
   fecha_reserva: string
   hora_inicio: string
   hora_fin: string
+  showDescuento?: boolean
   descuento: string
   motivo: string
   errors: Record<string, string>
@@ -52,6 +53,7 @@ const blank = (copy?: Draft): Draft => ({
   fecha_reserva: copy?.fecha_reserva || today(),
   hora_inicio: copy?.hora_fin || "08:00",
   hora_fin: copy?.hora_fin ? addHours(copy.hora_fin, 2) : "10:00",
+  showDescuento: false,
   descuento: "",
   motivo: "",
   errors: {},
@@ -76,7 +78,7 @@ function getDraftPrice(r: Draft, aula?: Aula) {
   if (!aula) return { hours: 0, original: 0, discount: 0, total: 0 }
   const hours = getDurationHours(r.hora_inicio, r.hora_fin)
   const original = Math.round(hours * Number(aula.precio_hora) * 100) / 100
-  const discount = Math.min(original, Math.max(0, Number(r.descuento) || 0))
+  const discount = r.showDescuento ? Math.min(original, Math.max(0, Number(r.descuento) || 0)) : 0
   const total = Math.max(0, Math.round((original - discount) * 100) / 100)
   return { hours, original, discount, total }
 }
@@ -220,6 +222,7 @@ export function ReservaBatchForm({
       fecha_reserva: r.fecha_reserva,
       hora_inicio: r.hora_fin,
       hora_fin: addHours(r.hora_fin, 2),
+      showDescuento: false,
       descuento: "",
       motivo: "",
       errors: {},
@@ -305,15 +308,16 @@ export function ReservaBatchForm({
         reservas: reservas.map((r) => {
           const aula = aulas.find((a) => a.id === r.aula_id)
           const p = getDraftPrice(r, aula)
+          const hasDiscount = Boolean(r.showDescuento && Number(r.descuento) > 0)
           return {
             aula_id: r.aula_id,
             fecha_reserva: r.fecha_reserva,
             hora_inicio: r.hora_inicio,
             hora_fin: r.hora_fin,
             precio_total: p.total,
-            precio_original: r.descuento ? p.original : null,
-            monto_descuento: Number(r.descuento) || 0,
-            motivo_descuento: r.motivo?.trim() || null,
+            precio_original: hasDiscount ? p.original : null,
+            monto_descuento: hasDiscount ? Number(r.descuento) || 0 : 0,
+            motivo_descuento: hasDiscount ? r.motivo?.trim() || null : null,
             estado: "reservado",
           }
         }),
@@ -358,9 +362,7 @@ export function ReservaBatchForm({
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
             <div className="min-w-0">
-              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                Alquiler de Aulas / Nueva Reserva
-              </span>
+              
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
                 Reserva de Aulas (Individual o por Lote)
               </h1>
@@ -785,7 +787,7 @@ export function ReservaBatchForm({
                         </div>
 
                         {/* Hora Inicio */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 sm:col-span-1 md:col-span-2">
                           <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
                             <HugeiconsIcon icon={Clock01Icon} size={12} className="text-slate-400" />
                             <span>Hora Inicio <span className="text-[#fd761a]">*</span></span>
@@ -799,7 +801,7 @@ export function ReservaBatchForm({
                         </div>
 
                         {/* Hora Fin */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 sm:col-span-1 md:col-span-2">
                           <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
                             <HugeiconsIcon icon={Clock01Icon} size={12} className="text-slate-400" />
                             <span>Hora Fin <span className="text-[#fd761a]">*</span></span>
@@ -812,41 +814,90 @@ export function ReservaBatchForm({
                           />
                         </div>
 
-                        {/* Descuento Opcional */}
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
-                            <HugeiconsIcon icon={Money01Icon} size={12} className="text-slate-400" />
-                            <span>Descuento ($)</span>
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                              $
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={r.descuento}
-                              onChange={(e) => update(r.id, { descuento: e.target.value })}
-                              className="w-full h-10 pl-7 pr-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
-                            />
+                        {/* Descuento Opcional (Debajo de los inputs de hora) */}
+                        {!r.showDescuento ? (
+                          <div className="sm:col-span-2 md:col-span-4 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => update(r.id, { showDescuento: true })}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#fd761a] hover:text-orange-700 bg-orange-50/70 hover:bg-orange-100/80 border border-orange-200/70 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-98"
+                            >
+                              <Tag size={13} />
+                              <span>+ Aplicar descuento a esta sesión</span>
+                            </button>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="sm:col-span-2 md:col-span-4 rounded-xl border border-orange-200/80 bg-orange-50/40 p-3.5 space-y-2.5 animate-in fade-in">
+                            <div className="flex items-center justify-between pb-1 border-b border-orange-200/50">
+                              <div className="flex items-center gap-2">
+                                <div className="size-6 rounded-md bg-orange-100 text-[#fd761a] flex items-center justify-center">
+                                  <Tag size={12} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-800">
+                                  Descuento Opcional
+                                </span>
+                                {p.original > 0 && (
+                                  <span className="text-[11px] text-slate-500 hidden sm:inline">
+                                    (Tarifa base: ${p.original.toFixed(2)})
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  update(r.id, {
+                                    showDescuento: false,
+                                    descuento: "",
+                                    motivo: "",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                title="Quitar descuento y ocultar"
+                              >
+                                <X size={12} />
+                                <span>Quitar descuento</span>
+                              </button>
+                            </div>
 
-                        {/* Motivo Descuento */}
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                            Motivo Dto.
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Ej. Convenio"
-                            value={r.motivo}
-                            onChange={(e) => update(r.id, { motivo: e.target.value })}
-                            className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
-                          />
-                        </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                              {/* Monto Descuento */}
+                              <div className="space-y-1 sm:col-span-1">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                                  <HugeiconsIcon icon={Money01Icon} size={12} className="text-slate-400" />
+                                  <span>Descuento ($)</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                    $
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={r.descuento}
+                                    onChange={(e) => update(r.id, { descuento: e.target.value })}
+                                    className="w-full h-10 pl-7 pr-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Motivo Descuento */}
+                              <div className="space-y-1 sm:col-span-2">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                  Motivo del Descuento
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Ej. Convenio institucional, beca, cliente frecuente..."
+                                  value={r.motivo}
+                                  onChange={(e) => update(r.id, { motivo: e.target.value })}
+                                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all placeholder:text-slate-400"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Footer de la Sesión con desglose */}

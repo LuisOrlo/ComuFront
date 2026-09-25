@@ -12,7 +12,6 @@ import {
   Cancel01Icon,
   CheckmarkCircle04Icon,
   AlertCircleIcon,
-  RadioIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 import {
@@ -24,6 +23,7 @@ import {
   Tag,
   Clock,
   Radio,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { radioService, type TarifaRadio } from "@/services/radio.service"
@@ -406,10 +406,7 @@ export function ReservaBatchForm({
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
             <div className="min-w-0">
-              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1.5">
-                <HugeiconsIcon icon={RadioIcon} size={13} className="text-[#fd761a]" />
-                Alquiler de Cabina de Radio / Nueva Reserva por Lote
-              </span>
+              
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
                 Reserva de Cabina de Radio (Individual o por Lote)
               </h1>
@@ -885,6 +882,96 @@ export function ReservaBatchForm({
                           </div>
                         </div>
 
+                        {/* Descuento Opcional (Debajo de los inputs de hora) */}
+                        {!r.showDescuento ? (
+                          <div className="sm:col-span-2 md:col-span-4 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => update(r.id, { showDescuento: true })}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#fd761a] hover:text-orange-700 bg-orange-50/70 hover:bg-orange-100/80 border border-orange-200/70 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-98"
+                            >
+                              <Tag size={13} />
+                              <span>+ Aplicar descuento a esta sesión</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="sm:col-span-2 md:col-span-4 rounded-xl border border-orange-200/80 bg-orange-50/40 p-3.5 space-y-2.5 animate-in fade-in">
+                            <div className="flex items-center justify-between pb-1 border-b border-orange-200/50">
+                              <div className="flex items-center gap-2">
+                                <div className="size-6 rounded-md bg-orange-100 text-[#fd761a] flex items-center justify-center">
+                                  <Tag size={12} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-800">
+                                  Descuento Opcional
+                                </span>
+                                {p.original > 0 && (
+                                  <span className="text-[11px] text-slate-500 hidden sm:inline">
+                                    (Tarifa base: ${p.original.toFixed(2)})
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  update(r.id, {
+                                    showDescuento: false,
+                                    descuentoValor: "",
+                                    motivoDescuento: "",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                title="Quitar descuento y ocultar"
+                              >
+                                <X size={12} />
+                                <span>Quitar descuento</span>
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                              {/* Monto Descuento */}
+                              <div className="space-y-1 sm:col-span-1">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                                  <HugeiconsIcon icon={Money01Icon} size={12} className="text-slate-400" />
+                                  <span>Descuento ($)</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                    $
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={r.descuentoValor}
+                                    onChange={(e) => update(r.id, { descuentoValor: e.target.value })}
+                                    className="w-full h-10 pl-7 pr-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
+                                  />
+                                </div>
+                                {r.errors.descuento && (
+                                  <small className="text-red-600 text-[10px] block mt-0.5">
+                                    {r.errors.descuento}
+                                  </small>
+                                )}
+                              </div>
+
+                              {/* Motivo Descuento */}
+                              <div className="space-y-1 sm:col-span-2">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                  Motivo del Descuento
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Ej. Beca, Convenio institucional..."
+                                  value={r.motivoDescuento}
+                                  onChange={(e) => update(r.id, { motivoDescuento: e.target.value })}
+                                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all placeholder:text-slate-400"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Operador Técnico */}
                         <div className="space-y-1 sm:col-span-2">
                           <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
@@ -941,65 +1028,6 @@ export function ReservaBatchForm({
                             className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
                           />
                         </div>
-                      </div>
-
-                      {/* Descuento Opcional */}
-                      <div className="rounded-xl border border-orange-200/80 bg-orange-50/40 p-3.5 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-700">
-                              Tarifa base calculada:{" "}
-                              <span className="text-slate-900">${p.original.toFixed(2)} USD</span>
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              update(r.id, {
-                                showDescuento: !r.showDescuento,
-                                descuentoValor: r.showDescuento ? "" : r.descuentoValor,
-                                motivoDescuento: r.showDescuento ? "" : r.motivoDescuento,
-                              })
-                            }
-                            className="inline-flex items-center gap-1 text-xs font-bold text-[#fd761a] hover:text-orange-700 transition-colors cursor-pointer"
-                          >
-                            <Tag size={13} />
-                            <span>{r.showDescuento ? "Quitar descuento" : "Aplicar descuento"}</span>
-                          </button>
-                        </div>
-
-                        {r.showDescuento && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 animate-in fade-in">
-                            <div>
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                                  $
-                                </span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  placeholder="Monto de descuento (0.00)"
-                                  value={r.descuentoValor}
-                                  onChange={(e) => update(r.id, { descuentoValor: e.target.value })}
-                                  className="w-full h-9 pl-7 pr-3 rounded-lg border border-orange-200 bg-white text-xs font-bold text-slate-800 outline-none focus:border-[#fd761a] focus:ring-1 focus:ring-[#fd761a]"
-                                />
-                              </div>
-                              {r.errors.descuento && (
-                                <small className="text-red-600 text-[10px] block mt-0.5">
-                                  {r.errors.descuento}
-                                </small>
-                              )}
-                            </div>
-                            <input
-                              type="text"
-                              placeholder="Motivo del descuento (ej. Beca, Convenio)"
-                              value={r.motivoDescuento}
-                              onChange={(e) => update(r.id, { motivoDescuento: e.target.value })}
-                              className="w-full h-9 px-3 rounded-lg border border-orange-200 bg-white text-xs text-slate-800 outline-none focus:border-[#fd761a] focus:ring-1 focus:ring-[#fd761a]"
-                            />
-                          </div>
-                        )}
                       </div>
 
                       {/* Footer de la Sesión con desglose */}

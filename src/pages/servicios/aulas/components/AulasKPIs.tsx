@@ -2,7 +2,6 @@ import { useMemo } from "react"
 import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Home02Icon, Calendar03Icon, Clock01Icon } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
 import type { Aula, ReservaAula } from "@/services/aulas.service"
 
 function fmtDate(d: Date) { return d.toISOString().split("T")[0] }
@@ -39,61 +38,50 @@ export function AulasKPIs({ aulas, reservas }: { aulas: Aula[]; reservas: Reserv
   const cards = [
     {
       icon: Home02Icon,
-      label: "Total Aulas",
+      label: "TOTAL AULAS",
       value: stats.totalAulas.toString(),
       sub: `${stats.disponibles} disponibles ahora`,
-      color: "oklch(0.62 0.16 245)",
-      bg: "oklch(0.62 0.16 245 / 0.1)",
+      iconBg: "bg-blue-50 text-blue-600",
     },
     {
       icon: Calendar03Icon,
-      label: "Reservas de Hoy",
+      label: "RESERVAS DE HOY",
       value: stats.hoyCount.toString(),
-      sub: undefined,
-      color: "oklch(0.62 0.14 85)",
-      bg: "oklch(0.62 0.14 85 / 0.12)",
+      sub: "Programadas para el día",
+      iconBg: "bg-[#ffdbca] text-[#9d4300]",
     },
     {
       icon: Clock01Icon,
-      label: "Próximas Reservas",
+      label: "PRÓXIMAS RESERVAS",
       value: stats.proximas.toString(),
       sub: "Próximos 7 días",
-      color: "oklch(0.58 0.16 145)",
-      bg: "oklch(0.58 0.16 145 / 0.1)",
+      iconBg: "bg-emerald-50 text-emerald-700",
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {cards.map((card, i) => (
         <motion.div
           key={card.label}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.06, type: "spring", stiffness: 400, damping: 30 }}
-          className="relative rounded-2xl border bg-white p-5 flex items-center gap-4 overflow-hidden"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}
+          transition={{ delay: i * 0.05, duration: 0.2 }}
+          className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-between"
         >
-          <motion.div
-            className="absolute -top-6 -right-6 size-20 rounded-full blur-3xl pointer-events-none"
-            style={{ backgroundColor: card.bg }}
-          />
-          <div
-            className="relative z-10 flex items-center justify-center size-11 rounded-xl shrink-0"
-            style={{ backgroundColor: card.bg }}
-          >
-            <HugeiconsIcon icon={card.icon} size={20} style={{ color: card.color }} />
-          </div>
-          <div className="relative z-10 min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider opacity-40" style={{ color: COLORS.CHARCOAL }}>
+          <div className="flex flex-col">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
               {card.label}
-            </p>
-            <p className="text-2xl font-bold tracking-tight" style={{ color: COLORS.CHARCOAL }}>
+            </span>
+            <span className="text-2xl font-bold text-slate-900 tracking-tight mt-0.5">
               {card.value}
-            </p>
+            </span>
             {card.sub && (
-              <p className="text-[10px] font-medium mt-0.5 opacity-35">{card.sub}</p>
+              <span className="text-xs text-slate-500 font-medium mt-0.5">{card.sub}</span>
             )}
+          </div>
+          <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${card.iconBg}`}>
+            <HugeiconsIcon icon={card.icon} size={20} />
           </div>
         </motion.div>
       ))}

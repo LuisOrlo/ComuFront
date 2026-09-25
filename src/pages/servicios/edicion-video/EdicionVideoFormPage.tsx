@@ -426,9 +426,7 @@ export function EdicionVideoFormPage() {
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
             <div className="min-w-0">
-              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-                Edición de Video / {isEdit ? "Editar Trabajo" : "Nuevo Proyecto"}
-              </span>
+             
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
                 {isEdit ? "Editar Trabajo de Edición" : "Registrar Trabajo de Edición"}
               </h1>

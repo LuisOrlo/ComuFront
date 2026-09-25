@@ -1,18 +1,50 @@
 import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
-import { COLORS } from "@/lib/constants"
 import type { ReservaRadio } from "@/services/radio.service"
 import { formatDate, timeToMinutes } from "./radio-calendar.utils"
 
-const ESTADO_STYLES: Record<string, { bg: string; accent: string; border: string; text: string; label: string }> = {
-  reservado: { bg: "bg-orange-50", accent: "bg-orange-400", border: "border-orange-200", text: "text-orange-700", label: "Pendiente" },
-  confirmado: { bg: "bg-emerald-50", accent: "bg-emerald-400", border: "border-emerald-200", text: "text-emerald-700", label: "Confirmado" },
-  en_progreso: { bg: "bg-blue-50", accent: "bg-blue-400", border: "border-blue-200", text: "text-blue-700", label: "En progreso" },
-  completado: { bg: "bg-gray-50", accent: "bg-gray-400", border: "border-gray-200", text: "text-gray-500", label: "Finalizado" },
-  cancelado: { bg: "bg-red-50", accent: "bg-red-300", border: "border-red-200", text: "text-red-400", label: "Cancelado" },
+const ESTADO_CAL_STYLES: Record<
+  string,
+  { bg: string; accent: string; border: string; text: string; label: string }
+> = {
+  reservado: {
+    bg: "bg-orange-50/90 hover:bg-orange-100/90",
+    accent: "#fd761a",
+    border: "border-orange-200",
+    text: "text-orange-900",
+    label: "Pendiente",
+  },
+  confirmado: {
+    bg: "bg-emerald-50/90 hover:bg-emerald-100/90",
+    accent: "#059669",
+    border: "border-emerald-200",
+    text: "text-emerald-900",
+    label: "Confirmado",
+  },
+  en_progreso: {
+    bg: "bg-blue-50/90 hover:bg-blue-100/90",
+    accent: "#2563eb",
+    border: "border-blue-200",
+    text: "text-blue-900",
+    label: "En progreso",
+  },
+  completado: {
+    bg: "bg-slate-50/90 hover:bg-slate-100/90",
+    accent: "#64748b",
+    border: "border-slate-200",
+    text: "text-slate-800",
+    label: "Finalizado",
+  },
+  cancelado: {
+    bg: "bg-rose-50/80 hover:bg-rose-100/80",
+    accent: "#e11d48",
+    border: "border-rose-200",
+    text: "text-rose-900",
+    label: "Cancelado",
+  },
 }
 
-const ROW_HEIGHT = 50
+const ROW_HEIGHT = 52
 
 function fmtHora(h: string) {
   return h.substring(0, 5)
@@ -32,40 +64,77 @@ export function RadioCalendar({
   const today = new Date()
 
   return (
-    <motion.div key="calendar" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4">
-      <div className="border rounded-[1.5rem] overflow-hidden shadow-sm bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        {/* Header */}
-        <div className="grid grid-cols-8 border-b bg-gradient-to-b from-gray-50 to-gray-100/80 sticky top-0 z-10" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <div className="p-2.5 text-center border-r flex items-center justify-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-            <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">Hora</span>
+    <motion.div
+      key="radio-calendar"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-3 sm:p-5"
+    >
+      <div className="border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs bg-white">
+        {/* Cabecera de días (estilo AgendaPage) */}
+        <div className="grid grid-cols-8 border-b border-slate-200/90 bg-slate-50/90 sticky top-0 z-10 backdrop-blur-xs">
+          <div className="p-3 text-center border-r border-slate-200/80 flex items-center justify-center">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Hora
+            </span>
           </div>
           {weekDays.map((day, i) => {
             const isToday = day.toDateString() === today.toDateString()
             return (
-              <div key={i} className={cn("p-2.5 text-center border-r last:border-0 relative", isToday && "bg-amber-50/80")} style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                {isToday && <div className="absolute -top-px left-1 right-1 h-[3px] bg-amber-400 rounded-b-full" />}
-                <div className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-0.5">{day.toLocaleDateString("es-ES", { weekday: "short" })}</div>
-                <div className={cn("text-base font-bold", isToday && "text-amber-600")} style={{ color: isToday ? undefined : COLORS.CHARCOAL }}>{day.getDate()}</div>
+              <div
+                key={i}
+                className={cn(
+                  "py-2.5 px-1 text-center border-r border-slate-200/80 last:border-0 relative transition-colors",
+                  isToday ? "bg-orange-50/60" : ""
+                )}
+              >
+                {isToday && (
+                  <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#fd761a]" />
+                )}
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-0.5">
+                  {day.toLocaleDateString("es-ES", { weekday: "short" })}
+                </div>
+                <div className="inline-flex items-center justify-center">
+                  <span
+                    className={cn(
+                      "text-xs font-bold px-2 py-0.5 rounded-full transition-all",
+                      isToday
+                        ? "bg-[#fd761a] text-white font-extrabold shadow-xs"
+                        : "text-slate-800"
+                    )}
+                  >
+                    {day.getDate()}
+                  </span>
+                </div>
               </div>
             )
           })}
         </div>
 
-        {/* Body */}
-        <div className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          {horas.map(hour => (
-            <div key={hour} className="grid grid-cols-8" style={{ minHeight: ROW_HEIGHT }}>
-              <div className="p-2 text-center border-r bg-gray-50/20 flex items-center justify-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <span className="text-[10px] font-mono font-bold opacity-40">{hour.toString().padStart(2, "0")}:00</span>
+        {/* Ranuras de horas y emisiones */}
+        <div className="divide-y divide-slate-100 max-h-[640px] overflow-y-auto">
+          {horas.map((hour) => (
+            <div
+              key={hour}
+              className="grid grid-cols-8"
+              style={{ minHeight: ROW_HEIGHT }}
+            >
+              <div className="p-2 text-center border-r border-slate-200/80 bg-slate-50/40 flex items-center justify-center">
+                <span className="text-[11px] font-mono font-bold text-slate-400">
+                  {hour.toString().padStart(2, "0")}:00
+                </span>
               </div>
               {weekDays.map((day, di) => {
                 const dateStr = formatDate(day)
-                const isPast = day < new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                const isPast =
+                  day < new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                const isToday = day.toDateString() === today.toDateString()
 
-                const r = reservas.find(rr =>
-                  rr.fecha_reserva === dateStr &&
-                  hour >= parseInt(rr.hora_inicio.split(":")[0]) &&
-                  hour <= parseInt(rr.hora_fin.split(":")[0])
+                const r = reservas.find(
+                  (rr) =>
+                    rr.fecha_reserva === dateStr &&
+                    hour >= parseInt(rr.hora_inicio.split(":")[0]) &&
+                    hour <= parseInt(rr.hora_fin.split(":")[0])
                 )
                 const isFirst = r && hour === parseInt(r.hora_inicio.split(":")[0])
 
@@ -73,51 +142,65 @@ export function RadioCalendar({
                   <div
                     key={di}
                     className={cn(
-                      "border-r last:border-0 relative overflow-visible",
-                      isPast && "bg-gray-100/40"
+                      "border-r border-slate-100 last:border-0 relative overflow-visible transition-colors",
+                      isPast
+                        ? "bg-slate-50/40"
+                        : isToday
+                          ? "bg-orange-50/15 hover:bg-orange-50/40"
+                          : "hover:bg-slate-50/70"
                     )}
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, minHeight: ROW_HEIGHT }}
+                    style={{ minHeight: ROW_HEIGHT }}
                   >
                     {isFirst && r && (() => {
-                      const es = ESTADO_STYLES[r.estado] || ESTADO_STYLES.reservado
+                      const es =
+                        ESTADO_CAL_STYLES[r.estado] || ESTADO_CAL_STYLES.reservado
                       const inicioMin = timeToMinutes(r.hora_inicio)
                       const finHour = parseInt(r.hora_fin.split(":")[0])
                       const cellHour = hour * 60
                       const top = Math.max(0, ((inicioMin - cellHour) / 60) * ROW_HEIGHT)
-                      const height = ((finHour + 1 - hour) * ROW_HEIGHT) - top
+                      const height = (finHour + 1 - hour) * ROW_HEIGHT - top
+                      const clientName = r.persona
+                        ? `${r.persona.nombres} ${r.persona.apellidos}`.trim()
+                        : r.cliente_externo?.nombres || "—"
 
                       return (
                         <button
+                          type="button"
                           onClick={() => onSelect(r)}
                           className={cn(
-                            "group absolute left-0.5 right-0.5 rounded-lg text-left cursor-pointer transition-all overflow-visible border z-10",
-                            es.bg, es.border, "hover:shadow-md hover:brightness-105"
+                            "absolute left-0.5 right-0.5 rounded-xl p-2 text-left cursor-pointer transition-all shadow-2xs border border-l-[3.5px] z-10 flex flex-col justify-between overflow-hidden",
+                            es.bg,
+                            es.border
                           )}
-                          style={{ top, height: Math.max(24, height - 2) }}
+                          style={{
+                            borderLeftColor: es.accent,
+                            top,
+                            height: Math.max(28, height - 4),
+                          }}
                         >
-                          <div className="flex h-full">
-                            <div className={cn("w-1 shrink-0 rounded-l-[5px]", es.accent)} />
-                            <div className="flex-1 min-w-0 overflow-hidden p-1.5 flex flex-col justify-center gap-px">
-                              <div className="flex items-center gap-1">
-                                <div className={cn("size-1.5 rounded-full shrink-0", es.accent)} />
-                                <p className={cn("text-[11px] font-bold leading-tight truncate", es.text)}>
-                                  {fmtHora(r.hora_inicio)}–{fmtHora(r.hora_fin)}
-                                </p>
-                              </div>
-                              <p className="text-[10px] font-semibold truncate opacity-75 leading-tight">
-                                {r.tarifa?.nombre || "Sin tarifa"}
-                              </p>
-                              <p className="text-[9px] truncate opacity-45 leading-tight">
-                                {r.persona
-                                  ? `${r.persona.nombres.split(" ")[0]} ${r.persona.apellidos.split(" ")[0]}`
-                                  : r.cliente_externo?.nombres || "—"}
-                              </p>
-                              {r.incluye_operador && r.operador && (
-                                <p className="text-[8px] truncate opacity-30 leading-tight">
-                                  Op: {r.operador.nombres.split(" ")[0]}
-                                </p>
-                              )}
-                            </div>
+                          <div className="flex items-center justify-between gap-1 leading-tight">
+                            <span
+                              className="text-[10px] font-extrabold tracking-tight"
+                              style={{ color: es.accent }}
+                            >
+                              {fmtHora(r.hora_inicio)} – {fmtHora(r.hora_fin)}
+                            </span>
+                            <span className="text-[9px] font-bold uppercase opacity-80 truncate">
+                              {es.label}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] font-bold text-slate-900 truncate leading-tight my-0.5">
+                            {r.tarifa?.nombre || "Emisión Radial"}
+                          </p>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-600 truncate leading-tight">
+                            <span className="truncate">{clientName}</span>
+                            {r.incluye_operador && r.operador && (
+                              <span className="text-[9px] text-indigo-700 bg-indigo-50 px-1 rounded ml-1 shrink-0">
+                                Op: {r.operador.nombres.split(" ")[0]}
+                              </span>
+                            )}
                           </div>
                         </button>
                       )
@@ -125,6 +208,20 @@ export function RadioCalendar({
                   </div>
                 )
               })}
+            </div>
+          ))}
+        </div>
+
+        {/* Convenciones de color al pie (estilo AgendaPage) */}
+        <div className="flex flex-wrap items-center gap-4 p-4 border-t border-slate-100 bg-slate-50/50 text-xs font-semibold text-slate-500">
+          <span className="font-bold text-slate-700">Estados de emisión:</span>
+          {Object.entries(ESTADO_CAL_STYLES).map(([key, item]) => (
+            <div key={key} className="flex items-center gap-1.5">
+              <span
+                className="size-2.5 rounded-full"
+                style={{ backgroundColor: item.accent }}
+              />
+              <span className="capitalize">{item.label}</span>
             </div>
           ))}
         </div>
