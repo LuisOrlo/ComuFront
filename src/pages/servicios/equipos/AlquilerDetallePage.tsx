@@ -12,7 +12,9 @@ import { parseLocalDate } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { equiposService, type AlquilerEquipo } from "@/services/equipos.service"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
+import { Trash2 } from "lucide-react"
 
 const ESTADO_COLORS: Record<string, string> = {
   pendiente: "bg-blue-100 text-blue-700 border-blue-200",
@@ -41,6 +43,8 @@ export function AlquilerDetallePage() {
   const [loading, setLoading] = useState(true)
   const [zoomFoto, setZoomFoto] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!id) { navigate(backHref); return }
@@ -80,6 +84,21 @@ export function AlquilerDetallePage() {
       navigate(backHref)
     } catch { toast.error("Error al registrar devolución") }
     finally { setSaving(false) }
+  }
+
+  const confirmDelete = async () => {
+    if (!alquiler) return
+    setDeleting(true)
+    try {
+      await equiposService.deleteAlquiler(alquiler.id)
+      toast.success("Alquiler eliminado")
+      navigate(backHref)
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar alquiler")
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -319,11 +338,32 @@ export function AlquilerDetallePage() {
             {displayEstado === "devuelto" && (
               <p className="text-sm font-medium py-3 opacity-40" style={{ color: COLORS.CHARCOAL }}>Este alquiler ya fue devuelto</p>
             )}
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              disabled={saving || deleting}
+              className="py-3 px-4 rounded-xl text-sm font-bold border border-red-200 text-red-700 bg-red-50 transition-all hover:bg-red-100 active:scale-[0.98] disabled:opacity-50"
+            >
+              <Trash2 size={16} className="inline mr-1.5" />
+              Eliminar alquiler
+            </button>
           </div>
         </div>
       </div>
 
       {zoomFoto && <ImageZoom url={zoomFoto} onClose={() => setZoomFoto(null)} />}
+
+      <ConfirmationModal
+        isOpen={deleteConfirm}
+        title="Eliminar alquiler"
+        message={`¿Eliminar permanentemente el alquiler de "${alquiler.equipo?.nombre || "equipo"}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous
+        isLoading={deleting}
+        icon="trash"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(false)}
+      />
     </div>
   )
 }

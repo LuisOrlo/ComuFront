@@ -22,6 +22,7 @@ interface UseStudentListOptions {
 interface UseStudentListReturn {
   estudiantes: Estudiante[]
   loading: boolean
+  refreshing: boolean
   search: string
   setSearch: (value: string) => void
   paymentFilter: PaymentFilter
@@ -193,6 +194,7 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
   return {
     estudiantes,
     loading,
+    refreshing: query.isFetching && !query.isLoading,
     search,
     setSearch: handleSetSearch,
     paymentFilter,

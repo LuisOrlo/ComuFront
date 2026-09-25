@@ -126,6 +126,7 @@ const CargaMasivaCertificadosPage = lazyNamed(() => import("@/pages/certificados
 const VerificarCertificadosPage = lazyNamed(() => import("@/pages/certificados/VerificarCertificadosPage"), "VerificarCertificadosPage")
 const EstudianteStatsPage = lazyNamed(() => import("@/pages/estudiantes/EstudianteStatsPage"), "EstudianteStatsPage")
 const EstudianteSegmentsPage = lazyNamed(() => import("@/pages/estudiantes/EstudianteSegmentsPage"), "EstudianteSegmentsPage")
+const ImportarEstudiantesPage = lazyNamed(() => import("@/pages/estudiantes/ImportarEstudiantesPage"), "ImportarEstudiantesPage")
 const AgendaPage = lazyNamed(() => import("@/pages/agenda/AgendaPage"), "AgendaPage")
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
@@ -211,6 +212,7 @@ function AppLayout() {
             <Route path="/estudiantes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesPage /></RoleGuard>} />
             <Route path="/estudiantes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEstudiantePage /></RoleGuard>} />
             <Route path="/estudiantes/nuevo/inscribir" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEstudianteInscripcionPage /></RoleGuard>} />
+            <Route path="/estudiantes/importar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ImportarEstudiantesPage /></RoleGuard>} />
             <Route path="/estudiantes/cursos/:cursoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCursoDetallePage /></RoleGuard>} />
             <Route path="/estudiantes/talleres/:tallerId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesTallerDetallePage /></RoleGuard>} />
             <Route path="/estudiantes/ciudades/:ciudadId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantesCiudadDetallePage /></RoleGuard>} />

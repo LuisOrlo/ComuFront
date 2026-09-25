@@ -18,6 +18,7 @@ import {
   Camera01Icon,
   ArrowReloadHorizontalIcon,
   Edit01Icon,
+  Delete01Icon,
   Add01Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
@@ -25,6 +26,7 @@ import { cn, formatCalendarDate } from "@/lib/utils"
 import { equiposService, type Equipo, type AlquilerEquipo } from "@/services/equipos.service"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { toast } from "sonner"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 
 const ESTADO_CONFIG: Record<
   string,
@@ -83,6 +85,8 @@ export function HistorialEquipoPage() {
   const [devolverForm, setDevolverForm] = useState({ observaciones: "" })
   const [fotoRetornoFile, setFotoRetornoFile] = useState<File | null>(null)
   const [fotoRetornoPreview, setFotoRetornoPreview] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<AlquilerEquipo | null>(null)
+  const [deletingItem, setDeletingItem] = useState(false)
 
   const loadData = useCallback(
     async (silent = false) => {
@@ -174,6 +178,22 @@ export function HistorialEquipoPage() {
     } catch {
       toast.error("Error al registrar devolución")
       loadData(true)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return
+    setDeletingItem(true)
+    try {
+      await equiposService.deleteAlquiler(deleteConfirm.id)
+      toast.success("Alquiler eliminado")
+      setDeleteConfirm(null)
+      await loadData(true)
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar alquiler")
+    } finally {
+      setDeletingItem(false)
     }
   }
 
@@ -647,6 +667,15 @@ export function HistorialEquipoPage() {
                                       <span>Editar</span>
                                     </button>
 
+                                    <button
+                                      onClick={() => setDeleteConfirm(a)}
+                                      className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer border border-red-200"
+                                      type="button"
+                                    >
+                                      <HugeiconsIcon icon={Delete01Icon} size={14} />
+                                      <span>Eliminar</span>
+                                    </button>
+
                                     {isPagado ? (
                                       <button
                                         onClick={() =>
@@ -828,6 +857,19 @@ export function HistorialEquipoPage() {
       </AnimatePresence>
 
       {zoomFoto && <ImageZoom url={zoomFoto} onClose={() => setZoomFoto(null)} />}
+
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        title="Eliminar alquiler"
+        message={`¿Eliminar permanentemente el alquiler de "${deleteConfirm?.equipo?.nombre || equipo?.nombre || "equipo"}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous
+        isLoading={deletingItem}
+        icon="trash"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

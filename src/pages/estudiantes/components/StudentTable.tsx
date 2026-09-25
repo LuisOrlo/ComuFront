@@ -40,6 +40,7 @@ export interface StudentRow {
 interface StudentTableProps {
   estudiantes: StudentRow[]
   loading: boolean
+  refreshing?: boolean
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
@@ -84,6 +85,7 @@ function FinancialCell({ saldo_pendiente, estado_pago }: { saldo_pendiente?: num
 export function StudentTable({
   estudiantes,
   loading,
+  refreshing = false,
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
@@ -276,7 +278,12 @@ export function StudentTable({
   const endRange = Math.min(currentPage * pageSize, totalCount)
 
   return (
-    <div className="rounded-xl bg-white shadow-sm overflow-hidden mb-4 border border-[#c6c6cd]/20">
+    <div className="rounded-xl bg-white shadow-sm overflow-hidden mb-4 border border-[#c6c6cd]/20 relative">
+      {refreshing && (
+        <div className="w-full h-1 bg-[#eff4ff] overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-[#fd761a] to-[#ffdbca] w-full animate-pulse" />
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -344,7 +351,7 @@ export function StudentTable({
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-[#e5eeff]/60 text-xs text-[#0b1c30]">
+          <tbody className={`divide-y divide-[#e5eeff]/60 text-xs text-[#0b1c30] transition-opacity duration-300 ${refreshing ? "opacity-60" : "opacity-100"}`}>
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="hover:bg-[#eff4ff]/30">

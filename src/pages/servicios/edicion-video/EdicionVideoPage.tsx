@@ -80,8 +80,9 @@ export function EdicionVideoPage() {
       toast.success("Trabajo eliminado")
       setDeleteConfirm(null)
       loadTrabajos()
-    } catch {
-      toast.error("Error al eliminar trabajo")
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar trabajo")
     } finally {
       setDeletingItem(false)
     }

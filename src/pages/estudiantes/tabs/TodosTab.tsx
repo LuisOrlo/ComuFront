@@ -25,6 +25,7 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
   const {
     estudiantes,
     loading,
+    refreshing,
     search,
     setSearch,
     paymentFilter,
@@ -218,6 +219,7 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
         <StudentTable
           estudiantes={studentRows}
           loading={loading}
+          refreshing={refreshing}
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}

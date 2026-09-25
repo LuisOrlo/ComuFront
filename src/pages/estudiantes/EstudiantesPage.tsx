@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Link, useSearchParams } from "react-router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link, useSearchParams, useLocation } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AddCircleIcon,
@@ -10,22 +10,51 @@ import {
   Download04Icon,
   AlertCircleIcon,
   Clock04Icon,
+  FileUploadIcon,
+  RefreshIcon,
 } from "@hugeicons/core-free-icons"
 import type { IconSvgElement } from "@hugeicons/react"
 import { TodosTab } from "./tabs/TodosTab"
 import { CursosTab } from "./tabs/CursosTab"
 import { TalleresTab } from "./tabs/TalleresTab"
 import { estudiantesService } from "@/services/estudiantes.service"
-import { StudentImportWizard } from "./import/StudentImportWizard"
+import { toast } from "sonner"
 
 type Tab = "todos" | "cursos" | "talleres"
 
 export function EstudiantesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const queryClient = useQueryClient()
+  const [softReloading, setSoftReloading] = useState(false)
   const tabFromUrl = searchParams.get("tab") as Tab | null
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && ["todos", "cursos", "talleres"].includes(tabFromUrl) ? tabFromUrl : "todos")
   const [exportOpen, setExportOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
+
+  // Recarga suave automática al volver de una importación
+  useEffect(() => {
+    if (location.state?.imported) {
+      setSoftReloading(true)
+      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+      queryClient.refetchQueries({ queryKey: ["estudiantes"] })
+      queryClient.invalidateQueries({ queryKey: ["cursos"] })
+      queryClient.invalidateQueries({ queryKey: ["talleres"] })
+
+      const count = location.state.count
+      toast.success(
+        count
+          ? `Se importaron ${count} estudiantes. El listado se actualizó automáticamente.`
+          : "Importación completada. Listado actualizado con éxito."
+      )
+
+      window.history.replaceState({}, document.title)
+
+      const timer = setTimeout(() => {
+        setSoftReloading(false)
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [location.state, queryClient])
 
   useEffect(() => {
     if (tabFromUrl && ["todos", "cursos", "talleres"].includes(tabFromUrl) && tabFromUrl !== activeTab) {
@@ -70,12 +99,33 @@ export function EstudiantesPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               {activeTab === "todos" && (
+                <Link
+                  to="/estudiantes/importar"
+                  className="h-10 px-4 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 select-none"
+                >
+                  <HugeiconsIcon icon={FileUploadIcon} size={16} className="text-[#fd761a]" />
+                  <span>Importar estudiantes</span>
+                </Link>
+              )}
+              {activeTab === "todos" && (
                 <button
                   type="button"
-                  onClick={() => setImportOpen(true)}
-                  className="h-10 px-4 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30"
+                  onClick={() => {
+                    setSoftReloading(true)
+                    queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+                    queryClient.refetchQueries({ queryKey: ["estudiantes"] })
+                    setTimeout(() => setSoftReloading(false), 1200)
+                  }}
+                  disabled={softReloading}
+                  className="h-10 px-3.5 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 disabled:opacity-60"
+                  title="Actualizar listado suavemente"
                 >
-                  <span>Importar estudiantes</span>
+                  <HugeiconsIcon
+                    icon={RefreshIcon}
+                    size={16}
+                    className={softReloading ? "text-[#fd761a] animate-spin" : "text-[#76777d]"}
+                  />
+                  <span className="hidden sm:inline">Actualizar</span>
                 </button>
               )}
               {activeTab === "todos" && (
@@ -106,6 +156,20 @@ export function EstudiantesPage() {
               </Link>
             </div>
           </header>
+
+          {/* Banner de recarga suave */}
+          {softReloading && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#eff4ff] to-white border border-[#dce9ff] text-xs text-[#0b1c30] shadow-2xs animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#fd761a] animate-ping" />
+                <span className="font-bold">Sincronizando listado...</span>
+                <span className="text-[#45464d] hidden sm:inline">Actualizando datos de estudiantes en segundo plano</span>
+              </div>
+              <div className="w-24 h-1.5 bg-[#eff4ff] rounded-full overflow-hidden border border-[#c6c6cd]/30">
+                <div className="h-full bg-[#fd761a] w-full animate-pulse" />
+              </div>
+            </div>
+          )}
 
           {/* COMPACT SUMMARY METRICS ROW */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -236,7 +300,6 @@ export function EstudiantesPage() {
           </div>
         </div>
       </main>
-      <StudentImportWizard open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   )
 }

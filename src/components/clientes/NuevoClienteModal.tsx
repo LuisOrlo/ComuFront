@@ -1,8 +1,13 @@
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { AddCircleIcon, Cancel01Icon, AlertCircleIcon } from "@hugeicons/core-free-icons"
+import {
+  AddCircleIcon,
+  Cancel01Icon,
+  AlertCircleIcon,
+  UserIcon,
+  Building04Icon,
+} from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
-import { COLORS } from "@/lib/constants"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { toast } from "sonner"
 
@@ -31,12 +36,20 @@ interface FormErrors {
   correo?: string
 }
 
-const FORM_FIELDS = [
-  { key: "nombres" as const, label: "Nombres", required: true, placeholder: "Nombres del cliente", colSpan: 2 },
-  { key: "apellidos" as const, label: "Apellidos", required: false, placeholder: "Apellidos del cliente", colSpan: 2 },
+const PERSONA_FIELDS = [
+  { key: "nombres" as const, label: "Nombres", required: true, placeholder: "Nombres del cliente", colSpan: 1 },
+  { key: "apellidos" as const, label: "Apellidos", required: false, placeholder: "Apellidos del cliente", colSpan: 1 },
   { key: "cedula" as const, label: "Cédula", required: false, placeholder: "Número de cédula", colSpan: 1 },
   { key: "celular" as const, label: "Celular", required: false, placeholder: "Número de celular", colSpan: 1 },
-  { key: "correo" as const, label: "Correo", required: false, placeholder: "Correo electrónico", colSpan: 2 },
+  { key: "correo" as const, label: "Correo electrónico", required: false, placeholder: "cliente@ejemplo.com", colSpan: 2 },
+]
+
+const EMPRESA_FIELDS = [
+  { key: "nombre_empresa" as const, label: "Nombre de la empresa", required: true, placeholder: "Razón social o nombre comercial", colSpan: 2 },
+  { key: "nombres" as const, label: "Contacto principal", required: true, placeholder: "Nombres del contacto", colSpan: 1 },
+  { key: "apellidos" as const, label: "Apellidos del contacto", required: false, placeholder: "Apellidos del contacto", colSpan: 1 },
+  { key: "celular" as const, label: "Teléfono / Celular", required: false, placeholder: "Teléfono de contacto", colSpan: 1 },
+  { key: "correo" as const, label: "Correo general", required: false, placeholder: "contacto@empresa.com", colSpan: 1 },
 ]
 
 function validateField(key: string, value: string): string | null {
@@ -83,16 +96,24 @@ function fieldInputProps(key: string) {
 }
 
 export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteModalProps) {
-  const [form, setForm] = useState<FormState>({ tipo_cliente: "persona", nombres: "", apellidos: "", nombre_empresa: "", cedula: "", correo: "", celular: "" })
+  const [form, setForm] = useState<FormState>({
+    tipo_cliente: "persona",
+    nombres: "",
+    apellidos: "",
+    nombre_empresa: "",
+    cedula: "",
+    correo: "",
+    celular: "",
+  })
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
 
   if (!isOpen) return null
 
   const updateField = (key: string, value: string) => {
-    setForm({ ...form, [key]: value })
+    setForm((prev) => ({ ...prev, [key]: value }))
     if (errors[key as keyof FormErrors]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const err = validateField(key, value)
         const next = { ...prev }
         if (err) next[key as keyof FormErrors] = err
@@ -103,11 +124,14 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
   }
 
   const handleCreate = async () => {
+    const fieldsToValidate = form.tipo_cliente === "persona" ? PERSONA_FIELDS : EMPRESA_FIELDS
     const newErrors: FormErrors = {}
-    for (const { key } of FORM_FIELDS) {
+
+    for (const { key } of fieldsToValidate) {
       const err = validateField(key, form[key])
-      if (err && (form.tipo_cliente === "persona" || key === "nombres")) newErrors[key as keyof FormErrors] = err
+      if (err) newErrors[key as keyof FormErrors] = err
     }
+
     setErrors(newErrors)
     if (Object.keys(newErrors).length > 0) return
 
@@ -118,57 +142,117 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
         nombres: form.tipo_cliente === "persona" ? form.nombres : undefined,
         nombre_empresa: form.tipo_cliente === "empresa" ? form.nombre_empresa : undefined,
         correo: form.correo.trim() || undefined,
-        contactos: form.tipo_cliente === "empresa" ? [{ nombres: form.nombres, apellidos: form.apellidos, celular: form.celular, correo: form.correo, es_principal: true, activo: true }] : undefined,
+        contactos:
+          form.tipo_cliente === "empresa"
+            ? [
+                {
+                  nombres: form.nombres,
+                  apellidos: form.apellidos,
+                  celular: form.celular,
+                  correo: form.correo,
+                  es_principal: true,
+                  activo: true,
+                },
+              ]
+            : undefined,
       })
-      toast.success("Cliente externo registrado")
+      toast.success("Cliente externo registrado correctamente")
       onCreated(nuevo as ClienteExterno)
-      setForm({ tipo_cliente: "persona", nombres: "", apellidos: "", nombre_empresa: "", cedula: "", correo: "", celular: "" })
+      setForm({
+        tipo_cliente: "persona",
+        nombres: "",
+        apellidos: "",
+        nombre_empresa: "",
+        cedula: "",
+        correo: "",
+        celular: "",
+      })
       setErrors({})
       onClose()
     } catch (err: unknown) {
-      toast.error((err as { response?: { data?: { message?: string } } })?.response?.data?.message || "Error al crear cliente")
+      toast.error(
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          "Error al crear el cliente externo"
+      )
     } finally {
       setSaving(false)
     }
   }
 
+  const activeFields = form.tipo_cliente === "persona" ? PERSONA_FIELDS : EMPRESA_FIELDS
+
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-        <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-          <h2 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Nuevo Cliente Externo</h2>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-[#c6c6cd]/20">
+        {/* Cabecera del modal */}
+        <div className="px-6 py-4.5 border-b border-[#c6c6cd]/20 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#eff4ff] text-[#fd761a] flex items-center justify-center shrink-0">
+              <HugeiconsIcon
+                icon={form.tipo_cliente === "persona" ? UserIcon : Building04Icon}
+                size={20}
+              />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-[#0b1c30]">Nuevo Cliente Externo</h2>
+              <p className="text-[11px] text-[#76777d]">Registro rápido para servicios y alquileres</p>
+            </div>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-            style={{ color: COLORS.TEXT_MUTED }}
+            className="size-8 flex items-center justify-center rounded-xl text-[#76777d] hover:text-[#0b1c30] hover:bg-gray-100 transition-colors cursor-pointer"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
+        {/* Cuerpo del formulario */}
         <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-2">
-            {(["persona", "empresa"] as const).map(tipo => <button key={tipo} type="button" onClick={() => setForm(prev => ({ ...prev, tipo_cliente: tipo }))} className={`rounded-lg py-2 text-xs font-bold ${form.tipo_cliente === tipo ? "bg-white text-orange-600 shadow-sm" : "text-gray-500"}`}>{tipo === "persona" ? "Persona" : "Empresa"}</button>)}
+          {/* Selector de Tipo de Cliente */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-gray-100/70 border border-[#c6c6cd]/20">
+            <button
+              type="button"
+              onClick={() => setForm((prev) => ({ ...prev, tipo_cliente: "persona" }))}
+              className={`rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                form.tipo_cliente === "persona"
+                  ? "bg-white text-[#fd761a] shadow-xs"
+                  : "text-[#76777d] hover:text-[#0b1c30]"
+              }`}
+            >
+              <HugeiconsIcon icon={UserIcon} size={15} />
+              <span>Persona Natural</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setForm((prev) => ({ ...prev, tipo_cliente: "empresa" }))}
+              className={`rounded-lg py-2 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                form.tipo_cliente === "empresa"
+                  ? "bg-white text-[#fd761a] shadow-xs"
+                  : "text-[#76777d] hover:text-[#0b1c30]"
+              }`}
+            >
+              <HugeiconsIcon icon={Building04Icon} size={15} />
+              <span>Empresa / Jurídica</span>
+            </button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {(form.tipo_cliente === "empresa" ? [
-              { key: "nombre_empresa" as const, label: "Nombre de empresa", required: true, placeholder: "Empresa", colSpan: 2 },
-              { key: "nombres" as const, label: "Contacto principal", required: true, placeholder: "Nombres", colSpan: 2 },
-              { key: "apellidos" as const, label: "Apellidos del contacto", required: false, placeholder: "Apellidos", colSpan: 2 },
-              { key: "celular" as const, label: "Teléfono general", required: false, placeholder: "Teléfono", colSpan: 1 },
-              { key: "correo" as const, label: "Correo general", required: false, placeholder: "Correo", colSpan: 1 },
-            ] : FORM_FIELDS).map(({ key, label, required, placeholder, colSpan }) => {
+
+          {/* Campos del formulario en rejilla balanceada */}
+          <div className="grid grid-cols-2 gap-3.5 pt-1">
+            {activeFields.map(({ key, label, required, placeholder, colSpan }) => {
               const err = errors[key as keyof FormErrors]
               const extraProps = fieldInputProps(key)
+
               return (
-                <div key={key} className={colSpan === 2 ? "col-span-2" : ""}>
-                  <label className="text-[10px] font-bold uppercase tracking-wider opacity-40">
-                    {label}{required ? " *" : ""}
+                <div key={key} className={colSpan === 2 ? "col-span-2" : "col-span-1"}>
+                  <label className="text-xs font-semibold text-[#45464d] block mb-1">
+                    {label}
+                    {required && <span className="text-[#ba1a1a] ml-0.5">*</span>}
                   </label>
                   <input
                     {...extraProps}
                     value={form[key]}
-                    onChange={e => {
+                    onChange={(e) => {
                       const val = e.target.value
                       if (key === "nombres" || key === "apellidos") {
                         const clean = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "")
@@ -179,13 +263,16 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
                     }}
                     onBlur={() => updateField(key, form[key])}
                     placeholder={placeholder}
-                    className="w-full mt-1.5 px-3 py-2.5 rounded-xl border bg-white text-xs font-medium outline-none focus:ring-2 focus:ring-violet-500/20 transition-all"
-                    style={{ borderColor: err ? "oklch(0.60 0.15 10)" : COLORS.BORDER_SUBTLE }}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-xs sm:text-sm font-medium text-[#0b1c30] placeholder:text-[#76777d]/60 outline-none transition-all shadow-2xs ${
+                      err
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
+                        : "border-[#c6c6cd]/40 focus:ring-2 focus:ring-[#fd761a]/20 focus:border-[#fd761a]"
+                    }`}
                   />
                   {err && (
-                    <p className="flex items-center gap-1 text-[10px] mt-1 text-red-500 font-medium">
-                      <HugeiconsIcon icon={AlertCircleIcon} size={10} />
-                      {err}
+                    <p className="flex items-center gap-1 text-[11px] mt-1 text-red-500 font-medium">
+                      <HugeiconsIcon icon={AlertCircleIcon} size={11} />
+                      <span>{err}</span>
                     </p>
                   )}
                 </div>
@@ -194,30 +281,34 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
           </div>
         </div>
 
-        <div className="flex gap-3 px-6 py-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+        {/* Acciones del pie */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#c6c6cd]/20 bg-gray-50/50">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50"
-            style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}
             disabled={saving}
+            className="px-5 py-2.5 rounded-xl text-xs font-bold border border-[#c6c6cd]/30 bg-white text-[#45464d] hover:bg-[#eff4ff] hover:text-[#0b1c30] transition-colors cursor-pointer"
           >
-            <HugeiconsIcon icon={Cancel01Icon} size={16} className="inline-block mr-1" />
+            <HugeiconsIcon icon={Cancel01Icon} size={15} className="inline-block mr-1.5" />
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleCreate}
             disabled={saving}
-            className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ backgroundColor: COLORS.ACCENT }}
+            className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-[#e06512] shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
           >
             {saving ? (
-              <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <>
+                <div className="size-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Guardando...</span>
+              </>
             ) : (
-              <HugeiconsIcon icon={AddCircleIcon} size={16} />
+              <>
+                <HugeiconsIcon icon={AddCircleIcon} size={16} />
+                <span>Registrar Cliente</span>
+              </>
             )}
-            {saving ? "Guardando..." : "Registrar Cliente"}
           </button>
         </div>
       </div>

@@ -19,6 +19,7 @@ import {
   PackageIcon,
   Search01Icon,
   Edit01Icon,
+  Delete01Icon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { X, Plus } from "lucide-react"
@@ -26,6 +27,8 @@ import { cn } from "@/lib/utils"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { toast } from "sonner"
 import { AulasKPIs } from "./components/AulasKPIs"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { clearAvailabilityCache } from "@/lib/availabilityCache"
 
 type VistaModo = "semanal" | "diaria" | "lista"
 
@@ -88,6 +91,8 @@ export function AulasPage() {
   const [reservasGenerales, setReservasGenerales] = useState<ReservaAula[]>([])
   const [detalleReserva, setDetalleReserva] = useState<ReservaAula | null>(null)
   const [detalleOpen, setDetalleOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<ReservaAula | null>(null)
+  const [deletingItem, setDeletingItem] = useState(false)
 
   const [aulaSearch, setAulaSearch] = useState("")
   const [showMoreAulas, setShowMoreAulas] = useState(false)
@@ -173,6 +178,25 @@ export function AulasPage() {
     setAulaWeekRef(new Date())
     if (aula !== "todas") {
       loadReservas(aula.id)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return
+    setDeletingItem(true)
+    try {
+      await aulasService.deleteReserva(deleteConfirm.id)
+      toast.success("Reserva eliminada")
+      clearAvailabilityCache()
+      setDeleteConfirm(null)
+      setDetalleOpen(false)
+      await loadReservasGenerales()
+      if (selectedAula !== "todas" && selectedAula) await loadReservas(selectedAula.id)
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar reserva")
+    } finally {
+      setDeletingItem(false)
     }
   }
 
@@ -710,11 +734,31 @@ export function AulasPage() {
                     <span>Editar Reserva</span>
                   </button>
                 )}
+                <button
+                  onClick={() => setDeleteConfirm(detalleReserva)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-all shadow-xs active:scale-95"
+                >
+                  <HugeiconsIcon icon={Delete01Icon} size={14} />
+                  <span>Eliminar Reserva</span>
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        title="Eliminar Reserva"
+        message={`¿Eliminar permanentemente la reserva de "${deleteConfirm?.aula?.nombre || "aula"}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous
+        isLoading={deletingItem}
+        icon="trash"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

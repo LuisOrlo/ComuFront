@@ -3,7 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   SchoolIcon, UserIcon, Money01Icon, Mail01Icon, CallIcon,
   IdentificationIcon, Clock01Icon, CheckmarkCircle04Icon, Edit01Icon,
-  LibraryIcon,
+  LibraryIcon, Delete01Icon,
 } from "@hugeicons/core-free-icons"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -18,13 +18,14 @@ const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }
   cancelado: { bg: "bg-red-50 border-red-200", color: "text-red-600", label: "Cancelado" },
 }
 
-export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPago }: {
+export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPago, onDelete }: {
   isOpen: boolean
   onClose: () => void
   reserva: ReservaAula | null
   aula?: Aula
   onEdit?: () => void
   onPago?: () => void
+  onDelete?: () => void
 }) {
   if (!reserva) return null
 
@@ -201,6 +202,15 @@ export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPag
                   </button>
                 )
               })()}
+              {onDelete && (
+                <button
+                  onClick={() => { onClose(); onDelete() }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-all active:scale-95"
+                >
+                  <HugeiconsIcon icon={Delete01Icon} size={14} />
+                  Eliminar
+                </button>
+              )}
             </div>
           </motion.div>
         </div>

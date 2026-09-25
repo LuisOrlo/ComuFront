@@ -14,6 +14,7 @@ import { ReservaForm } from "./components/ReservaForm"
 import { ReservaBatchForm } from "./components/ReservaBatchForm"
 import { DetalleReservaModal } from "./components/DetalleReservaModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { clearAvailabilityCache } from "@/lib/availabilityCache"
 
 const hours = Array.from({ length: 14 }, (_, i) => i + 7)
 
@@ -164,11 +165,13 @@ export function RadioPage() {
     setDeletingItem(true)
     try {
       await radioService.deleteReserva(deleteConfirm.id)
-      toast.success("Reserva anulada")
+      toast.success("Reserva eliminada")
+      clearAvailabilityCache()
       setDeleteConfirm(null)
       loadReservas()
-    } catch {
-      toast.error("Error al anular reserva")
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar reserva")
     } finally {
       setDeletingItem(false)
     }
@@ -572,7 +575,7 @@ export function RadioPage() {
                                                 )
                                               }
                                               className="size-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer"
-                                              title="Anular emisión"
+                                              title="Eliminar emisión"
                                             >
                                               <HugeiconsIcon icon={Delete01Icon} size={14} />
                                             </button>
@@ -605,9 +608,9 @@ export function RadioPage() {
 
       <ConfirmationModal
         isOpen={!!deleteConfirm}
-        title="Anular Reserva"
-        message={`¿Anular la reserva de "${deleteConfirm?.name}"?`}
-        confirmText="Anular"
+        title="Eliminar Reserva"
+        message={`¿Eliminar permanentemente la reserva de "${deleteConfirm?.name}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
         cancelText="Cancelar"
         isDangerous
         isLoading={deletingItem}

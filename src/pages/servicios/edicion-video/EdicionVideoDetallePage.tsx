@@ -85,8 +85,9 @@ export function EdicionVideoDetallePage() {
       await edicionVideoService.deleteTrabajo(id)
       toast.success("Trabajo eliminado")
       navigate("/servicios/edicion-video")
-    } catch {
-      toast.error("Error al eliminar trabajo")
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar trabajo")
     } finally {
       setDeleting(false)
     }

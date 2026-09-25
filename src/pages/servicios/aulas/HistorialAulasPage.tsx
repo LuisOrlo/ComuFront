@@ -23,6 +23,8 @@ import { cn, formatCalendarDate, todayInEcuador } from "@/lib/utils"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { toast } from "sonner"
 import { DetalleAulaModal } from "./components/DetalleAulaModal"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { clearAvailabilityCache } from "@/lib/availabilityCache"
 
 const ESTADO_CONFIG: Record<
   string,
@@ -84,6 +86,8 @@ export function HistorialAulasPage() {
   // Modal de detalle
   const [selectedReserva, setSelectedReserva] = useState<ReservaAula | null>(null)
   const [detalleModalOpen, setDetalleModalOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<ReservaAula | null>(null)
+  const [deletingItem, setDeletingItem] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -262,6 +266,25 @@ export function HistorialAulasPage() {
         nombreServicio: `Alquiler de Aula ${aulaNombre}`,
       },
     })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return
+    setDeletingItem(true)
+    try {
+      await aulasService.deleteReserva(deleteConfirm.id)
+      toast.success("Reserva eliminada")
+      clearAvailabilityCache()
+      setDeleteConfirm(null)
+      setSelectedReserva(null)
+      setDetalleModalOpen(false)
+      await loadData()
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+      toast.error(message || "Error al eliminar reserva")
+    } finally {
+      setDeletingItem(false)
+    }
   }
 
   const hoyEcuador = todayInEcuador()
@@ -713,6 +736,20 @@ export function HistorialAulasPage() {
             : undefined
         }
         onPago={selectedReserva ? () => handlePago(selectedReserva) : undefined}
+        onDelete={selectedReserva ? () => setDeleteConfirm(selectedReserva) : undefined}
+      />
+
+      <ConfirmationModal
+        isOpen={!!deleteConfirm}
+        title="Eliminar Reserva"
+        message="¿Eliminar permanentemente esta reserva? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        isDangerous
+        isLoading={deletingItem}
+        icon="trash"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
       />
     </div>
   )
