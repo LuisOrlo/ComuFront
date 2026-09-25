@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router"
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router"
 import { lazy, Suspense, useState, useRef } from "react"
 import type { ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -19,6 +19,11 @@ function PageLoader() {
       Cargando…
     </div>
   )
+}
+
+function LegacyPagoDetalleRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={id ? `/finanzas/movimientos/${id}` : "/finanzas/movimientos"} replace />
 }
 
 const LoginPage = lazyNamed(() => import("@/pages/login/LoginPage"), "LoginPage")
@@ -80,7 +85,6 @@ const InstructorHorarioPage = lazyNamed(() => import("@/pages/instructor-portal/
 const DetalleEstudiantePage = lazyNamed(() => import("@/pages/instructor-portal/detalle/DetalleEstudiantePage"), "DetalleEstudiantePage")
 const InstructorTallerDetailPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorTallerDetailPage"), "InstructorTallerDetailPage")
 const FinancePagosPage = lazyNamed(() => import("@/pages/finanzas/pagos/FinancePagosPage"), "FinancePagosPage")
-const FinanceResumenWrapper = lazyNamed(() => import("@/pages/finanzas/pagos/FinancePagosPage"), "FinanceResumenWrapper")
 const CuentasCobrarLayout = lazyNamed(() => import("@/pages/finanzas/pagos/CuentasCobrarLayout"), "CuentasCobrarLayout")
 const TalleresCuentasPage = lazyNamed(() => import("@/pages/finanzas/pagos/TalleresCuentasPage"), "TalleresCuentasPage")
 const TallerCuentasDetallePage = lazyNamed(() => import("@/pages/finanzas/pagos/TallerCuentasDetallePage"), "TallerCuentasDetallePage")
@@ -255,10 +259,10 @@ function AppLayout() {
             <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioTarifasPage /></RoleGuard>} />
             <Route path="/servicios/radio/reservas/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ReservaRadioDetallePage /></RoleGuard>} />
             <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><FinancePagosPage /></RoleGuard>}>
-              <Route index element={<Navigate to="resumen" replace />} />
-              <Route path="resumen" element={<RoleGuard roles={["Administrador", "Secretaria"]}><FinanceResumenWrapper /></RoleGuard>} />
-              <Route path="historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPage /></RoleGuard>} />
-              <Route path="historial/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PagoDetallePage /></RoleGuard>} />
+              <Route index element={<Navigate to="cuentas/cursos" replace />} />
+              <Route path="resumen" element={<Navigate to="/finanzas/pagos" replace />} />
+              <Route path="historial" element={<Navigate to="/finanzas/movimientos" replace />} />
+              <Route path="historial/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><LegacyPagoDetalleRedirect /></RoleGuard>} />
               <Route path="cuentas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CuentasCobrarLayout /></RoleGuard>}>
                 <Route index element={<Navigate to="cursos" replace />} />
                 <Route path="talleres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TalleresCuentasPage /></RoleGuard>} />
@@ -273,6 +277,8 @@ function AppLayout() {
                 <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador"]}><ServicioPagoPage /></RoleGuard>} />
               </Route>
             </Route>
+            <Route path="/finanzas/movimientos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPage /></RoleGuard>} />
+            <Route path="/finanzas/movimientos/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PagoDetallePage /></RoleGuard>} />
             <Route path="/finanzas/pagos/cursos/:cursoId/estudiante/:matriculaId/pago" element={<RoleGuard roles={["Administrador"]}><CursoEstudiantePagoPage /></RoleGuard>} />
             <Route path="/finanzas/ingresos" element={<RoleGuard roles={["Administrador"]}><IngresosPage /></RoleGuard>} />
             <Route path="/finanzas/ingresos/:id" element={<RoleGuard roles={["Administrador"]}><IngresoDetallePage /></RoleGuard>} />

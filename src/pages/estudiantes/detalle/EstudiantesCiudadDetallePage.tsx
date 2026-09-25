@@ -183,6 +183,7 @@ export function EstudiantesCiudadDetallePage() {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
+          onClearSelection={clearSelection}
         />
       </div>
 

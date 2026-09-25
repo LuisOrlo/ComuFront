@@ -1,6 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
 
 interface ClientesFiltersProps {
   search: string
@@ -9,21 +8,21 @@ interface ClientesFiltersProps {
 
 export function ClientesFilters({ search, onSearchChange }: ClientesFiltersProps) {
   return (
-    <div className="flex shrink-0 flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
+    <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-[#45464d]">Directorio de clientes</p>
-        <p className="mt-1 text-xs text-[#73747b]">Busca por nombre, cédula o datos de contacto.</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Directorio de clientes</p>
+        <p className="mt-0.5 text-xs text-slate-400">Busca por cliente, correo, celular o ciudad.</p>
       </div>
       <div className="relative w-full sm:max-w-xs">
-          <HugeiconsIcon icon={Search01Icon} size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.TEXT_MUTED }} />
-          <input
-            type="text"
-            placeholder="Buscar nombre o cédula..."
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            className="w-full rounded-xl bg-[#eff4ff] py-2.5 pl-9 pr-4 text-xs font-medium outline-none transition-all placeholder:text-[#76777d] focus:bg-[#e5eeff]"
-            aria-label="Buscar clientes"
-          />
+        <HugeiconsIcon icon={Search01Icon} size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          placeholder="Buscar en el directorio..."
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          className="w-full rounded-xl bg-slate-50 border border-slate-200/80 py-2.5 pl-9 pr-4 text-xs font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15"
+          aria-label="Buscar clientes"
+        />
       </div>
     </div>
   )

@@ -70,9 +70,7 @@ export function ClienteDetallePage() {
     <div className="flex min-h-full flex-col overflow-y-auto bg-[#f8f9ff] text-[#0b1c30]">
       <header className="sticky top-0 z-20 shrink-0 border-b bg-white/95 px-4 py-4 shadow-[0_1px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
         <div className="mx-auto flex max-w-7xl flex-col gap-4">
-          <nav aria-label="Ruta de navegación" className="hidden items-center gap-2 text-xs font-semibold text-[#73747b] md:flex">
-            <Link to="/clientes" className="hover:text-[#0b1c30]">Clientes</Link><span className="text-[#c6c6cd]">/</span><span className="text-[#0b1c30]">Detalle del cliente</span>
-          </nav>
+          
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
             <Link to="/clientes" className="flex size-9 items-center justify-center rounded-lg text-[#73747b] transition-colors hover:bg-[#eff4ff] hover:text-[#0b1c30]">
@@ -86,7 +84,7 @@ export function ClienteDetallePage() {
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" style={{ color: COLORS.CHARCOAL }}>
                 {name}
               </h1>
-              <span className="hidden rounded-full bg-[#e5eeff] px-2.5 py-1 text-[11px] font-semibold text-[#45464d] sm:inline">Cliente externo</span>
+              <span className="hidden rounded-full bg-[#e5eeff] px-2.5 py-1 text-[11px] font-semibold text-[#45464d] sm:inline">{cliente.tipo_cliente === "empresa" ? "Empresa" : "Cliente externo"}</span>
               </div>
               <p className="mt-1 text-sm text-[#73747b]">
                 {cliente.cedula && <span>{cliente.cedula} · </span>}

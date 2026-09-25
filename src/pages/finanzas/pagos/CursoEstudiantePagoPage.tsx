@@ -322,7 +322,7 @@ export function CursoEstudiantePagoPage() {
                       +${Number(t.monto).toLocaleString()}
                     </span>
                     <button
-                      onClick={() => navigate(`/finanzas/pagos/historial/${t.id}`)}
+                      onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
                       className="size-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-gray-100"
                       style={{ color: COLORS.TEXT_MUTED }}
                       title="Ver detalles"

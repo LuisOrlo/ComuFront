@@ -410,50 +410,83 @@ interface SolicitudItem {
 
   // Navigate to approval detail page
   const handleGoToApprove = (item: typeof unifiedItems[0]) => {
+    const params = new URLSearchParams()
+    params.set("tab", mainTab)
+    params.set("status", statusFilter)
+
     if (item.origen === "taller") {
-      navigate(`/matriculas/aprobacion/taller/${item.id}`, {
+      if (statusFilter === "pendientes") {
+        params.set("estado", "activo")
+        params.set("pago_verificado", "false")
+      } else if (statusFilter === "aprobados") {
+        params.set("pago_verificado", "true")
+      } else if (statusFilter === "rechazados") {
+        params.set("estado", "retirado")
+      } else if (statusFilter === "todos") {
+        params.set("estado", "todos")
+      }
+
+      if (searchTerm) params.set("search", searchTerm)
+      if (filtroProgramaId) params.set("taller_id", filtroProgramaId)
+      if (filtroFechaDesde) params.set("fecha_desde", filtroFechaDesde)
+      if (filtroFechaHasta) params.set("fecha_hasta", filtroFechaHasta)
+
+      navigate(`/matriculas/aprobacion/taller/${item.id}?${params.toString()}`, {
         state: { nombre: item.nombres, apellido: item.apellidos, cursoNombre: item.programaNombre },
       })
     } else {
-      navigate(`/matriculas/aprobacion/solicitud/${item.id}?estado=${item.estado}`, {
+      params.set("categoria", categoria)
+      if (statusFilter === "pendientes") {
+        params.set("estado", "pendiente_validacion")
+      } else if (statusFilter === "aprobados") {
+        params.set("estado", "matricula_creada")
+      } else if (statusFilter === "rechazados") {
+        params.set("estado", "rechazado")
+      } else if (statusFilter === "todos") {
+        params.set("estado", "todos")
+      }
+
+      if (searchTerm) params.set("search", searchTerm)
+      if (filtroProgramaId) params.set("curso_abierto_id", filtroProgramaId)
+      if (filtroFechaDesde) params.set("fecha_desde", filtroFechaDesde)
+      if (filtroFechaHasta) params.set("fecha_hasta", filtroFechaHasta)
+
+      navigate(`/matriculas/aprobacion/solicitud/${item.id}?${params.toString()}`, {
         state: { nombre: item.nombres, apellido: item.apellidos, cursoNombre: item.programaNombre },
       })
     }
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#f8f9ff]">
+    <div className="min-h-[100dvh] flex flex-col bg-slate-50/50 text-slate-800">
       {/* 1. BREADCRUMB & HEADER DE OPERACIÓN */}
-      <section className="bg-white border-b border-[#c6c6cd]/30 shadow-[0_1px_8px_rgba(0,0,0,0.02)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-4">
-          
-
+      <section className="bg-white border-b border-slate-200/80 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 flex flex-col gap-3">
           {/* Header & Status Summary Bar */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex flex-col gap-1.5">
-              <h1 className="text-2xl sm:text-3xl font-bold text-[#0b1c30] tracking-tight">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Aprobación de Matrículas
               </h1>
-              
 
               {/* Status Summary Pills Bar */}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ffdbca] text-[#783200] text-xs font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-[#fd761a] animate-pulse" />
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200/70 text-[#9d4300] text-[11px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a] animate-pulse" />
                   <span>{activeStats.pendientes} pendientes de revisión</span>
                 </div>
-                <span className="text-[#c6c6cd] text-xs">•</span>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold">
-                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} className="text-emerald-600" />
+                <span className="text-slate-300 text-xs">•</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/70 text-emerald-800 text-[11px] font-semibold">
+                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={13} className="text-emerald-600" />
                   <span>{activeStats.aprobados} aprobadas</span>
                 </div>
-                <span className="text-[#c6c6cd] text-xs">•</span>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-800 text-xs font-semibold">
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} className="text-red-600" />
+                <span className="text-slate-300 text-xs">•</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200/70 text-red-800 text-[11px] font-semibold">
+                  <HugeiconsIcon icon={Cancel01Icon} size={13} className="text-red-600" />
                   <span>{activeStats.rechazados} rechazadas</span>
                 </div>
-                <span className="text-[#c6c6cd] text-xs">•</span>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                <span className="text-slate-300 text-xs">•</span>
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium">
                   <span>{activeStats.todos} en total</span>
                 </div>
               </div>
@@ -463,23 +496,23 @@ interface SolicitudItem {
       </section>
 
       {/* 2. SELECTOR PRINCIPAL DE PROGRAMA & ESTADO */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-2 rounded-2xl shadow-sm border border-[#c6c6cd]/30">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 flex flex-col gap-4 sm:gap-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-1.5 rounded-xl shadow-xs border border-slate-200/80">
           {/* Program Origin Tabs */}
-          <div aria-label="Tipo de programa" className="flex items-center gap-1 p-1 bg-[#f8f9ff] rounded-xl border border-[#c6c6cd]/20" role="tablist">
+          <div aria-label="Tipo de programa" className="flex items-center gap-1 p-1 bg-slate-100/70 rounded-lg" role="tablist">
             <button
               onClick={() => { setMainTab("cursos"); setVentanaActual(1); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 mainTab === "cursos"
-                  ? "bg-white shadow-sm text-[#0b1c30]"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-slate-900"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
-              <HugeiconsIcon icon={GraduationCapIcon} size={16} className={mainTab === "cursos" ? "text-[#fd761a]" : "text-[#45464d]"} />
+              <HugeiconsIcon icon={GraduationCapIcon} size={15} className={mainTab === "cursos" ? "text-[#fd761a]" : "text-slate-500"} />
               <span>Cursos</span>
-              <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold ${
-                mainTab === "cursos" ? "bg-[#fd761a] text-white" : "bg-gray-200 text-gray-700"
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                mainTab === "cursos" ? "bg-[#fd761a] text-white" : "bg-slate-200 text-slate-700"
               }`}>
                 {countCursos}
               </span>
@@ -487,17 +520,17 @@ interface SolicitudItem {
 
             <button
               onClick={() => { setMainTab("personalizados"); setVentanaActual(1); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 mainTab === "personalizados"
-                  ? "bg-white shadow-sm text-[#0b1c30]"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-slate-900"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
-              <HugeiconsIcon icon={FilterIcon} size={16} className={mainTab === "personalizados" ? "text-[#fd761a]" : "text-[#45464d]"} />
+              <HugeiconsIcon icon={FilterIcon} size={15} className={mainTab === "personalizados" ? "text-[#fd761a]" : "text-slate-500"} />
               <span>Personalizados</span>
-              <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold ${
-                mainTab === "personalizados" ? "bg-[#fd761a] text-white" : "bg-gray-200 text-gray-700"
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                mainTab === "personalizados" ? "bg-[#fd761a] text-white" : "bg-slate-200 text-slate-700"
               }`}>
                 {countPersonalizados}
               </span>
@@ -505,17 +538,17 @@ interface SolicitudItem {
 
             <button
               onClick={() => { setMainTab("talleres"); setTallerVentanaActual(1); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 mainTab === "talleres"
-                  ? "bg-white shadow-sm text-[#0b1c30]"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-slate-900"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
-              <HugeiconsIcon icon={Calendar03Icon} size={16} className={mainTab === "talleres" ? "text-[#fd761a]" : "text-[#45464d]"} />
+              <HugeiconsIcon icon={Calendar03Icon} size={15} className={mainTab === "talleres" ? "text-[#fd761a]" : "text-slate-500"} />
               <span>Talleres</span>
-              <span className={`px-1.5 py-0.2 rounded text-[11px] font-bold ${
-                mainTab === "talleres" ? "bg-[#fd761a] text-white" : "bg-gray-200 text-gray-700"
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                mainTab === "talleres" ? "bg-[#fd761a] text-white" : "bg-slate-200 text-slate-700"
               }`}>
                 {countTalleres}
               </span>
@@ -523,35 +556,35 @@ interface SolicitudItem {
           </div>
 
           {/* Status Filter Tabs */}
-          <div aria-label="Filtro por estado" className="flex items-center gap-1 p-1 bg-[#f8f9ff] rounded-xl border border-[#c6c6cd]/20" role="tablist">
+          <div aria-label="Filtro por estado" className="flex items-center gap-1 p-1 bg-slate-100/70 rounded-lg overflow-x-auto" role="tablist">
             <button
               onClick={() => { setStatusFilter("todos"); setVentanaActual(1); setTallerVentanaActual(1); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === "todos"
-                  ? "bg-white shadow-sm text-[#0b1c30]"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-slate-900"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
               <span>Todos</span>
-              <span className="font-mono text-[11px] text-[#45464d] font-medium">
+              <span className="font-mono text-[11px] text-slate-500 font-semibold">
                 {activeStats.todos}
               </span>
             </button>
 
             <button
               onClick={() => { setStatusFilter("pendientes"); setVentanaActual(1); setTallerVentanaActual(1); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === "pendientes"
-                  ? "bg-white shadow-sm text-[#783200]"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-[#9d4300]"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
-              <span className="w-2 h-2 rounded-full bg-[#fd761a]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a]" />
               <span>Pendientes</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                statusFilter === "pendientes" ? "bg-[#ffdbca] text-[#783200]" : "bg-gray-200 text-gray-700"
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                statusFilter === "pendientes" ? "bg-[#ffdbca] text-[#783200]" : "bg-slate-200 text-slate-700"
               }`}>
                 {activeStats.pendientes}
               </span>
@@ -559,32 +592,32 @@ interface SolicitudItem {
 
             <button
               onClick={() => { setStatusFilter("aprobados"); setVentanaActual(1); setTallerVentanaActual(1); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === "aprobados"
-                  ? "bg-white shadow-sm text-emerald-800"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-emerald-800"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
-              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} className="text-emerald-600" />
+              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={13} className="text-emerald-600" />
               <span>Aprobados</span>
-              <span className="font-mono text-[11px] text-[#45464d] font-medium">
+              <span className="font-mono text-[11px] text-slate-500 font-semibold">
                 {activeStats.aprobados}
               </span>
             </button>
 
             <button
               onClick={() => { setStatusFilter("rechazados"); setVentanaActual(1); setTallerVentanaActual(1); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 statusFilter === "rechazados"
-                  ? "bg-white shadow-sm text-red-800"
-                  : "text-[#45464d] hover:text-[#0b1c30]"
+                  ? "bg-white shadow-2xs text-red-800"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               type="button"
             >
-              <HugeiconsIcon icon={Cancel01Icon} size={14} className="text-red-600" />
+              <HugeiconsIcon icon={Cancel01Icon} size={13} className="text-red-600" />
               <span>Rechazados</span>
-              <span className="font-mono text-[11px] text-[#45464d] font-medium">
+              <span className="font-mono text-[11px] text-slate-500 font-semibold">
                 {activeStats.rechazados}
               </span>
             </button>
@@ -592,14 +625,14 @@ interface SolicitudItem {
         </div>
 
         {/* 3. BARRA DE HERRAMIENTAS DE BÚSQUEDA Y FILTROS RÁPIDOS */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#c6c6cd]/30 flex flex-col gap-3">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-            {/* Search input with icon & hotkey */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-xs border border-slate-200/80 flex flex-col gap-3">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+            {/* Search input with icon */}
             <div className="relative flex-1 max-w-lg">
               <HugeiconsIcon
                 icon={SearchIcon}
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
               />
               <input
                 type="text"
@@ -610,7 +643,7 @@ interface SolicitudItem {
                   setVentanaActual(1)
                   setTallerVentanaActual(1)
                 }}
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#f8f9ff] text-[#0b1c30] text-xs font-medium placeholder:text-[#76777d] border border-transparent focus:border-[#c6c6cd] focus:bg-white focus:outline-none transition-all"
+                className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 border border-slate-200/80 focus:border-[#fd761a] focus:bg-white focus:outline-none transition-all"
               />
             </div>
 
@@ -625,7 +658,7 @@ interface SolicitudItem {
                     setVentanaActual(1)
                     setTallerVentanaActual(1)
                   }}
-                  className="px-3 py-2 rounded-xl bg-[#f8f9ff] hover:bg-[#e5eeff] text-[#0b1c30] text-xs font-medium border border-transparent focus:border-[#c6c6cd] focus:bg-white focus:outline-none transition-colors cursor-pointer"
+                  className="h-9 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-medium border border-slate-200/80 focus:border-[#fd761a] focus:bg-white focus:outline-none transition-colors cursor-pointer"
                 >
                   <option value="">{mainTab === "talleres" ? "Todos los talleres" : "Todos los cursos"}</option>
                   {mainTab === "talleres"
@@ -643,8 +676,8 @@ interface SolicitudItem {
               </div>
 
               {/* Date Filters: Desde & Hasta */}
-              <div className="flex items-center gap-1.5 bg-[#f8f9ff] p-1 rounded-xl border border-transparent">
-                <span className="text-[11px] text-gray-500 pl-2">Desde:</span>
+              <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200/80">
+                <span className="text-[11px] text-slate-400 pl-1.5 font-medium">Desde:</span>
                 <input
                   type="date"
                   value={filtroFechaDesde}
@@ -653,9 +686,9 @@ interface SolicitudItem {
                     setVentanaActual(1)
                     setTallerVentanaActual(1)
                   }}
-                  className="px-2 py-1 rounded-lg bg-white text-[11px] text-[#0b1c30] border border-[#c6c6cd]/40 focus:outline-none"
+                  className="h-7 px-2 rounded-md bg-white text-[11px] text-slate-800 border border-slate-200 focus:outline-none focus:border-[#fd761a]"
                 />
-                <span className="text-[11px] text-gray-500">Hasta:</span>
+                <span className="text-[11px] text-slate-400 font-medium">Hasta:</span>
                 <input
                   type="date"
                   value={filtroFechaHasta}
@@ -664,34 +697,34 @@ interface SolicitudItem {
                     setVentanaActual(1)
                     setTallerVentanaActual(1)
                   }}
-                  className="px-2 py-1 rounded-lg bg-white text-[11px] text-[#0b1c30] border border-[#c6c6cd]/40 focus:outline-none"
+                  className="h-7 px-2 rounded-md bg-white text-[11px] text-slate-800 border border-slate-200 focus:outline-none focus:border-[#fd761a]"
                 />
               </div>
             </div>
           </div>
 
           {/* Active Filter Chips & Counter Feedback */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
                 Filtros activos:
               </span>
 
               {searchTerm && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-[#0b1c30] text-[11px] font-medium">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
                   <span>Búsqueda: "{searchTerm}"</span>
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="hover:text-red-500 transition-colors"
+                    className="hover:text-red-500 transition-colors cursor-pointer"
                     title="Quitar filtro de búsqueda"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={12} />
+                    <HugeiconsIcon icon={Cancel01Icon} size={11} />
                   </button>
                 </div>
               )}
 
               {filtroProgramaId && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-[#0b1c30] text-[11px] font-medium">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
                   <span>
                     {mainTab === "talleres"
                       ? talleresFiltro.find((t: any) => t.id === filtroProgramaId)?.nombre || "Taller seleccionado"
@@ -699,23 +732,23 @@ interface SolicitudItem {
                   </span>
                   <button
                     onClick={() => setFiltroProgramaId("")}
-                    className="hover:text-red-500 transition-colors"
+                    className="hover:text-red-500 transition-colors cursor-pointer"
                     title="Quitar filtro de programa"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={12} />
+                    <HugeiconsIcon icon={Cancel01Icon} size={11} />
                   </button>
                 </div>
               )}
 
               {(filtroFechaDesde || filtroFechaHasta) && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-[#0b1c30] text-[11px] font-medium">
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
                   <span>Fecha: {filtroFechaDesde || "Inicio"} a {filtroFechaHasta || "Fin"}</span>
                   <button
                     onClick={() => { setFiltroFechaDesde(""); setFiltroFechaHasta(""); }}
-                    className="hover:text-red-500 transition-colors"
+                    className="hover:text-red-500 transition-colors cursor-pointer"
                     title="Quitar filtro de fecha"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={12} />
+                    <HugeiconsIcon icon={Cancel01Icon} size={11} />
                   </button>
                 </div>
               )}
@@ -723,63 +756,63 @@ interface SolicitudItem {
               {hasActiveFilters && (
                 <button
                   onClick={handleClearFilters}
-                  className="text-[11px] font-semibold text-[#fd761a] hover:text-[#9d4300] transition-colors ml-1 cursor-pointer"
+                  className="text-[11px] font-bold text-[#fd761a] hover:text-[#9d4300] transition-colors ml-1 cursor-pointer"
                 >
                   Limpiar filtros
                 </button>
               )}
             </div>
 
-            <div className="text-xs text-[#45464d] font-medium">
-              Mostrando {unifiedItems.length} {statusFilter === "todos" ? "solicitudes" : `solicitudes ${statusFilter}`}
+            <div className="text-[11px] text-slate-500 font-medium">
+              Mostrando <strong className="text-slate-800 font-semibold">{unifiedItems.length}</strong> {statusFilter === "todos" ? "solicitudes" : `solicitudes ${statusFilter}`}
             </div>
           </div>
         </div>
 
         {/* 4. BANDEJA DE ENTRADA AGRUPADA POR FECHA */}
         {loading ? (
-          <div className="p-20 text-center bg-white rounded-2xl border border-[#c6c6cd]/30">
-            <div className="w-8 h-8 rounded-full border-2 border-[#fd761a] border-t-transparent animate-spin mx-auto mb-3" />
-            <p className="text-xs text-[#45464d] font-medium">Cargando solicitudes de matrícula...</p>
+          <div className="p-16 text-center bg-white rounded-xl border border-slate-200/80 shadow-xs">
+            <div className="w-8 h-8 rounded-full border-2 border-[#fd761a] border-t-transparent animate-spin mx-auto mb-2.5" />
+            <p className="text-xs text-slate-500 font-medium">Cargando solicitudes de matrícula...</p>
           </div>
         ) : isError ? (
-          <div role="alert" className="p-12 text-center bg-red-50 rounded-2xl border border-red-200">
-            <HugeiconsIcon icon={Alert02Icon} size={32} className="text-red-600 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-red-800">No se pudieron cargar las solicitudes de matrícula.</p>
+          <div role="alert" className="p-10 text-center bg-red-50 rounded-xl border border-red-200">
+            <HugeiconsIcon icon={Alert02Icon} size={28} className="text-red-600 mx-auto mb-2" />
+            <p className="text-xs font-semibold text-red-800">No se pudieron cargar las solicitudes de matrícula.</p>
             <button
               onClick={() => {
                 if (mainTab === "talleres") void talleresQuery.refetch()
                 else void solicitudesQuery.refetch()
               }}
-              className="mt-3 text-xs font-semibold text-red-700 underline cursor-pointer"
+              className="mt-2 text-xs font-bold text-red-700 underline cursor-pointer"
             >
               Reintentar
             </button>
           </div>
         ) : gruposPorFecha.length === 0 ? (
-          /* EMPTY STATE CARD (Design from code.html) */
-          <div className="w-full bg-white p-12 sm:p-16 rounded-2xl border border-[#c6c6cd]/30 shadow-sm text-center">
-            <div className="max-w-md mx-auto flex flex-col items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-[#ffdbca]/40 flex items-center justify-center text-[#fd761a]">
-                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={36} />
+          /* EMPTY STATE CARD */
+          <div className="w-full bg-white p-10 sm:p-14 rounded-xl border border-slate-200/80 shadow-xs text-center">
+            <div className="max-w-md mx-auto flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-xl bg-orange-50 border border-orange-200/60 flex items-center justify-center text-[#fd761a]">
+                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={30} />
               </div>
               <div className="flex flex-col gap-1">
-                <h2 className="text-lg sm:text-xl font-bold text-[#0b1c30]">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   No hay matrículas {statusFilter === "todos" ? "registradas" : statusFilter}
                 </h2>
-                <p className="text-xs sm:text-sm text-[#45464d]">
+                <p className="text-xs text-slate-500 max-w-sm">
                   {statusFilter === "pendientes"
-                    ? "Todas las inscripciones recibidas han sido validadas y procesadas oportunamente. Los nuevos registros aparecerán aquí en tiempo real."
+                    ? "Todas las inscripciones recibidas han sido validadas oportunamente. Los nuevos registros aparecerán aquí."
                     : "No se encontraron solicitudes que coincidan con los filtros aplicados en este momento."}
                 </p>
               </div>
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-2 mt-2">
                 {statusFilter !== "todos" && (
                   <button
                     onClick={() => setStatusFilter("todos")}
-                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#0b1c30] text-xs font-semibold transition-colors"
+                    className="px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    Ver todas las solicitudes
+                    Ver todas
                   </button>
                 )}
                 <button
@@ -787,7 +820,7 @@ interface SolicitudItem {
                     if (mainTab === "talleres") void talleresQuery.refetch()
                     else void solicitudesQuery.refetch()
                   }}
-                  className="px-4 py-2 rounded-xl bg-[#fd761a] hover:bg-[#e05f0a] text-white text-xs font-semibold transition-colors shadow-sm"
+                  className="px-4 py-1.5 rounded-lg bg-[#fd761a] hover:bg-[#ea580c] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                 >
                   Actualizar bandeja
                 </button>
@@ -795,43 +828,43 @@ interface SolicitudItem {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-5 sm:gap-6">
             {gruposPorFecha.map((grupo) => (
-              <div key={grupo.dateKey} className="flex flex-col gap-3">
+              <div key={grupo.dateKey} className="flex flex-col gap-2.5">
                 {/* Date Heading Header */}
                 <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-sm sm:text-base font-bold text-[#0b1c30] tracking-tight">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600">
                       {grupo.label}
                     </h2>
                     {grupo.badge && (
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         grupo.badge === "Hoy"
                           ? "bg-[#ffdbca] text-[#783200]"
-                          : "bg-gray-200 text-gray-700"
+                          : "bg-slate-200 text-slate-700"
                       }`}>
                         {grupo.badge}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-[#45464d] font-medium">
+                  <span className="text-[11px] text-slate-400 font-medium">
                     {grupo.items.length} {grupo.items.length === 1 ? "solicitud" : "solicitudes"}
                   </span>
                 </div>
 
                 {/* Cards List for this date */}
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2.5">
                   {grupo.items.map((item) => {
                     const initials = getInitials(item.nombres, item.apellidos)
 
                     return (
                       <article
                         key={item.id}
-                        className="w-full bg-white rounded-2xl shadow-sm border border-[#c6c6cd]/30 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative overflow-hidden transition-all hover:shadow-md"
+                        className="w-full bg-white rounded-xl shadow-2xs border border-slate-200/80 p-3.5 sm:p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative overflow-hidden transition-all hover:border-slate-300 hover:shadow-xs"
                       >
                         {/* Status Left Indicator Bar */}
                         <div
-                          className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                          className={`absolute left-0 top-0 bottom-0 w-1 ${
                             item.isPendiente
                               ? "bg-[#fd761a]"
                               : item.isAprobado
@@ -840,11 +873,11 @@ interface SolicitudItem {
                           }`}
                         />
 
-                        {/* Left Column: Student Profile (Only name and email) */}
-                        <div className="flex items-start sm:items-center gap-3.5 pl-1.5 min-w-0 flex-1">
-                          <div className="relative flex-shrink-0">
+                        {/* Left Column: Student Profile */}
+                        <div className="flex items-center gap-3 pl-1 min-w-0 lg:max-w-xs xl:max-w-sm flex-1">
+                          <div className="relative shrink-0">
                             <div
-                              className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm select-none shadow-sm ${
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs select-none shadow-2xs ${
                                 item.isPendiente
                                   ? "bg-[#ffdbca] text-[#783200]"
                                   : item.isAprobado
@@ -855,7 +888,7 @@ interface SolicitudItem {
                               {initials}
                             </div>
                             <span
-                              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white ${
+                              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
                                 item.isPendiente
                                   ? "bg-[#fd761a]"
                                   : item.isAprobado
@@ -867,29 +900,29 @@ interface SolicitudItem {
                           </div>
 
                           <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-sm sm:text-base text-[#0b1c30] truncate">
+                            <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">
                               {item.nombres} {item.apellidos}
                             </span>
-                            <span className="text-xs text-[#45464d] truncate mt-0.5">
+                            <span className="text-[11px] text-slate-400 truncate">
                               {item.correo || "Sin correo"}
                             </span>
                           </div>
                         </div>
 
                         {/* Center Column: Program Enrollment Details */}
-                        <div className="flex flex-col min-w-0 flex-1 lg:px-6 lg:border-l lg:border-gray-200/80">
-                          <span className="font-bold text-sm text-[#0b1c30] truncate">
+                        <div className="flex flex-col min-w-0 flex-1 lg:px-4 lg:border-l lg:border-slate-200/70">
+                          <span className="font-bold text-xs sm:text-sm text-slate-800 truncate">
                             {item.programaNombre}
                           </span>
 
-                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             {item.ciudad && <CiudadBadge ciudad={item.ciudad} />}
                             {item.modalidad && <ModalidadBadge modalidad={item.modalidad} />}
                           </div>
 
                           {(item.isAprobado || item.isRechazado) && (
-                            <div className="flex items-center gap-1.5 text-xs text-[#45464d] mt-1.5">
-                              <HugeiconsIcon icon={Clock01Icon} size={13} className="text-gray-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-1">
+                              <HugeiconsIcon icon={Clock01Icon} size={12} className="text-slate-400 shrink-0" />
                               {item.isAprobado ? (
                                 <span>
                                   Procesada el {item.fecha ? new Date(item.fecha).toLocaleDateString("es-EC") : ""}
@@ -905,12 +938,12 @@ interface SolicitudItem {
                         </div>
 
                         {/* Right Column: Actions */}
-                        <div className="flex items-center justify-end gap-2 pt-2 lg:pt-0">
+                        <div className="flex items-center justify-end gap-2 pt-2 lg:pt-0 shrink-0">
                           {item.isPendiente ? (
                             <>
                               <button
                                 onClick={() => handleOpenReject(item)}
-                                className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
+                                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 text-xs font-semibold transition-colors cursor-pointer"
                                 type="button"
                               >
                                 Rechazar
@@ -918,22 +951,22 @@ interface SolicitudItem {
 
                               <button
                                 onClick={() => handleGoToApprove(item)}
-                                className="px-4 py-2 rounded-xl bg-[#fd761a] hover:bg-[#e05f0a] text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                                className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:bg-[#ea580c] active:scale-95 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                                 type="button"
                               >
-                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} />
+                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} />
                                 <span>Aprobar</span>
                               </button>
                             </>
                           ) : item.isAprobado ? (
                             <>
-                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold">
-                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="text-emerald-600" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold">
+                                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} className="text-emerald-600" />
                                 <span>Aprobada</span>
                               </span>
                               <button
                                 onClick={() => handleGoToApprove(item)}
-                                className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#0b1c30] text-xs font-semibold transition-colors cursor-pointer"
+                                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                                 type="button"
                               >
                                 Ver detalle
@@ -941,24 +974,24 @@ interface SolicitudItem {
                             </>
                           ) : (
                             <>
-                              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 text-red-800 text-xs font-semibold">
-                                <HugeiconsIcon icon={Cancel01Icon} size={16} className="text-red-600" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-50 text-red-800 text-[11px] font-bold">
+                                <HugeiconsIcon icon={Cancel01Icon} size={14} className="text-red-600" />
                                 <span>Rechazada</span>
                               </span>
                               <button
                                 onClick={() => handleGoToApprove(item)}
-                                className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#0b1c30] text-xs font-semibold transition-colors cursor-pointer"
+                                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                                 type="button"
                               >
                                 Ver detalle
                               </button>
                               <button
                                 onClick={() => setDeleteTarget({ id: item.id, nombre: `${item.nombres} ${item.apellidos}`, origen: item.origen })}
-                                className="p-2 rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
                                 title="Eliminar registro rechazado permanentemente"
                                 type="button"
                               >
-                                <HugeiconsIcon icon={Delete01Icon} size={16} />
+                                <HugeiconsIcon icon={Delete01Icon} size={15} />
                               </button>
                             </>
                           )}

@@ -654,7 +654,7 @@ export function TallerDetallePage() {
                           <td className="px-4 py-3 capitalize" style={{ color: CHARCOAL }}>{t.metodo_pago}</td>
                           <td className="px-4 py-3">
                             <button
-                              onClick={() => navigate(`/finanzas/pagos/historial/${t.id}`)}
+                              onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
                               className="inline-flex items-center gap-1 text-xs font-semibold hover:underline"
                               style={{ color: ACCENT }}
                             >

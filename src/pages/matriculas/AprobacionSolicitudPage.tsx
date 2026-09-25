@@ -48,13 +48,32 @@ export function AprobacionSolicitudPage() {
   const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
 
-  const filtros = useMemo(() => ({
-    estado: searchParams.get("estado") || "",
-    search: searchParams.get("search") || "",
-    curso_abierto_id: searchParams.get("curso_abierto_id") || "",
-    fecha_desde: searchParams.get("fecha_desde") || "",
-    fecha_hasta: searchParams.get("fecha_hasta") || "",
-  }), [searchParams])
+  const filtros = useMemo(() => {
+    const f: Record<string, string> = {}
+    const status = searchParams.get("status")
+    const estado = searchParams.get("estado")
+    const categoria = searchParams.get("categoria")
+    const search = searchParams.get("search")
+    const cursoAbiertoId = searchParams.get("curso_abierto_id")
+    const fechaDesde = searchParams.get("fecha_desde")
+    const fechaHasta = searchParams.get("fecha_hasta")
+
+    if (status) f.status = status
+    if (estado) f.estado = estado
+    if (categoria) f.categoria = categoria
+    if (search) f.search = search
+    if (cursoAbiertoId) f.curso_abierto_id = cursoAbiertoId
+    if (fechaDesde) f.fecha_desde = fechaDesde
+    if (fechaHasta) f.fecha_hasta = fechaHasta
+
+    // Si no vino ningún filtro explícito por query params, asumir por defecto "pendientes"
+    if (!status && !estado) {
+      f.status = "pendientes"
+      f.estado = "pendiente_validacion"
+    }
+
+    return f
+  }, [searchParams])
 
   const searchStr = searchParams.toString() ? `?${searchParams.toString()}` : ""
 
@@ -521,25 +540,25 @@ export function AprobacionSolicitudPage() {
   const isAprobado = estadoValor === "matricula_creada" || estadoValor === "aprobado"
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#f8fafc] text-slate-900 antialiased selection:bg-[#fd761a] selection:text-white">
-      {/* 1. Header & Adjacent Navigation (Design from code.html) */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+    <div className="min-h-[100dvh] flex flex-col bg-slate-50/50 text-slate-900 antialiased selection:bg-[#fd761a] selection:text-white">
+      {/* 1. Header & Adjacent Navigation */}
+      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => navigate(`/matriculas${searchStr}`)}
-              className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
+              className="w-8 h-8 rounded-lg border border-slate-200/80 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer shrink-0"
               title="Volver a la bandeja"
               type="button"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
             </button>
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                   {selected.solicitante?.datos?.nombres || "—"} {selected.solicitante?.datos?.apellidos || ""}
                 </h1>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                   isAprobado
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                     : estadoValor === "rechazado" || estadoValor === "cancelado"
@@ -571,27 +590,27 @@ export function AprobacionSolicitudPage() {
 
           {/* Adjacent Pagination controls */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
-              <span className="text-xs font-semibold text-slate-600 px-2 whitespace-nowrap">
-                Solicitud {adjacent.position} de {adjacent.total || 1}
+            <div className="flex items-center gap-1 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/60">
+              <span className="text-[11px] font-semibold text-slate-600 px-2 whitespace-nowrap">
+                {adjacent.total > 0 ? `Solicitud ${adjacent.position} de ${adjacent.total}` : "Solicitud 1 de 1"}
               </span>
               <button
                 onClick={() => adjacent.prev_id && navigateTo(adjacent.prev_id)}
                 disabled={!adjacent.prev_id}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                 title="Solicitud anterior"
                 type="button"
               >
-                <HugeiconsIcon icon={ArrowLeft02Icon} size={15} />
+                <HugeiconsIcon icon={ArrowLeft02Icon} size={13} />
               </button>
               <button
                 onClick={() => adjacent.next_id && navigateTo(adjacent.next_id)}
                 disabled={!adjacent.next_id}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                 title="Siguiente solicitud"
                 type="button"
               >
-                <HugeiconsIcon icon={ArrowRight02Icon} size={15} />
+                <HugeiconsIcon icon={ArrowRight02Icon} size={13} />
               </button>
             </div>
           </div>
@@ -600,14 +619,14 @@ export function AprobacionSolicitudPage() {
 
       {adjacent.stale && (
         <div className="bg-amber-50 border-b border-amber-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between text-xs sm:text-sm text-amber-900 font-medium">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between text-xs text-amber-900 font-medium">
             <span>
               Esta solicitud ya fue procesada anteriormente — Estado: <strong className="capitalize">{adjacent.stale_estado?.replace(/_/g, " ") || "—"}</strong>
             </span>
             {adjacent.first_id && (
               <button
                 onClick={() => navigateTo(adjacent.first_id!)}
-                className="px-3 py-1 rounded-lg text-xs font-bold border border-amber-300 bg-white hover:bg-amber-100 transition-colors cursor-pointer"
+                className="px-2.5 py-0.5 rounded-md text-xs font-bold border border-amber-300 bg-white hover:bg-amber-100 transition-colors cursor-pointer"
               >
                 Ir a siguiente pendiente
               </button>

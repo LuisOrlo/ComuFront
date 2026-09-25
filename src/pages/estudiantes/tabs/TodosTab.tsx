@@ -221,6 +221,7 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
+          onClearSelection={clearSelection}
           meta={meta}
           onPageChange={loadPage}
         />

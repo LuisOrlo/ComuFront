@@ -2,7 +2,9 @@ import api from "@/services/auth.service"
 
 export interface ClienteExterno {
   id: string
+  tipo_cliente?: "persona" | "empresa"
   nombres: string
+  nombre_empresa?: string
   apellidos?: string
   cedula?: string
   correo?: string
@@ -15,6 +17,19 @@ export interface ClienteExterno {
   edad?: number
   observaciones?: string
   created_at?: string
+  nombre_mostrado?: string
+  contactos?: ClienteExternoContacto[]
+}
+
+export interface ClienteExternoContacto {
+  id?: string
+  nombres: string
+  apellidos?: string
+  cargo?: string
+  celular?: string
+  correo?: string
+  es_principal?: boolean
+  activo?: boolean
 }
 
 export const clientesService = {
@@ -55,6 +70,7 @@ export const clientesService = {
       aulas: Array<Record<string, unknown>>
       podcast: Array<Record<string, unknown>>
       equipos: Array<Record<string, unknown>>
+      edicion: Array<Record<string, unknown>>
     }
   },
 

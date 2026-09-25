@@ -16,6 +16,7 @@ import {
   ArrowUp01Icon,
   ArrowDown01Icon,
   Coins01Icon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { PaginationControls } from "@/components/table/PaginationControls"
 import { CiudadBadge } from "./Badges"
@@ -42,6 +43,7 @@ interface StudentTableProps {
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
+  onClearSelection?: () => void
   variant?: "estudiantes" | "participantes"
   meta?: { actual: number; ultima_pagina: number; total: number; per_page: number }
   onPageChange?: (page: number) => void
@@ -85,6 +87,7 @@ export function StudentTable({
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
+  onClearSelection,
   variant = "estudiantes",
   meta,
   onPageChange,
@@ -92,6 +95,8 @@ export function StudentTable({
   const isEstudiantes = variant === "estudiantes"
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 15 })
+  const [showSelector, setShowSelector] = useState(false)
+  const isSelectorVisible = showSelector || selectedIds.size > 0
 
   useEffect(() => {
     if (loading) {
@@ -100,32 +105,54 @@ export function StudentTable({
   }, [loading])
 
   const columns = useMemo<ColumnDef<StudentRow>[]>(
-    () => [
-      {
-        id: "seleccion",
-        header: () => (
-          <input
-            type="checkbox"
-            checked={estudiantes.length > 0 && selectedIds.size === estudiantes.length}
-            onChange={onToggleSelectAll}
-            className="w-4 h-4 rounded border-[#c6c6cd] cursor-pointer accent-[#fd761a]"
-            aria-label="Seleccionar todos los estudiantes visibles"
-          />
-        ),
-        cell: ({ row }) => (
-          <input
-            type="checkbox"
-            checked={selectedIds.has(row.original.id)}
-            onChange={() => onToggleSelect(row.original.id)}
-            className="w-4 h-4 rounded border-[#c6c6cd] cursor-pointer accent-[#fd761a]"
-            aria-label={`Seleccionar ${row.original.nombres} ${row.original.apellidos}`}
-          />
-        ),
-        enableSorting: false,
-        size: 40,
-      },
-      {
-        id: "estudiante",
+    () => {
+      const allCols: ColumnDef<StudentRow>[] = []
+
+      if (isSelectorVisible) {
+        allCols.push({
+          id: "seleccion",
+          header: () => (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={estudiantes.length > 0 && selectedIds.size === estudiantes.length}
+                onChange={onToggleSelectAll}
+                className="w-4 h-4 rounded border-[#c6c6cd] cursor-pointer accent-[#fd761a]"
+                aria-label="Seleccionar todos los estudiantes visibles"
+                title="Seleccionar todos los estudiantes visibles"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowSelector(false)
+                  onClearSelection?.()
+                }}
+                className="text-[#76777d] hover:text-[#ba1a1a] transition-colors p-0.5 rounded cursor-pointer"
+                title="Ocultar selector de selección"
+                aria-label="Ocultar selector de selección"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} size={13} />
+              </button>
+            </div>
+          ),
+          cell: ({ row }) => (
+            <input
+              type="checkbox"
+              checked={selectedIds.has(row.original.id)}
+              onChange={() => onToggleSelect(row.original.id)}
+              className="w-4 h-4 rounded border-[#c6c6cd] cursor-pointer accent-[#fd761a]"
+              aria-label={`Seleccionar ${row.original.nombres} ${row.original.apellidos}`}
+            />
+          ),
+          enableSorting: false,
+          size: 54,
+        })
+      }
+
+      allCols.push(
+        {
+          id: "estudiante",
         accessorFn: (r) => `${r.nombres} ${r.apellidos}`,
         header: "Estudiante",
         cell: ({ row }) => {
@@ -219,11 +246,14 @@ export function StudentTable({
         },
         enableSorting: false,
         size: 100,
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [estudiantes.length, selectedIds.size, onToggleSelect, onToggleSelectAll, isEstudiantes]
-  )
+      }
+    )
+
+    return allCols
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [isSelectorVisible, estudiantes.length, selectedIds.size, onToggleSelect, onToggleSelectAll, isEstudiantes]
+)
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -269,30 +299,44 @@ export function StudentTable({
                       {header.id === "seleccion" ? (
                         flexRender(header.column.columnDef.header, header.getContext())
                       ) : (
-                        <button
-                          type="button"
-                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                          disabled={!canSort}
-                          className={`inline-flex items-center gap-1 font-bold ${
-                            canSort ? "cursor-pointer hover:text-[#fd761a]" : "cursor-default"
-                          } ${isActions ? "ml-auto" : ""}`}
-                        >
-                          <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                          {canSort && (
-                            <span className="inline-flex flex-col leading-none ml-1">
-                              <HugeiconsIcon
-                                icon={ArrowUp01Icon}
-                                size={10}
-                                className={sorted === "asc" ? "text-[#fd761a]" : "opacity-40"}
-                              />
-                              <HugeiconsIcon
-                                icon={ArrowDown01Icon}
-                                size={10}
-                                className={sorted === "desc" ? "text-[#fd761a]" : "opacity-40"}
-                              />
-                            </span>
+                        <div className={`inline-flex items-center gap-2 ${isActions ? "ml-auto justify-end" : ""}`}>
+                          {header.id === "estudiante" && !isSelectorVisible && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setShowSelector(true)
+                              }}
+                              className="w-4 h-4 rounded border border-[#c6c6cd] hover:border-[#fd761a] hover:bg-[#ffdbca]/20 bg-white transition-colors cursor-pointer shrink-0 flex items-center justify-center"
+                              title="Activar casillas de selección"
+                              aria-label="Activar casillas de selección"
+                            />
                           )}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                            disabled={!canSort}
+                            className={`inline-flex items-center gap-1 font-bold ${
+                              canSort ? "cursor-pointer hover:text-[#fd761a]" : "cursor-default"
+                            }`}
+                          >
+                            <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                            {canSort && (
+                              <span className="inline-flex flex-col leading-none ml-1">
+                                <HugeiconsIcon
+                                  icon={ArrowUp01Icon}
+                                  size={10}
+                                  className={sorted === "asc" ? "text-[#fd761a]" : "opacity-40"}
+                                />
+                                <HugeiconsIcon
+                                  icon={ArrowDown01Icon}
+                                  size={10}
+                                  className={sorted === "desc" ? "text-[#fd761a]" : "opacity-40"}
+                                />
+                              </span>
+                            )}
+                          </button>
+                        </div>
                       )}
                     </th>
                   )
@@ -304,7 +348,9 @@ export function StudentTable({
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="hover:bg-[#eff4ff]/30">
-                  <td className="py-3 px-4"><div className="w-4 h-4 rounded bg-gray-100 animate-pulse" /></td>
+                  {isSelectorVisible && (
+                    <td className="py-3 px-4"><div className="w-4 h-4 rounded bg-gray-100 animate-pulse" /></td>
+                  )}
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse shrink-0" />

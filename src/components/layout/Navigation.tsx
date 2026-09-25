@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   BookOpenIcon,
   MoneyIcon,
+  Invoice02Icon,
   CalendarIcon,
   CalendarDaysIcon,
   ClipboardCheckIcon,
@@ -218,6 +219,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
       label: "Finanzas",
       items: [
         { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
+        { icon: Invoice02Icon, label: "Movimientos", path: "/finanzas/movimientos" },
       ],
     },
     
@@ -260,6 +262,7 @@ if (isAdmin) {
       label: "Finanzas",
       items: [
         { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
+        { icon: Invoice02Icon, label: "Movimientos", path: "/finanzas/movimientos" },
         { icon: CoinsDollarIcon, label: "Ingresos", path: "/finanzas/ingresos" },
         { icon: BanknoteArrowDownIcon, label: "Egresos", path: "/finanzas/egresos" },
         { icon: BarChartIcon, label: "Estadísticas", path: "/finanzas/estadisticas" },

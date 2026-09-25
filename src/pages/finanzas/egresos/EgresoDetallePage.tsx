@@ -49,7 +49,7 @@ export function EgresoDetallePage() {
     setLoading(true)
     financeService.getEgreso(id)
       .then(res => setData(res.data))
-      .catch(() => { toast.error("Error al cargar egreso"); navigate("/finanzas/pagos/historial") })
+      .catch(() => { toast.error("Error al cargar egreso"); navigate("/finanzas/movimientos") })
       .finally(() => setLoading(false))
   }, [id, navigate])
 
@@ -81,7 +81,7 @@ export function EgresoDetallePage() {
 
   return (
     <div className="px-8 py-6">
-      <button onClick={() => navigate("/finanzas/pagos/historial")}
+      <button onClick={() => navigate("/finanzas/movimientos")}
         className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 mb-6 transition-opacity"
         style={{ color: CHARCOAL }}>
         <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />

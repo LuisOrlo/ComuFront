@@ -14,7 +14,7 @@ import {
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table"
-import { COLORS } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 import type { ClienteExterno } from "@/services/clientes.service"
 import { PaginationControls } from "@/components/table/PaginationControls"
 
@@ -25,11 +25,9 @@ interface ClientesTableProps {
   onSearchChange: (value: string) => void
 }
 
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
-
 function getInitials(cliente: ClienteExterno) {
-  return `${cliente.nombres?.[0] ?? ""}${cliente.apellidos?.[0] ?? ""}`.toUpperCase()
+  const label = cliente.nombre_mostrado || (cliente.tipo_cliente === "empresa" && cliente.nombre_empresa ? cliente.nombre_empresa : `${cliente.nombres || ""} ${cliente.apellidos || ""}`) || "CL"
+  return label.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase()
 }
 
 export function ClientesTable({ clientes, loading, search, onSearchChange }: ClientesTableProps) {
@@ -44,43 +42,95 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
   const columns = useMemo<ColumnDef<ClienteExterno>[]>(() => [
     {
       id: "nombres",
-      accessorFn: (c) => `${c.nombres} ${c.apellidos || ""}`.trim(),
-      header: "Nombres",
+      accessorFn: (c) => c.nombre_mostrado || (c.tipo_cliente === "empresa" && c.nombre_empresa ? c.nombre_empresa : `${c.nombres || ""} ${c.apellidos || ""}`.trim()) || "—",
+      header: "Cliente / Razón Social",
       cell: ({ row }) => {
         const c = row.original
-        return <div className="flex min-w-[180px] items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#131b2e] text-xs font-bold text-white">{getInitials(c)}</span>
-          <div className="min-w-0"><span className="block truncate font-bold">{c.nombres} {c.apellidos || ""}</span><span className="block truncate text-[11px] text-[#73747b]">Cliente externo</span></div>
-        </div>
+        const displayName = c.nombre_mostrado || (c.tipo_cliente === "empresa" && c.nombre_empresa ? c.nombre_empresa : `${c.nombres || ""} ${c.apellidos || ""}`.trim()) || "—"
+        return (
+          <div className="flex min-w-[200px] items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xs font-black text-white shadow-2xs">
+              {getInitials(c)}
+            </span>
+            <div className="min-w-0">
+              <span
+                onClick={() => navigate(`/clientes/${c.id}`)}
+                className="block truncate font-bold text-slate-900 hover:text-[#fd761a] transition-colors cursor-pointer text-sm"
+              >
+                {displayName}
+              </span>
+              {c.tipo_cliente === "empresa" && c.contactos && c.contactos.length > 0 && (
+                <span className="block truncate text-[11px] text-slate-400 font-medium">
+                  Contacto: {c.contactos[0].nombres} {c.contactos[0].apellidos || ""}
+                </span>
+              )}
+            </div>
+          </div>
+        )
       },
       enableSorting: true,
     },
     {
-      id: "cedula",
-      accessorFn: (c) => c.cedula,
-      header: "Cédula",
-      cell: ({ getValue }) => <span className="text-xs opacity-60">{getValue<string>() || "—"}</span>,
+      id: "tipo",
+      accessorFn: (c) => (c.tipo_cliente === "empresa" ? "Cliente" : "Persona"),
+      header: "Tipo",
+      cell: ({ row }) => {
+        const c = row.original
+        const isCliente = c.tipo_cliente === "empresa"
+        return isCliente ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-orange-50 border border-orange-200/80 text-[#9d4300]">
+            <span className="size-1.5 rounded-full bg-[#fd761a]" />
+            Cliente
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-50 border border-blue-200/80 text-blue-700">
+            <span className="size-1.5 rounded-full bg-blue-600" />
+            Persona
+          </span>
+        )
+      },
       enableSorting: true,
     },
     {
       id: "correo",
       accessorFn: (c) => c.correo,
       header: "Correo",
-      cell: ({ getValue }) => <span className="text-xs">{getValue<string>() || "—"}</span>,
+      cell: ({ getValue }) => {
+        const val = getValue<string>()
+        return (
+          <span className="text-xs text-slate-600 font-medium truncate block max-w-[220px]" title={val || undefined}>
+            {val || "—"}
+          </span>
+        )
+      },
       enableSorting: true,
     },
     {
       id: "celular",
       accessorFn: (c) => c.celular,
       header: "Celular",
-      cell: ({ getValue }) => <span className="text-xs">{getValue<string>() || "—"}</span>,
+      cell: ({ getValue }) => {
+        const val = getValue<string>()
+        return (
+          <span className="text-xs font-mono font-medium text-slate-700">
+            {val || "—"}
+          </span>
+        )
+      },
       enableSorting: true,
     },
     {
       id: "ciudad",
       accessorFn: (c) => c.ciudad,
       header: "Ciudad",
-      cell: ({ getValue }) => <span className="text-xs">{getValue<string>() || "—"}</span>,
+      cell: ({ getValue }) => {
+        const val = getValue<string>()
+        return (
+          <span className="text-xs text-slate-600 font-medium">
+            {val || "—"}
+          </span>
+        )
+      },
       enableSorting: true,
     },
     {
@@ -89,12 +139,13 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
       cell: ({ row }) => {
         const c = row.original
         return (
-          <div className="flex items-center justify-center gap-1">
-            <button onClick={() => navigate(`/clientes/${c.id}`)}
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[#ffdbca]"
-              style={{ color: COLORS.ACCENT }}>
+          <div className="flex items-center justify-end pr-2">
+            <button
+              onClick={() => navigate(`/clientes/${c.id}`)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200/80 text-slate-700 hover:bg-orange-50 hover:text-[#fd761a] hover:border-orange-200/80 transition-all active:scale-95 shadow-2xs cursor-pointer"
+            >
               <Eye size={13} />
-              Ver detalle
+              <span>Ver detalle</span>
             </button>
           </div>
         )
@@ -121,17 +172,20 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
 
   if (loading) {
     return (
-      <div className="flex-1 p-8 space-y-4">
-        {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-12 rounded-lg bg-gray-100 animate-pulse" />)}
+      <div className="flex-1 p-8 space-y-3">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} className="h-12 rounded-xl bg-slate-100 animate-pulse" />
+        ))}
       </div>
     )
   }
 
   if (clientes.length === 0) {
     return (
-      <div className="flex-1 p-12 text-center">
-        <HugeiconsIcon icon={UserGroupIcon} size={40} className="opacity-20 mx-auto mb-3" />
-        <p className="text-sm font-bold opacity-40">No hay clientes registrados</p>
+      <div className="flex-1 p-14 text-center">
+        <HugeiconsIcon icon={UserGroupIcon} size={36} className="text-slate-300 mx-auto mb-2" />
+        <p className="text-sm font-bold text-slate-700">No hay clientes registrados</p>
+        <p className="text-xs text-slate-400 mt-0.5">Registra nuevos clientes para comenzar.</p>
       </div>
     )
   }
@@ -139,29 +193,26 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
   return (
     <>
       <div className="flex-1 overflow-auto">
-        <table className="w-full min-w-[780px] border-separate border-spacing-y-1">
+        <table className="w-full min-w-[780px] border-collapse">
           <thead>
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b bg-[#eff4ff] text-[10px] font-bold uppercase tracking-wider text-[#45464d]" style={{ borderColor: BORDER }}>
+              <tr key={hg.id} className="bg-slate-50 border-b border-slate-200/80 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 {hg.headers.map((header) => {
                   const canSort = header.column.getCanSort()
                   const sorted = header.column.getIsSorted()
-                  const isCenter = header.id === "acciones"
+                  const isActions = header.id === "acciones"
                   return (
-                    <th key={header.id}
+                    <th
+                      key={header.id}
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                      className={canSort ? "cursor-pointer select-none" : ""}
-                      style={{
-                        textAlign: isCenter ? "center" : "left",
-                        padding: "13px 18px",
-                      }}>
-                      <div className="flex items-center gap-1"
-                        style={{ justifyContent: isCenter ? "center" : "flex-start" }}>
+                      className={cn("px-4 py-3.5 text-left", canSort && "cursor-pointer select-none hover:text-slate-800")}
+                    >
+                      <div className={cn("flex items-center gap-1", isActions && "justify-end pr-2")}>
                         <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                         {canSort && (
                           <span className="inline-flex flex-col leading-none ml-1">
-                            <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "" : "opacity-40"} />
-                            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "" : "opacity-40"} />
+                            <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "text-slate-800 font-bold" : "opacity-30"} />
+                            <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "text-slate-800 font-bold" : "opacity-30"} />
                           </span>
                         )}
                       </div>
@@ -171,22 +222,22 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
               </tr>
             ))}
           </thead>
-          <tbody className="text-sm">
+          <tbody className="divide-y divide-slate-100 text-sm">
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-16 text-center">
-                  <HugeiconsIcon icon={UserGroupIcon} size={40} className="opacity-20 mx-auto mb-3" />
-                  <p className="text-sm font-bold opacity-40">No se encontraron clientes</p>
+                  <HugeiconsIcon icon={UserGroupIcon} size={36} className="text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-600">No se encontraron clientes con el filtro aplicado</p>
                 </td>
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id}
-                  className="transition-colors [&>td]:bg-[#f8f9ff] [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl hover:[&>td]:bg-[#eff4ff]">
+                <tr
+                  key={row.id}
+                  className="hover:bg-slate-50/80 transition-colors group cursor-default"
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}
-                      className={cell.column.id === "acciones" ? "px-4 py-4 text-center" : "px-4 py-4"}
-                      style={{ color: CHARCOAL }}>
+                    <td key={cell.id} className="px-4 py-3.5 text-slate-800">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -197,7 +248,7 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
         </table>
       </div>
       {table.getRowModel().rows.length > 0 && (
-        <div className="shrink-0 px-4 py-3 border-t" style={{ borderColor: BORDER }}>
+        <div className="shrink-0 px-4 py-3 border-t border-slate-200/80 bg-slate-50/50">
           <PaginationControls table={table} />
         </div>
       )}

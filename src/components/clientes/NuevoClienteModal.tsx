@@ -13,14 +13,17 @@ interface NuevoClienteModalProps {
 }
 
 interface FormState {
+  tipo_cliente: "persona" | "empresa"
   nombres: string
   apellidos: string
+  nombre_empresa: string
   cedula: string
   correo: string
   celular: string
 }
 
 interface FormErrors {
+  nombre_empresa?: string
   nombres?: string
   apellidos?: string
   cedula?: string
@@ -38,6 +41,9 @@ const FORM_FIELDS = [
 
 function validateField(key: string, value: string): string | null {
   switch (key) {
+    case "nombre_empresa":
+      if (!value.trim()) return "El nombre de empresa es obligatorio"
+      return null
     case "nombres":
       if (!value.trim()) return "El nombre es obligatorio"
       if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return "Solo se permiten letras"
@@ -77,7 +83,7 @@ function fieldInputProps(key: string) {
 }
 
 export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteModalProps) {
-  const [form, setForm] = useState<FormState>({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
+  const [form, setForm] = useState<FormState>({ tipo_cliente: "persona", nombres: "", apellidos: "", nombre_empresa: "", cedula: "", correo: "", celular: "" })
   const [errors, setErrors] = useState<FormErrors>({})
   const [saving, setSaving] = useState(false)
 
@@ -100,17 +106,23 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
     const newErrors: FormErrors = {}
     for (const { key } of FORM_FIELDS) {
       const err = validateField(key, form[key])
-      if (err) newErrors[key as keyof FormErrors] = err
+      if (err && (form.tipo_cliente === "persona" || key === "nombres")) newErrors[key as keyof FormErrors] = err
     }
     setErrors(newErrors)
     if (Object.keys(newErrors).length > 0) return
 
     setSaving(true)
     try {
-      const nuevo = await clientesService.createCliente({ ...form, correo: form.correo.trim() || undefined })
+      const nuevo = await clientesService.createCliente({
+        ...form,
+        nombres: form.tipo_cliente === "persona" ? form.nombres : undefined,
+        nombre_empresa: form.tipo_cliente === "empresa" ? form.nombre_empresa : undefined,
+        correo: form.correo.trim() || undefined,
+        contactos: form.tipo_cliente === "empresa" ? [{ nombres: form.nombres, apellidos: form.apellidos, celular: form.celular, correo: form.correo, es_principal: true, activo: true }] : undefined,
+      })
       toast.success("Cliente externo registrado")
       onCreated(nuevo as ClienteExterno)
-      setForm({ nombres: "", apellidos: "", cedula: "", correo: "", celular: "" })
+      setForm({ tipo_cliente: "persona", nombres: "", apellidos: "", nombre_empresa: "", cedula: "", correo: "", celular: "" })
       setErrors({})
       onClose()
     } catch (err: unknown) {
@@ -135,8 +147,17 @@ export function NuevoClienteModal({ isOpen, onClose, onCreated }: NuevoClienteMo
         </div>
 
         <div className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-2">
+            {(["persona", "empresa"] as const).map(tipo => <button key={tipo} type="button" onClick={() => setForm(prev => ({ ...prev, tipo_cliente: tipo }))} className={`rounded-lg py-2 text-xs font-bold ${form.tipo_cliente === tipo ? "bg-white text-orange-600 shadow-sm" : "text-gray-500"}`}>{tipo === "persona" ? "Persona" : "Empresa"}</button>)}
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            {FORM_FIELDS.map(({ key, label, required, placeholder, colSpan }) => {
+            {(form.tipo_cliente === "empresa" ? [
+              { key: "nombre_empresa" as const, label: "Nombre de empresa", required: true, placeholder: "Empresa", colSpan: 2 },
+              { key: "nombres" as const, label: "Contacto principal", required: true, placeholder: "Nombres", colSpan: 2 },
+              { key: "apellidos" as const, label: "Apellidos del contacto", required: false, placeholder: "Apellidos", colSpan: 2 },
+              { key: "celular" as const, label: "Teléfono general", required: false, placeholder: "Teléfono", colSpan: 1 },
+              { key: "correo" as const, label: "Correo general", required: false, placeholder: "Correo", colSpan: 1 },
+            ] : FORM_FIELDS).map(({ key, label, required, placeholder, colSpan }) => {
               const err = errors[key as keyof FormErrors]
               const extraProps = fieldInputProps(key)
               return (

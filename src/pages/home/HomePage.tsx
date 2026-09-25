@@ -253,7 +253,7 @@ export function HomePage() {
             <article className="rounded-xl bg-white p-5 shadow-sm sm:p-6">
               <div className="flex flex-col justify-between gap-2 pb-4 sm:flex-row sm:items-center">
                 <div><h2 className="text-lg font-semibold">Historial de pagos realizados</h2><p className="mt-1 text-xs" style={{ color: ON_SURFACE_VARIANT }}>Últimos movimientos de ingreso</p></div>
-                <button type="button" onClick={() => navigate("/finanzas/pagos/historial")} className="inline-flex items-center gap-1 self-start text-xs font-semibold hover:underline sm:self-auto" style={{ color: ORANGE }}>Ver historial <HugeiconsIcon icon={ArrowRight01Icon} size={15} /></button>
+                <button type="button" onClick={() => navigate("/finanzas/movimientos")} className="inline-flex items-center gap-1 self-start text-xs font-semibold hover:underline sm:self-auto" style={{ color: ORANGE }}>Ver historial <HugeiconsIcon icon={ArrowRight01Icon} size={15} /></button>
               </div>
               {paymentsQuery.isLoading ? <div className="py-8 text-center text-sm" style={{ color: ON_SURFACE_VARIANT }}>Cargando pagos...</div> : recentPayments.length === 0 ? (
                 <EmptyState icon={Wallet01Icon} title="Sin pagos registrados" description="Los pagos recibidos aparecerán aquí cuando se registren." />
