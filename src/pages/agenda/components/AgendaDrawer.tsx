@@ -11,7 +11,7 @@ import {
   ArrowLeft01Icon,
 } from "@hugeicons/core-free-icons"
 import { type AgendaEvent, type AgendaEventDetail, agendaService } from "@/services/agenda.service"
-import { getEventStyles } from "@/pages/agenda/utils"
+import { getEventPersonLabel, getEventStyles } from "@/pages/agenda/utils"
 import { CiudadBadge } from "@/components/cursos/CiudadBadge"
 import { ModalidadBadge } from "@/pages/estudiantes/components/Badges"
 
@@ -231,7 +231,7 @@ export function AgendaDrawer({
                       </div>
                       <div className="min-w-0">
                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Docente / Instructor
+                          {getEventPersonLabel(data.tipo_evento)}
                         </span>
                         <span className="text-sm font-bold text-slate-800 block truncate">
                           {data.instructor_nombre}
@@ -365,7 +365,7 @@ export function AgendaDrawer({
                         </h4>
 
                         <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
-                          <span>{ev.instructor_nombre || "Sin docente asignado"}</span>
+                          <span>{ev.instructor_nombre || (getEventPersonLabel(ev.tipo_evento) === "Cliente" ? "Sin cliente asignado" : "Sin docente asignado")}</span>
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#fd761a]">
                             <span>Ver detalles</span>
                             <HugeiconsIcon icon={ArrowRight01Icon} size={12} />

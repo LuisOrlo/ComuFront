@@ -11,6 +11,8 @@ export interface Persona {
   ciudad?: string
   ciudad_id?: number
   es_activo: boolean
+  cursos_actuales_count?: number
+  talleres_actuales_count?: number
   cuentaSistema?: { id: string; username: string }
   perfilInstructor?: { id: string; especialidad?: string; bio?: string }
   perfilStaff?: { id: string; cargo?: string; salario_base?: number; fecha_ingreso?: string; es_pasante?: boolean }
@@ -40,6 +42,8 @@ function mapPersona(raw: Record<string, unknown>): Persona {
     ciudad: r.ciudad,
     ciudad_id: r.ciudad_id,
     es_activo: r.es_activo,
+    cursos_actuales_count: r.cursos_actuales_count as number | undefined,
+    talleres_actuales_count: r.talleres_actuales_count as number | undefined,
     cuentaSistema: r.cuenta_sistema,
     perfilInstructor: r.perfil_instructor,
     perfilStaff: r.perfil_staff,
@@ -58,11 +62,13 @@ export const personasService = {
     ciudad_id?: number
     page?: number
     per_page?: number
+    activos?: string | boolean
   }): Promise<PersonaPaginada> {
-    const params: Record<string, string | number> = { per_page: filters?.per_page || 15, page: filters?.page || 1 }
+    const params: Record<string, string | number | boolean> = { per_page: filters?.per_page || 15, page: filters?.page || 1 }
     if (filters?.tipo) params.tipo = filters.tipo
     if (filters?.buscar) params.buscar = filters.buscar
     if (filters?.ciudad_id) params.ciudad_id = filters.ciudad_id
+    if (filters?.activos !== undefined) params.activos = filters.activos
     const res = await api.get<{ data: Record<string, unknown>[]; meta: { total: number; per_page: number; current_page: number; last_page: number } }>("/academic/personas", { params })
     return {
       data: res.data.data.map(mapPersona),

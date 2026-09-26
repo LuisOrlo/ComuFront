@@ -3,13 +3,28 @@ import { useNavigate, useParams } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  ArrowLeft01Icon, Search01Icon, Tick02Icon,
-  Cancel01Icon, UserIcon, Microphone,
-  Calendar03Icon, Clock01Icon, Money01Icon,
-  Note03Icon, AlertCircleIcon, UserGroupIcon,
+  ArrowLeft01Icon,
+  Search01Icon,
+  Cancel01Icon,
+  UserIcon,
+  Calendar03Icon,
+  Clock01Icon,
+  Money01Icon,
+  AlertCircleIcon,
+  CheckmarkCircle04Icon,
+  InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { UserPlus, Loader2, X, Tag } from "lucide-react"
-import { COLORS } from "@/lib/constants"
+import {
+  UserPlus,
+  Loader2,
+  Mic,
+  Tag,
+  Users,
+  X,
+  FileText,
+  Plus,
+  Trash2,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getCachedAvailability } from "@/lib/availabilityCache"
 import {
@@ -30,6 +45,7 @@ interface ClienteOption {
   apellidos: string
   cedula?: string
   correo?: string
+  celular?: string
   personaTipo?: string
 }
 
@@ -39,19 +55,10 @@ interface Asignacion {
   persona?: { nombres: string; apellidos: string }
 }
 
-function SectionHeader({ icon: Icon, title }: { icon: typeof ArrowLeft01Icon; title: string }) {
-  return (
-    <h2 className="text-xs font-bold flex items-center gap-2.5 mb-4 tracking-wide" style={{ color: COLORS.CHARCOAL }}>
-      <span className="size-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.92 0.03 270)", color: "#7c3aed" }}>
-        <HugeiconsIcon icon={Icon} size={14} />
-      </span>
-      {title}
-    </h2>
-  )
-}
-
 export function NuevaReservaIndividualPage() {
   const navigate = useNavigate()
+  const { id } = useParams<{ id?: string }>()
+  const isEdit = Boolean(id)
 
   const [paqueteId, setPaqueteId] = useState("")
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0])
@@ -60,9 +67,11 @@ export function NuevaReservaIndividualPage() {
   const [titulo, setTitulo] = useState("")
   const [notas, setNotas] = useState("")
   const [saving, setSaving] = useState(false)
+  const [estadoOriginal, setEstadoOriginal] = useState<ReservaPodcast["estado"]>("pendiente")
+  const [loadingReserva, setLoadingReserva] = useState(isEdit)
+  const [horarioOriginal, setHorarioOriginal] = useState<{ fecha: string; horaInicio: string; horaFin: string } | null>(null)
   const [conflicto, setConflicto] = useState<ReservaPodcast | null>(null)
   const [verificandoConflicto, setVerificandoConflicto] = useState(false)
-  const [showNotas, setShowNotas] = useState(false)
   const [paquetes, setPaquetes] = useState<PaquetePodcast[]>([])
   const [loadingPaquetes, setLoadingPaquetes] = useState(true)
 
@@ -72,7 +81,7 @@ export function NuevaReservaIndividualPage() {
   const [clienteSearch, setClienteSearch] = useState("")
 
   // Descuentos
-  const [descuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
   const [descuentoValor, setDescuentoValor] = useState<string>("")
   const [motivoDescuento, setMotivoDescuento] = useState<string>("")
   const [showDescuento, setShowDescuento] = useState(false)
@@ -81,30 +90,134 @@ export function NuevaReservaIndividualPage() {
   const [searchingCliente, setSearchingCliente] = useState(false)
   const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
-  const abortRef = useRef<AbortController | null>(null)
 
   const [personas, setPersonas] = useState<Persona[]>([])
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([])
-  const [asignacionStaffSearch, setAsignacionStaffSearch] = useState("")
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
-  const personasEnLista = useMemo(() => clientesDisponibles.filter(c => c.tipo === "persona"), [clientesDisponibles])
-  const externosEnLista = useMemo(() => clientesDisponibles.filter(c => c.tipo === "cliente_externo"), [clientesDisponibles])
+  const personasEnLista = useMemo(
+    () => clientesDisponibles.filter((c) => c.tipo === "persona"),
+    [clientesDisponibles]
+  )
+  const externosEnLista = useMemo(
+    () => clientesDisponibles.filter((c) => c.tipo === "cliente_externo"),
+    [clientesDisponibles]
+  )
+
+  const personalOperativo = useMemo(() => {
+    return personas.filter((p) => {
+      if (p.es_activo === false) return false
+      const tipo = (p.tipo || "").toLowerCase()
+      const cargo = (p.perfilStaff?.cargo || "").toLowerCase()
+      if (["admin", "administrador", "secretaria", "secretario", "estudiante"].includes(tipo)) return false
+      if (cargo.includes("admin") || cargo.includes("secretar")) return false
+      return ["instructor", "staff", "pasante"].includes(tipo)
+    })
+  }, [personas])
 
   useEffect(() => {
-    podcastService.getPaquetes()
-      .then(data => { setPaquetes(data); setPaqueteId(data[0]?.id || "") })
+    podcastService
+      .getPaquetes()
+      .then((data) => {
+        setPaquetes(data)
+        if (!isEdit) {
+          setPaqueteId(data[0]?.id || "")
+        }
+      })
       .catch(() => toast.error("Error al cargar paquetes"))
       .finally(() => setLoadingPaquetes(false))
+  }, [isEdit])
+
+  // Cargar personal operativo (instructor, staff, pasante) - Excluyendo admin y secretaria
+  useEffect(() => {
+    personasService
+      .getPersonas({ tipo: "instructor,staff,pasante", activos: "true", page: 1, per_page: 100 })
+      .then((res) => setPersonas(res.data || []))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
-    personasService.getPersonas({ page: 1 })
-      .then(res => setPersonas(res.data))
-      .catch(() => {})
-  }, [])
+    if (!isEdit || !id) return
+    let active = true
+    setLoadingReserva(true)
+    podcastService
+      .getReserva(id)
+      .then((r) => {
+        if (!active) return
+        const f = r.fecha_reserva?.substring(0, 10) || new Date().toISOString().split("T")[0]
+        const hi = r.hora_inicio?.substring(0, 5) || "08:00"
+        const hf = r.hora_fin?.substring(0, 5) || "10:00"
+        setPaqueteId(r.paquete_id || "")
+        setFecha(f)
+        setHoraInicio(hi)
+        setHoraFin(hf)
+        setHorarioOriginal({ fecha: f, horaInicio: hi, horaFin: hf })
+        setTitulo(r.titulo || "")
+        setNotas(r.notas || "")
+        setEstadoOriginal(r.estado)
+
+        if (r.persona_id && r.persona) {
+          const opt: ClienteOption = {
+            tipo: "persona",
+            id: r.persona_id,
+            nombres: r.persona.nombres || "",
+            apellidos: r.persona.apellidos || "",
+            cedula: r.persona.cedula,
+            correo: r.persona.correo,
+            personaTipo: r.persona.tipo,
+          }
+          setClienteId(r.persona_id)
+          setClienteTipo("persona")
+          setSelectedCliente(opt)
+          setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
+        } else if (r.cliente_externo_id && r.cliente_externo) {
+          const opt: ClienteOption = {
+            tipo: "cliente_externo",
+            id: r.cliente_externo_id,
+            nombres: r.cliente_externo.nombres || "",
+            apellidos: r.cliente_externo.apellidos || "",
+            cedula: r.cliente_externo.cedula,
+            correo: r.cliente_externo.correo,
+            celular: r.cliente_externo.celular,
+          }
+          setClienteId(r.cliente_externo_id)
+          setClienteTipo("cliente_externo")
+          setSelectedCliente(opt)
+          setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
+        }
+
+        if (r.monto_descuento && Number(r.monto_descuento) > 0) {
+          setShowDescuento(true)
+          setDescuentoTipo("fijo")
+          setDescuentoValor(r.monto_descuento.toString())
+          setMotivoDescuento(r.motivo_descuento || "")
+        }
+
+        if (r.asignaciones && r.asignaciones.length > 0) {
+          setAsignaciones(
+            r.asignaciones.map((a) => ({
+              persona_id: a.persona_id,
+              rol: a.rol || "Técnico de audio",
+              persona: a.persona
+                ? { nombres: a.persona.nombres, apellidos: a.persona.apellidos }
+                : undefined,
+            }))
+          )
+        }
+      })
+      .catch(() => {
+        toast.error("Error al cargar la reserva de podcast")
+        navigate("/servicios/podcast")
+      })
+      .finally(() => {
+        if (active) setLoadingReserva(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [id, isEdit, navigate])
 
   useEffect(() => {
     const q = clienteSearch.trim()
@@ -114,65 +227,105 @@ export function NuevaReservaIndividualPage() {
       return
     }
     const timer = setTimeout(() => {
-      if (abortRef.current) abortRef.current.abort()
-      const controller = new AbortController()
-      abortRef.current = controller
-
       setSearchingCliente(true)
       Promise.allSettled([
-        personasService.getPersonas({ buscar: clienteSearch || undefined, tipo: "estudiante,instructor", page: 1 }),
-        clientesService.getClientes({ search: clienteSearch || undefined, per_page: 50 }),
-      ]).then(([personasRes, clientesRes]) => {
-        if (controller.signal.aborted) return
-        const results: ClienteOption[] = []
-        if (personasRes.status === "fulfilled") {
-          for (const p of personasRes.value.data) {
-            results.push({ tipo: "persona", id: p.id, nombres: p.nombres, apellidos: p.apellidos, cedula: p.cedula, correo: p.correo, personaTipo: p.tipo })
+        personasService.getPersonas({
+          buscar: q,
+          tipo: "estudiante,instructor,pasante,staff",
+          per_page: 50,
+          page: 1,
+        }),
+        clientesService.getClientes({ search: q, per_page: 50 }),
+      ])
+        .then(([personasRes, clientesRes]) => {
+          const results: ClienteOption[] = []
+          if (personasRes.status === "fulfilled") {
+            for (const p of personasRes.value.data) {
+              results.push({
+                tipo: "persona",
+                id: p.id,
+                nombres: p.nombres,
+                apellidos: p.apellidos || "",
+                cedula: p.cedula,
+                correo: p.correo,
+                personaTipo: p.tipo,
+              })
+            }
           }
-        }
-        if (clientesRes.status === "fulfilled") {
-          const data = (clientesRes.value as { data: ClienteExterno[] }).data || (clientesRes.value as ClienteExterno[])
-          for (const c of (Array.isArray(data) ? data : [])) {
-            if (results.some(r => r.tipo === "cliente_externo" && r.id === c.id)) continue
-            results.push({ tipo: "cliente_externo", id: c.id, nombres: c.nombres, apellidos: c.apellidos || "", cedula: c.cedula, correo: c.correo })
+          if (clientesRes.status === "fulfilled") {
+            for (const c of (clientesRes.value.data as ClienteExterno[])) {
+              if (results.some((r) => r.tipo === "cliente_externo" && r.id === c.id)) continue
+              results.push({
+                tipo: "cliente_externo",
+                id: c.id,
+                nombres: c.nombres,
+                apellidos: c.apellidos || "",
+                cedula: c.cedula,
+                correo: c.correo,
+                celular: c.celular,
+              })
+            }
           }
-        }
-        setClientesDisponibles(results)
-      }).catch(() => {
-        if (!controller.signal.aborted) setClientesDisponibles([])
-      }).finally(() => {
-        if (!controller.signal.aborted) setSearchingCliente(false)
-      })
-    }, 300)
-    return () => { clearTimeout(timer); if (abortRef.current) abortRef.current.abort() }
+          setClientesDisponibles(results)
+        })
+        .catch(() => setClientesDisponibles([]))
+        .finally(() => setSearchingCliente(false))
+    }, 250)
+    return () => clearTimeout(timer)
   }, [clienteSearch])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (clienteRef.current && !clienteRef.current.contains(e.target as Node))
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
         setShowClienteDropdown(false)
+      }
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
   useEffect(() => {
+    if (loadingReserva) {
+      setConflicto(null)
+      return
+    }
+
     if (!fecha || !horaInicio || !horaFin || horaFin <= horaInicio) {
       setConflicto(null)
       return
     }
+
+    // Si estamos en edición y la fecha/horario no cambiaron respecto al original, no hay conflicto que reportar
+    if (isEdit && horarioOriginal) {
+      const sinCambios =
+        fecha === horarioOriginal.fecha &&
+        horaInicio === horarioOriginal.horaInicio &&
+        horaFin === horarioOriginal.horaFin
+
+      if (sinCambios) {
+        setConflicto(null)
+        return
+      }
+    }
+
     let active = true
     const timer = setTimeout(async () => {
       setVerificandoConflicto(true)
       try {
-        const data = await getCachedAvailability(`podcast:${fecha}`, () => podcastService.getReservas({ fecha }))
+        const data = await getCachedAvailability(`podcast:${fecha}`, () =>
+          podcastService.getReservas({ fecha })
+        )
         if (!active) return
         const reservas = Array.isArray(data) ? data : []
-        const conflictoEncontrado = reservas.find((r: ReservaPodcast) =>
-          r.fecha_reserva === fecha &&
-          r.estado !== "cancelado" &&
-          horaInicio < r.hora_fin && horaFin > r.hora_inicio
-        ) || null
+        const conflictoEncontrado =
+          reservas.find(
+            (r: ReservaPodcast) =>
+              String(r.id) !== String(id) &&
+              r.fecha_reserva === fecha &&
+              r.estado !== "cancelado" &&
+              horaInicio < r.hora_fin &&
+              horaFin > r.hora_inicio
+          ) || null
         setConflicto(conflictoEncontrado)
       } catch {
         if (active) setConflicto(null)
@@ -180,8 +333,11 @@ export function NuevaReservaIndividualPage() {
         if (active) setVerificandoConflicto(false)
       }
     }, 400)
-    return () => { active = false; clearTimeout(timer) }
-  }, [fecha, horaInicio, horaFin])
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [fecha, horaInicio, horaFin, id, isEdit, loadingReserva, horarioOriginal])
 
   const selectCliente = (opt: ClienteOption) => {
     setClienteId(opt.id)
@@ -189,7 +345,11 @@ export function NuevaReservaIndividualPage() {
     setSelectedCliente(opt)
     setClienteSearch(`${opt.nombres} ${opt.apellidos}`.trim())
     setShowClienteDropdown(false)
-    setErrors(prev => { const n = { ...prev }; delete n.cliente; return n })
+    setErrors((prev) => {
+      const n = { ...prev }
+      delete n.cliente
+      return n
+    })
   }
 
   const clearCliente = () => {
@@ -207,38 +367,50 @@ export function NuevaReservaIndividualPage() {
       nombres: nuevo.nombres,
       apellidos: nuevo.apellidos || "",
       cedula: nuevo.cedula,
+      correo: nuevo.correo,
+      celular: nuevo.celular,
     })
   }
 
-  const paqueteSeleccionado = useMemo(() => paquetes.find(p => p.id === paqueteId), [paqueteId, paquetes])
+  const paqueteSeleccionado = useMemo(
+    () => paquetes.find((p) => p.id === paqueteId),
+    [paqueteId, paquetes]
+  )
 
   const calcularHoras = () => {
     if (!horaInicio || !horaFin) return 0
     const [h1, m1] = horaInicio.split(":").map(Number)
     const [h2, m2] = horaFin.split(":").map(Number)
-    return ((h2 + m2 / 60) - (h1 + m1 / 60))
+    const mins = h2 * 60 + m2 - (h1 * 60 + m1)
+    if (mins <= 0) return 0
+    return Math.round((mins / 60) * 100) / 100
   }
 
   const horas = calcularHoras()
-  const precioOriginal = paqueteSeleccionado && horas > 0 ? Math.round(horas * paqueteSeleccionado.precio_por_hora * 100) / 100 : 0
+  const precioOriginal =
+    paqueteSeleccionado && horas > 0
+      ? Math.round(horas * Number(paqueteSeleccionado.precio_por_hora) * 100) / 100
+      : 0
   let montoDescuento = 0
   if (showDescuento && descuentoValor) {
     if (descuentoTipo === "fijo") {
-      montoDescuento = Number(descuentoValor) || 0
+      montoDescuento = Math.min(precioOriginal, Math.max(0, Number(descuentoValor) || 0))
     } else {
-      montoDescuento = (precioOriginal * (Number(descuentoValor) || 0)) / 100
+      montoDescuento =
+        Math.round(((precioOriginal * (Number(descuentoValor) || 0)) / 100) * 100) / 100
     }
   }
-  const precioTotal = Math.max(0, precioOriginal - montoDescuento)
+  const precioTotal = Math.max(0, Math.round((precioOriginal - montoDescuento) * 100) / 100)
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {}
-    if (!paqueteId) newErrors.paquete = "Debe seleccionar un paquete"
+    if (!paqueteId) newErrors.paquete = "Debe seleccionar un paquete de podcast"
     if (!fecha) newErrors.fecha = "La fecha es obligatoria"
     if (!horaInicio) newErrors.horaInicio = "La hora de inicio es obligatoria"
     if (!horaFin) newErrors.horaFin = "La hora de fin es obligatoria"
-    if (horaInicio && horaFin && calcularHoras() <= 0) newErrors.horaFin = "Debe ser posterior a la hora de inicio"
-    if (!clienteId) newErrors.cliente = "Debe seleccionar un cliente"
+    if (horaInicio && horaFin && calcularHoras() <= 0)
+      newErrors.horaFin = "Debe ser posterior a la hora de inicio"
+    if (!clienteId) newErrors.cliente = "Debe seleccionar un cliente responsable"
     setErrors(newErrors)
     setTouched({ paquete: true, fecha: true, horaInicio: true, horaFin: true, cliente: true })
     return Object.keys(newErrors).length === 0
@@ -260,8 +432,11 @@ export function NuevaReservaIndividualPage() {
         precio_original: showDescuento ? precioOriginal : null,
         monto_descuento: showDescuento ? montoDescuento : 0,
         motivo_descuento: showDescuento ? motivoDescuento : null,
-        estado: "pendiente",
-        asignaciones: asignaciones.map(a => ({ persona_id: a.persona_id, rol: a.rol || null })),
+        estado: isEdit ? estadoOriginal : "pendiente",
+        asignaciones: asignaciones.map((a) => ({
+          persona_id: a.persona_id,
+          rol: a.rol?.trim() || null,
+        })),
       }
       if (clienteTipo === "persona") {
         payload.persona_id = clienteId
@@ -270,552 +445,938 @@ export function NuevaReservaIndividualPage() {
         payload.persona_id = null
         payload.cliente_externo_id = clienteId
       }
-      await podcastService.createReserva(payload)
-      toast.success("Reserva creada exitosamente")
+      if (isEdit && id) {
+        await podcastService.updateReserva(id, payload)
+        toast.success("Reserva de podcast actualizada exitosamente")
+      } else {
+        await podcastService.createReserva(payload)
+        toast.success("Reserva de podcast creada exitosamente")
+      }
       navigate("/servicios/podcast")
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })?.response?.data
+      const msg = (
+        err as {
+          response?: { data?: { message?: string; errors?: Record<string, string[]> } }
+        }
+      )?.response?.data
       if (msg?.message) toast.error(msg.message)
-      if (msg?.errors) Object.values(msg.errors).flat().forEach(m => toast.error(m))
-      else toast.error("Error al guardar la reserva")
+      if (msg?.errors) Object.values(msg.errors).flat().forEach((m) => toast.error(m))
+      else
+        toast.error(
+          isEdit ? "Error al actualizar la reserva" : "Error al guardar la reserva"
+        )
     } finally {
       setSaving(false)
     }
   }
 
-  const inputCls = (field: string) => {
-    const hasErr = touched[field] && errors[field]
-    return `w-full px-4 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white ${
-      hasErr
-        ? "border-red-400 focus:border-red-400 focus:ring-4 focus:ring-red-500/10"
-        : "border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
-    }`
-  }
-
-  const errMsg = (field: string) => {
-    if (!touched[field]) return null
-    const msg = errors[field]
-    return msg ? (
-      <p className="flex items-center gap-1.5 text-[11px] mt-1.5 text-red-500 font-medium">
-        <HugeiconsIcon icon={AlertCircleIcon} size={11} />
-        {msg}
-      </p>
-    ) : null
-  }
-
-  if (loadingPaquetes) {
+  if (loadingPaquetes || loadingReserva) {
     return (
-      <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-50 to-violet-50/30">
+      <div className="flex items-center justify-center h-full min-h-[450px] bg-[#f8f9ff]">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin size-8 border-[3px] border-violet-600 border-t-transparent rounded-full" />
-          <p className="text-xs font-medium opacity-40">Cargando paquetes...</p>
+          <div className="animate-spin size-8 border-[3px] border-t-transparent rounded-full border-[#fd761a]" />
+          <p className="text-xs font-semibold text-slate-500">
+            {loadingReserva ? "Cargando reserva de podcast..." : "Cargando paquetes..."}
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <header className="shrink-0 border-b bg-white/90 backdrop-blur-md sticky top-0 z-20" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="max-w-4xl mx-auto px-6 lg:px-8 py-5">
-          <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/servicios/podcast")}
-              className="size-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-all active:scale-95">
+    <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
+        {/* Header Principal de la Página */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate("/servicios/podcast")}
+              className="size-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all active:scale-95 shadow-xs cursor-pointer shrink-0"
+              title="Volver a Reservas de Podcast"
+            >
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
             </button>
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="size-11 rounded-2xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: "oklch(0.92 0.03 270)", color: "#7c3aed" }}>
-                <HugeiconsIcon icon={Microphone} size={20} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: COLORS.CHARCOAL }}>
-                  Nueva Reserva de Podcast
-                </h1>
-                <p className="text-xs opacity-40 mt-0.5">
-                  Registra una nueva reserva en el estudio de podcast
-                </p>
-              </div>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+                {isEdit ? "Editar Reserva de Podcast" : "Nueva Reserva de Podcast"}
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isEdit
+                  ? "Modifica los datos del episodio, paquete y asignación de la cabina"
+                  : "Registra una sesión individual en el estudio de podcast"}
+              </p>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+              {isEdit ? "Modo Edición" : "Modo Individual"}
+            </span>
+          </div>
         </div>
-      </header>
 
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto px-6 lg:px-8 py-8">
-          <form onSubmit={handleSubmit} className="space-y-7">
-            {/* Sección: Paquete y Horario */}
-            <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={Microphone} title="Paquete y Horario" />
-
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                  Paquete Contratado
-                  <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={paqueteId}
-                  onChange={e => { setPaqueteId(e.target.value); setErrors(prev => { const n = { ...prev }; delete n.paquete; return n }) }}
-                  onBlur={() => setTouched(prev => ({ ...prev, paquete: true }))}
-                  className={inputCls("paquete") + " appearance-none"}
-                  style={touched.paquete && errors.paquete ? undefined : paqueteId ? { borderColor: COLORS.ACCENT } : undefined}
-                >
-                  <option value="">Seleccionar paquete...</option>
-                  {paquetes.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre} — ${p.precio_por_hora.toFixed(2)}/hr</option>
-                  ))}
-                </select>
-                {errMsg("paquete")}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                    <HugeiconsIcon icon={Calendar03Icon} size={12} className="opacity-40" />
-                    Fecha de la reserva
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input type="date" value={fecha}
-                    onChange={e => { setFecha(e.target.value); setErrors(prev => { const n = { ...prev }; delete n.fecha; return n }) }}
-                    onBlur={() => setTouched(prev => ({ ...prev, fecha: true }))}
-                    className={inputCls("fecha")} />
-                  {errMsg("fecha")}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                    <HugeiconsIcon icon={Clock01Icon} size={12} className="opacity-40" />
-                    Hora de inicio
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input type="time" value={horaInicio}
-                    onChange={e => { setHoraInicio(e.target.value); setErrors(prev => { const n = { ...prev }; delete n.horaInicio; delete n.horaFin; return n }) }}
-                    onBlur={() => setTouched(prev => ({ ...prev, horaInicio: true }))}
-                    className={inputCls("horaInicio")} />
-                  {errMsg("horaInicio")}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                    <HugeiconsIcon icon={Clock01Icon} size={12} className="opacity-40" />
-                    Hora de fin
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input type="time" value={horaFin}
-                    onChange={e => { setHoraFin(e.target.value); setErrors(prev => { const n = { ...prev }; delete n.horaFin; return n }) }}
-                    onBlur={() => setTouched(prev => ({ ...prev, horaFin: true }))}
-                    className={inputCls("horaFin")} />
-                  {errMsg("horaFin")}
-                </div>
-              </div>
-
-              {verificandoConflicto && (
-                <div className="flex items-center gap-2 text-xs opacity-40">
-                  <div className="animate-spin size-3 border-2 border-gray-400 border-t-transparent rounded-full" />
-                  Verificando disponibilidad...
-                </div>
-              )}
-
-              {conflicto && !verificandoConflicto && (
-                <div className="flex items-start gap-3 p-4 rounded-xl border bg-red-50 border-red-200">
-                  <HugeiconsIcon icon={AlertCircleIcon} size={16} style={{ color: "oklch(0.5 0.15 20)" }} className="mt-0.5 shrink-0" />
+        {/* Formulario en Grid Bento de 2 Columnas */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Columna Izquierda: Cliente, Sesión, Staff y Descuentos (8 cols) */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            {/* Card 1: Cliente / Responsable del Programa */}
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <HugeiconsIcon icon={UserIcon} size={18} />
+                  </div>
                   <div>
-                    <p className="text-xs font-bold" style={{ color: "oklch(0.5 0.15 20)" }}>Conflicto de horario</p>
-                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.45 0.1 20)" }}>
-                      Ya existe una reserva en este horario: {conflicto.hora_inicio?.substring(0, 5)} – {conflicto.hora_fin?.substring(0, 5)}
-                      {conflicto.titulo ? ` (${conflicto.titulo})` : conflicto.paquete?.nombre ? ` (${conflicto.paquete.nombre})` : ""}
+                    <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                      Cliente / Responsable del Programa
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Asigna la persona o institución que contrata las sesiones de cabina
                     </p>
                   </div>
                 </div>
-              )}
 
-              {paqueteSeleccionado && precioOriginal > 0 && (
-                <div className="flex flex-col gap-3 px-5 py-4 rounded-2xl border bg-gray-50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="size-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.03 270)" }}>
-                        <HugeiconsIcon icon={Money01Icon} size={16} style={{ color: "#7c3aed" }} />
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-50">Precio estimado</p>
-                        <p className="text-sm font-medium" style={{ color: COLORS.CHARCOAL }}>
-                          {paqueteSeleccionado.nombre} · ${paqueteSeleccionado.precio_por_hora.toFixed(2)}/hr
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right flex flex-col items-end">
-                      {showDescuento && montoDescuento > 0 && (
-                        <p className="text-xs font-medium text-gray-400 line-through mb-0.5">${precioOriginal.toFixed(2)}</p>
-                      )}
-                      <div className="flex items-end gap-2">
-                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-50 mb-1.5">{horas.toFixed(1)} hrs</p>
-                        <p className="text-3xl font-black tracking-tighter" style={{ color: COLORS.CHARCOAL }}>${precioTotal.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
+                {!selectedCliente && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNuevoCliente(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    <UserPlus size={14} />
+                    <span>Nuevo Cliente</span>
+                  </button>
+                )}
+              </div>
 
-                  {!showDescuento ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowDescuento(true)}
-                      className="mt-1 inline-flex items-center gap-1.5 self-start rounded-lg border border-dashed border-violet-300 bg-violet-50/60 px-3 py-1.5 text-xs font-semibold text-violet-700 transition hover:border-violet-400 hover:bg-violet-100/70"
-                    >
-                      <Tag size={13} />
-                      <span>+ Aplicar descuento a la reserva</span>
-                    </button>
-                  ) : (
-                    <div className="mt-3 rounded-xl border border-violet-200/80 bg-violet-50/40 p-4 space-y-3">
-                      <div className="flex items-center justify-between border-b border-violet-100 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-100 text-violet-700 shadow-xs">
-                            <Tag size={13} />
+              {/* Ficha Destacada del Cliente Seleccionado */}
+              {selectedCliente ? (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50/90 via-emerald-50/40 to-white border-2 border-emerald-500/80 shadow-xs transition-all animate-in fade-in">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                    <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                      <div className="size-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-base shadow-sm">
+                        {selectedCliente.nombres.charAt(0)}
+                        {selectedCliente.apellidos?.charAt(0) || ""}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider border border-emerald-200">
+                            <HugeiconsIcon icon={CheckmarkCircle04Icon} size={11} />
+                            <span>
+                              {selectedCliente.tipo === "persona"
+                                ? selectedCliente.personaTipo || "Institucional"
+                                : "Cliente Externo"}
+                            </span>
                           </span>
-                          <span className="text-xs font-bold text-slate-800">Descuento a la reserva</span>
-                          <span className="rounded-full bg-violet-100/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700">
-                            Monto fijo
+                          <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-md">
+                            Responsable asignado
                           </span>
-                          {montoDescuento > 0 && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                              -${montoDescuento.toFixed(2)} USD
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-900 truncate">
+                          {selectedCliente.nombres} {selectedCliente.apellidos}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 mt-1">
+                          {selectedCliente.cedula && (
+                            <span className="font-medium">
+                              <span className="text-slate-400">C.I:</span> {selectedCliente.cedula}
+                            </span>
+                          )}
+                          {selectedCliente.celular && (
+                            <span className="font-medium">
+                              <span className="text-slate-400">Tel:</span> {selectedCliente.celular}
+                            </span>
+                          )}
+                          {selectedCliente.correo && (
+                            <span className="font-medium">
+                              <span className="text-slate-400">Email:</span> {selectedCliente.correo}
                             </span>
                           )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowDescuento(false)
-                            setDescuentoValor("")
-                            setMotivoDescuento("")
-                          }}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                          title="Quitar descuento"
-                        >
-                          <X size={14} />
-                          <span>Quitar</span>
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-0.5">
-                        {/* 1. Monto fijo */}
-                        <div className="sm:col-span-5 space-y-1">
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                            Monto fijo a descontar ($ USD)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                              $
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              value={descuentoValor}
-                              onChange={(e) => setDescuentoValor(e.target.value)}
-                              className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-7 pr-3 text-xs font-semibold text-slate-800 outline-none transition hover:border-slate-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-                            />
-                          </div>
-                        </div>
-
-                        {/* 2. Motivo */}
-                        <div className="sm:col-span-7 space-y-1">
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                            Motivo o justificación
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Ej: Cliente frecuente, convenio, estudiante VIP..."
-                            value={motivoDescuento}
-                            onChange={(e) => setMotivoDescuento(e.target.value)}
-                            className="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none transition hover:border-slate-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-                          />
-                        </div>
                       </div>
                     </div>
-                  )}
+
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={clearCliente}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-red-600 transition-colors cursor-pointer shadow-2xs active:scale-95"
+                        title="Cambiar cliente responsable"
+                      >
+                        <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                        <span>Cambiar cliente</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Sección: Título */}
-            <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={Microphone} title="Título del episodio" />
-
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.CHARCOAL }}>
-                  Título <span className="opacity-40 ml-0.5 font-medium">(opcional)</span>
-                </label>
-                <input type="text" value={titulo}
-                  onChange={e => setTitulo(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white border-gray-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/10"
-                  placeholder="Ej: Entrevista con invitado especial..." />
-              </div>
-            </div>
-
-            {/* Sección: Cliente */}
-            <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={UserIcon} title="Cliente" />
-
-              <div className="relative" ref={clienteRef}>
-                <div className="flex gap-2.5">
-                  <div className="relative flex-1">
-                    <HugeiconsIcon icon={Search01Icon} size={15} className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none" />
-                    <input type="text"
+              ) : (
+                /* Buscador de Clientes */
+                <div className="relative" ref={clienteRef}>
+                  <div className="relative">
+                    <HugeiconsIcon
+                      icon={Search01Icon}
+                      size={16}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    />
+                    <input
+                      type="text"
                       value={clienteSearch}
-                      onChange={e => { setClienteSearch(e.target.value); setShowClienteDropdown(true) }}
-                      onFocus={() => { if (!clienteId || clienteSearch) setShowClienteDropdown(true) }}
-                      placeholder="Buscar persona o cliente por nombre o cédula..."
-                      className={cn(
-                        "w-full pl-11 pr-10 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white",
-                        touched.cliente && errors.cliente
-                          ? "border-red-400 focus:border-red-400 focus:ring-4 focus:ring-red-500/10"
-                          : "border-gray-200 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10"
-                      )} />
-                    {clienteId && (
-                      <button type="button" onClick={clearCliente}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 opacity-30 hover:opacity-100 transition-opacity">
+                      onChange={(e) => {
+                        setClienteSearch(e.target.value)
+                        setShowClienteDropdown(true)
+                      }}
+                      onFocus={() => {
+                        if (clienteSearch.trim().length >= 2) setShowClienteDropdown(true)
+                      }}
+                      placeholder="Ingresa al menos 2 letras para iniciar la búsqueda..."
+                      className="w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
+                    />
+                    {clienteSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClienteSearch("")
+                          setClientesDisponibles([])
+                          setShowClienteDropdown(false)
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                        title="Limpiar búsqueda"
+                      >
                         <HugeiconsIcon icon={Cancel01Icon} size={15} />
                       </button>
                     )}
                   </div>
-                </div>
 
-                {!clienteId && (
-                  <button type="button" onClick={() => setShowNuevoCliente(true)}
-                    className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
-                    <UserPlus size={14} />
-                    Registrar nuevo cliente externo
-                  </button>
-                )}
+                  <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1.5">
+                    <HugeiconsIcon
+                      icon={InformationCircleIcon}
+                      size={13}
+                      className="text-slate-400 shrink-0"
+                    />
+                    <span>Escribe al menos 2 letras para buscar estudiantes, instructores o clientes externos.</span>
+                  </p>
 
-                <AnimatePresence>
-                  {showClienteDropdown && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border-2 rounded-2xl shadow-xl max-h-72 overflow-y-auto"
-                      style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                    >
-                      {searchingCliente ? (
-                        <div className="p-5 text-center text-xs opacity-40 flex items-center justify-center gap-2">
-                          <div className="animate-spin size-3.5 border-2 border-violet-500 border-t-transparent rounded-full" />
-                          Buscando...
-                        </div>
-                      ) : clientesDisponibles.length === 0 ? (
-                        <div className="p-5 text-center text-xs opacity-40">
-                          {clienteSearch.trim().length >= 2 ? "Sin resultados para esta búsqueda" : "Escribe al menos 2 caracteres para buscar..."}
-                        </div>
-                      ) : (
-                        <>
-                          {personasEnLista.length > 0 && (
-                            <div className="px-4 py-2 text-[9px] font-bold uppercase tracking-widest opacity-30">Personas</div>
-                          )}
-                          {personasEnLista.map(opt => {
-                            const sel = clienteId === opt.id && clienteTipo === "persona"
-                            return (
-                              <button key={`persona-${opt.id}`} type="button"
-                                onClick={() => selectCliente(opt)}
-                                className={cn(
-                                  "w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-3",
-                                  sel && "bg-violet-50/60"
-                                )}
-                              >
-                                <div className={cn("size-8 rounded-xl flex items-center justify-center shrink-0 transition-all", sel ? "bg-violet-100 shadow-sm" : "bg-gray-100")}>
-                                  <HugeiconsIcon icon={UserIcon} size={13} className={cn(!sel && "opacity-40")} style={{ color: sel ? "#7c3aed" : undefined }} />
+                  {/* Dropdown de Coincidencias */}
+                  <AnimatePresence>
+                    {showClienteDropdown && clienteSearch.trim().length >= 2 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.99 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.99 }}
+                        className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-slate-200/90 rounded-2xl shadow-2xl max-h-80 overflow-y-auto divide-y divide-slate-100"
+                      >
+                        {searchingCliente ? (
+                          <div className="p-6 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                            <Loader2 size={16} className="animate-spin text-[#fd761a]" />
+                            <span>Buscando coincidencias para "{clienteSearch}"...</span>
+                          </div>
+                        ) : clientesDisponibles.length === 0 ? (
+                          <div className="p-6 text-center space-y-2">
+                            <p className="text-xs font-semibold text-slate-600">
+                              No se encontraron coincidencias para "{clienteSearch}"
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              Verifica la ortografía o registra al cliente como externo.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowClienteDropdown(false)
+                                setShowNuevoCliente(true)
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition-all cursor-pointer mt-2"
+                            >
+                              <UserPlus size={13} />
+                              <span>Registrar "{clienteSearch}" como Nuevo Cliente</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                              <span className="font-bold text-slate-700">
+                                {clientesDisponibles.length} coincidencia
+                                {clientesDisponibles.length > 1 ? "s" : ""} encontrada
+                                {clientesDisponibles.length > 1 ? "s" : ""}
+                              </span>
+                              <span className="text-[10px] text-slate-400">Haz clic para seleccionar</span>
+                            </div>
+
+                            {personasEnLista.length > 0 && (
+                              <div>
+                                <div className="px-4 py-1.5 bg-orange-50/60 text-[10px] font-bold uppercase tracking-wider text-orange-800 flex items-center justify-between">
+                                  <span>Personas Institucionales</span>
+                                  <span>{personasEnLista.length}</span>
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className={cn("font-semibold text-sm", sel && "text-violet-700")} style={{ color: sel ? undefined : COLORS.CHARCOAL }}>
-                                    {opt.nombres} {opt.apellidos}
-                                  </span>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    {opt.cedula && <span className="text-[10px] opacity-40">C.I. {opt.cedula}</span>}
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-600 font-medium">{opt.personaTipo || "Externo"}</span>
-                                  </div>
+                                {personasEnLista.map((opt) => (
+                                  <button
+                                    key={`persona-${opt.id}`}
+                                    type="button"
+                                    onClick={() => selectCliente(opt)}
+                                    className="w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-orange-50/60 border-l-4 border-l-transparent hover:border-l-[#fd761a] flex items-center gap-3 cursor-pointer"
+                                  >
+                                    <div className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-orange-100 text-[#fd761a] font-bold text-xs">
+                                      {opt.nombres.charAt(0)}
+                                      {opt.apellidos?.charAt(0) || ""}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-slate-900 truncate">
+                                          {opt.nombres} {opt.apellidos}
+                                        </span>
+                                        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 capitalize">
+                                          {opt.personaTipo || "Institucional"}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
+                                        {opt.cedula && <span><b>C.I:</b> {opt.cedula}</span>}
+                                        {opt.correo && (
+                                          <span className="truncate max-w-[200px]">{opt.correo}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {externosEnLista.length > 0 && (
+                              <div>
+                                <div className="px-4 py-1.5 bg-emerald-50/60 text-[10px] font-bold uppercase tracking-wider text-emerald-800 flex items-center justify-between">
+                                  <span>Clientes Externos</span>
+                                  <span>{externosEnLista.length}</span>
                                 </div>
-                                {sel && (
-                                  <div className="size-6 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                                    <HugeiconsIcon icon={Tick02Icon} size={11} className="text-violet-600" />
-                                  </div>
-                                )}
-                              </button>
-                            )
-                          })}
-                          {externosEnLista.length > 0 && (
-                            <div className="px-4 py-2 text-[9px] font-bold uppercase tracking-widest opacity-30 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>Clientes Externos</div>
-                          )}
-                          {externosEnLista.map(opt => {
-                            const sel = clienteId === opt.id && clienteTipo === "cliente_externo"
-                            return (
-                              <button key={`externo-${opt.id}`} type="button"
-                                onClick={() => selectCliente(opt)}
-                                className={cn(
-                                  "w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-3",
-                                  sel && "bg-emerald-50/60"
-                                )}
-                              >
-                                <div className={cn("size-8 rounded-xl flex items-center justify-center shrink-0 transition-all", sel ? "bg-emerald-100 shadow-sm" : "bg-gray-100")}>
-                                  <HugeiconsIcon icon={UserIcon} size={13} className={cn(!sel && "opacity-40")} style={{ color: sel ? "#059669" : undefined }} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className={cn("font-semibold text-sm", sel && "text-emerald-700")} style={{ color: sel ? undefined : COLORS.CHARCOAL }}>
-                                    {opt.nombres} {opt.apellidos}
-                                  </span>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    {opt.cedula && <span className="text-[10px] opacity-40">C.I. {opt.cedula}</span>}
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-medium">Externo</span>
-                                  </div>
-                                </div>
-                                {sel && (
-                                  <div className="size-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                                    <HugeiconsIcon icon={Tick02Icon} size={11} className="text-emerald-600" />
-                                  </div>
-                                )}
-                              </button>
-                            )
-                          })}
-                        </>
-                      )}
-                    </motion.div>
+                                {externosEnLista.map((opt) => (
+                                  <button
+                                    key={`ext-${opt.id}`}
+                                    type="button"
+                                    onClick={() => selectCliente(opt)}
+                                    className="w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-emerald-50/60 border-l-4 border-l-transparent hover:border-l-emerald-600 flex items-center gap-3 cursor-pointer"
+                                  >
+                                    <div className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-100 text-emerald-700 font-bold text-xs">
+                                      {opt.nombres.charAt(0)}
+                                      {opt.apellidos?.charAt(0) || ""}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="font-bold text-slate-900 truncate">
+                                          {opt.nombres} {opt.apellidos}
+                                        </span>
+                                        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                                          Externo
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
+                                        {opt.cedula && <span><b>C.I:</b> {opt.cedula}</span>}
+                                        {opt.celular && <span><b>Tel:</b> {opt.celular}</span>}
+                                        {opt.correo && (
+                                          <span className="truncate max-w-[200px]">{opt.correo}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {touched.cliente && errors.cliente && (
+                    <p className="flex items-center gap-1 text-[11px] text-red-500 font-medium mt-1.5">
+                      <HugeiconsIcon icon={AlertCircleIcon} size={12} />
+                      <span>{errors.cliente}</span>
+                    </p>
                   )}
-                </AnimatePresence>
-              </div>
-
-              {errMsg("cliente")}
-
-              {selectedCliente && (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50/30 border border-emerald-200">
-                  <div className="size-9 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                    <HugeiconsIcon icon={UserIcon} size={15} className="text-emerald-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-emerald-800 truncate">
-                      {selectedCliente.nombres} {selectedCliente.apellidos}
-                    </p>
-                    <p className="text-[10px] text-emerald-600/60">
-                      {selectedCliente.cedula ? `C.I. ${selectedCliente.cedula}` : selectedCliente.personaTipo ? selectedCliente.personaTipo.charAt(0).toUpperCase() + selectedCliente.personaTipo.slice(1) : "Cliente externo"}
-                    </p>
-                  </div>
-                  <HugeiconsIcon icon={Tick02Icon} size={16} className="text-emerald-500 shrink-0" />
                 </div>
               )}
             </div>
 
-            {/* Sección: Personal asignado */}
-            <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <SectionHeader icon={UserGroupIcon} title="Personal a cargo" />
+            {/* Card 2: Paquete y Horario de Cabina */}
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-6 space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-orange-50 text-[#fd761a] border border-orange-100 flex items-center justify-center shrink-0">
+                    <Mic size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                      Paquete y Horario de Cabina
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Selecciona el plan contratado, fecha de grabación y horario
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-              {asignaciones.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {asignaciones.map((a, i) => {
-                    const p = personas.find(pp => pp.id === a.persona_id)
+              {/* Selector de Paquete */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                  <span>Paquete de Podcast</span>
+                  <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paqueteId}
+                  onChange={(e) => {
+                    setPaqueteId(e.target.value)
+                    setErrors((prev) => {
+                      const n = { ...prev }
+                      delete n.paquete
+                      return n
+                    })
+                  }}
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all cursor-pointer"
+                >
+                  <option value="">Seleccionar paquete...</option>
+                  {paquetes
+                    .filter((x) => x.activo || x.id === paqueteId)
+                    .map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.nombre} • ${Number(pkg.precio_por_hora).toFixed(2)}/sesión
+                      </option>
+                    ))}
+                </select>
+                {paqueteSeleccionado && (
+                  <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                    <Mic size={13} className="text-[#fd761a]" />
+                    <span>
+                      Paquete seleccionado: <b>{paqueteSeleccionado.nombre}</b>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Tarifa: <b>${Number(paqueteSeleccionado.precio_por_hora).toFixed(2)} / sesión</b>
+                    </span>
+                  </div>
+                )}
+                {touched.paquete && errors.paquete && (
+                  <p className="flex items-center gap-1 text-[11px] text-red-500 font-medium mt-1">
+                    <HugeiconsIcon icon={AlertCircleIcon} size={12} />
+                    <span>{errors.paquete}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Grid Fecha y Horarios */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <HugeiconsIcon icon={Calendar03Icon} size={13} className="text-slate-400" />
+                    <span>Fecha de Grabación</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={fecha}
+                    onChange={(e) => {
+                      setFecha(e.target.value)
+                      setErrors((prev) => {
+                        const n = { ...prev }
+                        delete n.fecha
+                        return n
+                      })
+                    }}
+                    onBlur={() => setTouched((prev) => ({ ...prev, fecha: true }))}
+                    className={cn(
+                      "w-full h-11 px-3.5 rounded-xl border bg-white text-xs font-medium text-slate-800 outline-none transition-all",
+                      touched.fecha && errors.fecha
+                        ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
+                        : "border-slate-200 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20"
+                    )}
+                  />
+                  {touched.fecha && errors.fecha && (
+                    <p className="flex items-center gap-1 text-[11px] text-red-500 font-medium">
+                      <HugeiconsIcon icon={AlertCircleIcon} size={12} />
+                      <span>{errors.fecha}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
+                    <span>Hora Inicio</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={horaInicio}
+                    onChange={(e) => {
+                      setHoraInicio(e.target.value)
+                      setErrors((prev) => {
+                        const n = { ...prev }
+                        delete n.horaInicio
+                        return n
+                      })
+                    }}
+                    onBlur={() => setTouched((prev) => ({ ...prev, horaInicio: true }))}
+                    className={cn(
+                      "w-full h-11 px-3.5 rounded-xl border bg-white text-xs font-medium text-slate-800 outline-none transition-all",
+                      touched.horaInicio && errors.horaInicio
+                        ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
+                        : "border-slate-200 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20"
+                    )}
+                  />
+                  {touched.horaInicio && errors.horaInicio && (
+                    <p className="flex items-center gap-1 text-[11px] text-red-500 font-medium">
+                      <HugeiconsIcon icon={AlertCircleIcon} size={12} />
+                      <span>{errors.horaInicio}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
+                    <span>Hora Fin</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={horaFin}
+                    onChange={(e) => {
+                      setHoraFin(e.target.value)
+                      setErrors((prev) => {
+                        const n = { ...prev }
+                        delete n.horaFin
+                        return n
+                      })
+                    }}
+                    onBlur={() => setTouched((prev) => ({ ...prev, horaFin: true }))}
+                    className={cn(
+                      "w-full h-11 px-3.5 rounded-xl border bg-white text-xs font-medium text-slate-800 outline-none transition-all",
+                      touched.horaFin && errors.horaFin
+                        ? "border-red-400 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
+                        : "border-slate-200 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20"
+                    )}
+                  />
+                  {touched.horaFin && errors.horaFin && (
+                    <p className="flex items-center gap-1 text-[11px] text-red-500 font-medium">
+                      <HugeiconsIcon icon={AlertCircleIcon} size={12} />
+                      <span>{errors.horaFin}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Indicador de verificación y conflicto */}
+              {verificandoConflicto && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 size={13} className="animate-spin text-[#fd761a]" />
+                  <span>Verificando disponibilidad de horario en cabina...</span>
+                </div>
+              )}
+
+              {conflicto && !verificandoConflicto && (
+                <div className="p-3.5 rounded-xl border border-red-200 bg-red-50/90 flex items-start gap-2.5 text-xs text-red-800">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={16} className="text-red-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <span className="font-bold">Conflicto de horario detectado:</span>
+                    <p className="text-[11px] text-red-700 mt-0.5">
+                      Ya existe una reserva en este horario: {conflicto.hora_inicio?.substring(0, 5)} – {conflicto.hora_fin?.substring(0, 5)}
+                      {conflicto.titulo
+                        ? ` (${conflicto.titulo})`
+                        : conflicto.paquete?.nombre
+                        ? ` (${conflicto.paquete.nombre})`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Card 3: Detalles de Grabación (Título y Notas) */}
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-6 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="size-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Detalles del Episodio y Producción
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Título temático y observaciones técnicas para la cabina
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <Tag size={12} className="text-slate-400" />
+                    <span>Título o Tema del Episodio</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Entrevista especial a emprendedores #12..."
+                    value={titulo}
+                    onChange={(e) => setTitulo(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <FileText size={12} className="text-slate-400" />
+                    <span>Notas o Requerimientos Técnicos</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Número de micrófonos, grabación multipista, monitoreo especial..."
+                    value={notas}
+                    onChange={(e) => setNotas(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all placeholder:text-slate-400 resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Personal Asignado a Cabina (Staff) */}
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-violet-50 text-violet-700 border border-violet-100 flex items-center justify-center shrink-0">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                      Personal Asignado en Cabina
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Técnicos de audio, productores o pasantes a cargo de la sesión
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-52 sm:w-64">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (!e.target.value) return
+                      const p = personas.find((x) => x.id === e.target.value)
+                      setAsignaciones((prev) => [
+                        ...prev,
+                        {
+                          persona_id: e.target.value,
+                          rol: "Técnico de audio",
+                          persona: p ? { nombres: p.nombres, apellidos: p.apellidos } : undefined,
+                        },
+                      ])
+                    }}
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-[#fd761a] cursor-pointer shadow-2xs"
+                  >
+                    <option value="">+ Asignar personal...</option>
+                    {personalOperativo
+                      .filter((p) => !asignaciones.some((a) => a.persona_id === p.id))
+                      .map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.nombres} {person.apellidos} ({person.tipo})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Lista de personal asignado */}
+              {asignaciones.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {asignaciones.map((asig, i) => {
+                    const person =
+                      personas.find((x) => x.id === asig.persona_id) || asig.persona
                     return (
-                      <div key={a.persona_id} className="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-50 to-purple-50/60 border border-purple-200 text-xs shadow-sm">
-                        <div className="size-6 rounded-full bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-[8px] font-bold text-white shrink-0">
-                          {p?.nombres?.[0]}{p?.apellidos?.[0]}
+                      <div
+                        key={asig.persona_id}
+                        className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/80 flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="size-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-xs shrink-0">
+                            {person?.nombres?.charAt(0) || "P"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 truncate">
+                              {person ? `${person.nombres} ${person.apellidos}` : "Personal"}
+                            </p>
+                            <input
+                              type="text"
+                              value={asig.rol}
+                              placeholder="Rol (ej. Técnico audio)"
+                              onChange={(e) => {
+                                const rol = e.target.value
+                                setAsignaciones((prev) =>
+                                  prev.map((item, idx) => (idx === i ? { ...item, rol } : item))
+                                )
+                              }}
+                              className="text-[11px] text-slate-500 bg-transparent border-b border-dashed border-slate-300 focus:border-[#fd761a] outline-none mt-0.5"
+                            />
+                          </div>
                         </div>
-                        <span className="font-bold text-purple-800 text-[11px]">{p?.nombres} {p?.apellidos}</span>
-                        <div className="h-4 w-px bg-purple-200" />
-                        <input type="text" value={a.rol}
-                          onChange={e => { const n = [...asignaciones]; n[i] = { ...n[i], rol: e.target.value }; setAsignaciones(n) }}
-                          placeholder="Rol" className="w-20 bg-transparent text-[10px] font-medium text-purple-600 outline-none placeholder:text-purple-300" />
-                        <button type="button" onClick={() => setAsignaciones(prev => prev.filter((_, idx) => idx !== i))}
-                          className="opacity-0 group-hover:opacity-100 size-6 flex items-center justify-center rounded-full hover:bg-red-100 transition-all">
-                          <X size={10} className="text-red-400" />
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAsignaciones((prev) =>
+                              prev.filter((item) => item.persona_id !== asig.persona_id)
+                            )
+                          }
+                          className="size-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                          title="Remover asignación"
+                        >
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     )
                   })}
                 </div>
-              )}
-
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <HugeiconsIcon icon={Search01Icon} size={13} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
-                  <input type="text" value={asignacionStaffSearch}
-                    onChange={e => setAsignacionStaffSearch(e.target.value)}
-                    placeholder="Buscar personal para asignar..."
-                    className="w-full pl-9 pr-4 py-3 rounded-xl border-2 bg-gray-50/60 text-xs font-medium outline-none focus:bg-white focus:ring-4 focus:ring-purple-500/10 transition-all"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }} />
-                </div>
-              </div>
-
-              {asignacionStaffSearch && (
-                <div className="max-h-[140px] overflow-y-auto rounded-xl border-2 bg-white divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                  {(() => {
-                    const filtered = personas.filter(p =>
-                      !asignaciones.some(a => a.persona_id === p.id) &&
-                      `${p.nombres} ${p.apellidos}`.toLowerCase().includes(asignacionStaffSearch.toLowerCase())
-                    )
-                    return filtered.length > 0 ? (
-                      filtered.map(p => (
-                        <button key={p.id} type="button"
-                          onClick={() => { setAsignaciones(prev => [...prev, { persona_id: p.id, rol: "", persona: { nombres: p.nombres, apellidos: p.apellidos } }]); setAsignacionStaffSearch("") }}
-                          className="w-full text-left px-4 py-3 hover:bg-purple-50/60 transition-colors flex items-center gap-3"
-                        >
-                          <div className="size-8 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
-                            <HugeiconsIcon icon={UserIcon} size={14} style={{ color: "#7c3aed" }} />
-                          </div>
-                          <p className="text-xs font-bold" style={{ color: COLORS.CHARCOAL }}>{p.nombres} {p.apellidos}</p>
-                          <span className="ml-auto text-[9px] font-medium text-purple-500 bg-purple-50 px-2 py-0.5 rounded-lg">Agregar</span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-xs opacity-40">Sin resultados</div>
-                    )
-                  })()}
-                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  No hay personal técnico asignado a esta sesión de podcast todavía.
+                </p>
               )}
             </div>
 
-            {/* Sección: Notas */}
-            {showNotas ? (
-              <div className="bg-white rounded-2xl border shadow-sm p-6 lg:p-7 space-y-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                <SectionHeader icon={Note03Icon} title="Notas adicionales" />
-                <textarea value={notas} onChange={e => setNotas(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl border-2 text-sm font-medium outline-none transition-all bg-white resize-none border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-500/10"
-                  rows={2} placeholder="Notas adicionales sobre la reserva..." />
-                <button type="button" onClick={() => { setShowNotas(false); setNotas("") }}
-                  className="text-xs font-medium opacity-40 hover:opacity-70 transition-opacity" style={{ color: COLORS.TEXT_MUTED }}>
-                  – Quitar notas
+            {/* Card 5: Descuento / Ajuste de Tarifa */}
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shrink-0">
+                    <Tag size={16} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                      Descuento y Ajustes de Tarifa
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      Aplica rebajas especiales o motivos de descuento institucional
+                    </p>
+                  </div>
+                </div>
+
+                {!showDescuento && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDescuento(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#fd761a] hover:bg-orange-100 border border-orange-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    <Plus size={13} />
+                    <span>Agregar Descuento</span>
+                  </button>
+                )}
+              </div>
+
+              {showDescuento ? (
+                <div className="p-4 rounded-xl bg-orange-50/50 border border-orange-200/80 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-orange-950">Configurar Descuento</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDescuento(false)
+                        setDescuentoValor("")
+                        setMotivoDescuento("")
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-red-600 cursor-pointer flex items-center gap-1"
+                    >
+                      <X size={13} />
+                      <span>Quitar descuento</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        Tipo
+                      </label>
+                      <select
+                        value={descuentoTipo}
+                        onChange={(e) => setDescuentoTipo(e.target.value as "fijo" | "porcentaje")}
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-[#fd761a]"
+                      >
+                        <option value="fijo">Monto Fijo ($)</option>
+                        <option value="porcentaje">Porcentaje (%)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        Valor del Descuento
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={descuentoValor}
+                          onChange={(e) => setDescuentoValor(e.target.value)}
+                          placeholder={descuentoTipo === "fijo" ? "0.00" : "0"}
+                          className="w-full h-10 pl-7 pr-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-[#fd761a]"
+                        />
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                          {descuentoTipo === "fijo" ? "$" : "%"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        Motivo / Razón
+                      </label>
+                      <input
+                        type="text"
+                        value={motivoDescuento}
+                        onChange={(e) => setMotivoDescuento(e.target.value)}
+                        placeholder="Ej: Cliente frecuente, grabación continua..."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 outline-none focus:border-[#fd761a]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  Sin descuentos aplicados a esta sesión.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Columna Derecha: Resumen de Liquidación y Confirmación (4 cols sticky) */}
+          <div className="lg:col-span-4 sticky top-6 flex flex-col gap-5">
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-5 space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <div className="size-9 rounded-lg bg-orange-50 text-[#fd761a] border border-orange-100 flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={Money01Icon} size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Liquidación de Cabina
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Cálculo estimado de la sesión
+                  </p>
+                </div>
+              </div>
+
+              {/* Badge de Cliente Vinculado */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Responsable
+                </span>
+                {selectedCliente ? (
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {selectedCliente.nombres} {selectedCliente.apellidos}
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                    <HugeiconsIcon icon={AlertCircleIcon} size={13} />
+                    <span>Selecciona un cliente para continuar</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Desglose de la Sesión */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Detalle del Paquete
+                </span>
+                <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-100 space-y-1 text-xs">
+                  <p className="font-bold text-slate-900">
+                    {paqueteSeleccionado?.nombre || "Paquete de Podcast"}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    {fecha} • {horas.toFixed(1)}h ({horaInicio} – {horaFin})
+                    {titulo ? ` • ${titulo}` : ""}
+                  </p>
+                  {paqueteSeleccionado?.precio_por_hora && (
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Tarifa: ${Number(paqueteSeleccionado.precio_por_hora).toFixed(2)}/sesión
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Totales */}
+              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs text-slate-600">
+                <div className="flex justify-between">
+                  <span>Horas de cabina:</span>
+                  <span className="font-bold text-slate-900">{horas.toFixed(1)} hrs</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Subtotal bruto:</span>
+                  <span className="font-bold text-slate-900">${precioOriginal.toFixed(2)}</span>
+                </div>
+                {showDescuento && montoDescuento > 0 && (
+                  <div className="flex justify-between text-emerald-600 font-semibold">
+                    <span>Descuento aplicado:</span>
+                    <span>-${montoDescuento.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Caja Oscura con Total Final a Facturar */}
+              <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between shadow-xs">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Total a Facturar
+                  </p>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    1 sesión {isEdit ? "en edición" : "reservada"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  {showDescuento && montoDescuento > 0 && (
+                    <span className="text-xs text-slate-400 line-through block">
+                      ${precioOriginal.toFixed(2)}
+                    </span>
+                  )}
+                  <span className="text-2xl font-black text-[#fd761a] tracking-tight">
+                    ${precioTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="space-y-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={!selectedCliente || saving || !!conflicto}
+                  className={cn(
+                    "w-full h-11 px-5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2",
+                    selectedCliente && !saving && !conflicto
+                      ? "bg-[#fd761a] hover:opacity-95 text-white active:scale-95 cursor-pointer shadow-orange-500/20"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300/60"
+                  )}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Guardando cambios...</span>
+                    </>
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} />
+                      <span>{isEdit ? "Guardar Cambios" : "Confirmar Reserva"}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/servicios/podcast")}
+                  className="w-full h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+                >
+                  Cancelar
                 </button>
               </div>
-            ) : (
-              <button type="button" onClick={() => setShowNotas(true)}
-                className="w-full py-2.5 rounded-xl border border-dashed text-xs font-semibold transition-all hover:bg-violet-50/30"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.TEXT_MUTED }}>
-                + Agregar notas
-              </button>
-            )}
-
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-2 pb-4">
-              <button type="button" onClick={() => navigate("/servicios/podcast")}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold border-2 border-gray-200 transition-all hover:bg-gray-50 active:scale-[0.98]">
-                Cancelar
-              </button>
-              <button type="submit" disabled={saving || !!conflicto}
-                className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 active:scale-[0.98] flex items-center justify-center gap-2.5"
-                style={{ backgroundColor: conflicto ? "#9ca3af" : "#7c3aed" }}
-                title={conflicto ? "Corrige el conflicto de horario antes de confirmar" : undefined}>
-                {saving ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <HugeiconsIcon icon={Tick02Icon} size={16} />
-                    Confirmar Reserva
-                  </>
-                )}
-              </button>
             </div>
-          </form>
+          </div>
+        </form>
 
-          <NuevoClienteModal
-            isOpen={showNuevoCliente}
-            onClose={() => setShowNuevoCliente(false)}
-            onCreated={handleNewClienteCreated}
-          />
-        </div>
+        {/* Modal de Registro de Nuevo Cliente Externo */}
+        <NuevoClienteModal
+          isOpen={showNuevoCliente}
+          onClose={() => setShowNuevoCliente(false)}
+          onCreated={handleNewClienteCreated}
+        />
       </div>
     </div>
   )

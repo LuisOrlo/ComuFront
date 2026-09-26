@@ -1,4 +1,3 @@
-
 /* eslint-disable react-hooks/refs */
 import { useState, useEffect, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -15,15 +14,19 @@ import { RetencionFidelizacion } from "./components/RetencionFidelizacion"
 import { EstadoCobranza } from "./components/EstadoCobranza"
 import { ActividadServicios } from "./components/ActividadServicios"
 import { PatronesCobro } from "./components/PatronesCobro"
-import { COLORS } from "@/lib/constants"
 import type { EstadisticasResponse } from "@/types/estadisticas"
-
-const BG = "#F4F6FA"
+import { AlertCircle } from "lucide-react"
 
 function getDefaultDesde(periodo: string): string {
   const now = new Date()
-  if (periodo === "trimestre") return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).toISOString().split("T")[0]
-  if (periodo === "este_año") return new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
+  if (periodo === "trimestre") {
+    return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
+      .toISOString()
+      .split("T")[0]
+  }
+  if (periodo === "este_año") {
+    return new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0]
+  }
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
 }
 
@@ -63,15 +66,19 @@ export function EstadisticasPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+      <div className="flex flex-col min-h-screen bg-slate-50/50">
         <PeriodoSelector
-          periodo={periodo} setPeriodo={setPeriodo}
-          customDesde={customDesde} setCustomDesde={setCustomDesde}
-          customHasta={customHasta} setCustomHasta={setCustomHasta}
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          customDesde={customDesde}
+          setCustomDesde={setCustomDesde}
+          customHasta={customHasta}
+          setCustomHasta={setCustomHasta}
           onApply={applyCustom}
-          loading={isLoading} data={data}
+          loading={isLoading}
+          data={data}
         />
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
           <SkeletonEstadisticas />
         </div>
       </div>
@@ -80,18 +87,30 @@ export function EstadisticasPage() {
 
   if (error && !data) {
     return (
-      <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+      <div className="flex flex-col min-h-screen bg-slate-50/50">
         <PeriodoSelector
-          periodo={periodo} setPeriodo={setPeriodo}
-          customDesde={customDesde} setCustomDesde={setCustomDesde}
-          customHasta={customHasta} setCustomHasta={setCustomHasta}
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          customDesde={customDesde}
+          setCustomDesde={setCustomDesde}
+          customHasta={customHasta}
+          setCustomHasta={setCustomHasta}
           onApply={applyCustom}
-          loading={false} data={data}
+          loading={false}
+          data={data}
         />
-        <div className="flex-1 flex flex-col items-center justify-center gap-3">
-          <p className="text-sm opacity-40">Error al cargar estadísticas</p>
-          <p className="text-xs opacity-25 max-w-md text-center">{(error as Error)?.message || "Error de conexión con el servidor"}</p>
-          <button onClick={() => refetch()} className="px-4 py-1.5 rounded-xl text-[10px] font-bold text-white" style={{ backgroundColor: COLORS.ACCENT }}>
+        <div className="flex-1 flex flex-col items-center justify-center py-20 px-4 text-center gap-3">
+          <div className="size-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+            <AlertCircle size={24} />
+          </div>
+          <p className="text-sm font-bold text-slate-800">Error al cargar estadísticas</p>
+          <p className="text-xs text-slate-500 max-w-md">
+            {(error as Error)?.message || "Error de conexión con el servidor"}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
+          >
             Reintentar
           </button>
         </div>
@@ -101,16 +120,20 @@ export function EstadisticasPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+      <div className="flex flex-col min-h-screen bg-slate-50/50">
         <PeriodoSelector
-          periodo={periodo} setPeriodo={setPeriodo}
-          customDesde={customDesde} setCustomDesde={setCustomDesde}
-          customHasta={customHasta} setCustomHasta={setCustomHasta}
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          customDesde={customDesde}
+          setCustomDesde={setCustomDesde}
+          customHasta={customHasta}
+          setCustomHasta={setCustomHasta}
           onApply={applyCustom}
-          loading={false} data={data}
+          loading={false}
+          data={data}
         />
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm opacity-40">No hay datos disponibles</p>
+        <div className="flex-1 flex items-center justify-center py-20">
+          <p className="text-xs font-medium text-slate-400">No hay datos disponibles para este período</p>
         </div>
       </div>
     )
@@ -119,58 +142,80 @@ export function EstadisticasPage() {
   const m = data.metricas
 
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: BG }}>
+    <div className="flex flex-col min-h-screen bg-slate-50/50 pb-16">
+      {/* STICKY TOP TOOLBAR */}
       <PeriodoSelector
-        periodo={periodo} setPeriodo={setPeriodo}
-        customDesde={customDesde} setCustomDesde={setCustomDesde}
-        customHasta={customHasta} setCustomHasta={setCustomHasta}
+        periodo={periodo}
+        setPeriodo={setPeriodo}
+        customDesde={customDesde}
+        setCustomDesde={setCustomDesde}
+        customHasta={customHasta}
+        setCustomHasta={setCustomHasta}
         onApply={applyCustom}
-        loading={isLoading} data={data}
+        loading={isLoading}
+        data={data}
       />
 
-      <div className="flex-1 overflow-auto px-4 lg:px-8 py-6 space-y-5">
+      {/* MAIN BODY CONTENT */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* SECTION 1 — RESUMEN FINANCIERO (HORIZONTAL KPI STRIP) */}
         <div ref={registerRef("resumen")}>
           <ResumenEjecutivo m={m} />
         </div>
 
+        {/* SECTION 2 — FLUJO FINANCIERO */}
         <div ref={registerRef("flujo")}>
-          <FlujoFinanciero data={data.ingresos_vs_egresos} insightText={data.insight_text} />
-        </div>
-
-        <div ref={registerRef("composicion")}>
-          <ComposicionIngresos
-            distribucion={data.distribucion_categorias}
-            categoriaSeleccionada={categoriaSeleccionada}
-            onSelectCategoria={setCategoriaSeleccionada}
+          <FlujoFinanciero
+            data={data.ingresos_vs_egresos}
+            insightText={data.insight_text}
           />
         </div>
 
-        <div ref={registerRef("patrones-cobro")}>
-          <PatronesCobro metodos={data.metodo_pago} dias={data.dias_semana} />
+        {/* SECTION 3 & 4 — COMPOSICIÓN DE INGRESOS Y COBROS (2-COLUMN GRID) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <div ref={registerRef("composicion")} className="lg:col-span-6 flex flex-col">
+            <ComposicionIngresos
+              distribucion={data.distribucion_categorias}
+              categoriaSeleccionada={categoriaSeleccionada}
+              onSelectCategoria={setCategoriaSeleccionada}
+            />
+          </div>
+
+          <div ref={registerRef("patrones-cobro")} className="lg:col-span-6 flex flex-col">
+            <PatronesCobro metodos={data.metodo_pago} dias={data.dias_semana} />
+          </div>
         </div>
 
-        <div ref={registerRef("catalogo")}>
-          <RendimientoCatalogo data={data.catalogos_top} />
-        </div>
-
-        <div ref={registerRef("geografica")}>
-          <DistribucionGeografica data={data.ciudades_top} />
-        </div>
-
+        {/* SECTION 5 — RENDIMIENTO ACADÉMICO POR MODALIDAD */}
         <div ref={registerRef("modalidad")}>
           <ComparativaModalidad data={data.modalidad} />
         </div>
 
-        <div ref={registerRef("retencion")}>
-          <RetencionFidelizacion metricas={m} topEstudiantes={data.top_estudiantes} />
+        {/* SECTION 6 & 7 — ESTUDIANTES TOP Y ESTADO DE COBRANZA (2-COLUMN GRID) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div ref={registerRef("retencion")} className="lg:col-span-6">
+            <RetencionFidelizacion topEstudiantes={data.top_estudiantes} />
+          </div>
+
+          <div ref={registerRef("cobranza")} className="lg:col-span-6">
+            <EstadoCobranza data={data.cobranza} />
+          </div>
         </div>
 
-        <div ref={registerRef("cobranza")}>
-          <EstadoCobranza data={data.cobranza} />
+        {/* SECTION 8 — RENDIMIENTO POR CATÁLOGO */}
+        <div ref={registerRef("catalogo")}>
+          <RendimientoCatalogo data={data.catalogos_top} />
         </div>
 
-        <div ref={registerRef("servicios")}>
-          <ActividadServicios data={data.actividad_servicios} />
+        {/* SECTION 9 & 10 — DISTRIBUCIÓN GEOGRÁFICA Y ACTIVIDAD DE SERVICIOS (2-COLUMN GRID) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div ref={registerRef("geografica")} className="lg:col-span-7">
+            <DistribucionGeografica data={data.ciudades_top} />
+          </div>
+
+          <div ref={registerRef("servicios")} className="lg:col-span-5">
+            <ActividadServicios data={data.actividad_servicios} />
+          </div>
         </div>
       </div>
     </div>

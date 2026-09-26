@@ -68,7 +68,7 @@ export function DetalleReservaModal({ isOpen, onClose, reserva, onEdit }: {
                   </div>
                   <div>
                     <p className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>{reserva.titulo || reserva.paquete.nombre}</p>
-                    <p className="text-[10px] font-medium opacity-50">${reserva.paquete.precio_por_hora}/hr · {reserva.paquete.items?.length || 0} ítems</p>
+                    <p className="text-[10px] font-medium opacity-50">${reserva.paquete.precio_por_hora}/sesión · {reserva.paquete.items?.length || 0} ítems</p>
                   </div>
                 </div>
               )}

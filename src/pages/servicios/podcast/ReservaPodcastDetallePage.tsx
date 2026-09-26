@@ -106,7 +106,7 @@ export function ReservaPodcastDetallePage() {
                   {reserva.titulo || reserva.paquete?.nombre || "Reserva de Podcast"}
                 </h1>
                 <p className="text-xs opacity-40 mt-0.5 truncate">
-                  {reserva.paquete?.nombre && reserva.titulo ? reserva.paquete.nombre : ""} · ${Number(reserva.paquete?.precio_por_hora ?? 0).toFixed(2)}/hr
+                  {reserva.paquete?.nombre && reserva.titulo ? reserva.paquete.nombre : ""} · ${Number(reserva.paquete?.precio_por_hora ?? 0).toFixed(2)}/sesión
                 </p>
               </div>
             </div>

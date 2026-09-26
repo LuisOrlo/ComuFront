@@ -185,7 +185,7 @@ export function PaquetesPage() {
               <p className="text-xs font-semibold text-slate-500">Tarifa Promedio</p>
               <p className="text-2xl font-black text-slate-900 tracking-tight">
                 ${precioPromedio.toFixed(2)}
-                <span className="text-xs font-normal text-slate-400 ml-1">/ hora</span>
+                <span className="text-xs font-normal text-slate-400 ml-1">/ sesión</span>
               </p>
               <span className="inline-block text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
                 Tarifa base por sesión
@@ -437,7 +437,7 @@ export function PaquetesPage() {
                         </span>
                         <p className="text-lg font-black text-slate-900 tracking-tight">
                           ${Number(pkg.precio_por_hora).toFixed(2)}
-                          <span className="text-xs font-normal text-slate-500 ml-1">/ hora</span>
+                          <span className="text-xs font-normal text-slate-500 ml-1">/ sesión</span>
                         </p>
                       </div>
                       <span className="text-xs font-bold text-[#fd761a] bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-lg">
@@ -554,7 +554,7 @@ export function PaquetesPage() {
                         <div className="flex items-center gap-3 mt-2 text-[11px]">
                           <span className="font-extrabold text-slate-900">
                             ${Number(pkg.precio_por_hora).toFixed(2)}
-                            <span className="font-normal text-slate-400">/hr</span>
+                            <span className="font-normal text-slate-400">/sesión</span>
                           </span>
                           <span className="text-slate-300">•</span>
                           <span className="text-slate-500 font-medium">
@@ -636,11 +636,11 @@ export function PaquetesPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Tarifa por Hora Base
+                        Tarifa por Sesión Base
                       </span>
                       <p className="text-3xl font-black text-slate-900 tracking-tight mt-1">
                         ${Number(selected.precio_por_hora).toFixed(2)}
-                        <span className="text-xs font-medium text-slate-500 ml-1">/ hora</span>
+                        <span className="text-xs font-medium text-slate-500 ml-1">/ sesión</span>
                       </p>
                     </div>
 

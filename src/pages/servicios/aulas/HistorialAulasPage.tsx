@@ -614,7 +614,7 @@ export function HistorialAulasPage() {
                                       </span>
                                       <span className="text-[11px] text-slate-400 font-medium">
                                         {aula?.precio_hora
-                                          ? `$${Number(aula.precio_hora).toFixed(0)}/hora base`
+                                          ? `$${Number(aula.precio_hora).toFixed(0)}/sesión base`
                                           : duration || "Tarifa plana"}
                                       </span>
                                     </div>
@@ -714,7 +714,7 @@ export function HistorialAulasPage() {
                     >
                       {reservasHoyAula.length > 0
                         ? `${reservasHoyAula.length} reserva(s) hoy`
-                        : `Disponible · $${Number(aula.precio_hora || 0).toFixed(0)}/h`}
+                        : `Disponible · $${Number(aula.precio_hora || 0).toFixed(0)}/sesión`}
                     </span>
                   </div>
                 </div>

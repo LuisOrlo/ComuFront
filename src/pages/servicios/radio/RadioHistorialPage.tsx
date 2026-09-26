@@ -263,46 +263,39 @@ export function RadioHistorialPage() {
   }
 
   if (reservaModalOpen) {
+    if (editingReserva) {
+      return (
+        <ReservaForm
+          key={editingReserva.id}
+          isOpen
+          onClose={() => {
+            setReservaModalOpen(false)
+            setEditingReserva(null)
+          }}
+          tarifas={tarifas}
+          editingReserva={editingReserva}
+          onSaved={() => {
+            setReservaModalOpen(false)
+            setEditingReserva(null)
+            loadHistorial()
+          }}
+        />
+      )
+    }
+
     return (
-      <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
-          <div
-            className="flex-1 bg-white rounded-[2.5rem] border shadow-2xl shadow-black/5 flex flex-col min-h-0 overflow-hidden"
-            style={{ borderColor: "#e2e8f0" }}
-          >
-            {editingReserva ? (
-              <ReservaForm
-                key={editingReserva.id}
-                isOpen
-                onClose={() => {
-                  setReservaModalOpen(false)
-                  setEditingReserva(null)
-                }}
-                tarifas={tarifas}
-                editingReserva={editingReserva}
-                onSaved={() => {
-                  setReservaModalOpen(false)
-                  setEditingReserva(null)
-                  loadHistorial()
-                }}
-              />
-            ) : (
-              <ReservaBatchForm
-                tarifas={tarifas}
-                onClose={() => {
-                  setReservaModalOpen(false)
-                  setEditingReserva(null)
-                }}
-                onSaved={() => {
-                  setReservaModalOpen(false)
-                  setEditingReserva(null)
-                  loadHistorial()
-                }}
-              />
-            )}
-          </div>
-        </div>
-      </div>
+      <ReservaBatchForm
+        tarifas={tarifas}
+        onClose={() => {
+          setReservaModalOpen(false)
+          setEditingReserva(null)
+        }}
+        onSaved={() => {
+          setReservaModalOpen(false)
+          setEditingReserva(null)
+          loadHistorial()
+        }}
+      />
     )
   }
 

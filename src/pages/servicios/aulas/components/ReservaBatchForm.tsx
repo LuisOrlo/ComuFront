@@ -697,7 +697,7 @@ export function ReservaBatchForm({
                           </span>
                           {aula && (
                             <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                              {aula.nombre} (${Number(aula.precio_hora).toFixed(2)}/h)
+                              {aula.nombre} (${Number(aula.precio_hora).toFixed(2)}/sesión)
                             </span>
                           )}
                           <span className="text-[11px] font-semibold text-[#fd761a] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
@@ -761,7 +761,7 @@ export function ReservaBatchForm({
                             <option value="">Seleccionar aula...</option>
                             {aulas.map((a) => (
                               <option key={a.id} value={a.id}>
-                                {a.nombre} (Cap: {a.capacidad} | ${Number(a.precio_hora).toFixed(2)}/h)
+                                {a.nombre} (Cap: {a.capacidad} | ${Number(a.precio_hora).toFixed(2)}/sesión)
                               </option>
                             ))}
                           </select>

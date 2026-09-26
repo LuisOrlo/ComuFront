@@ -27,6 +27,12 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   RADIO: 'RADIO',
 }
 
+const CLIENT_EVENT_TYPES = new Set(["ALQUILER_AULA", "PODCAST", "STREAMING", "RADIO"])
+
+export function getEventPersonLabel(tipoEvento: string): string {
+  return CLIENT_EVENT_TYPES.has(tipoEvento) ? "Cliente" : "Docente / Instructor"
+}
+
 export function formatDay(date: Date): string {
   return `${DAYS[date.getDay()]} ${date.getDate()}`
 }

@@ -192,86 +192,86 @@ export function RadioPage() {
     loadTarifas()
   }
 
+  if (reservaModalOpen) {
+    if (editingReserva) {
+      return (
+        <ReservaForm
+          key={editingReserva.id}
+          isOpen={reservaModalOpen}
+          onClose={() => {
+            setReservaModalOpen(false)
+            setEditingReserva(null)
+          }}
+          tarifas={tarifas}
+          editingReserva={editingReserva}
+          onSaved={handleReservaSaved}
+        />
+      )
+    }
+
+    return (
+      <ReservaBatchForm
+        tarifas={tarifas}
+        onClose={() => {
+          setReservaModalOpen(false)
+          setEditingReserva(null)
+        }}
+        onSaved={handleReservaSaved}
+      />
+    )
+  }
+
   return (
     <div className="min-h-full flex flex-col bg-slate-50/50 text-slate-800">
-      {!reservaModalOpen && (
-        <header className="shrink-0 px-6 sm:px-8 py-5 border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-20">
-          <div className="max-w-[1500px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Servicios / Cabina de Radio
+      <header className="shrink-0 px-6 sm:px-8 py-5 border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-20">
+        <div className="max-w-[1500px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Servicios / Cabina de Radio
+            </span>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Agenda de Emisiones
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold">
+                Cabina Radial
               </span>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  Agenda de Emisiones
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold">
-                  Cabina Radial
-                </span>
-                {loading && (
-                  <div className="size-4 rounded-full border-2 border-orange-200 border-t-[#fd761a] animate-spin ml-1" />
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Link
-                to="/servicios/radio/tarifas"
-                className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
-              >
-                <HugeiconsIcon icon={DiscountIcon} size={15} className="text-slate-500" />
-                <span>Tarifas</span>
-              </Link>
-              <button
-                onClick={() => {
-                  setEditingReserva(null)
-                  setReservaModalOpen(true)
-                }}
-                className="h-10 px-4 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
-              >
-                <Plus size={15} strokeWidth={2.5} color="white" />
-                <span>Nueva Reserva</span>
-              </button>
-              <button
-                onClick={() => navigate("/servicios/radio")}
-                className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={15} className="text-slate-500" />
-                <span>Historial</span>
-              </button>
+              {loading && (
+                <div className="size-4 rounded-full border-2 border-orange-200 border-t-[#fd761a] animate-spin ml-1" />
+              )}
             </div>
           </div>
-        </header>
-      )}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              to="/servicios/radio/tarifas"
+              className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+            >
+              <HugeiconsIcon icon={DiscountIcon} size={15} className="text-slate-500" />
+              <span>Tarifas</span>
+            </Link>
+            <button
+              onClick={() => {
+                setEditingReserva(null)
+                setReservaModalOpen(true)
+              }}
+              className="h-10 px-4 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+            >
+              <Plus size={15} strokeWidth={2.5} color="white" />
+              <span>Nueva Reserva</span>
+            </button>
+            <button
+              onClick={() => navigate("/servicios/radio")}
+              className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 text-xs font-semibold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={15} className="text-slate-500" />
+              <span>Historial</span>
+            </button>
+          </div>
+        </div>
+      </header>
 
-      <div className={cn("flex-1 max-w-[1500px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col", !reservaModalOpen && "gap-6")}>
-        {reservaModalOpen ? (
-          <div className="flex-1 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col min-h-0 overflow-hidden">
-            {editingReserva ? (
-              <ReservaForm
-                key={editingReserva.id}
-                isOpen={reservaModalOpen}
-                onClose={() => {
-                  setReservaModalOpen(false)
-                  setEditingReserva(null)
-                }}
-                tarifas={tarifas}
-                editingReserva={editingReserva}
-                onSaved={handleReservaSaved}
-              />
-            ) : (
-              <ReservaBatchForm
-                tarifas={tarifas}
-                onClose={() => {
-                  setReservaModalOpen(false)
-                  setEditingReserva(null)
-                }}
-                onSaved={handleReservaSaved}
-              />
-            )}
-          </div>
-        ) : (
-          <>
-            <RadioKPIs reservas={reservas} />
+      <div className="flex-1 max-w-[1500px] w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+        <RadioKPIs reservas={reservas} />
 
             <main className="w-full bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col">
               {/* Toolbar de Controles (estilo AgendaPage) */}
@@ -595,8 +595,6 @@ export function RadioPage() {
                 </div>
               )}
             </main>
-          </>
-        )}
       </div>
 
       <DetalleReservaModal

@@ -115,9 +115,9 @@ export function HomePage() {
     { icon: Alert01Icon, label: "Pagos pendientes", value: formatCurrency(kpis.pagosPendientes), color: ERROR, bg: "#ffdad6", detail: "Saldo por cobrar", foot: kpis.pagosPendientes > 0 ? "Requiere seguimiento" : "Sin saldo pendiente" },
   ]
   const quickActions = [
-    { icon: UserAdd01Icon, label: "Nueva matrícula", description: "Inscribir alumno", path: "/matriculas" },
+    { icon: UserAdd01Icon, label: "Nueva matrícula", description: "Inscribir alumno", path: "/estudiantes" },
     { icon: Wallet01Icon, label: "Registrar pago", description: "Recibo o arancel", path: "/finanzas/pagos" },
-    { icon: AddCircleIcon, label: "Agregar curso", description: "Nueva cohorte", path: "/cursos/nuevo" },
+    { icon: AddCircleIcon, label: "Agregar curso", description: "Nuevo curso", path: "/cursos/nuevo" },
     { icon: CalendarIcon, label: "Ver agenda", description: "Horarios y aulas", path: "/agenda" },
   ]
 

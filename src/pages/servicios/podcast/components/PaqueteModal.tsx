@@ -116,7 +116,7 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
 
     const precio = parseFloat(precioText)
     if (precioText.trim() === "" || isNaN(precio) || precio < 0) {
-      toast.error("El precio por hora debe ser un número válido")
+      toast.error("El precio por sesión debe ser un número válido")
       return
     }
 
@@ -186,7 +186,7 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
                   <p className="text-xs text-slate-500 truncate mt-0.5">
                     {isEdit
                       ? "Modifica las tarifas, descripción y equipamiento del paquete"
-                      : "Define las tarifas por hora, alcance y los equipos que incluye la sesión"}
+                      : "Define las tarifas por sesión, alcance y los equipos que incluye la sesión"}
                   </p>
                 </div>
               </div>
@@ -259,13 +259,13 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
                   />
                 </div>
 
-                {/* Grid: Precio por Hora & Estado */}
+                {/* Grid: Precio por Sesión & Estado */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <HugeiconsIcon icon={Money01Icon} size={13} className="text-slate-400" />
-                        <span>Precio por Hora ($) <span className="text-[#fd761a]">*</span></span>
+                        <span>Precio por Sesión ($) <span className="text-[#fd761a]">*</span></span>
                       </span>
                       {touched.precio && (!precioText.trim() || isNaN(Number(precioText))) && (
                         <span className="text-[11px] text-red-500 font-medium">Requerido</span>
@@ -433,7 +433,7 @@ export function PaqueteModal({ isOpen, onClose, paquete, onSaved }: PaqueteModal
                 )}
                 <span>•</span>
                 <span className="font-bold text-[#fd761a]">
-                  ${Number(precioText || 0).toFixed(2)} / hora
+                  ${Number(precioText || 0).toFixed(2)} / sesión
                 </span>
                 <span>•</span>
                 <span>{(form.items || []).length} ítems</span>

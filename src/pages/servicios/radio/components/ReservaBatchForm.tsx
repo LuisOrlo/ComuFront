@@ -30,6 +30,7 @@ import { radioService, type TarifaRadio } from "@/services/radio.service"
 import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
+import { OperadorSelector, type OperadorOption } from "./OperadorSelector"
 import { toast } from "sonner"
 
 interface ClienteOption {
@@ -142,13 +143,34 @@ export function ReservaBatchForm({
     }
   }, [propTarifas])
 
-  // Cargar operadores (staff, instructores, administradores)
+  // Cargar operadores operativos (instructor, staff, pasante) - Excluyendo administradores y secretaría
   useEffect(() => {
     personasService
-      .getPersonas({ tipo: "instructor,staff,admin,secretaria", per_page: 100 })
+      .getPersonas({ tipo: "instructor,staff,pasante", activos: "true", per_page: 100 })
       .then((res) => setPersonas(res.data || []))
       .catch(() => setPersonas([]))
   }, [])
+
+  const operadores: OperadorOption[] = useMemo(() => {
+    return personas
+      .filter((p) => {
+        if (p.es_activo === false) return false
+        const tipo = (p.tipo || "").toLowerCase()
+        const cargo = (p.perfilStaff?.cargo || "").toLowerCase()
+        if (["admin", "administrador", "secretaria", "secretario", "estudiante"].includes(tipo)) return false
+        if (cargo.includes("admin") || cargo.includes("secretar")) return false
+        return ["instructor", "staff", "pasante"].includes(tipo)
+      })
+      .map((p) => ({
+        id: p.id,
+        nombres: p.nombres,
+        apellidos: p.apellidos || "",
+        cargo:
+          p.perfilStaff?.cargo ||
+          p.perfilInstructor?.especialidad ||
+          (p.tipo === "instructor" ? "Profesor" : p.tipo === "pasante" ? "Pasante" : "Staff"),
+      }))
+  }, [personas])
 
   // Búsqueda en vivo de clientes institucionales y externos
   useEffect(() => {
@@ -973,51 +995,47 @@ export function ReservaBatchForm({
                         )}
 
                         {/* Operador Técnico */}
-                        <div className="space-y-1 sm:col-span-2">
+                        <div className="sm:col-span-2 md:col-span-4 space-y-1.5">
                           <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
-                            <span className="flex items-center gap-1">
-                              <HugeiconsIcon icon={UserGroupIcon} size={12} className="text-slate-400" />
-                              <span>Operador Técnico</span>
+                            <span className="flex items-center gap-1.5">
+                              <HugeiconsIcon icon={UserGroupIcon} size={14} className="text-slate-400" />
+                              <span>Operador Técnico de Radio</span>
                             </span>
-                            {r.incluye_operador && (
-                              <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
+                            {r.incluye_operador && r.operador_id && (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 Asignado
                               </span>
                             )}
                           </label>
-                          <select
-                            value={r.operador_id}
-                            onChange={(e) => {
-                              const val = e.target.value
+
+                          <OperadorSelector
+                            operadores={operadores}
+                            selectedId={r.operador_id || null}
+                            incluyeOperador={r.incluye_operador}
+                            onToggleIncluye={(incluye) => {
                               update(r.id, {
-                                operador_id: val,
-                                incluye_operador: Boolean(val),
+                                incluye_operador: incluye,
+                                operador_id: incluye ? r.operador_id : "",
                               })
                             }}
-                            className={cn(
-                              "w-full h-10 px-3 rounded-xl border bg-white text-xs font-semibold text-slate-800 outline-none transition-all",
-                              r.errors.operador_id
-                                ? "border-red-400 focus:ring-2 focus:ring-red-400/20"
-                                : "border-slate-200 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20"
-                            )}
-                          >
-                            <option value="">Sin operador técnico (Auto-servicio)</option>
-                            {personas.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.nombres} {p.apellidos}
-                              </option>
-                            ))}
-                          </select>
+                            onSelect={(id) => {
+                              update(r.id, {
+                                operador_id: id || "",
+                                incluye_operador: Boolean(id),
+                              })
+                            }}
+                          />
+
                           {r.errors.operador_id && (
-                            <span className="text-[10px] text-red-500 font-medium block">
+                            <span className="text-[10px] text-red-500 font-medium block mt-1">
                               {r.errors.operador_id}
                             </span>
                           )}
                         </div>
 
-                        {/* Observaciones */}
-                        <div className="space-y-1 sm:col-span-2">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                        {/* Observaciones de la Emisión (Directamente debajo de la sección de Operador Técnico) */}
+                        <div className="sm:col-span-2 md:col-span-4 space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block">
                             Observaciones de la Emisión
                           </label>
                           <input

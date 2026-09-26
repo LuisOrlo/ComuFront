@@ -45,7 +45,7 @@ export function AulasGestionPage() {
     }
     const precio = parseFloat(precioHoraText)
     if (precioHoraText.trim() === "" || isNaN(precio) || precio < 0) {
-      toast.error("El precio por hora debe ser un número válido")
+      toast.error("El precio por sesión debe ser un número válido")
       return
     }
     const payload = { ...aulaForm, precio_hora: precio }
@@ -186,7 +186,7 @@ export function AulasGestionPage() {
                             </span>
                             <span className="flex items-center gap-1.5 text-[10px] font-medium opacity-40">
                               <HugeiconsIcon icon={Money01Icon} size={11} />
-                              ${aula.precio_hora}/hr
+                              ${aula.precio_hora}/sesión
                             </span>
                             {aula.caracteristicas && (
                               <>
@@ -289,7 +289,7 @@ export function AulasGestionPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Precio por Hora ($)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest opacity-50 px-1">Precio por Sesión ($)</label>
                     <div className="relative flex items-center">
                       <div className="absolute left-4 text-charcoal/40 flex items-center pointer-events-none">
                         <HugeiconsIcon icon={Money01Icon} size={18} />

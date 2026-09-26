@@ -39,6 +39,8 @@ const CatalogoFormPage = lazyNamed(() => import("@/pages/catalogos/CatalogoFormP
 const CiudadesPage = lazyNamed(() => import("@/pages/admin/ciudades/CiudadesPage"), "CiudadesPage")
 const PersonasPage = lazyNamed(() => import("@/pages/personas/PersonasPage"), "PersonasPage")
 const PagosPersonaPage = lazyNamed(() => import("@/pages/personas/PagosPersonaPage"), "PagosPersonaPage")
+const InstructoresPage = lazyNamed(() => import("@/pages/instructores/InstructoresPage"), "InstructoresPage")
+const InstructorDetallePage = lazyNamed(() => import("@/pages/instructores/InstructorDetallePage"), "InstructorDetallePage")
 const TareasPage = lazyNamed(() => import("@/pages/tareas/TareasPage"), "TareasPage")
 const CuentasPage = lazyNamed(() => import("@/pages/cuentas/CuentasPage"), "CuentasPage")
 const NuevaMatriculaPublicaPage = lazyNamed(() => import("@/pages/matriculas/NuevaMatriculaPublicaPage"), "NuevaMatriculaPublicaPage")
@@ -204,6 +206,8 @@ function AppLayout() {
             <Route path="/ciudades" element={<RoleGuard roles={["Administrador"]}><CiudadesPage /></RoleGuard>} />
             <Route path="/personas" element={<RoleGuard roles={["Administrador"]}><PersonasPage /></RoleGuard>} />
             <Route path="/personas/:id/pagos" element={<RoleGuard roles={["Administrador"]}><PagosPersonaPage /></RoleGuard>} />
+            <Route path="/instructores" element={<RoleGuard roles={["Administrador"]}><InstructoresPage /></RoleGuard>} />
+            <Route path="/instructores/:id" element={<RoleGuard roles={["Administrador"]}><InstructorDetallePage /></RoleGuard>} />
             <Route path="/clientes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClientesPage /></RoleGuard>} />
             <Route path="/clientes/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoClientePage /></RoleGuard>} />
             <Route path="/clientes/:clienteId/pagar/:cuentaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ClientePagoPage /></RoleGuard>} />
@@ -249,6 +253,7 @@ function AppLayout() {
             <Route path="/servicios/podcast/nueva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaPage /></RoleGuard>} />
             <Route path="/servicios/podcast/paquetes" element={<RoleGuard roles={["Administrador", "Secretaria"]}><PaquetesPage /></RoleGuard>} />
             <Route path="/servicios/podcast/reservas/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ReservaPodcastDetallePage /></RoleGuard>} />
+            <Route path="/servicios/podcast/reservas/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEdicionVideoPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialEdicionVideoPage /></RoleGuard>} />
             <Route path="/servicios/edicion-video/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EdicionVideoPage /></RoleGuard>} />

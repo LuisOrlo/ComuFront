@@ -225,7 +225,7 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                     >
                       <option value="">Seleccionar paquete...</option>
                       {paquetes.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre} — ${p.precio_por_hora}/hr</option>
+                        <option key={p.id} value={p.id}>{p.nombre} — ${p.precio_por_hora}/sesión</option>
                       ))}
                     </select>
                   </div>
@@ -280,7 +280,7 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                           <p className="text-sm font-medium opacity-90 flex items-center gap-1.5">
                             <span className="truncate max-w-[180px]">{paquetes.find(p => p.id === reservaForm.paquete_id)?.nombre || ""}</span>
                             <span className="text-white/40">•</span>
-                            <span className="shrink-0 font-bold">${paquetes.find(p => p.id === reservaForm.paquete_id)?.precio_por_hora}/hr</span>
+                            <span className="shrink-0 font-bold">${paquetes.find(p => p.id === reservaForm.paquete_id)?.precio_por_hora}/sesión</span>
                           </p>
                         </div>
                       </div>
@@ -459,7 +459,14 @@ export function ReservaModal({ isOpen, onClose, paquetes, editingReserva, onSave
                   {asignacionStaffSearch && (
                     <div className="max-h-[140px] overflow-y-auto rounded-xl border-2 bg-white divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                       {(() => {
-                        const filtered = personas.filter(p => !asignaciones.some(a => a.persona_id === p.id) && `${p.nombres} ${p.apellidos}`.toLowerCase().includes(asignacionStaffSearch.toLowerCase()))
+                        const filtered = personas.filter(
+                          p =>
+                            !asignaciones.some(a => a.persona_id === p.id) &&
+                            p.es_activo !== false &&
+                            !['admin', 'administrador', 'secretaria', 'secretario', 'estudiante'].includes((p.tipo || '').toLowerCase()) &&
+                            !((p.perfilStaff?.cargo || '').toLowerCase().includes('admin') || (p.perfilStaff?.cargo || '').toLowerCase().includes('secretar')) &&
+                            `${p.nombres} ${p.apellidos}`.toLowerCase().includes(asignacionStaffSearch.toLowerCase())
+                        )
                         return filtered.length > 0 ? (
                           filtered.map(p => (
                             <button key={p.id} type="button" onClick={() => { setAsignaciones(prev => [...prev, { persona_id: p.id, rol: "", persona: { nombres: p.nombres, apellidos: p.apellidos } }]); setAsignacionStaffSearch("") }}

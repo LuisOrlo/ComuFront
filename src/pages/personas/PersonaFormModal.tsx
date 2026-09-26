@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   User02Icon,
@@ -7,12 +7,15 @@ import {
   Mail01Icon,
   CheckmarkCircle04Icon,
 } from "@hugeicons/core-free-icons"
-import { X, Plus } from "lucide-react"
+import { X, Plus, FileText, Upload, Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { ValidatedInput, ValidatedTextarea } from "@/components/form"
 import { personasService } from "@/services/personas.service"
 import { instructoresService } from "@/services/instructores.service"
 import { staffService } from "@/services/staff.service"
+import { ciudadesService } from "@/services/ciudades.service"
+import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
+import { CiudadBadge } from "@/components/cursos/CiudadBadge"
 
 import { toast } from "sonner"
 
@@ -20,13 +23,23 @@ interface Props {
   editingId: string | null
   onClose: () => void
   onSuccess: () => void
+  instructorOnly?: boolean
 }
 
-export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
+export function PersonaFormModal({ editingId, onClose, onSuccess, instructorOnly = false }: Props) {
   const [saving, setSaving] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [cvFile, setCvFile] = useState<File | null>(null)
+  const [currentCv, setCurrentCv] = useState<{ nombre_original?: string; size?: number; updated_at?: string } | null>(null)
+  const cvInputRef = useRef<HTMLInputElement>(null)
+
+  // Searchable City Selector State
+  const [ciudadesList, setCiudadesList] = useState<string[]>(ECUADOR_CITIES)
+  const [ciudadDropdownOpen, setCiudadDropdownOpen] = useState(false)
+  const [ciudadFocusIndex, setCiudadFocusIndex] = useState(-1)
+  const ciudadContainerRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState({
     tipo: "instructor" as "instructor" | "staff" | "secretaria" | "admin",
@@ -50,8 +63,16 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     setLoadingData(true)
     try {
       const p = await personasService.getPersonaById(editingId)
+      if (instructorOnly || p.tipo === "instructor") {
+        try {
+          const detail = await instructoresService.getDetalle(editingId)
+          setCurrentCv(detail.hoja_vida || null)
+        } catch {
+          setCurrentCv(null)
+        }
+      }
       setForm({
-        tipo: p.tipo as "instructor" | "staff" | "secretaria" | "admin",
+        tipo: instructorOnly ? "instructor" : p.tipo as "instructor" | "staff" | "secretaria" | "admin",
         cedula: p.cedula || "",
         nombres: p.nombres,
         apellidos: p.apellidos,
@@ -77,9 +98,56 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
   useEffect(() => {
 
     setFieldErrors({})
+    setCvFile(null)
+    setCurrentCv(null)
     if (editingId) cargarPersona()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingId])
+
+  useEffect(() => {
+    void ciudadesService
+      .getCiudadesTodas()
+      .then((ciudades) => {
+        if (ciudades?.length) {
+          const names = ciudades.map((c) => c.nombre)
+          const combined = Array.from(new Set([...names, ...ECUADOR_CITIES])).sort()
+          setCiudadesList(combined)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ciudadContainerRef.current && !ciudadContainerRef.current.contains(e.target as Node)) {
+        setCiudadDropdownOpen(false)
+        setCiudadFocusIndex(-1)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const filteredCiudades = useMemo(() => {
+    const q = form.ciudad.trim().toLowerCase()
+    if (!q) return ciudadesList.slice(0, 30)
+    return ciudadesList.filter((c) => c.toLowerCase().includes(q)).slice(0, 30)
+  }, [ciudadesList, form.ciudad])
+
+  const handleCvChange = (file?: File) => {
+    if (!file) return
+    const extensionPdf = file.name.toLowerCase().endsWith(".pdf")
+    const mimeValido = !file.type || file.type === "application/pdf"
+    if (!extensionPdf || !mimeValido) {
+      toast.error("La hoja de vida debe ser un archivo PDF")
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La hoja de vida no puede superar los 10 MB")
+      return
+    }
+    setCvFile(file)
+  }
 
   const parseErrors = (errorsObj: Record<string, string[]>) => {
     const parsed: Record<string, string> = {}
@@ -176,7 +244,8 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
       { name: "correo", value: form.correo },
       { name: "ciudad", value: form.ciudad },
     ]
-    if (form.tipo === "instructor") {
+    const tipo = instructorOnly ? "instructor" : form.tipo
+    if (tipo === "instructor") {
       fieldsToValidate.push({ name: "especialidad", value: form.especialidad })
     } else {
       fieldsToValidate.push({ name: "cargo", value: form.cargo })
@@ -201,7 +270,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
     try {
       if (editingId) {
         await personasService.actualizarPersona(editingId, {
-          tipo: form.tipo,
+          tipo,
           cedula: form.cedula || undefined,
           nombres: form.nombres,
           apellidos: form.apellidos,
@@ -210,11 +279,21 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
           ciudad: form.ciudad || undefined,
         })
 
-        if (form.tipo === "instructor") {
+        if (tipo === "instructor") {
           await instructoresService.updatePerfil(editingId, {
             especialidad: form.especialidad || undefined,
             bio: form.bio || undefined,
           })
+          if ((instructorOnly || tipo === "instructor") && cvFile) {
+            try {
+              await instructoresService.subirHojaVida(editingId, cvFile)
+            } catch {
+              toast.warning("El instructor se actualizó, pero no se pudo subir la hoja de vida")
+              onClose()
+              onSuccess()
+              return
+            }
+          }
         } else {
           await staffService.updatePerfil(editingId, {
             cargo: form.cargo,
@@ -223,23 +302,33 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
         }
         toast.success("Persona actualizada")
       } else {
-        await personasService.crearPersonaCompleta({
-          tipo: form.tipo,
+        const created = await personasService.crearPersonaCompleta({
+          tipo,
           cedula: form.cedula || undefined,
           nombres: form.nombres,
           apellidos: form.apellidos,
           correo: form.correo || undefined,
           celular: form.celular || undefined,
           ciudad: form.ciudad || undefined,
-          especialidad: form.tipo === "instructor" ? (form.especialidad || undefined) : undefined,
-          bio: form.tipo === "instructor" ? (form.bio || undefined) : undefined,
-          cargo: form.tipo !== "instructor" ? form.cargo : undefined,
-          es_pasante: form.tipo === "staff" ? form.es_pasante : undefined,
-          crear_cuenta: form.crearCuenta && !!form.username && !!form.password,
-          username: form.crearCuenta ? form.username : undefined,
-          password: form.crearCuenta ? form.password : undefined,
+          especialidad: tipo === "instructor" ? (form.especialidad || undefined) : undefined,
+          bio: tipo === "instructor" ? (form.bio || undefined) : undefined,
+          cargo: tipo !== "instructor" ? form.cargo : undefined,
+          es_pasante: tipo === "staff" ? form.es_pasante : undefined,
+          crear_cuenta: instructorOnly ? false : form.crearCuenta && !!form.username && !!form.password,
+          username: instructorOnly ? undefined : form.crearCuenta ? form.username : undefined,
+          password: instructorOnly ? undefined : form.crearCuenta ? form.password : undefined,
         })
-        toast.success("Persona creada exitosamente")
+        if ((instructorOnly || tipo === "instructor") && cvFile) {
+          try {
+            await instructoresService.subirHojaVida(created.id, cvFile)
+            toast.success("Instructor y hoja de vida creados exitosamente")
+          } catch (cvErr: unknown) {
+            console.error("Error subiendo hoja de vida:", cvErr)
+            toast.warning("El instructor fue creado correctamente, pero hubo un detalle al subir la hoja de vida")
+          }
+        } else {
+          toast.success(instructorOnly ? "Instructor creado exitosamente" : "Persona creada exitosamente")
+        }
       }
 
       onClose()
@@ -294,10 +383,10 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
             </div>
             <div>
               <h2 className="text-base font-semibold" style={{ color: COLORS.CHARCOAL }}>
-                {editingId ? "Editar Persona" : "Nueva Persona"}
+                {instructorOnly ? (editingId ? "Editar Instructor" : "Nuevo Instructor") : (editingId ? "Editar Persona" : "Nueva Persona")}
               </h2>
               <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                {editingId ? "Modifica los datos de la persona" : "Registra una nueva persona en el sistema"}
+                {instructorOnly ? "Registra y administra la información del instructor" : (editingId ? "Modifica los datos de la persona" : "Registra una nueva persona en el sistema")}
               </p>
             </div>
           </div>
@@ -312,7 +401,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
 
         <form onSubmit={handleSubmit} className="p-6">
           {/* Tipo */}
-          <div className="mb-6">
+          {!instructorOnly && <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
                 Tipo de persona
@@ -357,7 +446,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {/* Datos personales */}
           <div className="space-y-4 mb-6">
@@ -422,16 +511,112 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
                 touched={touched.correo}
                 placeholder="correo@email.com"
               />
-              <ValidatedInput
-                label="Ciudad"
-                value={form.ciudad}
-                onChange={(value) => handleChange("ciudad", value)}
-                onBlur={() => handleBlur("ciudad")}
-                error={fieldErrors.ciudad}
-                touched={touched.ciudad}
-                placeholder="Ej: Quito"
-                required
-              />
+              <div ref={ciudadContainerRef} className="w-full space-y-1.5 relative">
+                <label className="text-xs font-semibold" style={{ color: COLORS.TEXT_MUTED }}>
+                  Ciudad <span style={{ color: "#ff4444" }}>*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={form.ciudad}
+                    onChange={(e) => {
+                      handleChange("ciudad", e.target.value)
+                      setCiudadDropdownOpen(true)
+                      setCiudadFocusIndex(-1)
+                    }}
+                    onFocus={() => setCiudadDropdownOpen(true)}
+                    onBlur={() => handleBlur("ciudad")}
+                    onKeyDown={(e) => {
+                      if (!ciudadDropdownOpen && (e.key === "ArrowDown" || e.key === "Enter")) {
+                        setCiudadDropdownOpen(true)
+                        return
+                      }
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault()
+                        setCiudadFocusIndex((prev) => Math.min(prev + 1, filteredCiudades.length - 1))
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault()
+                        setCiudadFocusIndex((prev) => Math.max(prev - 1, 0))
+                      } else if (e.key === "Enter" && ciudadFocusIndex >= 0) {
+                        e.preventDefault()
+                        const selected = filteredCiudades[ciudadFocusIndex]
+                        if (selected) {
+                          handleChange("ciudad", selected)
+                          setCiudadDropdownOpen(false)
+                          setCiudadFocusIndex(-1)
+                        }
+                      } else if (e.key === "Escape") {
+                        setCiudadDropdownOpen(false)
+                        setCiudadFocusIndex(-1)
+                      }
+                    }}
+                    placeholder="Escribe o busca una ciudad..."
+                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none transition-all pr-8"
+                    style={{
+                      borderColor:
+                        touched.ciudad && fieldErrors.ciudad
+                          ? "#ff4444"
+                          : touched.ciudad && !fieldErrors.ciudad && form.ciudad.trim() !== ""
+                          ? COLORS.ACCENT
+                          : COLORS.BORDER_SUBTLE,
+                      backgroundColor: "white",
+                      color: COLORS.CHARCOAL,
+                    }}
+                  />
+                  {form.ciudad && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleChange("ciudad", "")
+                        setCiudadDropdownOpen(true)
+                      }}
+                      className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown with matches & CiudadBadge */}
+                {ciudadDropdownOpen && (
+                  <div
+                    className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl border bg-white p-1 shadow-lg"
+                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
+                  >
+                    {filteredCiudades.length > 0 ? (
+                      filteredCiudades.map((cityName, idx) => (
+                        <button
+                          key={cityName}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            handleChange("ciudad", cityName)
+                            setCiudadDropdownOpen(false)
+                            setCiudadFocusIndex(-1)
+                          }}
+                          onMouseEnter={() => setCiudadFocusIndex(idx)}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition ${
+                            idx === ciudadFocusIndex ? "bg-orange-50 text-[#fd761a]" : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span>{cityName}</span>
+                          <CiudadBadge ciudad={cityName} />
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-xs text-gray-400">
+                        Sin coincidencias. Puedes conservar el texto escrito.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {touched.ciudad && fieldErrors.ciudad && (
+                  <div className="text-xs" style={{ color: "#ff4444" }}>
+                    {fieldErrors.ciudad}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -440,7 +625,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                  Perfil de instructor
+                  {instructorOnly ? "Perfil profesional" : "Perfil de instructor"}
                 </span>
               </div>
               <ValidatedInput
@@ -500,8 +685,8 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          {/* Cuenta (solo en creación) */}
-          {!editingId && (
+          {/* Cuenta (solo en creación del módulo general de Personas) */}
+          {!editingId && !instructorOnly && (
             <div className="mb-6">
               <label className="flex items-center gap-2.5 cursor-pointer group mb-4">
                 <div
@@ -553,6 +738,33 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
             </div>
           )}
 
+          {instructorOnly && (
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Hoja de vida</span>
+              </div>
+              <input ref={cvInputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(event) => { handleCvChange(event.target.files?.[0]); event.currentTarget.value = "" }} />
+              {currentCv && !cvFile && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm">
+                  <FileText size={17} style={{ color: COLORS.ACCENT }} />
+                  <span className="flex-1">Hoja de vida actual: <b>{currentCv.nombre_original}</b>{currentCv.size ? ` (${(currentCv.size / 1024 / 1024).toFixed(2)} MB)` : ""}</span>
+                  <button type="button" onClick={() => void instructoresService.getHojaVida(editingId || "").then((response) => { const url = URL.createObjectURL(response.data); window.open(url, "_blank"); setTimeout(() => URL.revokeObjectURL(url), 1000) })} className="text-blue-600">Ver</button>
+                  <button type="button" onClick={() => cvInputRef.current?.click()} className="text-blue-600">Reemplazar</button>
+                  <button type="button" onClick={async () => { if (!editingId || !confirm("¿Eliminar la hoja de vida?")) return; try { await instructoresService.eliminarHojaVida(editingId); setCurrentCv(null); toast.success("Hoja de vida eliminada") } catch { toast.error("No se pudo eliminar la hoja de vida") } }} className="text-red-600">Eliminar</button>
+                </div>
+              )}
+              {cvFile && (
+                <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+                  <FileText size={17} className="text-blue-600" /><span className="flex-1">{cvFile.name} ({(cvFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                  <button type="button" onClick={() => setCvFile(null)} className="text-red-600" title="Quitar archivo"><Trash2 size={16} /></button>
+                </div>
+              )}
+              {!cvFile && !currentCv && <p className="text-sm text-gray-500">Ningún archivo seleccionado</p>}
+              <button type="button" onClick={() => cvInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"><Upload size={16} /> {currentCv ? "Reemplazar PDF" : "Seleccionar PDF"}</button>
+              <p className="text-xs text-gray-500">Solo archivos PDF. Tamaño máximo 10 MB.</p>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-5 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <button
@@ -570,7 +782,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
               {saving ? (
                 <>
                   <div className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  Guardando...
+                  {instructorOnly && cvFile ? "Guardando instructor..." : "Guardando..."}
                 </>
               ) : editingId ? (
                 <>
@@ -580,7 +792,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess }: Props) {
               ) : (
                 <>
                   <Plus size={16} />
-                  Crear Persona
+                  {instructorOnly ? "Crear Instructor" : "Crear Persona"}
                 </>
               )}
             </button>

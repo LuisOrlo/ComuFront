@@ -557,7 +557,7 @@ export function HistorialPodcastPage() {
                                       </span>
                                       <span className="text-[11px] text-slate-400 font-medium">
                                         {r.paquete?.precio_por_hora
-                                          ? `$${Number(r.paquete.precio_por_hora).toFixed(0)}/hora base`
+                                          ? `$${Number(r.paquete.precio_por_hora).toFixed(0)}/sesión base`
                                           : duration || "Tarifa plana"}
                                       </span>
                                     </div>
@@ -665,7 +665,7 @@ export function HistorialPodcastPage() {
                     {paquete.nombre}
                   </span>
                   <span className="text-[11px] font-medium text-emerald-700 truncate mt-0.5">
-                    Tarifa: ${Number(paquete.precio_por_hora).toFixed(0)}/h · Activo
+                    Tarifa: ${Number(paquete.precio_por_hora).toFixed(0)}/sesión · Activo
                   </span>
                 </div>
               </div>

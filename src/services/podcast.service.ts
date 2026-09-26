@@ -40,7 +40,7 @@ export interface ReservaPodcast {
   notas?: string
   asignaciones?: AsignacionPersonal[]
   paquete?: PaquetePodcast
-  persona?: { id: string; nombres: string; apellidos: string; correo?: string }
+  persona?: { id: string; nombres: string; apellidos: string; correo?: string; cedula?: string; tipo?: string }
   cliente_externo?: { id: string; nombres: string; apellidos?: string; cedula?: string; correo?: string; celular?: string }
   created_at?: string
   cuenta_por_cobrar?: {

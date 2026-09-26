@@ -134,11 +134,11 @@ export function ReservaBatchForm({
   const [saving, setSaving] = useState(false)
   const clienteRef = useRef<HTMLDivElement>(null)
 
-  // Carga de paquetes y personal institucional
+  // Carga de paquetes y personal institucional operativo (excluyendo admin y secretaria)
   useEffect(() => {
     Promise.all([
       podcastService.getPaquetes(),
-      personasService.getPersonas({ page: 1, per_page: 100 }),
+      personasService.getPersonas({ tipo: "instructor,staff,pasante", activos: "true", page: 1, per_page: 100 }),
     ])
       .then(([pkgs, people]) => {
         setPaquetes(pkgs)
@@ -277,6 +277,17 @@ export function ReservaBatchForm({
     () => clientesDisponibles.filter((c) => c.tipo === "cliente_externo"),
     [clientesDisponibles]
   )
+
+  const personalOperativo = useMemo(() => {
+    return personas.filter((p) => {
+      if (p.es_activo === false) return false
+      const tipo = (p.tipo || "").toLowerCase()
+      const cargo = (p.perfilStaff?.cargo || "").toLowerCase()
+      if (["admin", "administrador", "secretaria", "secretario", "estudiante"].includes(tipo)) return false
+      if (cargo.includes("admin") || cargo.includes("secretar")) return false
+      return ["instructor", "staff", "pasante"].includes(tipo)
+    })
+  }, [personas])
 
   // Totales financieros consolidados
   const totals = useMemo(() => {
@@ -750,7 +761,7 @@ export function ReservaBatchForm({
                           </span>
                           {paquete && (
                             <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                              {paquete.nombre} (${Number(paquete.precio_por_hora).toFixed(2)}/h)
+                              {paquete.nombre} (${Number(paquete.precio_por_hora).toFixed(2)}/sesión)
                             </span>
                           )}
                           <span className="text-[11px] font-semibold text-[#fd761a] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
@@ -823,7 +834,7 @@ export function ReservaBatchForm({
                               .filter((x) => x.activo)
                               .map((pkg) => (
                                 <option key={pkg.id} value={pkg.id}>
-                                  {pkg.nombre} (${Number(pkg.precio_por_hora).toFixed(2)}/h)
+                                  {pkg.nombre} (${Number(pkg.precio_por_hora).toFixed(2)}/sesión)
                                 </option>
                               ))}
                           </select>
@@ -1024,7 +1035,7 @@ export function ReservaBatchForm({
                               className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-[#fd761a] cursor-pointer"
                             >
                               <option value="">+ Asignar personal...</option>
-                              {personas
+                              {personalOperativo
                                 .filter((person) => !r.asignaciones.some((a) => a.persona_id === person.id))
                                 .map((person) => (
                                   <option key={person.id} value={person.id}>

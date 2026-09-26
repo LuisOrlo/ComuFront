@@ -602,7 +602,7 @@ export function AulasPage() {
                     <div>
                       <p className="text-sm font-bold text-slate-900">{detalleReserva.aula.nombre}</p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Capacidad: {detalleReserva.aula.capacidad} PAX · ${detalleReserva.aula.precio_hora}/hr
+                        Capacidad: {detalleReserva.aula.capacidad} PAX · ${detalleReserva.aula.precio_hora}/sesión
                       </p>
                     </div>
                   </div>

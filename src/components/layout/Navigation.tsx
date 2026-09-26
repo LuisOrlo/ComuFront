@@ -272,6 +272,7 @@ if (isAdmin) {
       label: "Gestión",
       items: [
         { icon: UserCheckIcon, label: "Personal", path: "/personas" },
+        { icon: GraduationCapIcon, label: "Instructores", path: "/instructores" },
         { icon: SettingsIcon, label: "Cuentas", path: "/cuentas" },
         { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },
       ],

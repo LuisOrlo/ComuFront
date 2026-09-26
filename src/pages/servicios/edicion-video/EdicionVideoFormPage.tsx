@@ -156,12 +156,24 @@ export function EdicionVideoFormPage() {
       .finally(() => setLoading(false))
   }, [id, navigate])
 
+  // Cargar editores disponibles (instructor, staff, pasante) - Excluyendo administradores y secretaría
   useEffect(() => {
     personasService
-      .getPersonas({ page: 1, per_page: 100 })
-      .then((res) => setPersonas(res.data))
+      .getPersonas({ tipo: "instructor,staff,pasante", activos: "true", per_page: 100 })
+      .then((res) => setPersonas(res.data || []))
       .catch(() => {})
   }, [])
+
+  const editoresDisponibles = useMemo(() => {
+    return personas.filter((p) => {
+      if (p.es_activo === false) return false
+      const tipo = (p.tipo || "").toLowerCase()
+      const cargo = (p.perfilStaff?.cargo || "").toLowerCase()
+      if (["admin", "administrador", "secretaria", "secretario", "estudiante"].includes(tipo)) return false
+      if (cargo.includes("admin") || cargo.includes("secretar")) return false
+      return ["instructor", "staff", "pasante"].includes(tipo)
+    })
+  }, [personas])
 
   useEffect(() => {
     const q = clienteSearch.trim()
@@ -1000,14 +1012,14 @@ export function EdicionVideoFormPage() {
                 </div>
               </div>
 
-              {personas.length === 0 ? (
+              {editoresDisponibles.length === 0 ? (
                 <div className="flex items-center gap-2 py-4 text-xs text-slate-400 italic">
                   <Loader2 size={16} className="animate-spin text-[#fd761a]" />
                   <span>Cargando lista de personal...</span>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2.5">
-                  {personas.map((p) => {
+                  {editoresDisponibles.map((p) => {
                     const selected = editorIds.includes(p.id)
                     return (
                       <button
