@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate, useParams } from "react-router-dom"
 import {
@@ -21,6 +21,8 @@ import {
   Info,
   ShieldCheck,
   Sparkles,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MapPinIcon, Cancel01Icon, Loading02Icon } from "@hugeicons/core-free-icons"
@@ -144,10 +146,17 @@ export function CursoFormPage() {
     modulos: [] as Modulo[],
   })
 
+function toDateInputValue(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
   const selectedCatalogo = catalogos.find((c) => c.id === form.catalogo_curso_id)
   const numModulosDefault = selectedCatalogo?.modulos_default || 0
 
-  const calcularFechasModulos = (numModulos: number, fechaInicio: string, fechaFin: string) => {
+  const calcularFechasModulos = useCallback((numModulos: number, fechaInicio: string, fechaFin: string) => {
     if (!fechaInicio || !fechaFin || numModulos === 0) return []
     const inicio = parseLocalDate(fechaInicio)
     const fin = parseLocalDate(fechaFin)
@@ -165,11 +174,11 @@ export function CursoFormPage() {
       if (i === numModulos - 1) fechaModFin.setTime(fin.getTime())
       return {
         nombre: `Módulo ${i + 1}`,
-        fecha_inicio: fechaModInicio.toISOString().split("T")[0],
-        fecha_fin: fechaModFin.toISOString().split("T")[0],
+        fecha_inicio: toDateInputValue(fechaModInicio),
+        fecha_fin: toDateInputValue(fechaModFin),
       }
     })
-  }
+  }, [])
 
   useEffect(() => {
     const cargar = async () => {
@@ -233,14 +242,14 @@ export function CursoFormPage() {
       }
     }
     cargar()
-  }, [id, isEdit])
+  }, [id, isEdit, calcularFechasModulos])
 
   useEffect(() => {
     if (form.catalogo_curso_id && !isEdit) {
       const modulos = calcularFechasModulos(numModulosDefault, form.fecha_inicio, form.fecha_fin)
       setForm((prev) => ({ ...prev, modulos }))
     }
-  }, [form.catalogo_curso_id, numModulosDefault, form.fecha_inicio, form.fecha_fin, isEdit])
+  }, [form.catalogo_curso_id, numModulosDefault, form.fecha_inicio, form.fecha_fin, isEdit, calcularFechasModulos])
 
   useEffect(() => {
     if (form.modulos.length > 0 && form.fecha_fin && !isEdit) {
@@ -291,9 +300,9 @@ export function CursoFormPage() {
         if (prevFechaFin) {
           const nextStart = parseLocalDate(prevFechaFin)
           nextStart.setDate(nextStart.getDate() + 1)
-          const nextStartStr = nextStart.toISOString().split("T")[0]
+          const nextStartStr = toDateInputValue(nextStart)
           if (j === updated.length - 1) {
-            updated[j] = { ...updated[j], fecha_inicio: nextStartStr, fecha_fin: prev.fecha_fin }
+            updated[j] = { ...updated[j], fecha_inicio: nextStartStr, fecha_fin: prev.fecha_fin || nextStartStr }
           } else {
             const originalInicio = parseLocalDate(updated[j].fecha_inicio)
             const originalFin = parseLocalDate(updated[j].fecha_fin)
@@ -303,7 +312,7 @@ export function CursoFormPage() {
                 : 7
             const newEnd = new Date(nextStart)
             newEnd.setDate(newEnd.getDate() + duracionOriginal - 1)
-            updated[j] = { ...updated[j], fecha_inicio: nextStartStr, fecha_fin: newEnd.toISOString().split("T")[0] }
+            updated[j] = { ...updated[j], fecha_inicio: nextStartStr, fecha_fin: toDateInputValue(newEnd) }
           }
         }
       }
@@ -324,6 +333,42 @@ export function CursoFormPage() {
       ...f,
       nombre: nombresFinales[i] || `Módulo ${i + 1}`,
     }))
+  }
+
+  const hayDesalineacionFechas = useMemo(() => {
+    if (!form.fecha_inicio || !form.fecha_fin || form.modulos.length === 0) return false
+    return form.modulos.some(
+      (m) =>
+        (m.fecha_inicio && m.fecha_inicio < form.fecha_inicio) ||
+        (m.fecha_fin && m.fecha_fin > form.fecha_fin) ||
+        (m.fecha_inicio && m.fecha_fin && m.fecha_inicio > m.fecha_fin)
+    )
+  }, [form.fecha_inicio, form.fecha_fin, form.modulos])
+
+  const ajustarFechasModulosAlCurso = () => {
+    if (!form.fecha_inicio || !form.fecha_fin) {
+      toast.error("El curso debe tener fecha de inicio y fecha de fin válidas")
+      return
+    }
+    const nuevasFechas = calcularFechasModulos(form.modulos.length, form.fecha_inicio, form.fecha_fin)
+    setForm((prev) => ({
+      ...prev,
+      modulos: prev.modulos.map((m, idx) => ({
+        ...m,
+        fecha_inicio: nuevasFechas[idx]?.fecha_inicio || m.fecha_inicio,
+        fecha_fin: nuevasFechas[idx]?.fecha_fin || m.fecha_fin,
+      })),
+    }))
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      form.modulos.forEach((_, idx) => {
+        delete next[`modulo_${idx}_inicio`]
+        delete next[`modulo_${idx}_fin`]
+      })
+      delete next.modulos
+      return next
+    })
+    toast.success("Fechas de los módulos sincronizadas exitosamente con el curso")
   }
 
   const agregarModulo = () => {
@@ -377,7 +422,13 @@ export function CursoFormPage() {
     }
     if (step === 5) {
       if (form.modulos.length === 0) return false
-      return form.modulos.every((m) => m.nombre.trim() !== "" && !!m.fecha_inicio && !!m.fecha_fin)
+      return form.modulos.every((m) => {
+        if (!m.nombre.trim() || !m.fecha_inicio || !m.fecha_fin) return false
+        if (m.fecha_inicio > m.fecha_fin) return false
+        if (form.fecha_inicio && m.fecha_inicio < form.fecha_inicio) return false
+        if (form.fecha_fin && m.fecha_fin > form.fecha_fin) return false
+        return true
+      })
     }
     return false
   }
@@ -424,8 +475,19 @@ export function CursoFormPage() {
       } else {
         form.modulos.forEach((mod, idx) => {
           if (!mod.nombre.trim()) newErrors[`modulo_${idx}_nombre`] = "El nombre del módulo es obligatorio"
-          if (!mod.fecha_inicio) newErrors[`modulo_${idx}_inicio`] = "Fecha de inicio requerida"
-          if (!mod.fecha_fin) newErrors[`modulo_${idx}_fin`] = "Fecha de fin requerida"
+          if (!mod.fecha_inicio) {
+            newErrors[`modulo_${idx}_inicio`] = "Fecha de inicio requerida"
+          } else if (form.fecha_inicio && mod.fecha_inicio < form.fecha_inicio) {
+            newErrors[`modulo_${idx}_inicio`] = `No puede ser anterior al inicio del curso (${form.fecha_inicio})`
+          }
+
+          if (!mod.fecha_fin) {
+            newErrors[`modulo_${idx}_fin`] = "Fecha de fin requerida"
+          } else if (mod.fecha_inicio && mod.fecha_fin < mod.fecha_inicio) {
+            newErrors[`modulo_${idx}_fin`] = "La fecha de fin debe ser posterior a la de inicio"
+          } else if (form.fecha_fin && mod.fecha_fin > form.fecha_fin) {
+            newErrors[`modulo_${idx}_fin`] = `No puede ser posterior al fin del curso (${form.fecha_fin})`
+          }
         })
       }
     }
@@ -471,6 +533,22 @@ export function CursoFormPage() {
     if (!isStepValid(currentStep) || !validateStep(currentStep)) {
       toast.error("Revisa los campos obligatorios antes de finalizar")
       return
+    }
+
+    // Validar coherencia estricta de fechas entre curso y módulos
+    if (form.modulos.length > 0) {
+      const tieneErrorFechas = form.modulos.some(
+        (m) =>
+          (form.fecha_fin && m.fecha_fin && m.fecha_fin > form.fecha_fin) ||
+          (form.fecha_inicio && m.fecha_inicio && m.fecha_inicio < form.fecha_inicio) ||
+          (m.fecha_inicio && m.fecha_fin && m.fecha_inicio > m.fecha_fin)
+      )
+      if (tieneErrorFechas) {
+        setCurrentStep(5)
+        validateStep(5)
+        toast.error("La fecha de fin del curso no puede ser anterior a la fecha de fin de sus módulos. Revisa las fechas en el Paso 5.")
+        return
+      }
     }
     setLoading(true)
     try {
@@ -1359,16 +1437,54 @@ export function CursoFormPage() {
               </div>
 
               {/* Sync Helper Banner */}
-              <div className="p-4 rounded-xl bg-orange-50/70 border border-orange-200/80 flex items-start gap-3">
-                <Info className="text-[#fd761a] size-5 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-bold text-slate-900">Distribución calendarizada automática</span>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Las fechas de inicio y fin de cada módulo se sincronizan en cascada. Puedes ajustar individualmente
-                    el precio o nombre de cada etapa evaluativa.
-                  </p>
+              <div className="p-4 rounded-xl bg-orange-50/70 border border-orange-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <Info className="text-[#fd761a] size-5 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-bold text-slate-900">Período lectivo del curso</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      El curso está programado del <strong>{form.fecha_inicio || "—"}</strong> al <strong>{form.fecha_fin || "—"}</strong>.
+                      Todos los módulos deben encontrarse dentro de este rango de fechas.
+                    </p>
+                  </div>
                 </div>
+                {form.fecha_inicio && form.fecha_fin && form.modulos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={ajustarFechasModulosAlCurso}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-orange-300 text-[#fd761a] hover:bg-orange-50 text-xs font-bold shrink-0 transition-colors shadow-2xs cursor-pointer"
+                    title="Recalcular las fechas de los módulos para que encajen exactamente en el curso"
+                  >
+                    <RefreshCw size={13} />
+                    Sincronizar con el curso
+                  </button>
+                )}
               </div>
+
+              {/* Warning Banner if desaligned */}
+              {hayDesalineacionFechas && (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="text-amber-600 size-5 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-xs font-bold text-amber-900 block">
+                        Fechas desalineadas con el período del curso
+                      </span>
+                      <p className="text-xs text-amber-800 mt-0.5">
+                        Uno o más módulos tienen fechas fuera del rango del curso (inicio: {form.fecha_inicio}, fin: {form.fecha_fin}). Pulsa el botón para alinearlas de inmediato.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={ajustarFechasModulosAlCurso}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition-colors cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <RefreshCw size={13} />
+                    Ajustar automáticamente
+                  </button>
+                </div>
+              )}
 
               {getError("modulos") && (
                 <p className="text-xs text-red-500 font-medium">{getError("modulos")}</p>

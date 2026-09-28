@@ -13,7 +13,10 @@ function mapPersona(raw: Record<string, unknown>): Persona {
   return {
     id: r.id, tipo: r.tipo as Persona["tipo"], cedula: r.cedula, nombres: r.nombres, apellidos: r.apellidos,
     correo: r.correo, celular: r.celular, ciudad_id: r.ciudad_id, es_activo: r.es_activo,
-    cursos_actuales_count: r.cursos_actuales_count as number | undefined, talleres_actuales_count: r.talleres_actuales_count as number | undefined,
+    cursos_actuales_count: r.cursos_actuales_count as number | undefined,
+    cursos_proximos_count: r.cursos_proximos_count as number | undefined,
+    talleres_actuales_count: r.talleres_actuales_count as number | undefined,
+    talleres_proximos_count: r.talleres_proximos_count as number | undefined,
     ciudad: typeof r.ciudad === "object" && r.ciudad !== null ? r.ciudad.nombre : (r.ciudad as string | undefined),
     cuentaSistema: r.cuenta_sistema,
     perfilInstructor: r.perfil_instructor, perfilStaff: r.perfil_staff,

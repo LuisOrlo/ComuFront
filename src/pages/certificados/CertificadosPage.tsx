@@ -1,9 +1,20 @@
 import { useState, useEffect, useCallback } from "react"
+import { Link } from "react-router"
 import { AnimatePresence, motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { BadgeCheckIcon, UserGroupIcon, Clock04Icon, CertificateIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
-import { X, FileText, Eye, Upload } from "lucide-react"
-import { COLORS } from "@/lib/constants"
+import {
+  BadgeCheckIcon,
+  UserGroupIcon,
+  Clock04Icon,
+  CertificateIcon,
+  Cancel01Icon,
+  FileUploadIcon,
+  RefreshIcon,
+  AlertCircleIcon,
+  File01Icon,
+  Upload04Icon,
+} from "@hugeicons/core-free-icons"
+import { X, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { certificadosService } from "@/services/certificados.service"
@@ -12,30 +23,20 @@ import { CertificadosTable } from "./components/CertificadosTable"
 import { CERT_STATUS_LABELS } from "./certStatus"
 import { toast } from "sonner"
 
-const GREEN = "#0F9F6E"
-const AMBER = "#D97706"
-const BLUE = "#2563EB"
-const GRAY = "#6B7280"
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
-
 const PANEL_BATCH = 500
 
 const ESTADO_CERT_STYLES: Record<string, string> = {
-  generado: "text-emerald-700 border-emerald-200",
-  entregado: "text-blue-700 border-blue-200",
-  borrado: "text-gray-500 border-gray-200",
-}
-const ESTADO_CERT_BG: Record<string, string> = {
-  generado: "bg-emerald-50", entregado: "bg-blue-50", borrado: "bg-gray-50",
+  generado: "text-emerald-700 border-emerald-200/80 bg-emerald-50",
+  entregado: "text-blue-700 border-blue-200/80 bg-blue-50",
+  borrado: "text-gray-600 border-gray-200 bg-gray-50",
 }
 
 const TAB_CONFIG = [
-  { key: "", label: "Todos", color: CHARCOAL, icon: UserGroupIcon },
-  { key: "pendiente", label: "Pendientes", color: AMBER, icon: Clock04Icon },
-  { key: "generado", label: "Emitidos", color: GREEN, icon: CertificateIcon },
-  { key: "entregado", label: "Entregados", color: BLUE, icon: BadgeCheckIcon },
-  { key: "borrado", label: "Borrados", color: GRAY, icon: Cancel01Icon },
+  { key: "", label: "Todos los registros", icon: UserGroupIcon },
+  { key: "pendiente", label: "Pendientes", icon: Clock04Icon },
+  { key: "generado", label: "Emitidos", icon: CertificateIcon },
+  { key: "entregado", label: "Entregados", icon: BadgeCheckIcon },
+  { key: "borrado", label: "Borrados", icon: Cancel01Icon },
 ]
 
 export function CertificadosPage() {
@@ -65,42 +66,54 @@ export function CertificadosPage() {
       const res = await certificadosService.getPanelEstudiantes(params)
       setRows(res.data)
       setTotal(res.total || res.data.length)
-    } catch { toast.error("Error al cargar datos") }
-    finally { setLoading(false) }
+    } catch {
+      toast.error("Error al cargar datos de certificados")
+    } finally {
+      setLoading(false)
+    }
   }, [filtroCert])
 
   useEffect(() => {
-
     loadPanel()
   }, [loadPanel])
 
   const tabCounts: Record<string, number> = {
     "": rows.length,
-    pendiente: rows.filter(r => !r.certificado_id).length,
-    generado: rows.filter(r => r.estado_certificado === "generado").length,
-    entregado: rows.filter(r => r.estado_certificado === "entregado").length,
-    borrado: rows.filter(r => r.estado_certificado === "borrado").length,
+    pendiente: rows.filter((r) => !r.certificado_id).length,
+    generado: rows.filter((r) => r.estado_certificado === "generado").length,
+    entregado: rows.filter((r) => r.estado_certificado === "entregado").length,
+    borrado: rows.filter((r) => r.estado_certificado === "borrado").length,
   }
-  const conCert = rows.filter(r => r.certificado_id).length
-  const sinCert = rows.filter(r => !r.certificado_id).length
 
   const handleEmitir = (row: EstudiantePanel) => {
-    if (!row.matricula_id) { toast.error("El estudiante no tiene matrícula activa"); return }
-    if (row.certificado_id) { toast.error("Ya tiene un certificado"); return }
+    if (!row.matricula_id) {
+      toast.error("El estudiante no tiene matrícula activa")
+      return
+    }
+    if (row.certificado_id) {
+      toast.error("Ya tiene un certificado emitido")
+      return
+    }
     const input = document.createElement("input")
-    input.type = "file"; input.accept = ".pdf,application/pdf"
+    input.type = "file"
+    input.accept = ".pdf,application/pdf"
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      if (file.size > 512 * 1024) { toast.error("El PDF no debe superar los 500 KB"); return }
-      setEmitirRow(row); setEmitirFile(file)
+      if (file.size > 512 * 1024) {
+        toast.error("El PDF no debe superar los 500 KB")
+        return
+      }
+      setEmitirRow(row)
+      setEmitirFile(file)
       setEmitirPreview(URL.createObjectURL(file))
     }
     input.click()
   }
 
   const closeEmitir = () => {
-    setEmitirRow(null); setEmitirFile(null)
+    setEmitirRow(null)
+    setEmitirFile(null)
     if (emitirPreview) URL.revokeObjectURL(emitirPreview)
     setEmitirPreview(null)
   }
@@ -117,12 +130,19 @@ export function CertificadosPage() {
       toast.success(`Certificado emitido para ${emitirRow.nombres} ${emitirRow.apellidos}`)
       closeEmitir()
       loadPanel()
-    } catch { toast.error("Error al emitir certificado") }
-    finally { setEmitirSubmitting(false) }
+    } catch {
+      toast.error("Error al emitir el certificado")
+    } finally {
+      setEmitirSubmitting(false)
+    }
   }
 
   const openDeleteModal = (row: EstudiantePanel) => {
-    setDeleteModal({ id: row.certificado_id!, nombre: `${row.nombres} ${row.apellidos}`, curso: row.catalogo_nombre })
+    setDeleteModal({
+      id: row.certificado_id!,
+      nombre: `${row.nombres} ${row.apellidos}`,
+      curso: row.catalogo_nombre,
+    })
   }
 
   const confirmDelete = async () => {
@@ -133,35 +153,51 @@ export function CertificadosPage() {
       toast.success("PDF eliminado del almacenamiento (registro histórico conservado)")
       setDeleteModal(null)
       loadPanel()
-    } catch { toast.error("Error al borrar certificado") }
-    finally { setDeleteSubmitting(false) }
+    } catch {
+      toast.error("Error al borrar el archivo del certificado")
+    } finally {
+      setDeleteSubmitting(false)
+    }
   }
 
   const handleDescargar = (certId: string) => certificadosService.descargarPdf(certId)
 
   const handleMarcarEntregado = async (certId: string) => {
     try {
-      await certificadosService.marcarEntregado(certId, { fecha_entrega: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date()) })
-      toast.success("Certificado marcado como entregado")
+      await certificadosService.marcarEntregado(certId, {
+        fecha_entrega: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date()),
+      })
+      toast.success("Certificado marcado como entregado con éxito")
       loadPanel()
-    } catch { toast.error("Error al marcar como entregado") }
+    } catch {
+      toast.error("Error al marcar como entregado")
+    }
   }
 
   const handleReuploadPdf = (row: EstudiantePanel) => {
-    if (!row.certificado_id) { toast.error("El estudiante no tiene certificado"); return }
+    if (!row.certificado_id) {
+      toast.error("El estudiante no tiene certificado registrado")
+      return
+    }
     const input = document.createElement("input")
-    input.type = "file"; input.accept = ".pdf,application/pdf"
+    input.type = "file"
+    input.accept = ".pdf,application/pdf"
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      if (file.size > 512 * 1024) { toast.error("El PDF no debe superar los 500 KB"); return }
+      if (file.size > 512 * 1024) {
+        toast.error("El PDF no debe superar los 500 KB")
+        return
+      }
       try {
         const form = new FormData()
         form.append("pdf", file)
         await certificadosService.uploadPdf(row.certificado_id!, form)
         toast.success("PDF re-subido correctamente")
         loadPanel()
-      } catch { toast.error("Error al re-subir PDF") }
+      } catch {
+        toast.error("Error al re-subir el PDF")
+      }
     }
     input.click()
   }
@@ -176,194 +212,547 @@ export function CertificadosPage() {
       setDetailPurgado(cert.archivo_purgado === true)
       setHistorial(hist || [])
       setDetailOpen(true)
-    } catch { toast.error("Error al cargar detalle") }
+    } catch {
+      toast.error("Error al cargar el detalle del certificado")
+    }
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <header className="shrink-0 px-8 pt-8 pb-4 bg-white border-b" style={{ borderColor: BORDER }}>
-        <h1 className="text-3xl font-bold tracking-tighter" style={{ color: CHARCOAL }}>Certificados</h1>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm" style={{ color: CHARCOAL }}>
-          <span>{total} estudiantes</span>
-          <span className="opacity-30">·</span>
-          <span style={{ color: conCert > 0 ? GREEN : "inherit" }}>{conCert} emitidos</span>
-          <span className="opacity-30">·</span>
-          <span style={{ color: sinCert > 0 ? AMBER : "inherit" }}>{sinCert} pendientes</span>
-        </div>
-      </header>
+    <div className="min-h-[100dvh] flex flex-col overflow-hidden bg-[#f8f9ff]">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* Cabecera Principal y Acciones */}
+          <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-1">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight text-[#0b1c30]">
+                Certificados
+              </h1>
+              <p className="text-xs sm:text-sm text-[#45464d]">
+                Gestión y emisión de certificados académicos, control de entregas e historial de documentos.
+              </p>
+            </div>
 
-      <div className="shrink-0 px-8 pt-3 bg-white border-b" style={{ borderColor: BORDER }}>
-        <div className="flex gap-1 border-b" style={{ borderColor: BORDER }}>
-          {TAB_CONFIG.map(t => (
-            <button key={t.key || "todos"} onClick={() => setFiltroCert(t.key)}
-              className="flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-all"
-              style={{
-                borderColor: filtroCert === t.key ? COLORS.ACCENT : "transparent",
-                color: filtroCert === t.key ? CHARCOAL : COLORS.TEXT_MUTED,
-              }}>
-              <HugeiconsIcon icon={t.icon} size={14} />
-              {t.label}
-              <span className="text-xs opacity-50">({tabCounts[t.key] ?? rows.length})</span>
-            </button>
-          ))}
-        </div>
-      </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={loadPanel}
+                disabled={loading}
+                className="h-10 px-3.5 rounded-xl bg-white text-[#0b1c30] text-xs font-semibold shadow-xs hover:bg-[#eff4ff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 disabled:opacity-60"
+                title="Actualizar datos"
+              >
+                <HugeiconsIcon
+                  icon={RefreshIcon}
+                  size={16}
+                  className={loading ? "animate-spin text-[#fd761a]" : "text-[#76777d]"}
+                />
+                <span className="hidden sm:inline">Actualizar</span>
+              </button>
 
-      <div className="flex-1 overflow-auto p-6 lg:p-8">
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white border" style={{ borderColor: BORDER }}>
-                <div className="space-y-2 flex-1"><Skeleton className="h-4 w-40" /><Skeleton className="h-3 w-24" /></div>
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-6 w-20 rounded-full" />
-                <Skeleton className="h-8 w-24 rounded-lg" />
+              <Link
+                to="/verificar-certificados"
+                target="_blank"
+                rel="noreferrer"
+                className="h-10 px-4 rounded-xl bg-white text-[#0b1c30] text-xs font-semibold shadow-xs hover:bg-[#eff4ff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 select-none"
+                title="Abrir verificador público de certificados"
+              >
+                <HugeiconsIcon icon={BadgeCheckIcon} size={16} className="text-[#009668]" />
+                <span>Verificador público</span>
+              </Link>
+
+              <Link
+                to="/certificados/carga-masiva"
+                className="h-10 px-4 sm:px-5 rounded-xl bg-[#fd761a] text-white text-xs font-bold shadow-xs hover:opacity-95 transition-all flex items-center gap-2 cursor-pointer shadow-[0_2px_8px_rgba(253,118,26,0.25)] select-none"
+              >
+                <HugeiconsIcon icon={FileUploadIcon} size={16} />
+                <span>Carga masiva</span>
+              </Link>
+            </div>
+          </header>
+
+          {/* Tarjetas KPI de Resumen */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+            {/* KPI 1: Total */}
+            <div
+              onClick={() => setFiltroCert("")}
+              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+                filtroCert === ""
+                  ? "border-[#fd761a] ring-2 ring-[#fd761a]/15"
+                  : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#76777d]">
+                  Estudiantes
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-[#eff4ff] text-[#0b1c30] flex items-center justify-center">
+                  <HugeiconsIcon icon={UserGroupIcon} size={16} />
+                </div>
               </div>
-            ))}
+              <div className="text-2xl sm:text-3xl font-bold text-[#0b1c30] mt-2">
+                {total}
+              </div>
+              <span className="text-[11px] text-[#45464d] mt-1 block">
+                Total evaluados
+              </span>
+            </div>
+
+            {/* KPI 2: Pendientes */}
+            <div
+              onClick={() => setFiltroCert("pendiente")}
+              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+                filtroCert === "pendiente"
+                  ? "border-amber-500 ring-2 ring-amber-500/15"
+                  : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                  Pendientes
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <HugeiconsIcon icon={Clock04Icon} size={16} />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-amber-700 mt-2">
+                {tabCounts.pendiente}
+              </div>
+              <span className="text-[11px] text-[#45464d] mt-1 block">
+                Por emitir
+              </span>
+            </div>
+
+            {/* KPI 3: Emitidos */}
+            <div
+              onClick={() => setFiltroCert("generado")}
+              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+                filtroCert === "generado"
+                  ? "border-emerald-500 ring-2 ring-emerald-500/15"
+                  : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                  Emitidos
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <HugeiconsIcon icon={CertificateIcon} size={16} />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-emerald-700 mt-2">
+                {tabCounts.generado}
+              </div>
+              <span className="text-[11px] text-[#45464d] mt-1 block">
+                Listos con PDF
+              </span>
+            </div>
+
+            {/* KPI 4: Entregados */}
+            <div
+              onClick={() => setFiltroCert("entregado")}
+              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+                filtroCert === "entregado"
+                  ? "border-blue-500 ring-2 ring-blue-500/15"
+                  : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">
+                  Entregados
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <HugeiconsIcon icon={BadgeCheckIcon} size={16} />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-blue-700 mt-2">
+                {tabCounts.entregado}
+              </div>
+              <span className="text-[11px] text-[#45464d] mt-1 block">
+                En manos del alumno
+              </span>
+            </div>
+
+            {/* KPI 5: Borrados */}
+            <div
+              onClick={() => setFiltroCert("borrado")}
+              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+                filtroCert === "borrado"
+                  ? "border-gray-500 ring-2 ring-gray-500/15"
+                  : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600">
+                  Borrados
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center">
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-700 mt-2">
+                {tabCounts.borrado}
+              </div>
+              <span className="text-[11px] text-[#45464d] mt-1 block">
+                Archivo purgado
+              </span>
+            </div>
           </div>
-        ) : rows.length === 0 ? (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-24 text-center space-y-3">
-            <div className="size-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${AMBER}10` }}>
-              <HugeiconsIcon icon={BadgeCheckIcon} size={28} opacity={0.3} color={AMBER} />
-            </div>
-            <p className="text-sm font-bold opacity-30">Sin resultados</p>
-            <p className="text-xs opacity-20">Ajusta los filtros o emite nuevos certificados</p>
-          </motion.div>
-        ) : (
-          <CertificadosTable
-            key={filtroCert}
-            rows={rows}
-            onEmitir={handleEmitir}
-            onDescargar={handleDescargar}
-            onReupload={handleReuploadPdf}
-            onMarcarEntregado={handleMarcarEntregado}
-            onOpenDetail={openDetail}
-            onOpenDelete={openDeleteModal}
-          />
-        )}
-      </div>
 
-      {/* Emitir modal - 2 columns */}
+          {/* Filtros por Pestañas (Pill Stepper) */}
+          <div className="flex items-center gap-1.5 p-1.5 bg-white rounded-2xl border border-[#c6c6cd]/25 shadow-xs overflow-x-auto">
+            {TAB_CONFIG.map((t) => {
+              const isSelected = filtroCert === t.key
+              const count = tabCounts[t.key] ?? rows.length
+
+              return (
+                <button
+                  key={t.key || "todos"}
+                  type="button"
+                  onClick={() => setFiltroCert(t.key)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    isSelected
+                      ? "bg-[#0b1c30] text-white shadow-xs"
+                      : "text-[#76777d] hover:text-[#0b1c30] hover:bg-[#eff4ff]/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={t.icon} size={15} />
+                  <span>{t.label}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
+                      isSelected
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-100 text-[#76777d]"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Contenedor Principal de la Tabla */}
+          <div className="bg-white rounded-2xl border border-[#c6c6cd]/25 shadow-xs p-5 space-y-4">
+            {loading ? (
+              <div className="space-y-3 py-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-gray-50/50 border border-[#c6c6cd]/15"
+                  >
+                    <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-28" />
+                    </div>
+                    <Skeleton className="h-4 w-36 hidden sm:block" />
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-8 w-24 rounded-xl" />
+                  </div>
+                ))}
+              </div>
+            ) : rows.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center py-20 text-center space-y-3"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-[#eff4ff] text-[#fd761a] flex items-center justify-center">
+                  <HugeiconsIcon icon={CertificateIcon} size={32} />
+                </div>
+                <h3 className="text-[#0b1c30] font-bold text-base">
+                  No se encontraron certificados
+                </h3>
+                <p className="text-xs text-[#45464d] max-w-sm">
+                  {filtroCert
+                    ? "No hay registros con el estado seleccionado. Prueba con otra pestaña o limpia los filtros."
+                    : "Aún no hay estudiantes registrados para emisión de certificados en los cursos abiertos."}
+                </p>
+                {filtroCert && (
+                  <button
+                    type="button"
+                    onClick={() => setFiltroCert("")}
+                    className="mt-2 px-4 py-2 rounded-xl text-xs font-bold text-[#fd761a] bg-[#eff4ff] hover:bg-[#dce9ff] transition-colors cursor-pointer"
+                  >
+                    Ver todos los registros
+                  </button>
+                )}
+              </motion.div>
+            ) : (
+              <CertificadosTable
+                key={filtroCert}
+                rows={rows}
+                onEmitir={handleEmitir}
+                onDescargar={handleDescargar}
+                onReupload={handleReuploadPdf}
+                onMarcarEntregado={handleMarcarEntregado}
+                onOpenDetail={openDetail}
+                onOpenDelete={openDeleteModal}
+              />
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Modal 1: Emitir certificado */}
       <AnimatePresence>
-        {!!(emitirRow && emitirFile) && (
+        {Boolean(emitirRow && emitirFile) && (
           <ModalOverlay onClose={closeEmitir}>
-            <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: BORDER }}>
-              <div>
-                <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: CHARCOAL }}>
-                  <HugeiconsIcon icon={BadgeCheckIcon} size={20} style={{ color: GREEN }} />
-                  Emitir certificado
-                </h2>
-                <p className="text-xs opacity-40 mt-0.5">Confirma los datos antes de emitir el documento</p>
+            {/* Header del modal */}
+            <div className="p-6 border-b border-[#c6c6cd]/20 flex items-center justify-between bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#009668] flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={BadgeCheckIcon} size={22} />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-[#0b1c30]">
+                    Emitir Certificado Académico
+                  </h2>
+                  <p className="text-xs text-[#76777d]">
+                    Valida los datos antes de emitir y registrar el documento oficial.
+                  </p>
+                </div>
               </div>
-              <button onClick={closeEmitir}
-                className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={18} /></button>
+              <button
+                type="button"
+                onClick={closeEmitir}
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-[#76777d] hover:text-[#0b1c30] hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: BORDER }}>
-              <div className="p-5 space-y-4">
-                <Ficha label="Estudiante" value={`${emitirRow?.nombres} ${emitirRow?.apellidos}`} />
-                <Ficha label="Cédula" value={emitirRow?.cedula} />
-                <Ficha label="Curso" value={emitirRow?.nombre_instancia || emitirRow?.catalogo_nombre || "—"} />
-                <Ficha label="Fecha de emisión" value={new Date().toLocaleDateString("es-ES", { year: "numeric", month: "long", day: "numeric" })} />
+
+            {/* Contenido en 2 columnas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#c6c6cd]/20">
+              {/* Columna Izquierda: Datos del estudiante y curso */}
+              <div className="p-6 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#76777d]">
+                  Datos de la Certificación
+                </h3>
+                <div className="space-y-3">
+                  <Ficha
+                    label="Estudiante"
+                    value={`${emitirRow?.nombres} ${emitirRow?.apellidos}`}
+                  />
+                  <Ficha label="Cédula de Identidad" value={emitirRow?.cedula} />
+                  <Ficha
+                    label="Curso / Cohorte"
+                    value={emitirRow?.nombre_instancia || emitirRow?.catalogo_nombre || "—"}
+                  />
+                  <Ficha
+                    label="Fecha de Emisión Oficial"
+                    value={new Date().toLocaleDateString("es-ES", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  />
+                </div>
               </div>
-              <div className="p-5 flex flex-col">
+
+              {/* Columna Derecha: Vista previa del PDF */}
+              <div className="p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Vista previa del PDF</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#76777d]">
+                    Vista Previa del Archivo
+                  </p>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                    PDF Válido (≤ 500 KB)
+                  </span>
                 </div>
-                <div className="flex-1 rounded-xl border bg-gray-50 overflow-hidden min-h-[200px]" style={{ borderColor: BORDER }}>
-                  {emitirPreview && <iframe src={emitirPreview} className="w-full h-full" title="preview" />}
+                <div className="flex-1 rounded-xl border border-[#c6c6cd]/30 bg-gray-50 overflow-hidden min-h-[220px]">
+                  {emitirPreview && (
+                    <iframe
+                      src={emitirPreview}
+                      className="w-full h-full min-h-[220px]"
+                      title="Vista previa del PDF"
+                    />
+                  )}
                 </div>
-                <div className="flex items-center gap-2 mt-3 text-xs opacity-50">
-                  <FileText size={14} /> {emitirFile?.name}
+                <div className="flex items-center gap-2 mt-3 text-xs text-[#45464d] bg-[#eff4ff]/60 px-3 py-2 rounded-xl border border-[#c6c6cd]/20">
+                  <HugeiconsIcon icon={File01Icon} size={15} className="text-[#fd761a]" />
+                  <span className="truncate font-medium">{emitirFile?.name}</span>
                 </div>
               </div>
             </div>
-            <div className="px-6 py-5 bg-gray-50/80 border-t flex justify-end gap-3" style={{ borderColor: BORDER }}>
-              <button onClick={closeEmitir}
-                className="px-6 py-3 rounded-xl text-sm font-bold opacity-50 hover:opacity-100">Cancelar</button>
-              <button onClick={confirmEmitir} disabled={emitirSubmitting}
-                className="px-8 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-50 shadow-lg"
-                style={{ backgroundColor: GREEN, boxShadow: `${GREEN}30 0 4px 14px` }}>
-                {emitirSubmitting ? "Emitiendo..." : "Emitir certificado"}</button>
+
+            {/* Footer de acciones */}
+            <div className="px-6 py-4 bg-gray-50/70 border-t border-[#c6c6cd]/20 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeEmitir}
+                disabled={emitirSubmitting}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold border border-[#c6c6cd]/30 bg-white text-[#45464d] hover:bg-[#eff4ff] hover:text-[#0b1c30] transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmEmitir}
+                disabled={emitirSubmitting}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+              >
+                {emitirSubmitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Emitiendo documento...</span>
+                  </>
+                ) : (
+                  <>
+                    <HugeiconsIcon icon={BadgeCheckIcon} size={16} />
+                    <span>Confirmar y Emitir</span>
+                  </>
+                )}
+              </button>
             </div>
           </ModalOverlay>
         )}
       </AnimatePresence>
 
-      {/* Detalle */}
+      {/* Modal 2: Detalle e historial */}
       <AnimatePresence>
         {detailOpen && detailCert && (
           <ModalOverlay onClose={() => setDetailOpen(false)}>
-            <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: BORDER }}>
-              <div>
-                <h2 className="text-xl font-bold" style={{ color: CHARCOAL }}>{detailCert.codigo_certificado}</h2>
-                <p className="text-xs opacity-40 mt-0.5">Detalle e historial del certificado</p>
-              </div>
-              <button onClick={() => setDetailOpen(false)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={18} /></button>
-            </div>
-            <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                <Ficha label="Estudiante" value={`${detailCert.estudiante?.nombres} ${detailCert.estudiante?.apellidos}`} />
-                <Ficha label="Cédula" value={detailCert.cedula_impresa} />
-                <Ficha label="Emitido" value={detailCert.fecha_emision ? new Date(detailCert.fecha_emision).toLocaleDateString("es-ES") : "—"} />
+            <div className="p-6 border-b border-[#c6c6cd]/20 flex items-center justify-between bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#eff4ff] text-[#fd761a] flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={CertificateIcon} size={22} />
+                </div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-1">Estado</p>
-                  <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border", ESTADO_CERT_STYLES[detailCert.estado], ESTADO_CERT_BG[detailCert.estado])}>
+                  <h2 className="text-base sm:text-lg font-bold text-[#0b1c30]">
+                    {detailCert.codigo_certificado}
+                  </h2>
+                  <p className="text-xs text-[#76777d]">
+                    Detalles, estado y trazabilidad histórica del certificado.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-[#76777d] hover:text-[#0b1c30] hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 max-h-[65vh] overflow-y-auto">
+              {/* Fichas informativas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <Ficha
+                  label="Estudiante"
+                  value={`${detailCert.estudiante?.nombres} ${detailCert.estudiante?.apellidos}`}
+                />
+                <Ficha label="Cédula Impresa" value={detailCert.cedula_impresa} />
+                <Ficha
+                  label="Fecha de Emisión"
+                  value={
+                    detailCert.fecha_emision
+                      ? new Date(detailCert.fecha_emision).toLocaleDateString("es-ES", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "—"
+                  }
+                />
+                <div className="p-3.5 rounded-xl bg-gray-50/70 border border-[#c6c6cd]/20">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#76777d] mb-1">
+                    Estado Actual
+                  </p>
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border",
+                      ESTADO_CERT_STYLES[detailCert.estado]
+                    )}
+                  >
                     {CERT_STATUS_LABELS[detailCert.estado]}
                   </span>
                 </div>
               </div>
+
+              {/* Historial de Trazabilidad */}
               {historial.length > 0 && (
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest opacity-40 mb-3">Historial</p>
-                  <div className="relative pl-8 border-l-2 space-y-4" style={{ borderColor: `${COLORS.ACCENT}20` }}>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#76777d]">
+                    Línea de Tiempo / Historial
+                  </h4>
+                  <div className="relative pl-6 border-l-2 border-[#eff4ff] space-y-4 ml-2">
                     {historial.map((h, i) => {
-                      const dotColor = h.accion.includes("Archivo eliminado") ? "#EF4444"
-                        : h.accion === "Archivo restaurado" ? AMBER
-                        : h.accion === "Borrado" ? GRAY
-                        : h.accion === "Entregado" ? BLUE : GREEN
+                      const isDeleted = h.accion.includes("Archivo eliminado")
+                      const isRestored = h.accion === "Archivo restaurado"
+                      const isDelivered = h.accion === "Entregado"
+
                       return (
-                      <div key={i} className="relative -left-[33px] flex items-start gap-3">
-                        <div className="size-3 rounded-full border-2 border-white shrink-0 mt-0.5" style={{ backgroundColor: dotColor }} />
-                        <div>
-                          <p className="text-xs font-bold">{h.accion}</p>
-                          <p className="text-[10px] opacity-50">{h.fecha}{h.detalle ? ` · ${h.detalle}` : ""}{h.usuario ? ` · ${h.usuario}` : ""}</p>
+                        <div key={i} className="relative flex items-start gap-3">
+                          <div
+                            className={`w-3.5 h-3.5 rounded-full border-2 border-white absolute -left-[31px] top-0.5 shadow-xs ${
+                              isDeleted
+                                ? "bg-red-500"
+                                : isRestored
+                                ? "bg-amber-500"
+                                : isDelivered
+                                ? "bg-blue-600"
+                                : "bg-emerald-600"
+                            }`}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[#0b1c30]">{h.accion}</p>
+                            <p className="text-[11px] text-[#76777d] mt-0.5">
+                              {h.fecha}
+                              {h.detalle ? ` · ${h.detalle}` : ""}
+                              {h.usuario ? ` · ${h.usuario}` : ""}
+                            </p>
+                          </div>
                         </div>
-                      </div>
                       )
                     })}
                   </div>
                 </div>
               )}
+
+              {/* Botón de Descarga / Re-subida */}
               {detailCert.archivo_pdf_url && !detailPurgado && (
-                <button onClick={() => certificadosService.descargarPdf(detailCert.id)}
-                  className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
-                  style={{ color: GREEN, backgroundColor: `${GREEN}10` }}>
-                  <Eye size={15} /> Ver y descargar PDF
+                <button
+                  type="button"
+                  onClick={() => certificadosService.descargarPdf(detailCert.id)}
+                  className="w-full py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer"
+                >
+                  <Eye size={16} />
+                  <span>Ver y Descargar Archivo PDF</span>
                 </button>
               )}
+
               {detailPurgado && (
-                <button onClick={() => {
-                  const input = document.createElement("input")
-                  input.type = "file"; input.accept = ".pdf,application/pdf"
-                  input.onchange = async (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0]
-                    if (!file) return
-                    if (file.size > 512 * 1024) { toast.error("El PDF no debe superar los 500 KB"); return }
-                    try {
-                      const form = new FormData()
-                      form.append("pdf", file)
-                      await certificadosService.uploadPdf(detailCert.id, form)
-                      toast.success("PDF re-subido correctamente")
-                      setDetailPurgado(false)
-                      loadPanel()
-                    } catch { toast.error("Error al re-subir PDF") }
-                  }
-                  input.click()
-                }}
-                  className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
-                  style={{ color: AMBER, backgroundColor: `${AMBER}10` }}>
-                  <Upload size={15} /> Re-subir PDF
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.createElement("input")
+                    input.type = "file"
+                    input.accept = ".pdf,application/pdf"
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0]
+                      if (!file) return
+                      if (file.size > 512 * 1024) {
+                        toast.error("El PDF no debe superar los 500 KB")
+                        return
+                      }
+                      try {
+                        const form = new FormData()
+                        form.append("pdf", file)
+                        await certificadosService.uploadPdf(detailCert.id, form)
+                        toast.success("PDF re-subido correctamente")
+                        setDetailPurgado(false)
+                        loadPanel()
+                      } catch {
+                        toast.error("Error al re-subir el PDF")
+                      }
+                    }
+                    input.click()
+                  }}
+                  className="w-full py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 text-amber-800 bg-amber-50 border border-amber-300 hover:bg-amber-100 transition-colors cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Upload04Icon} size={16} />
+                  <span>Re-subir PDF Reemplazo</span>
                 </button>
               )}
             </div>
@@ -371,39 +760,91 @@ export function CertificadosPage() {
         )}
       </AnimatePresence>
 
-      {/* Delete modal */}
+      {/* Modal 3: Eliminar PDF */}
       <AnimatePresence>
         {deleteModal && (
           <ModalOverlay onClose={() => setDeleteModal(null)}>
-            <div className="p-6 border-b flex items-center justify-between" style={{ borderColor: BORDER }}>
-              <h2 className="text-xl font-bold" style={{ color: CHARCOAL }}>Eliminar PDF del certificado</h2>
-              <button onClick={() => setDeleteModal(null)} className="size-10 flex items-center justify-center rounded-full hover:bg-gray-100"><X size={18} /></button>
+            <div className="p-6 border-b border-[#c6c6cd]/20 flex items-center justify-between bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-50 text-[#ba1a1a] flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={AlertCircleIcon} size={22} />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-[#0b1c30]">
+                    Eliminar Archivo PDF del Certificado
+                  </h2>
+                  <p className="text-xs text-[#76777d]">
+                    El registro legal y código del certificado permanecerán en el sistema.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteModal(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl text-[#76777d] hover:text-[#0b1c30] hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <div className="p-6 space-y-3 text-sm">
-              <p style={{ color: CHARCOAL }}>¿Eliminar el archivo PDF del certificado de <strong>{deleteModal.nombre}</strong> — {deleteModal.curso}?</p>
-              <p className="opacity-50">El archivo físico se eliminará del almacenamiento. El registro histórico del certificado y el enlace original se conservarán como constancia. Puede volver a subir un PDF posteriormente.</p>
+
+            <div className="p-6 space-y-3 text-xs sm:text-sm">
+              <p className="text-[#0b1c30] font-medium leading-relaxed">
+                ¿Estás seguro de que deseas eliminar el archivo PDF del certificado emitido a{" "}
+                <strong className="font-bold text-[#ba1a1a]">{deleteModal.nombre}</strong> en el curso{" "}
+                <strong>{deleteModal.curso}</strong>?
+              </p>
+              <div className="p-3.5 rounded-xl bg-gray-50 border border-[#c6c6cd]/20 text-xs text-[#45464d] leading-relaxed">
+                El archivo físico se eliminará del servidor de almacenamiento para optimizar espacio. El registro histórico y el enlace original de verificación pública se conservarán como constancia. Podrás volver a subir un PDF cuando sea necesario.
+              </div>
             </div>
-            <div className="px-6 py-5 bg-gray-50/80 border-t flex justify-end gap-3" style={{ borderColor: BORDER }}>
-              <button onClick={() => setDeleteModal(null)} className="px-6 py-3 rounded-xl text-sm font-bold opacity-50">Cancelar</button>
-              <button onClick={confirmDelete} disabled={deleteSubmitting}
-                className="px-8 py-3 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 disabled:opacity-50">
-                {deleteSubmitting ? "Eliminando..." : "Eliminar PDF"}</button>
+
+            <div className="px-6 py-4 bg-gray-50/70 border-t border-[#c6c6cd]/20 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteModal(null)}
+                disabled={deleteSubmitting}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold border border-[#c6c6cd]/30 bg-white text-[#45464d] hover:bg-[#eff4ff] hover:text-[#0b1c30] transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleteSubmitting}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+              >
+                {deleteSubmitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Eliminando archivo...</span>
+                  </>
+                ) : (
+                  <span>Eliminar archivo PDF</span>
+                )}
+              </button>
             </div>
           </ModalOverlay>
         )}
       </AnimatePresence>
-
     </div>
   )
 }
 
 function ModalOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
-        className="relative bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs"
+    >
+      <div className="absolute inset-0" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 10 }}
+        className="relative bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-[#c6c6cd]/25"
+      >
         {children}
       </motion.div>
     </motion.div>
@@ -412,9 +853,13 @@ function ModalOverlay({ onClose, children }: { onClose: () => void; children: Re
 
 function Ficha({ label, value }: { label: string; value?: string }) {
   return (
-    <div>
-      <p className="text-[9px] font-bold uppercase tracking-widest opacity-30 mb-0.5">{label}</p>
-      <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>{value || "—"}</p>
+    <div className="p-3.5 rounded-xl bg-gray-50/70 border border-[#c6c6cd]/20">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-[#76777d] mb-0.5">
+        {label}
+      </p>
+      <p className="text-xs sm:text-sm font-bold text-[#0b1c30] truncate">
+        {value || "—"}
+      </p>
     </div>
   )
 }

@@ -200,8 +200,8 @@ export const financeService = {
     return response.data.data
   },
 
-  async getPagosPersonal(personaId: string) {
-    const response = await api.get(`/finanzas/egresos/personal/${personaId}`)
+  async getPagosPersonal(personaId: string, page = 1) {
+    const response = await api.get(`/finanzas/egresos/personal/${personaId}`, { params: { page } })
     return response.data
   },
 

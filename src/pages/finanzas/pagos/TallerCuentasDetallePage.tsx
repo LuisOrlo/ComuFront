@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { usePermission } from "@/hooks/usePermission"
-import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -11,9 +10,8 @@ import {
   Download01Icon,
   CheckmarkCircle04Icon,
   MapsLocation01Icon,
-  GroupIcon,
-  ArrowUp01Icon,
-  ArrowDown01Icon,
+  SchoolIcon,
+  Search01Icon,
   Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import {
@@ -26,19 +24,13 @@ import {
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table"
-import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useParams, useNavigate } from "react-router"
 import { generarCuentaTallerPDF } from "@/lib/generarPagosCuentaPDF"
 import { PaginationControls } from "@/components/table/PaginationControls"
-import { HealthBar } from "./sections/HealthBar"
-
-const ACCENT = COLORS.ACCENT
-const CHARCOAL = COLORS.CHARCOAL
-const MUTED = COLORS.TEXT_MUTED
-const BORDER = COLORS.BORDER_SUBTLE
+import { Skeleton } from "@/components/ui/skeleton"
 
 function getNombre(p: any) {
   return p.estudiante_nombre || `${p.nombres || ""} ${p.apellidos || ""}`.trim() || "—"
@@ -79,7 +71,7 @@ export function TallerCuentasDetallePage() {
         const res = await financeService.getTallerFinanciero(id)
         setData(res.datos || res.data || res)
       } catch {
-        toast.error("Error al cargar datos financieros del taller")
+        toast.error("Error al cargar los datos financieros del taller")
       } finally {
         setLoading(false)
       }
@@ -110,117 +102,126 @@ export function TallerCuentasDetallePage() {
     return list
   }, [participantes, search, filtroPago])
 
-  const columns = useMemo<ColumnDef<any>[]>(() => [
-    {
-      id: "index",
-      header: "#",
-      enableSorting: false,
-      cell: ({ row, table }) => {
-        const pageIndex = table.getState().pagination.pageIndex
-        const pageSize = table.getState().pagination.pageSize
-        return pageIndex * pageSize + row.index + 1
+  const columns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        id: "index",
+        header: "#",
+        enableSorting: false,
+        cell: ({ row, table }) => {
+          const pageIndex = table.getState().pagination.pageIndex
+          const pageSize = table.getState().pagination.pageSize
+          return pageIndex * pageSize + row.index + 1
+        },
       },
-    },
-    {
-      id: "nombre",
-      accessorFn: (p: any) => getNombre(p).toLowerCase(),
-      header: "Nombre",
-      enableSorting: true,
-      cell: ({ row }) => {
-        const nombre = getNombre(row.original)
-        return (
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="size-9 rounded-full flex items-center justify-center shrink-0 text-[11px] font-black"
-              style={{ backgroundColor: "oklch(0.95 0.01 45)", color: ACCENT }}
-            >
-              {getInitials(nombre)}
-            </div>
-            <span className="text-xs font-bold truncate max-w-[200px]" style={{ color: CHARCOAL }}>{nombre}</span>
-          </div>
-        )
-      },
-    },
-    {
-      id: "cedula",
-      accessorFn: (p: any) => String(p.cedula || ""),
-      header: "Cédula",
-      enableSorting: false,
-      cell: ({ row }) => <span className="text-xs opacity-60" style={{ color: CHARCOAL }}>{getCedula(row.original)}</span>,
-    },
-    {
-      id: "telefono",
-      accessorFn: (p: any) => String(p.telefono || ""),
-      header: "Teléfono",
-      enableSorting: false,
-      cell: ({ row }) => <span className="text-xs opacity-60" style={{ color: CHARCOAL }}>{getTelefono(row.original)}</span>,
-    },
-    {
-      id: "abonado",
-      accessorFn: (p: any) => Number(p.monto_abonado || 0),
-      header: "Abonado",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <span className="text-xs font-bold text-green-600">
-          ${Number(row.original.monto_abonado || 0).toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      id: "saldo",
-      accessorFn: (p: any) => Number(p.saldo_pendiente || 0),
-      header: "Saldo",
-      enableSorting: true,
-      cell: ({ row }) => {
-        const saldoM = Number(row.original.saldo_pendiente || 0)
-        return (
-          <span className={cn("text-xs font-bold", saldoM > 0 ? "text-red-600" : "text-green-600")}>
-            ${saldoM.toLocaleString()}
-          </span>
-        )
-      },
-    },
-    {
-      id: "acciones",
-      header: "Acciones",
-      enableSorting: false,
-      cell: ({ row }) => {
-        const p = row.original
-        const pagadoCompleto = Number(p.saldo_pendiente || 0) <= 0
-        const participanteId = p.id || p.participante_id
-        const isExpanded = expandedParticipant === participanteId
-        return (
-          <div className="flex items-center gap-1">
-            {pagadoCompleto ? (
-              <span className="inline-flex gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-100 text-green-700 whitespace-nowrap">
-                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                Pagado
+      {
+        id: "nombre",
+        accessorFn: (p: any) => getNombre(p).toLowerCase(),
+        header: "Participante",
+        enableSorting: true,
+        cell: ({ row }) => {
+          const nombre = getNombre(row.original)
+          return (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="size-8 rounded-full bg-orange-100 text-[#fd761a] flex items-center justify-center shrink-0 text-xs font-bold shadow-2xs">
+                {getInitials(nombre)}
+              </div>
+              <span className="font-semibold text-slate-900 truncate max-w-[200px]" title={nombre}>
+                {nombre}
               </span>
-            ) : isAdmin ? (
-              <button
-                onClick={() => navigate(`/finanzas/pagos/cuentas/talleres/${id}/participante/${participanteId}`)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
-                style={{ backgroundColor: ACCENT }}
-              >
-                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                Registrar cobro
-              </button>
-            ) : null}
-            {p.motivo_ajuste && (
-              <button
-                onClick={() => setExpandedParticipant(isExpanded ? null : participanteId)}
-                className="size-6 rounded flex items-center justify-center text-[10px] font-bold hover:bg-gray-100 transition-colors"
-                style={{ color: MUTED }}
-                title="Ver ajustes"
-              >
-                {isExpanded ? "▲" : "▼"}
-              </button>
-            )}
-          </div>
-        )
+            </div>
+          );
+        },
       },
-    },
-  ], [isAdmin, navigate, id, expandedParticipant])
+      {
+        id: "cedula",
+        accessorFn: (p: any) => String(p.cedula || ""),
+        header: "Cédula",
+        enableSorting: false,
+        cell: ({ row }) => <span className="text-slate-600">{getCedula(row.original)}</span>,
+      },
+      {
+        id: "telefono",
+        accessorFn: (p: any) => String(p.telefono || ""),
+        header: "Teléfono",
+        enableSorting: false,
+        cell: ({ row }) => <span className="text-slate-600">{getTelefono(row.original)}</span>,
+      },
+      {
+        id: "abonado",
+        accessorFn: (p: any) => Number(p.monto_abonado || 0),
+        header: "Abonado",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="font-bold text-emerald-600">
+            ${Number(row.original.monto_abonado || 0).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "saldo",
+        accessorFn: (p: any) => Number(p.saldo_pendiente || 0),
+        header: "Saldo",
+        enableSorting: true,
+        cell: ({ row }) => {
+          const saldoM = Number(row.original.saldo_pendiente || 0)
+          return (
+            <span className={cn("font-bold", saldoM > 0 ? "text-rose-600" : "text-emerald-600")}>
+              ${saldoM.toLocaleString()}
+            </span>
+          )
+        },
+      },
+      {
+        id: "acciones",
+        header: "Acciones",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const p = row.original
+          const pagadoCompleto = Number(p.saldo_pendiente || 0) <= 0
+          const participanteId = p.id || p.participante_id
+          const isExpanded = expandedParticipant === participanteId
+          return (
+            <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+              {pagadoCompleto ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
+                  Pagado
+                </span>
+              ) : isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/finanzas/pagos/cuentas/talleres/${id}/participante/${participanteId}`)
+                  }
+                  className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-semibold text-white bg-[#fd761a] hover:bg-[#e06513] shadow-2xs transition-all active:scale-[0.98]"
+                >
+                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={13} />
+                  Registrar cobro
+                </button>
+              ) : null}
+              {p.motivo_ajuste && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedParticipant(isExpanded ? null : participanteId)}
+                  className={cn(
+                    "size-7 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors",
+                    isExpanded
+                      ? "bg-slate-200 text-slate-800 border-slate-300"
+                      : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                  )}
+                  title={isExpanded ? "Ocultar ajuste" : "Ver ajuste"}
+                >
+                  {isExpanded ? "▲" : "▼"}
+                </button>
+              )}
+            </div>
+          )
+        },
+      },
+    ],
+    [isAdmin, navigate, id, expandedParticipant]
+  )
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -239,292 +240,277 @@ export function TallerCuentasDetallePage() {
     setExportando(true)
     try {
       generarCuentaTallerPDF(data)
-      toast.success("PDF exportado")
-    } catch { toast.error("Error al exportar PDF") }
-    finally { setExportando(false) }
+      toast.success("PDF exportado correctamente")
+    } catch {
+      toast.error("Error al exportar el PDF")
+    } finally {
+      setExportando(false)
+    }
   }
 
   if (loading) {
     return (
-      <div className="px-8 py-6">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-sm font-medium opacity-40" style={{ color: CHARCOAL }}>
-            Cargando datos del taller...
-          </div>
-        </div>
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+        <Skeleton className="h-8 w-36 rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-96 w-full rounded-2xl" />
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="px-8 py-6">
-        <div className="flex items-center justify-center py-20">
-          <div className="text-sm font-medium opacity-40" style={{ color: CHARCOAL }}>
-            Taller no encontrado
-          </div>
-        </div>
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h3 className="text-base font-bold text-slate-800">Taller no encontrado</h3>
+        <p className="text-xs text-slate-500 mt-1">No se encontró información financiera para este taller.</p>
       </div>
     )
   }
 
-  const pctRecaudado = (totales.esperado || 0) > 0 ? ((totales.recaudado || 0) / totales.esperado) * 100 : 0
-  const pctColor = pctRecaudado >= 80 ? "oklch(0.55 0.15 150)" : pctRecaudado >= 50 ? "oklch(0.65 0.15 75)" : "oklch(0.5 0.15 20)"
+  const pctRecaudado =
+    (totales.esperado || 0) > 0 ? ((totales.recaudado || 0) / totales.esperado) * 100 : 0
+  const totalSaldo = Math.max(0, (totales.esperado || 0) - (totales.recaudado || 0))
 
   return (
-    <div className="px-8 py-6">
-
-      <button
-        onClick={() => navigate("/finanzas/pagos/cuentas/talleres")}
-        className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
-        style={{ color: CHARCOAL }}
-      >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver a Talleres
-      </button>
-
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
-      >
-        <div
-          className="rounded-2xl border bg-white p-6"
-          style={{ borderColor: BORDER }}
+    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+      {/* Botón Volver */}
+      <div>
+        <button
+          type="button"
+          onClick={() => navigate("/finanzas/pagos/cuentas/talleres")}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-white shadow-2xs transition-all active:scale-[0.98]"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-black" style={{ color: CHARCOAL }}>
-              {taller.nombre || "Taller"}
-            </h2>
-            <button
-              onClick={handleExportPDF}
-              disabled={exportando}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-              style={{ color: ACCENT, backgroundColor: `${ACCENT}15` }}
-            >
-              <HugeiconsIcon icon={Download01Icon} size={14} />
-              {exportando ? "Exportando..." : "Exportar PDF"}
-            </button>
-          </div>
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={15} />
+          <span>Volver a Talleres</span>
+        </button>
+      </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <InfoBadge icon={UserIcon} label="Instructor" value={taller.instructor_nombre || taller.instructor || "—"} />
-            <InfoBadge icon={Calendar02Icon} label="Fecha" value={taller.fecha ? new Date(taller.fecha).toLocaleDateString("es-ES") : "—"} />
-            <InfoBadge icon={Money02Icon} label="Precio" value={`$${Number(taller.precio || 0).toLocaleString()}`} />
-            <InfoBadge icon={MapsLocation01Icon} label="Modalidad" value={taller.modalidad || "—"} />
-            <InfoBadge icon={GroupIcon} label="Inscritos" value={`${totales.inscritos || 0} / ${taller.capacidad || "∞"}`} />
-          </div>
-        </div>
-
-        <div
-          className="rounded-2xl border bg-white overflow-hidden"
-          style={{ borderColor: BORDER }}
-        >
-          <div className="p-6 border-b" style={{ borderColor: BORDER }}>
-            <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-base font-black" style={{ color: CHARCOAL }}>
-                  Participantes
-                </h3>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold"
-                    style={{ color: ACCENT, backgroundColor: `${ACCENT}12` }}
-                  >
-                    <HugeiconsIcon icon={GroupIcon} size={12} />
-                    {totales.inscritos || 0} de {taller.capacidad || "∞"} inscritos
-                  </span>
-                  {taller.capacidad && Number(taller.capacidad) > 0 && (
-                    <span className="text-[10px] opacity-40" style={{ color: CHARCOAL }}>
-                      quedan {Math.max(0, Number(taller.capacidad) - (totales.inscritos || 0))} cupos
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: MUTED }}>
-                  Recaudado del taller
-                </p>
-                <div className="flex items-center justify-end gap-2 mt-0.5">
-                  <p className="text-xs font-black" style={{ color: CHARCOAL }}>
-                    ${(totales.recaudado || 0).toLocaleString()}
-                    <span className="opacity-40 font-medium"> de ${(totales.esperado || 0).toLocaleString()}</span>
-                  </p>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: pctColor, backgroundColor: `${pctColor}1a` }}>
-                    {Math.round(pctRecaudado)}%
-                  </span>
-                </div>
+      {/* Tarjeta de Encabezado del Taller */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#fd761a] shrink-0 shadow-2xs">
+              <HugeiconsIcon icon={SchoolIcon} size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
+                {taller.nombre || "Taller"}
+              </h2>
+              <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                <span>{totales.inscritos || 0} participante{totales.inscritos !== 1 ? "s" : ""}</span>
+                <span>•</span>
+                <span>Capacidad: {taller.capacidad || "Ilimitada"}</span>
               </div>
             </div>
-            <HealthBar recaudado={Number(totales.recaudado || 0)} total={Number(totales.esperado || 0)} />
           </div>
 
-          <div className="px-6 py-3 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={exportando}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-semibold text-[#fd761a] bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            <HugeiconsIcon icon={Download01Icon} size={15} />
+            <span>{exportando ? "Exportando..." : "Exportar PDF"}</span>
+          </button>
+        </div>
+
+        {/* Metadatos en Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-slate-100 text-xs">
+          <InfoItem icon={UserIcon} label="Instructor" value={taller.instructor_nombre || taller.instructor || "—"} />
+          <InfoItem
+            icon={Calendar02Icon}
+            label="Fecha"
+            value={taller.fecha ? new Date(taller.fecha).toLocaleDateString("es-ES") : "—"}
+          />
+          <InfoItem icon={Money02Icon} label="Precio Taller" value={`$${Number(taller.precio || 0).toLocaleString()}`} />
+          <InfoItem icon={MapsLocation01Icon} label="Modalidad" value={taller.modalidad || "—"} />
+          <InfoItem icon={UserIcon} label="Inscritos" value={`${totales.inscritos || 0} / ${taller.capacidad || "∞"}`} />
+        </div>
+
+        {/* Progreso de Recaudación */}
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-600 font-semibold">Recaudación Total del Taller</span>
+            <div className="flex items-center gap-3">
+              <span className="text-emerald-700 font-bold">Cobrado: ${(totales.recaudado || 0).toLocaleString()}</span>
+              <span className="text-slate-400">/</span>
+              <span className="text-slate-800 font-bold">Total: ${(totales.esperado || 0).toLocaleString()}</span>
+              {totalSaldo > 0 && (
+                <>
+                  <span className="text-slate-400">/</span>
+                  <span className="text-rose-600 font-bold">Saldo: ${totalSaldo.toLocaleString()}</span>
+                </>
+              )}
+              <span className="font-extrabold text-[#fd761a]">({Math.round(pctRecaudado)}%)</span>
+            </div>
+          </div>
+          <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                pctRecaudado >= 80 ? "bg-emerald-500" : pctRecaudado >= 40 ? "bg-amber-500" : "bg-[#fd761a]"
+              )}
+              style={{ width: `${Math.min(pctRecaudado, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Tabla de Participantes */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+        {/* Controles de la Tabla */}
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white">
+          <h3 className="text-sm font-bold text-slate-900">
+            Lista de Participantes ({filtered.length})
+          </h3>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Filtros de pago */}
+            <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/60">
+              {[
+                { key: "todos", label: "Todos" },
+                { key: "con_saldo", label: "Con saldo" },
+                { key: "pagado", label: "Pagado" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFiltroPago(f.key)}
+                  className={cn(
+                    "px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                    filtroPago === f.key
+                      ? "bg-white text-slate-900 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Búsqueda */}
             <div className="relative">
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
               <input
                 type="text"
-                placeholder="Buscar por nombre o cédula..."
+                placeholder="Buscar participante..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-56 pl-3 pr-8 py-2 rounded-xl border text-xs font-medium outline-none transition-all focus:w-64"
-                style={{ borderColor: BORDER, color: CHARCOAL }}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-44 sm:w-52 h-8 pl-8 pr-7 text-xs rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 focus:outline-none focus:bg-white focus:border-[#fd761a] transition-all"
               />
               {search && (
                 <button
+                  type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} style={{ color: MUTED }} />
+                  <HugeiconsIcon icon={Cancel01Icon} size={12} />
                 </button>
               )}
             </div>
-            <select
-              value={filtroPago}
-              onChange={e => setFiltroPago(e.target.value)}
-              className="px-3 py-2 rounded-xl border text-xs font-medium outline-none bg-white"
-              style={{ borderColor: BORDER, color: CHARCOAL }}
-            >
-              <option value="todos">Todos</option>
-              <option value="con_saldo">Con saldo</option>
-              <option value="pagado">Pagado completo</option>
-            </select>
-            <span className="text-[10px] opacity-40 ml-auto" style={{ color: CHARCOAL }}>
-              {filtered.length} participante{filtered.length !== 1 ? "s" : ""}
-            </span>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[700px] [&_td]:border [&_th]:border [&_td]:border-[oklch(0.85_0_0)] [&_th]:border-[oklch(0.85_0_0)]">
-              <thead>
-                {table.getHeaderGroups().map((hg) => (
-                  <tr key={hg.id} style={{ backgroundColor: "oklch(0.97 0 0)" }}>
-                    {hg.headers.map((header) => {
-                      const canSort = header.column.getCanSort()
-                      const sorted = header.column.getIsSorted()
-                      const stickyIndex = header.id === "index"
-                      const stickyNombre = header.id === "nombre"
-                      const alignRight = header.id === "abonado" || header.id === "saldo"
-                      return (
-                        <th
-                          key={header.id}
-                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                          className={cn(
-                            "px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-40",
-                            canSort && "cursor-pointer hover:opacity-70 select-none",
-                            stickyIndex && "sticky left-0 z-10 w-[36px] min-w-[36px] text-center px-2",
-                            stickyNombre && "sticky z-10"
-                          )}
-                          style={{
-                            color: CHARCOAL,
-                            backgroundColor: "oklch(0.97 0 0)",
-                            ...(stickyIndex ? { left: 0 } : {}),
-                            ...(stickyNombre ? { left: 36 } : {}),
-                          }}
-                        >
-                          <div className={cn("flex items-center gap-1", alignRight && "justify-end")}>
-                            <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                            {canSort && (
-                              <span className="inline-flex flex-col leading-none">
-                                <HugeiconsIcon icon={ArrowUp01Icon} size={9} className={sorted === "asc" ? "" : "opacity-40"} />
-                                <HugeiconsIcon icon={ArrowDown01Icon} size={9} className={sorted === "desc" ? "" : "opacity-40"} />
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: BORDER }}>
-                {participantes.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-12 text-center opacity-40 text-sm" style={{ color: CHARCOAL }}>
-                      No hay participantes registrados
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-12 text-center opacity-40 text-sm" style={{ color: CHARCOAL }}>
-                      No se encontraron participantes
-                    </td>
-                  </tr>
-                ) : (
-                  table.getRowModel().rows.map((row) => {
-                    const p = row.original
-                    const isExpanded = expandedParticipant === (p.id || p.participante_id)
-                    return (
-                      <Fragment key={row.id}>
-                        <tr
-                          className="transition-colors"
-                          style={{ backgroundColor: row.index % 2 === 0 ? "transparent" : "oklch(0.97 0 0 / 0.5)" }}
-                        >
-                          {row.getVisibleCells().map((cell) => {
-                            const stickyIndex = cell.column.id === "index"
-                            const stickyNombre = cell.column.id === "nombre"
-                            const alignRight = cell.column.id === "abonado" || cell.column.id === "saldo"
-                            return (
-                              <td
-                                key={cell.id}
-                                className={cn(
-                                  "px-3 py-3",
-                                  stickyIndex && "sticky left-0 z-10 w-[36px] min-w-[36px] text-center px-2",
-                                  stickyNombre && "sticky z-10",
-                                  alignRight && "text-right"
-                                )}
-                                style={{
-                                  color: CHARCOAL,
-                                  ...((stickyIndex || stickyNombre) ? {
-                                    backgroundColor: row.index % 2 === 0 ? "#fff" : "oklch(0.97 0 0 / 0.5)",
-                                    left: stickyIndex ? 0 : 36,
-                                  } : {}),
-                                }}
-                              >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                        {isExpanded && p.motivo_ajuste && (
-                          <tr style={{ backgroundColor: "oklch(0.64 0.2 150 / 0.06)" }}>
-                            <td colSpan={7} className="px-5 py-3">
-                              <div className="flex items-center gap-2 text-[11px]" style={{ color: CHARCOAL }}>
-                                <span className="font-bold">Ajuste:</span>
-                                {Number(p.precio_taller || 0) > 0 && Number(p.precio_taller) !== Number(p.monto_total || 0) && (
-                                  <span className="line-through opacity-40">${Number(p.precio_taller).toLocaleString()}</span>
-                                )}
-                                <span className="text-green-700 font-bold">→ ${Number(p.monto_total || taller.precio || 0).toLocaleString()}</span>
-                                <span className="opacity-50 italic">— {p.motivo_ajuste}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {filtered.length > 0 && (
-            <div className="px-4 py-3 border-t" style={{ borderColor: BORDER }}>
-              <PaginationControls table={table} pageSizes={[10, 25, 50]} />
-            </div>
-          )}
         </div>
-      </motion.div>
+
+        {/* Tabla */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  {hg.headers.map((header) => {
+                    const isAcciones = header.id === "acciones"
+                    return (
+                      <th
+                        key={header.id}
+                        className={cn(
+                          "px-4 py-3",
+                          isAcciones ? "text-right" : "text-left"
+                        )}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    )
+                  })}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-slate-400">
+                    No se encontraron participantes con los filtros actuales.
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => {
+                  const p = row.original
+                  const isExpanded = expandedParticipant === (p.id || p.participante_id)
+
+                  return (
+                    <Fragment key={row.id}>
+                      <tr className="hover:bg-slate-50/60 transition-colors">
+                        {row.getVisibleCells().map((cell) => {
+                          const isAcciones = cell.column.id === "acciones"
+                          return (
+                            <td
+                              key={cell.id}
+                              className={cn(
+                                "px-4 py-3",
+                                isAcciones ? "text-right" : "text-left"
+                              )}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          )
+                        })}
+                      </tr>
+
+                      {isExpanded && p.motivo_ajuste && (
+                        <tr className="bg-orange-50/30">
+                          <td colSpan={7} className="px-6 py-2.5 border-t border-slate-100">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="font-bold text-slate-800">Ajuste / Descuento:</span>
+                              <span className="text-slate-700 italic">"{p.motivo_ajuste}"</span>
+                              {p.monto_original && (
+                                <span className="text-slate-400">
+                                  (Original: ${Number(p.monto_original).toLocaleString()} → Cobrado: ${Number(p.monto_ajustado || p.monto_total || 0).toLocaleString()})
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer con Paginación Integrada */}
+        <div className="px-4 py-3 border-t border-slate-100 bg-white">
+          <PaginationControls table={table} pageSizes={[10, 25, 50]} />
+        </div>
+      </div>
     </div>
   )
 }
 
-function InfoBadge({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoItem({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2" style={{ color: CHARCOAL }}>
-      <HugeiconsIcon icon={Icon} size={14} style={{ color: MUTED }} />
-      <div>
-        <p className="text-[9px] font-bold uppercase opacity-40">{label}</p>
-        <p className="text-xs font-bold">{value}</p>
+    <div className="flex items-center gap-2">
+      <div className="size-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+        <HugeiconsIcon icon={Icon} size={14} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        <p className="text-xs font-semibold text-slate-800 truncate">{value}</p>
       </div>
     </div>
   )

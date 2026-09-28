@@ -15,6 +15,7 @@ import {
   MapsLocation01Icon,
 } from "@hugeicons/core-free-icons"
 import { EF } from "../../AprobacionHelpers"
+import { ESTADO_CIVIL_OPTIONS, NIVEL_EDUCATIVO_OPTIONS } from "../../AprobacionUtils"
 import { CiudadBadge } from "../../../estudiantes/components/Badges"
 import { toast } from "sonner"
 
@@ -164,6 +165,7 @@ export function SolicitudEstudianteTab({
               label="Estado Civil"
               field="estado_civil"
               data={datos}
+              options={ESTADO_CIVIL_OPTIONS}
               editField={editField}
               editVal={editVal}
               onEdit={startEdit}
@@ -178,6 +180,7 @@ export function SolicitudEstudianteTab({
                 label="Nivel Educativo"
                 field="nivel_educativo"
                 data={datos}
+                options={NIVEL_EDUCATIVO_OPTIONS}
                 editField={editField}
                 editVal={editVal}
                 onEdit={startEdit}
@@ -206,6 +209,8 @@ export function SolicitudEstudianteTab({
                 label="Correo electrónico"
                 field="correo"
                 data={datos}
+                inputType="email"
+                uppercase={false}
                 editField={editField}
                 editVal={editVal}
                 onEdit={startEdit}
@@ -290,23 +295,20 @@ export function SolicitudEstudianteTab({
               onCancel={cancelEdit}
               saving={savingEdit}
             />
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/60">
-              <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={MapsLocation01Icon} size={16} className="text-[#fd761a]" />
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Ciudad</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CiudadBadge ciudad={datos.ciudad} />
-                <button
-                  type="button"
-                  onClick={() => startEdit("ciudad", datos.ciudad || "")}
-                  className="text-slate-400 hover:text-[#fd761a] p-1 transition-colors"
-                  title="Editar ciudad"
-                >
-                  <HugeiconsIcon icon={Edit01Icon} size={14} />
-                </button>
-              </div>
-            </div>
+            <EF
+              icon={MapsLocation01Icon}
+              label="Ciudad"
+              field="ciudad"
+              data={datos}
+              customDisplay={<CiudadBadge ciudad={datos.ciudad ? String(datos.ciudad).toUpperCase() : ""} />}
+              editField={editField}
+              editVal={editVal}
+              onEdit={startEdit}
+              onChange={setEditVal}
+              onSave={saveEdit}
+              onCancel={cancelEdit}
+              saving={savingEdit}
+            />
           </div>
         </div>
       </div>

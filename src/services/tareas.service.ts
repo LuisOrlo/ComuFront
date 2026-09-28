@@ -18,6 +18,7 @@ export interface TareaStaff {
   estado: "pendiente" | "en_progreso" | "completada" | "cancelada"
   created_at: string
   origen?: "manual" | "edicion_video"
+  trabajo_id?: string
 }
 
 export interface TareasResponse {

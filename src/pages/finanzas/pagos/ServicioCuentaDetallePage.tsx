@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
 import { useLocation, useNavigate } from "react-router"
 import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -13,23 +13,18 @@ import {
   CheckmarkCircle04Icon,
   Download01Icon,
   UserIcon,
-  Tick02Icon,
   CallIcon,
   Mail01Icon,
   IdIcon,
   Location01Icon,
+  EyeIcon,
+  Cancel01Icon,
+  Calendar02Icon,
 } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { toast } from "sonner"
 import { financeService } from "@/services/finance.service"
 import { generarCuentaServicioPDF } from "@/lib/generarPagosCuentaPDF"
-import { HealthBar } from "./sections/HealthBar"
-
-const ACCENT = COLORS.ACCENT
-const CHARCOAL = COLORS.CHARCOAL
-const MUTED = COLORS.TEXT_MUTED
-const BORDER = COLORS.BORDER_SUBTLE
 
 const SERVICIO_FKS = [
   "reserva_podcast_id",
@@ -56,16 +51,16 @@ const TIPO_TO_BACKEND: Record<string, string> = {
 }
 
 const TIPO_BADGE: Record<string, string> = {
-  "Podcast": "bg-blue-50 text-blue-700",
-  "Aula": "bg-violet-50 text-violet-700",
-  "Equipo": "bg-amber-50 text-amber-700",
-  "Edición de Video": "bg-orange-50 text-orange-700",
-  "Radio": "bg-pink-50 text-pink-700",
-  "Streaming": "bg-teal-50 text-teal-700",
-  "Producción": "bg-lime-50 text-lime-700",
-  "Clase Extra": "bg-cyan-50 text-cyan-700",
-  "Asesoría": "bg-yellow-50 text-yellow-700",
-  "Servicio": "bg-gray-50 text-gray-700",
+  "Podcast": "bg-blue-50 text-blue-700 border-blue-200/60",
+  "Aula": "bg-violet-50 text-violet-700 border-violet-200/60",
+  "Equipo": "bg-amber-50 text-amber-700 border-amber-200/60",
+  "Edición de Video": "bg-orange-50 text-orange-700 border-orange-200/60",
+  "Radio": "bg-pink-50 text-pink-700 border-pink-200/60",
+  "Streaming": "bg-teal-50 text-teal-700 border-teal-200/60",
+  "Producción": "bg-lime-50 text-lime-700 border-lime-200/60",
+  "Clase Extra": "bg-cyan-50 text-cyan-700 border-cyan-200/60",
+  "Asesoría": "bg-yellow-50 text-yellow-700 border-yellow-200/60",
+  "Servicio": "bg-slate-50 text-slate-700 border-slate-200",
 }
 
 function getInfoServicio(entry: any): { tipo: string; servicioId: string } | null {
@@ -145,10 +140,19 @@ export function ServicioCuentaDetallePage() {
 
   if (!state || !entry) {
     return (
-      <div className="px-8 py-6">
-        <div className="flex items-center justify-center py-20">
-          <p className="text-sm font-medium opacity-40" style={{ color: CHARCOAL }}>
-            Servicio no encontrado
+      <div className="space-y-6">
+        <button
+          type="button"
+          onClick={() => navigate("/finanzas/pagos/cuentas/servicios")}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={15} />
+          <span>Volver a Servicios</span>
+        </button>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-xs">
+          <p className="text-sm font-medium text-slate-400">
+            Servicio no encontrado o enlace caducado
           </p>
         </div>
       </div>
@@ -157,28 +161,41 @@ export function ServicioCuentaDetallePage() {
 
   const { tipo, name, cliente, total, cobrado, saldo } = state
   const puedePagar = Boolean(cuentaId || infoServicio)
-  const pagado = Number(saldo || 0) <= 0
+  const numTotal = Number(total || 0)
+  const numCobrado = Number(cobrado || 0)
+  const numSaldo = Number(saldo || 0)
+  const pagado = numSaldo <= 0
+  const pctCobrado = numTotal > 0 ? (numCobrado / numTotal) * 100 : 0
   const nombreServicio = name && name !== "—" ? name : tipo || "Servicio"
   const contacto = getClienteContacto(entry)
 
   const handleRegistrarPago = () => {
     if (cuentaId) {
       navigate(`/finanzas/pagos/cuentas/servicios/pago/${cuentaId}`, {
-        state: { cuentaId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio: nombreServicio },
+        state: { cuentaId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio },
       })
     } else if (infoServicio) {
       navigate(`/finanzas/pagos/cuentas/servicios/pago/${infoServicio.servicioId}`, {
-        state: { tipo: infoServicio.tipo, servicioId: infoServicio.servicioId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio: nombreServicio },
+        state: { tipo: infoServicio.tipo, servicioId: infoServicio.servicioId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio },
       })
     }
   }
 
   const handleExportPDF = () => {
     try {
-      generarCuentaServicioPDF({ nombre: nombreServicio, cliente, total, cobrado, saldo, transacciones })
-      toast.success("PDF exportado")
+      generarCuentaServicioPDF({
+        nombre: nombreServicio,
+        tipo,
+        cliente,
+        contacto,
+        total,
+        cobrado,
+        saldo,
+        transacciones,
+      })
+      toast.success("PDF exportado correctamente")
     } catch {
-      toast.error("Error al exportar PDF")
+      toast.error("Error al exportar el PDF")
     }
   }
 
@@ -192,261 +209,363 @@ export function ServicioCuentaDetallePage() {
   const tieneContacto = itemsContacto.some((i) => i.value)
 
   return (
-    <div className="px-8 py-6">
+    <div className="space-y-6">
+      {/* Botón Volver */}
       <button
+        type="button"
         onClick={() => navigate("/finanzas/pagos/cuentas/servicios")}
-        className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all mb-4"
-        style={{ color: CHARCOAL }}
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs"
       >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-        Volver a Servicios
+        <HugeiconsIcon icon={ArrowLeft01Icon} size={15} />
+        <span>Volver a Servicios</span>
       </button>
 
+      {/* Ficha Principal del Servicio */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
+        className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-6"
       >
-        <div
-          className="rounded-2xl border bg-white p-6"
-          style={{ borderColor: BORDER }}
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="size-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
-                <HugeiconsIcon icon={AiFolderIcon} size={22} style={{ color: ACCENT }} />
-              </div>
-              <div className="min-w-0">
-                <span className={cn(
-                  "inline-block text-[10px] font-bold px-2 py-0.5 rounded mb-1",
-                  TIPO_BADGE[tipo || "Servicio"] || "bg-gray-50 text-gray-700"
-                )}>
+        {/* Cabecera */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#fd761a] shrink-0">
+              <HugeiconsIcon icon={AiFolderIcon} size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span
+                  className={cn(
+                    "inline-block text-[11px] font-bold px-2.5 py-0.5 rounded-md border",
+                    TIPO_BADGE[tipo || "Servicio"] || "bg-slate-50 text-slate-700 border-slate-200"
+                  )}
+                >
                   {tipo || "Servicio"}
                 </span>
-                <h2 className="text-xl font-black truncate" style={{ color: CHARCOAL }}>
-                  {nombreServicio}
-                </h2>
-                <p className="text-xs opacity-50 mt-0.5 flex items-center gap-1.5">
-                  <HugeiconsIcon icon={UserIcon} size={12} style={{ color: MUTED }} />
-                  {cliente || "Cliente"}
-                </p>
+                <span className="text-xs text-slate-400">•</span>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+                  <HugeiconsIcon icon={UserIcon} size={13} className="text-slate-400" />
+                  {cliente || "Cliente no especificado"}
+                </span>
               </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+                {nombreServicio}
+              </h2>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all shadow-xs active:scale-[0.98]"
+            >
+              <HugeiconsIcon icon={Download01Icon} size={15} className="text-slate-500" />
+              <span>Exportar PDF</span>
+            </button>
+            {isAdmin && puedePagar && (
               <button
-                onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                style={{ color: ACCENT, backgroundColor: `${ACCENT}15` }}
+                type="button"
+                onClick={handleRegistrarPago}
+                disabled={pagado}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-[#e06512] transition-all shadow-xs active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <HugeiconsIcon icon={Download01Icon} size={14} />
-                Exportar PDF
+                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={15} />
+                <span>{pagado ? "Cuenta Saldada" : "Registrar cobro"}</span>
               </button>
-              {isAdmin && puedePagar && (
-                <button
-                  onClick={handleRegistrarPago}
-                  disabled={pagado}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
-                  style={{ backgroundColor: ACCENT }}
-                >
-                  <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                  Registrar pago
-                </button>
-              )}
+            )}
+          </div>
+        </div>
+
+        {/* Desglose Financiero */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+          <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0 shadow-xs">
+              <HugeiconsIcon icon={Money02Icon} size={17} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Esperado</p>
+              <p className="text-sm sm:text-base font-black text-slate-900">${numTotal.toLocaleString()}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-            <InfoBadge icon={Money02Icon} label="Total esperado" value={`$${(total || 0).toLocaleString()}`} />
-            <InfoBadge icon={CheckmarkCircle04Icon} label="Abonado" value={`$${(cobrado || 0).toLocaleString()}`} />
-            <InfoBadge icon={Clock01Icon} label="Saldo pendiente" value={`$${(saldo || 0).toLocaleString()}`} />
-            <EstadoBadge saldo={Number(saldo || 0)} cobrado={Number(cobrado || 0)} />
+          <div className="p-3.5 rounded-xl bg-emerald-50/40 border border-emerald-100/60 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0 shadow-xs">
+              <HugeiconsIcon icon={CheckmarkCircle04Icon} size={17} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/80">Cobrado / Abonado</p>
+              <p className="text-sm sm:text-base font-black text-emerald-700">${numCobrado.toLocaleString()}</p>
+            </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: MUTED }}>
-                Avance de cobro
+          <div className="p-3.5 rounded-xl bg-rose-50/40 border border-rose-100/60 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0 shadow-xs">
+              <HugeiconsIcon icon={Clock01Icon} size={17} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600/80">Saldo Pendiente</p>
+              <p className="text-sm sm:text-base font-black text-rose-700">${numSaldo.toLocaleString()}</p>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-xs">
+              <span
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full",
+                  pagado
+                    ? "bg-emerald-500 ring-2 ring-emerald-200"
+                    : numCobrado > 0
+                    ? "bg-amber-500 ring-2 ring-amber-200"
+                    : "bg-rose-500 ring-2 ring-rose-200"
+                )}
+              />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Estado de Cuenta</p>
+              <p
+                className={cn(
+                  "text-xs sm:text-sm font-black",
+                  pagado ? "text-emerald-700" : numCobrado > 0 ? "text-amber-700" : "text-rose-700"
+                )}
+              >
+                {pagado ? "Completamente Pagado" : numCobrado > 0 ? "Cobro Parcial" : "Pendiente de Pago"}
               </p>
-              <span className="text-[10px] font-bold" style={{ color: CHARCOAL }}>
-                {Math.round((Number(total || 0) > 0 ? (Number(cobrado || 0) / Number(total)) * 100 : 0))}%
+            </div>
+          </div>
+        </div>
+
+        {/* Barra de Progreso de Recaudación */}
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-600 font-semibold">Avance de recaudación</span>
+            <div className="flex items-center gap-2 font-bold">
+              <span className="text-slate-900">{Math.round(pctCobrado)}%</span>
+              <span className="text-slate-400 font-normal">
+                (${numCobrado.toLocaleString()} de ${numTotal.toLocaleString()})
               </span>
             </div>
-            <HealthBar recaudado={Number(cobrado || 0)} total={Number(total || 0)} />
           </div>
-        </div>
-
-        <div
-          className="rounded-2xl border bg-white p-4 sm:p-6"
-          style={{ borderColor: BORDER }}
-        >
-          <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5 flex items-center gap-2" style={{ color: MUTED }}>
-            <HugeiconsIcon icon={Money01Icon} size={14} />
-            Historial de Pagos
-          </h3>
-          {loadingHist ? (
-            <p className="text-xs font-medium opacity-50 py-6 text-center" style={{ color: CHARCOAL }}>
-              Cargando pagos...
-            </p>
-          ) : transacciones.length > 0 ? (
-            <div className="space-y-3">
-              {transacciones.map((t: any, idx: number) => (
-                <div key={t.id || idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border" style={{ borderColor: BORDER, backgroundColor: "oklch(0.99 0 0)" }}>
-                  <div
-                    className="size-9 sm:size-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      backgroundColor:
-                        t.estado_verificacion === "aprobado" ? "oklch(0.9 0.1 150 / 0.3)" :
-                        t.estado_verificacion === "rechazado" ? "oklch(0.9 0.1 20 / 0.3)" :
-                        "oklch(0.9 0.1 75 / 0.3)",
-                    }}
-                  >
-                    <HugeiconsIcon
-                      icon={Money01Icon}
-                      size={16}
-                      style={{
-                        color:
-                          t.estado_verificacion === "aprobado" ? "oklch(0.5 0.15 150)" :
-                          t.estado_verificacion === "rechazado" ? "oklch(0.5 0.15 20)" :
-                          "oklch(0.65 0.15 75)",
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-black" style={{ color: CHARCOAL }}>
-                        ${Number(t.monto || 0).toLocaleString()}
-                      </span>
-                      <span className={cn(
-                        "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full",
-                        t.estado_verificacion === "aprobado" ? "bg-green-100 text-green-700" :
-                        t.estado_verificacion === "rechazado" ? "bg-red-100 text-red-700" :
-                        "bg-amber-100 text-amber-700"
-                      )}>
-                        {t.estado_verificacion === "aprobado" ? "Verificado" :
-                         t.estado_verificacion === "rechazado" ? "Rechazado" : "Pendiente"}
-                      </span>
-                    </div>
-                    <p className="text-xs mt-0.5" style={{ color: MUTED }}>
-                      {t.fecha_pago ? new Date(t.fecha_pago).toLocaleDateString("es-ES", { year: "numeric", month: "short", day: "numeric" }) : "—"}
-                      {t.metodo_pago ? ` · ${t.metodo_pago}` : ""}
-                    </p>
-                  </div>
-                  {t.comprobante_url && (
-                    <button
-                      onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold shrink-0 hover:underline"
-                      style={{ color: ACCENT }}
-                    >
-                      <HugeiconsIcon icon={Tick02Icon} size={12} />
-                      Ver comp.
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <HugeiconsIcon icon={Money01Icon} size={18} style={{ color: MUTED }} />
-              <p className="text-xs font-medium opacity-50 mt-2" style={{ color: CHARCOAL }}>
-                Sin pagos registrados
-              </p>
-              <p className="text-[10px] opacity-40 mt-0.5" style={{ color: CHARCOAL }}>
-                Los pagos de este servicio aparecerán aquí.
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="rounded-2xl border bg-white p-4 sm:p-6"
-          style={{ borderColor: BORDER }}
-        >
-          <h3 className="text-xs font-bold uppercase tracking-wider mb-4 sm:mb-5 flex items-center gap-2" style={{ color: MUTED }}>
-            <HugeiconsIcon icon={UserIcon} size={14} />
-            Información del cliente
-          </h3>
-          {tieneContacto ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-              {itemsContacto.map((item) => (
-                <div key={item.label} className="flex items-center gap-3 min-w-0">
-                  <div className="size-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
-                    <HugeiconsIcon icon={item.icon} size={15} style={{ color: ACCENT }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase opacity-40">{item.label}</p>
-                    <p className="text-xs font-bold truncate" style={{ color: CHARCOAL }}>
-                      {item.value || "—"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <HugeiconsIcon icon={UserIcon} size={18} style={{ color: MUTED }} />
-              <p className="text-xs font-medium opacity-50 mt-2" style={{ color: CHARCOAL }}>
-                Sin datos de contacto
-              </p>
-            </div>
-          )}
-        </div>
-      </motion.div>
-
-      {modalImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setModalImage(null)}
-        >
-          <div className="relative flex items-center justify-center" style={{ maxWidth: "min(90vw, 1200px)", maxHeight: "90vh" }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); setModalImage(null) }}
-              className="absolute -top-8 right-0 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors"
-            >
-              Cerrar [X]
-            </button>
-            <img
-              src={modalImage}
-              alt="Comprobante"
-              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+          <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                pctCobrado >= 100
+                  ? "bg-emerald-500"
+                  : pctCobrado >= 50
+                  ? "bg-amber-500"
+                  : "bg-[#fd761a]"
+              )}
+              style={{ width: `${Math.min(pctCobrado, 100)}%` }}
             />
           </div>
         </div>
-      )}
-    </div>
-  )
-}
+      </motion.div>
 
-function InfoBadge({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2" style={{ color: CHARCOAL }}>
-      <HugeiconsIcon icon={Icon} size={14} style={{ color: MUTED }} />
-      <div>
-        <p className="text-[9px] font-bold uppercase opacity-40">{label}</p>
-        <p className="text-xs font-bold">{value}</p>
-      </div>
-    </div>
-  )
-}
+      {/* Grid de 2 Columnas: Datos del Cliente e Historial de Pagos */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Información del Cliente (1 Columna) */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-4"
+        >
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 text-[#fd761a] flex items-center justify-center">
+              <HugeiconsIcon icon={UserIcon} size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Información del Cliente</h3>
+              <p className="text-[11px] text-slate-400">Datos de contacto registrados</p>
+            </div>
+          </div>
 
-function EstadoBadge({ saldo, cobrado }: { saldo: number; cobrado: number }) {
-  const pagado = saldo <= 0
-  return (
-    <div className="flex items-center gap-2" style={{ color: CHARCOAL }}>
-      <span className={cn(
-        "size-2 rounded-full shrink-0",
-        pagado ? "bg-green-500" : cobrado > 0 ? "bg-amber-500" : "bg-red-500"
-      )} />
-      <div>
-        <p className="text-[9px] font-bold uppercase opacity-40">Estado</p>
-        <span className={cn(
-          "text-xs font-bold",
-          pagado ? "text-green-700" : cobrado > 0 ? "text-amber-700" : "text-red-700"
-        )}>
-          {pagado ? "Pagado" : cobrado > 0 ? "Parcial" : "Pendiente"}
-        </span>
+          {tieneContacto ? (
+            <div className="space-y-3.5 pt-1">
+              {itemsContacto.map((item) => (
+                <div key={item.label} className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0 mt-0.5">
+                    <HugeiconsIcon icon={item.icon} size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.label}</p>
+                    <p className="text-xs font-semibold text-slate-800 break-words">{item.value || "—"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                <HugeiconsIcon icon={UserIcon} size={18} />
+              </div>
+              <p className="text-xs font-semibold text-slate-600">Sin datos de contacto</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">No se especificó teléfono ni dirección</p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Historial de Pagos (2 Columnas) */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs space-y-4"
+        >
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <HugeiconsIcon icon={Money01Icon} size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Historial de Pagos</h3>
+                <p className="text-[11px] text-slate-400">Transacciones y comprobantes recibidos</p>
+              </div>
+            </div>
+            {transacciones.length > 0 && (
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                {transacciones.length} pago{transacciones.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {loadingHist ? (
+            <div className="py-12 text-center text-xs font-medium text-slate-400">
+              Cargando historial de pagos...
+            </div>
+          ) : transacciones.length > 0 ? (
+            <div className="space-y-2.5">
+              {transacciones.map((t: any, idx: number) => {
+                const esAprobado = t.estado_verificacion === "aprobado"
+                const esRechazado = t.estado_verificacion === "rechazado"
+                return (
+                  <div
+                    key={t.id || idx}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200/70 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                          esAprobado
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                            : esRechazado
+                            ? "bg-rose-50 border-rose-200 text-rose-600"
+                            : "bg-amber-50 border-amber-200 text-amber-600"
+                        )}
+                      >
+                        <HugeiconsIcon icon={Money01Icon} size={18} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-black text-slate-900">
+                            ${Number(t.monto || 0).toLocaleString()}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                              esAprobado
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : esRechazado
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            )}
+                          >
+                            {esAprobado ? "Verificado" : esRechazado ? "Rechazado" : "Pendiente"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1">
+                            <HugeiconsIcon icon={Calendar02Icon} size={12} className="text-slate-400" />
+                            {t.fecha_pago
+                              ? new Date(t.fecha_pago).toLocaleDateString("es-ES", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              : "Fecha no registrada"}
+                          </span>
+                          {t.metodo_pago && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="font-medium text-slate-600">{t.metodo_pago}</span>
+                            </>
+                          )}
+                          {t.referencia && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-400 font-mono text-[11px]">Ref: {t.referencia}</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {t.comprobante_url && (
+                      <button
+                        type="button"
+                        onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-all shrink-0 self-start sm:self-center shadow-xs"
+                      >
+                        <HugeiconsIcon icon={EyeIcon} size={14} className="text-slate-500" />
+                        <span>Ver comprobante</span>
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="py-10 text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                <HugeiconsIcon icon={Money01Icon} size={18} />
+              </div>
+              <p className="text-xs font-semibold text-slate-600">Sin pagos registrados</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Los pagos y abonos registrados para este servicio aparecerán aquí
+              </p>
+            </div>
+          )}
+        </motion.div>
       </div>
+
+      {/* Modal de Comprobante de Pago */}
+      <AnimatePresence>
+        {modalImage && (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4"
+            onClick={() => setModalImage(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200"
+            >
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
+                <h4 className="text-sm font-bold text-slate-900">Comprobante de Pago</h4>
+                <button
+                  type="button"
+                  onClick={() => setModalImage(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                </button>
+              </div>
+              <div className="p-4 flex items-center justify-center bg-slate-900/5 max-h-[80vh] overflow-auto">
+                <img
+                  src={modalImage}
+                  alt="Comprobante de pago"
+                  className="max-w-full max-h-[72vh] w-auto h-auto object-contain rounded-lg shadow-xs"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

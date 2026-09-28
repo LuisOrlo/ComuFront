@@ -21,6 +21,8 @@ import {
   FileUp,
   RefreshCw,
   Eye,
+  Banknote,
+  Plus,
 } from "lucide-react"
 import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
@@ -33,6 +35,8 @@ import {
 import { PersonaFormModal } from "@/pages/personas/PersonaFormModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { CiudadBadge } from "@/components/cursos/CiudadBadge"
+import { RegistrarPagoInstructorModal } from "./components/RegistrarPagoInstructorModal"
+import { DetalleTransferenciaModal, type PagoDetalleItem } from "./components/DetalleTransferenciaModal"
 
 type TabKey = "perfil" | "cursos" | "talleres" | "hoja_vida" | "pagos"
 
@@ -82,6 +86,8 @@ export function InstructorDetallePage() {
   const [showDeleteCvModal, setShowDeleteCvModal] = useState(false)
   const [deletingCv, setDeletingCv] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showPagoModal, setShowPagoModal] = useState(false)
+  const [selectedPago, setSelectedPago] = useState<PagoDetalleItem | null>(null)
   const [togglingState, setTogglingState] = useState(false)
 
   // PDF Preview State
@@ -385,6 +391,14 @@ export function InstructorDetallePage() {
 
             {/* Right: Actions */}
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowPagoModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-100 hover:border-emerald-400 active:scale-[0.98] shadow-2xs"
+              >
+                <Banknote size={15} className="text-emerald-600" />
+                Registrar Pago
+              </button>
+
               <button
                 disabled={togglingState}
                 onClick={() => void handleToggleActivo()}
@@ -961,6 +975,21 @@ export function InstructorDetallePage() {
             {/* ==================== TAB 5: PAGOS REGISTRADOS ==================== */}
             {activeTab === "pagos" && (
               <div className="space-y-6">
+                {/* Header Action Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">Historial de Desembolsos y Pagos</h3>
+                    <p className="text-xs text-gray-500">Egresos oficiales registrados en finanzas a nombre de este instructor</p>
+                  </div>
+                  <button
+                    onClick={() => setShowPagoModal(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 active:scale-[0.98] self-start sm:self-auto cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    Registrar Pago a Instructor
+                  </button>
+                </div>
+
                 {/* Summary */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-xl border bg-white p-4" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -987,38 +1016,61 @@ export function InstructorDetallePage() {
                       <tr>
                         <th className="p-3.5">Fecha de Pago</th>
                         <th className="p-3.5">Concepto / Categoría</th>
-                        <th className="p-3.5">Comprobante / Ref</th>
                         <th className="p-3.5">Método</th>
                         <th className="p-3.5 text-right">Monto</th>
+                        <th className="p-3.5 text-center">Detalle</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y text-gray-700" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                       {data.pagos.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="p-8 text-center text-sm text-gray-400">
-                            No existen registros de egresos/pagos efectuados a este instructor.
+                            <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                              <p className="text-gray-500 font-medium">No existen registros de egresos/pagos efectuados a este instructor.</p>
+                              <button
+                                type="button"
+                                onClick={() => setShowPagoModal(true)}
+                                className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                              >
+                                <Plus size={14} />
+                                Registrar primer pago
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ) : (
                         data.pagos.map((pago, i) => (
-                          <tr key={i} className="hover:bg-gray-50/50 transition">
+                          <tr
+                            key={i}
+                            onClick={() => setSelectedPago(pago)}
+                            className="hover:bg-emerald-50/25 transition cursor-pointer group"
+                          >
                             <td className="p-3.5 font-medium text-gray-900">{fmtDate(String(pago.fecha_pago || ""))}</td>
                             <td className="p-3.5">
-                              <span className="font-semibold text-gray-800 block">
+                              <span className="font-semibold text-gray-800 group-hover:text-emerald-700 transition block">
                                 {String(pago.descripcion || pago.categoria || "Pago de honorarios")}
                               </span>
                               {Boolean(pago.categoria) && (
                                 <span className="text-[10px] text-gray-400 block">{String(pago.categoria)}</span>
                               )}
                             </td>
-                            <td className="p-3.5 text-gray-600 font-mono text-[11px]">
-                              {String(pago.comprobante_numero || pago.referencia || "—")}
-                            </td>
                             <td className="p-3.5 capitalize text-gray-600">
-                              {String(pago.metodo_pago || pago.forma_pago || "Transferencia")}
+                              <span className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-700 border border-gray-200">
+                                {String(pago.metodo_pago || pago.forma_pago || "Transferencia")}
+                              </span>
                             </td>
                             <td className="p-3.5 text-right font-bold text-emerald-600 text-sm">
                               {fmtMoney(String(pago.monto || 0))}
+                            </td>
+                            <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPago(pago)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 shadow-2xs transition hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 active:scale-[0.98]"
+                              >
+                                <Eye size={13} className="text-emerald-600" />
+                                <span>Ver Detalle</span>
+                              </button>
                             </td>
                           </tr>
                         ))
@@ -1053,6 +1105,33 @@ export function InstructorDetallePage() {
           instructorOnly
           onClose={() => setShowEditModal(false)}
           onSuccess={() => void load()}
+        />
+      )}
+
+      {/* Modal for registering payment tailored for this instructor */}
+      {showPagoModal && (
+        <RegistrarPagoInstructorModal
+          isOpen={showPagoModal}
+          onClose={() => setShowPagoModal(false)}
+          onSuccess={() => void load()}
+          instructor={{
+            id: p.id,
+            nombres: p.nombres,
+            apellidos: p.apellidos,
+            cedula: p.cedula,
+            ciudad: p.ciudad,
+            perfil: data.perfil,
+          }}
+        />
+      )}
+
+      {/* Modal for viewing transfer / payment details */}
+      {selectedPago && (
+        <DetalleTransferenciaModal
+          isOpen={Boolean(selectedPago)}
+          onClose={() => setSelectedPago(null)}
+          pago={selectedPago}
+          instructorNombre={`${p.nombres} ${p.apellidos}`}
         />
       )}
     </div>

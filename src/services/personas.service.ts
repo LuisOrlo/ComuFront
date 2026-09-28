@@ -12,7 +12,9 @@ export interface Persona {
   ciudad_id?: number
   es_activo: boolean
   cursos_actuales_count?: number
+  cursos_proximos_count?: number
   talleres_actuales_count?: number
+  talleres_proximos_count?: number
   cuentaSistema?: { id: string; username: string }
   perfilInstructor?: { id: string; especialidad?: string; bio?: string }
   perfilStaff?: { id: string; cargo?: string; salario_base?: number; fecha_ingreso?: string; es_pasante?: boolean }
@@ -43,7 +45,9 @@ function mapPersona(raw: Record<string, unknown>): Persona {
     ciudad_id: r.ciudad_id,
     es_activo: r.es_activo,
     cursos_actuales_count: r.cursos_actuales_count as number | undefined,
+    cursos_proximos_count: r.cursos_proximos_count as number | undefined,
     talleres_actuales_count: r.talleres_actuales_count as number | undefined,
+    talleres_proximos_count: r.talleres_proximos_count as number | undefined,
     cuentaSistema: r.cuenta_sistema,
     perfilInstructor: r.perfil_instructor,
     perfilStaff: r.perfil_staff,

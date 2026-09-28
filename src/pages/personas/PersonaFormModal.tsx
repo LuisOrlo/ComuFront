@@ -52,6 +52,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess, instructorOnly
     especialidad: "",
     bio: "",
     cargo: "",
+    fecha_ingreso: "",
     es_pasante: false,
     crearCuenta: false,
     username: "",
@@ -82,7 +83,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess, instructorOnly
         especialidad: p.perfilInstructor?.especialidad || "",
         bio: p.perfilInstructor?.bio || "",
         cargo: p.perfilStaff?.cargo || "",
-
+        fecha_ingreso: p.perfilStaff?.fecha_ingreso ? p.perfilStaff.fecha_ingreso.split("T")[0] : "",
         es_pasante: p.perfilStaff?.es_pasante || false,
         crearCuenta: false,
         username: "",
@@ -297,6 +298,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess, instructorOnly
         } else {
           await staffService.updatePerfil(editingId, {
             cargo: form.cargo,
+            fecha_ingreso: form.fecha_ingreso || undefined,
             es_pasante: form.tipo === "staff" ? form.es_pasante : false,
           })
         }
@@ -313,6 +315,7 @@ export function PersonaFormModal({ editingId, onClose, onSuccess, instructorOnly
           especialidad: tipo === "instructor" ? (form.especialidad || undefined) : undefined,
           bio: tipo === "instructor" ? (form.bio || undefined) : undefined,
           cargo: tipo !== "instructor" ? form.cargo : undefined,
+          fecha_ingreso: tipo !== "instructor" ? (form.fecha_ingreso || undefined) : undefined,
           es_pasante: tipo === "staff" ? form.es_pasante : undefined,
           crear_cuenta: instructorOnly ? false : form.crearCuenta && !!form.username && !!form.password,
           username: instructorOnly ? undefined : form.crearCuenta ? form.username : undefined,
@@ -652,35 +655,43 @@ export function PersonaFormModal({ editingId, onClose, onSuccess, instructorOnly
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
-                  Datos laborales
+                  Datos laborales y contratación
                 </span>
               </div>
               <ValidatedInput
-                label="Cargo"
+                label="Cargo / Puesto"
                 value={form.cargo}
                 onChange={(value) => handleChange("cargo", value)}
                 onBlur={() => handleBlur("cargo")}
                 error={fieldErrors.cargo}
                 touched={touched.cargo}
-                placeholder="Ej: Coordinador Académico"
+                placeholder="Ej: Coordinador Académico, Asistente..."
                 required
               />
+              <ValidatedInput
+                label="Fecha de ingreso"
+                type="date"
+                value={form.fecha_ingreso}
+                onChange={(value) => handleChange("fecha_ingreso", value)}
+                onBlur={() => handleBlur("fecha_ingreso")}
+                error={fieldErrors.fecha_ingreso}
+                touched={touched.fecha_ingreso}
+                helperText="Fecha de inicio o contratación en la institución"
+              />
               {form.tipo === "staff" && (
-                <>
-                  <label className="flex items-center gap-2.5 cursor-pointer group">
-                    <div
-                      className="size-5 rounded flex items-center justify-center transition-all duration-150 group-hover:scale-110"
-                      style={{
-                        backgroundColor: form.es_pasante ? COLORS.ACCENT : "transparent",
-                        border: `2px solid ${form.es_pasante ? COLORS.ACCENT : COLORS.BORDER_SUBTLE}`,
-                      }}
-                      onClick={() => setForm({ ...form, es_pasante: !form.es_pasante })}
-                    >
-                      {form.es_pasante && <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} className="text-white" />}
-                    </div>
-                    <span className="text-sm group-hover:text-[--accent] transition-colors duration-150" style={{ color: COLORS.CHARCOAL }}>Es pasante</span>
-                  </label>
-                </>
+                <label className="flex items-center gap-2.5 cursor-pointer group pt-1">
+                  <div
+                    className="size-5 rounded flex items-center justify-center transition-all duration-150 group-hover:scale-110"
+                    style={{
+                      backgroundColor: form.es_pasante ? COLORS.ACCENT : "transparent",
+                      border: `2px solid ${form.es_pasante ? COLORS.ACCENT : COLORS.BORDER_SUBTLE}`,
+                    }}
+                    onClick={() => setForm({ ...form, es_pasante: !form.es_pasante })}
+                  >
+                    {form.es_pasante && <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} className="text-white" />}
+                  </div>
+                  <span className="text-sm group-hover:text-[--accent] transition-colors duration-150" style={{ color: COLORS.CHARCOAL }}>Es pasante</span>
+                </label>
               )}
             </div>
           )}

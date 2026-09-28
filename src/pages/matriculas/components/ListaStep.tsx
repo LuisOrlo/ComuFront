@@ -85,7 +85,9 @@ interface ListaStepProps {
   onBack: () => void
 }
 
-function matchesText(text: string, query: string) {
+function matchesText(text: string | null | undefined, query: string) {
+  if (!query) return true
+  if (!text) return false
   return text.toLowerCase().includes(query.toLowerCase())
 }
 
@@ -100,7 +102,8 @@ export function ListaStep({ talleres, cursosAbiertos, cursosPersonalizados = [],
     (!ciudad || c.ciudad?.nombre === ciudad) && (tipo === "todos" || tipo === "curso")
   ), [cursosAbiertos, busqueda, modalidad, ciudad, tipo])
   const personalizadosFiltrados = useMemo(() => cursosPersonalizados.filter(c =>
-    matchesText(c.nombre, busqueda) && (modalidad === "todos" || c.modalidad === modalidad) &&
+    matchesText(c.nombre || (c as unknown as { nombre_instancia?: string }).nombre_instancia, busqueda) &&
+    (modalidad === "todos" || c.modalidad === modalidad) &&
     (!ciudad || (c.ciudad ?? "") === ciudad) && (tipo === "todos" || tipo === "personalizado")
   ), [cursosPersonalizados, busqueda, modalidad, ciudad, tipo])
   const talleresFiltrados = useMemo(() => talleres.filter(t =>
@@ -108,7 +111,7 @@ export function ListaStep({ talleres, cursosAbiertos, cursosPersonalizados = [],
     (!ciudad || t.ciudad?.nombre === ciudad) && (tipo === "todos" || tipo === "taller")
   ), [talleres, busqueda, modalidad, ciudad, tipo])
   const visibleCursos = modoDirecto ? cursosFiltrados : cursosAbiertos
-  const visiblePersonalizados = personalizadosFiltrados
+  const visiblePersonalizados = modoDirecto ? personalizadosFiltrados : cursosPersonalizados
   const visibleTalleres = modoDirecto ? talleresFiltrados : talleres
   const items: { tipo: "curso" | "personalizado" | "taller"; id: string }[] = [
     ...visibleCursos.map(c => ({ tipo: "curso" as const, id: c.id })),
@@ -230,7 +233,7 @@ export function ListaStep({ talleres, cursosAbiertos, cursosPersonalizados = [],
               return (
                 <div key={cp.id} onClick={() => onSelect(cp.id)} className="rounded-lg border p-3.5 cursor-pointer transition-all shadow-sm hover:shadow-md relative active:scale-[0.98] hover-orange" style={{ borderColor: selectedCustom ? SEL : COLORS.BORDER_SUBTLE, backgroundColor: selectedCustom ? `color-mix(in srgb, ${SEL} 4%, transparent)` : "white", borderLeft: `3px solid ${selectedCustom ? SEL : "#e5e7eb"}` }}>
                   <div className="flex items-center gap-2 mb-1.5"><div className="size-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "oklch(0.92 0.08 280)" }}><HugeiconsIcon icon={GraduationCapIcon} size={12} style={{ color: "oklch(0.45 0.12 280)" }} /></div><span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: "oklch(0.92 0.08 280)", color: "oklch(0.45 0.12 280)" }}>Curso personalizado</span></div>
-                  <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selectedCustom ? SEL : COLORS.CHARCOAL }}>{cp.nombre}</h3>
+                  <h3 className="text-sm font-bold leading-snug mb-2" style={{ color: selectedCustom ? SEL : COLORS.CHARCOAL }}>{cp.nombre || (cp as unknown as { nombre_instancia?: string }).nombre_instancia || "Curso personalizado"}</h3>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs"><div><span style={{ color: COLORS.TEXT_MUTED }}>Fecha: </span><span style={{ color: COLORS.CHARCOAL }}>{formatDate(cp.fecha_inicio)}{cp.fecha_fin && cp.fecha_fin !== cp.fecha_inicio ? ` → ${formatDate(cp.fecha_fin)}` : ""}</span></div><div><span style={{ color: COLORS.TEXT_MUTED }}>Precio: </span><span style={{ color: COLORS.CHARCOAL }}>${Number(cp.precio_total).toFixed(2)}</span></div>{schedule && <div className="col-span-2"><span style={{ color: COLORS.TEXT_MUTED }}>Horario: </span><span style={{ color: COLORS.CHARCOAL }}>{schedule}</span></div>}<div><span style={{ color: COLORS.TEXT_MUTED }}>Cupos: </span><span style={{ color: COLORS.CHARCOAL }}>{cp.cupos_disponibles} de {cp.capacidad}</span></div></div>
                   {selectedCustom && <div className="absolute top-1.5 right-1.5"><HugeiconsIcon icon={CheckCircle} size={14} style={{ color: SEL }} /></div>}
                 </div>

@@ -125,10 +125,22 @@ function NavItem({
   )
 }
 
+function findActiveGroupKey(pathname: string, groups: { label: string; items: NavItemData[] }[]): string | null {
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i]
+    const hasActive = group.items.some((item) =>
+      item.path === "/"
+        ? pathname === item.path
+        : pathname === item.path || pathname.startsWith(`${item.path}/`)
+    )
+    if (hasActive) return `${group.label}-${i}`
+  }
+  return null
+}
+
 export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
   const { logout, user } = useAuth()
   const location = useLocation()
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ "Académico": true })
   const navRef = useRef<HTMLDivElement>(null)
   const [initialize, getInstance] = useOverlayScrollbars({
     options: {
@@ -284,17 +296,31 @@ if (isAdmin) {
     return groups
   }, [isAdmin, isInstructor, isSecretaria, pendientesCount])
 
-  useEffect(() => {
-    const activeGroupIndex = menuGroups.findIndex((group) =>
-      group.items.some((item) => item.path === "/"
-        ? location.pathname === item.path
-        : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)),
-    )
-    if (activeGroupIndex >= 0) {
-      const activeGroup = menuGroups[activeGroupIndex]
-      setExpandedGroups((current) => ({ ...current, [`${activeGroup.label}-${activeGroupIndex}`]: true }))
-    }
+  const currentActiveGroupKey = useMemo(() => {
+    return findActiveGroupKey(location.pathname, menuGroups)
   }, [location.pathname, menuGroups])
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    const key = findActiveGroupKey(location.pathname, menuGroups)
+    return key ? { [key]: true } : {}
+  })
+
+  const prevActiveGroupKeyRef = useRef<string | null>(currentActiveGroupKey)
+
+  useEffect(() => {
+    if (!currentActiveGroupKey) return
+
+    const prevGroupKey = prevActiveGroupKeyRef.current
+
+    // Solo si el usuario cambió a una página de OTRO grupo:
+    // El grupo donde se encontraba se agrupa (contrae) y se expande el nuevo grupo
+    if (prevGroupKey !== currentActiveGroupKey) {
+      setExpandedGroups({
+        [currentActiveGroupKey]: true,
+      })
+      prevActiveGroupKeyRef.current = currentActiveGroupKey
+    }
+  }, [currentActiveGroupKey])
 
   return (
     <aside
@@ -339,20 +365,20 @@ if (isAdmin) {
 
       <div ref={navRef} className="flex-1 px-3 py-5">
         {menuGroups.map((group, index) => {
-          const isAcademic = group.label === "Académico"
-          const isExpanded = collapsed || Boolean(expandedGroups[`${group.label}-${index}`] ?? isAcademic)
+          const groupKey = `${group.label}-${index}`
+          const isExpanded = collapsed || Boolean(expandedGroups[groupKey])
           const isGroupActive = group.items.some((item) => item.path === "/"
             ? location.pathname === item.path
             : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
 
           return (
-            <div key={`${group.label}-${index}`} className="mb-5 last:mb-0">
+            <div key={groupKey} className="mb-5 last:mb-0">
               {!collapsed ? (
                 <button
                   type="button"
                   aria-expanded={isExpanded}
                   aria-current={isGroupActive ? "location" : undefined}
-                  onClick={() => setExpandedGroups((current) => ({ ...current, [`${group.label}-${index}`]: !isExpanded }))}
+                  onClick={() => setExpandedGroups((current) => ({ ...current, [groupKey]: !isExpanded }))}
                   className="w-full flex items-center justify-between px-3 py-1 mb-1 rounded-md text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors"
                   style={{
                     color: isGroupActive ? ACCENT : "rgba(255,255,255,0.45)",

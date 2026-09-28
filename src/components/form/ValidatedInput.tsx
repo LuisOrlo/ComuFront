@@ -12,6 +12,9 @@ interface ValidatedInputProps {
   disabled?: boolean
   required?: boolean
   helperText?: string
+  min?: string | number
+  max?: string | number
+  step?: string | number
 }
 
 export function ValidatedInput({
@@ -26,6 +29,9 @@ export function ValidatedInput({
   disabled = false,
   required = false,
   helperText,
+  min,
+  max,
+  step,
 }: ValidatedInputProps) {
   const hasError = touched && error
   const isValid = touched && !error && value.trim() !== ""
@@ -43,6 +49,9 @@ export function ValidatedInput({
       )}
       <input
         type={type}
+        min={min}
+        max={max}
+        step={step}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}

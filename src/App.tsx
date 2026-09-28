@@ -242,6 +242,7 @@ function AppLayout() {
             <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EquiposPage /></RoleGuard>} />
             <Route path="/servicios/equipos/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
             <Route path="/servicios/equipos/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
+            <Route path="/servicios/equipos/nuevo-alquiler" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoAlquilerPage /></RoleGuard>} />
             <Route path="/servicios/equipos/nuevo-alquiler/:equipoId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoAlquilerPage /></RoleGuard>} />
             <Route path="/servicios/equipos/alquileres" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquileresListPage /></RoleGuard>} />
             <Route path="/servicios/equipos/alquileres/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AlquilerDetallePage /></RoleGuard>} />

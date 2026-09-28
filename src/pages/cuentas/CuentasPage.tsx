@@ -1,22 +1,72 @@
-import { useState, useEffect, type CSSProperties } from "react"
-import { Search, KeyRound, X, Check, Eye, EyeOff, User, ShieldCheck } from "lucide-react"
-import { COLORS } from "@/lib/constants"
+import { useState, useEffect, useMemo } from "react"
+import {
+  Search,
+  KeyRound,
+  X,
+  Check,
+  Eye,
+  EyeOff,
+  User,
+  ShieldCheck,
+  ShieldAlert,
+  RefreshCw,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 import { personasService, type Persona } from "@/services/personas.service"
 import { toast } from "sonner"
 
 type ModalMode = "crear" | "editar"
 
-const TIPO_STYLES: Record<string, { label: string; accent: string; soft: string }> = {
-  instructor: { label: "Instructor", accent: "oklch(0.58 0.18 260)", soft: "oklch(0.58 0.18 260 / 0.10)" },
-  staff: { label: "Staff", accent: "oklch(0.72 0.18 72)", soft: "oklch(0.72 0.18 72 / 0.12)" },
-  secretaria: { label: "Secretaría", accent: "oklch(0.62 0.18 304)", soft: "oklch(0.72 0.18 304 / 0.11)" },
-  admin: { label: "Admin", accent: "oklch(0.50 0.12 10)", soft: "oklch(0.50 0.12 10 / 0.10)" },
+const TIPO_CONFIG: Record<
+  string,
+  { label: string; badge: string; dot: string; avatar: string }
+> = {
+  instructor: {
+    label: "Instructor",
+    badge: "bg-blue-50 text-blue-700 border-blue-200/60",
+    dot: "bg-blue-500",
+    avatar: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  staff: {
+    label: "Staff",
+    badge: "bg-amber-50 text-amber-700 border-amber-200/60",
+    dot: "bg-amber-500",
+    avatar: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  secretaria: {
+    label: "Secretaría",
+    badge: "bg-purple-50 text-purple-700 border-purple-200/60",
+    dot: "bg-purple-500",
+    avatar: "bg-purple-50 text-purple-700 border-purple-200",
+  },
+  admin: {
+    label: "Administrador",
+    badge: "bg-rose-50 text-rose-700 border-rose-200/60",
+    dot: "bg-rose-500",
+    avatar: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+  estudiante: {
+    label: "Estudiante",
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+    dot: "bg-emerald-500",
+    avatar: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  pasante: {
+    label: "Pasante",
+    badge: "bg-cyan-50 text-cyan-700 border-cyan-200/60",
+    dot: "bg-cyan-500",
+    avatar: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  },
 }
 
 export function CuentasPage() {
   const [personas, setPersonas] = useState<Persona[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [tipoFiltro, setTipoFiltro] = useState<string>("todos")
+  const [cuentaFiltro, setCuentaFiltro] = useState<string>("todos")
+
+  // Estado del Modal
   const [modal, setModal] = useState(false)
   const [modalMode, setModalMode] = useState<ModalMode>("crear")
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null)
@@ -29,21 +79,55 @@ export function CuentasPage() {
   const cargar = async () => {
     setLoading(true)
     try {
-      const res = await personasService.getPersonas({ buscar: search || undefined, page: 1 })
-      setPersonas(res.data.slice(0, 50))
-    } catch { toast.error("Error al cargar") }
-    finally { setLoading(false) }
+      const res = await personasService.getPersonas({
+        buscar: search || undefined,
+        tipo: tipoFiltro !== "todos" ? tipoFiltro : undefined,
+        per_page: 100,
+        page: 1,
+      })
+      setPersonas(res.data || [])
+    } catch {
+      toast.error("Error al cargar las personas y cuentas")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => {  
+  useEffect(() => {
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search])
+  }, [search, tipoFiltro])
+
+  const filteredPersonas = useMemo(() => {
+    return personas.filter((p) => {
+      if (cuentaFiltro === "con_cuenta") return Boolean(p.cuentaSistema)
+      if (cuentaFiltro === "sin_cuenta") return !p.cuentaSistema
+      return true
+    })
+  }, [personas, cuentaFiltro])
+
+  // Contadores analíticos
+  const stats = useMemo(() => {
+    const total = personas.length
+    const conCuenta = personas.filter((p) => Boolean(p.cuentaSistema)).length
+    const sinCuenta = total - conCuenta
+    const activos = personas.filter((p) => p.es_activo !== false).length
+    return { total, conCuenta, sinCuenta, activos }
+  }, [personas])
 
   const openCreate = (p: Persona) => {
     setSelectedPersona(p)
     setModalMode("crear")
-    setUsername(p.nombres.toLowerCase().replace(/\s/g, "").slice(0, 15))
+    const primerNombre = (p.nombres || "").trim().split(/\s+/)[0] || ""
+    const primerApellido = (p.apellidos || "").trim().split(/\s+/)[0] || ""
+    const sugerido = `${primerNombre}.${primerApellido}`
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9.]/g, "")
+      .slice(0, 18)
+
+    setUsername(sugerido)
     setPassword("")
     setEditPassword(false)
     setShowPassword(false)
@@ -79,291 +163,455 @@ export function CuentasPage() {
         if (username) data.username = username
         if (editPassword && password) data.password = password
         await personasService.actualizarCuenta(selectedPersona.id, data)
-        toast.success("Cuenta actualizada")
+        toast.success("Cuenta actualizada correctamente")
       } else {
-        await personasService.crearCuenta(selectedPersona.id, username, password || "cambio123")
-        toast.success("Cuenta creada")
+        await personasService.crearCuenta(
+          selectedPersona.id,
+          username,
+          password || "cambio123"
+        )
+        toast.success("Cuenta de acceso creada exitosamente")
       }
       closeModal()
       cargar()
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } }
-      toast.error(axiosError.response?.data?.message || "Error al guardar cuenta")
-    } finally { setSaving(false) }
+      toast.error(axiosError.response?.data?.message || "Error al procesar la cuenta")
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const tipo = selectedPersona ? TIPO_STYLES[selectedPersona.tipo] || TIPO_STYLES.instructor : null
+  const getInitials = (nombres?: string, apellidos?: string) => {
+    const n = (nombres || "").trim()[0] || ""
+    const a = (apellidos || "").trim()[0] || ""
+    return (n + a).toUpperCase() || "U"
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50/40">
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-[1000px] mx-auto px-6 py-6 space-y-5">
-
-          {/* ─── HEADER ─── */}
-          <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-xl font-semibold" style={{ color: COLORS.CHARCOAL }}>Cuentas de Sistema</h1>
-
-            </div>
-          </header>
-
-          {/* ─── SEARCH ─── */}
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: COLORS.TEXT_MUTED }} />
-            <input type="text" placeholder="Buscar persona..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border rounded-lg text-sm outline-none" style={{ borderColor: COLORS.BORDER_SUBTLE }} />
+    <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
+        {/* Cabecera Principal */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              Cuentas de Sistema
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Administración y credenciales de acceso para instructores, secretaría y staff operativo.
+            </p>
           </div>
 
-          {/* ─── LOADING ─── */}
-          {loading && (
-            <div className="flex justify-center py-20"><div className="size-8 rounded-full border-2 border-transparent animate-spin" style={{ borderTopColor: COLORS.ACCENT, borderRightColor: COLORS.ACCENT }} /></div>
-          )}
+          <button
+            type="button"
+            onClick={cargar}
+            disabled={loading}
+            className="h-9 px-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs flex items-center gap-2 transition-all self-start sm:self-center disabled:opacity-50 cursor-pointer active:scale-95"
+            title="Recargar listado"
+          >
+            <RefreshCw size={14} className={cn(loading && "animate-spin text-[#fd761a]")} />
+            <span>Actualizar</span>
+          </button>
+        </div>
 
-          {/* ─── TABLE ─── */}
-          {!loading && (
-            <div className="rounded-[1.5rem] border bg-white overflow-hidden shadow-sm" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50/80 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Persona</th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Tipo</th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Usuario</th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Estado</th>
-                    <th className="py-3 px-4 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Acciones</th>
+        {/* 1. Barra de Búsqueda y Filtros */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 flex-wrap">
+          {/* Input de Búsqueda */}
+          <div className="relative flex-1 min-w-[240px] max-w-md">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, apellido, usuario o correo..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-8 h-9 text-xs rounded-xl bg-slate-50/70 border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 outline-none transition-all"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Filtros por Rol y Cuenta */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filtro Rol */}
+            <div className="flex items-center gap-1.5 bg-slate-100/70 p-1 rounded-xl">
+              {[
+                { id: "todos", label: "Todos los roles" },
+                { id: "instructor", label: "Instructores" },
+                { id: "staff", label: "Staff" },
+                { id: "secretaria", label: "Secretaría" },
+                { id: "admin", label: "Admin" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setTipoFiltro(tab.id)}
+                  className={cn(
+                    "px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                    tipoFiltro === tab.id
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-900"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Filtro Estado de Cuenta */}
+            <select
+              value={cuentaFiltro}
+              onChange={(e) => setCuentaFiltro(e.target.value)}
+              className="h-9 px-3 text-xs font-semibold rounded-xl bg-slate-50/70 border border-slate-200 text-slate-700 outline-none focus:border-[#fd761a] transition-all cursor-pointer"
+            >
+              <option value="todos">Todas las cuentas</option>
+              <option value="con_cuenta">Con cuenta creada</option>
+              <option value="sin_cuenta">Sin cuenta asignada</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 3. Tabla de Usuarios y Cuentas */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[700px]">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Persona / Personal</th>
+                  <th className="py-3 px-4">Rol en el Sistema</th>
+                  <th className="py-3 px-4">Usuario de Acceso</th>
+                  <th className="py-3 px-4 text-center">Estado</th>
+                  <th className="py-3 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="py-16 text-center">
+                      <div className="inline-flex items-center gap-2 text-xs font-medium text-slate-400">
+                        <RefreshCw size={16} className="animate-spin text-[#fd761a]" />
+                        <span>Cargando directorio de personal...</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: COLORS.BORDER_SUBTLE } as CSSProperties}>
-                  {personas.map(p => {
-                    const ts = TIPO_STYLES[p.tipo] || TIPO_STYLES.instructor
+                ) : filteredPersonas.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center gap-1.5 text-slate-400">
+                        <User size={28} className="text-slate-300 mb-1" />
+                        <p className="text-xs font-bold text-slate-700">
+                          No se encontraron personas
+                        </p>
+                        <p className="text-[11px]">
+                          Intenta modificar los filtros de búsqueda o el tipo de rol.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPersonas.map((p) => {
+                    const cfg = TIPO_CONFIG[p.tipo] || TIPO_CONFIG.instructor
+                    const tieneCuenta = Boolean(p.cuentaSistema)
+
                     return (
-                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3">
+                      <tr
+                        key={p.id}
+                        className="hover:bg-slate-50/60 transition-colors group"
+                      >
+                        {/* Persona */}
+                        <td className="px-4 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="size-9 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" style={{ backgroundColor: ts.soft, color: ts.accent }}>
-                              {p.nombres[0]}{p.apellidos[0]}
+                            <div
+                              className={cn(
+                                "size-9 rounded-xl border flex items-center justify-center text-xs font-bold shrink-0 shadow-xs",
+                                cfg.avatar
+                              )}
+                            >
+                              {getInitials(p.nombres, p.apellidos)}
                             </div>
-                            <div>
-                              <p className="text-sm font-medium leading-snug" style={{ color: COLORS.CHARCOAL }}>{p.nombres} {p.apellidos}</p>
-                              <p className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>{p.correo || "Sin correo"}</p>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-900 leading-snug truncate">
+                                {p.nombres} {p.apellidos}
+                              </p>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                                <span className="truncate">{p.correo || "Sin correo"}</span>
+                                {p.cedula && (
+                                  <>
+                                    <span>•</span>
+                                    <span>CI: {p.cedula}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: ts.soft, color: ts.accent }}>
-                            <span className="size-1.5 rounded-full" style={{ backgroundColor: ts.accent }} />
-                            {ts.label}
+
+                        {/* Rol */}
+                        <td className="px-4 py-3.5">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold border",
+                              cfg.badge
+                            )}
+                          >
+                            <span className={cn("size-1.5 rounded-full", cfg.dot)} />
+                            {cfg.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm" style={{ color: p.cuentaSistema ? COLORS.CHARCOAL : "oklch(0.72 0 0)" }}>
-                          {p.cuentaSistema ? (
-                            <span className="inline-flex items-center gap-1.5 font-mono text-sm">
-                              <ShieldCheck size={13} style={{ color: "oklch(0.55 0.18 150)" }} />
-                              {p.cuentaSistema.username}
+
+                        {/* Usuario */}
+                        <td className="px-4 py-3.5">
+                          {tieneCuenta ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-mono text-xs font-bold shadow-xs">
+                              <ShieldCheck size={13} className="text-emerald-600" />
+                              {p.cuentaSistema?.username}
                             </span>
                           ) : (
-                            <span className="text-sm">Sin cuenta</span>
+                            <span className="inline-flex items-center gap-1 text-slate-400 italic text-[11px]">
+                              <ShieldAlert size={12} className="text-slate-300" />
+                              Sin cuenta
+                            </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            p.es_activo !== false ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200"
-                          }`}>
+
+                        {/* Estado */}
+                        <td className="px-4 py-3.5 text-center">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                              p.es_activo !== false
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-500 border-slate-200"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "size-1.5 rounded-full",
+                                p.es_activo !== false ? "bg-emerald-500" : "bg-slate-400"
+                              )}
+                            />
                             {p.es_activo !== false ? "Activo" : "Inactivo"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          {p.cuentaSistema ? (
-                            <button onClick={() => openEdit(p)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80 active:scale-[0.97]" style={{ backgroundColor: "oklch(0.55 0.18 260 / 0.10)", color: "oklch(0.55 0.18 260)" }}>
-                              <KeyRound size={12} />Editar
+
+                        {/* Acciones */}
+                        <td className="px-4 py-3.5 text-right">
+                          {tieneCuenta ? (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(p)}
+                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
+                            >
+                              <KeyRound size={13} className="text-slate-500" />
+                              <span>Editar</span>
                             </button>
                           ) : (
-                            <button onClick={() => openCreate(p)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90 active:scale-[0.97]" style={{ backgroundColor: COLORS.ACCENT }}>
-                              <KeyRound size={12} />Crear
+                            <button
+                              type="button"
+                              onClick={() => openCreate(p)}
+                              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                            >
+                              <KeyRound size={13} />
+                              <span>Crear cuenta</span>
                             </button>
                           )}
                         </td>
                       </tr>
                     )
-                  })}
-                </tbody>
-              </table>
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pie de tabla con conteo */}
+          {!loading && filteredPersonas.length > 0 && (
+            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
+              <span>
+                Mostrando {filteredPersonas.length} de {personas.length} personas registradas
+              </span>
+              <span className="font-semibold text-slate-700">
+                {stats.conCuenta} usuarios activos en el sistema
+              </span>
             </div>
           )}
         </div>
-      </main>
+      </div>
 
-      {/* ─── MODAL ─── */}
-      {modal && selectedPersona && tipo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
-          <div
-            className="bg-white rounded-[1.75rem] w-full max-w-lg overflow-hidden shadow-2xl border"
-            style={{
-              borderColor: "color-mix(in srgb, white 75%, rgba(0,0,0,0.08))",
-              boxShadow: `0 30px 80px -20px ${tipo.accent}30`,
-            }}
-          >
-            {/* ─── HEADER ─── */}
-            <div className="relative border-b overflow-hidden" style={{ borderColor: "color-mix(in srgb, white 65%, rgba(0,0,0,0.08))" }}>
-              <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(135deg, ${tipo.accent}12 0%, transparent 60%)` }} />
-              <div className="relative px-6 py-5 sm:px-7 sm:py-6">
-                <div className="flex items-start gap-4">
-                  <div className="size-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm" style={{ backgroundColor: tipo.soft, color: tipo.accent }}>
-                    <User size={24} />
+      {/* ─── MODAL DE GESTIÓN DE CUENTA ─── */}
+      {modal && selectedPersona && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Header del Modal */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4 bg-slate-50/50">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="size-11 rounded-xl bg-orange-50 border border-orange-200 text-[#fd761a] flex items-center justify-center shrink-0 shadow-xs">
+                  <KeyRound size={20} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                        (TIPO_CONFIG[selectedPersona.tipo] || TIPO_CONFIG.instructor).badge
+                      )}
+                    >
+                      {(TIPO_CONFIG[selectedPersona.tipo] || TIPO_CONFIG.instructor).label}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      {modalMode === "editar" ? "Modificar" : "Asignar"}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider" style={{ backgroundColor: tipo.soft, color: tipo.accent }}>
-                        <span className="size-1.5 rounded-full" style={{ backgroundColor: tipo.accent }} />
-                        {tipo.label}
-                      </span>
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ backgroundColor: modalMode === "editar" ? "oklch(0.72 0.18 72 / 0.15)" : "oklch(0.58 0.18 260 / 0.12)", color: modalMode === "editar" ? "oklch(0.72 0.18 72)" : COLORS.ACCENT }}>
-                        {modalMode === "editar" ? "Editar cuenta" : "Nueva cuenta"}
-                      </span>
-                    </div>
-                    <h2 className="text-xl font-bold tracking-tight" style={{ color: COLORS.CHARCOAL }}>
-                      {selectedPersona.nombres} {selectedPersona.apellidos}
-                    </h2>
-                    <p className="text-sm mt-0.5" style={{ color: COLORS.TEXT_MUTED }}>
-                      {modalMode === "editar" ? "Modifica el usuario o cambia la contraseña" : "Crea una cuenta de acceso para el sistema"}
-                    </p>
-                  </div>
-                  <button onClick={closeModal} className="size-9 flex items-center justify-center rounded-xl bg-black/5 hover:bg-black/10 transition-colors shrink-0">
-                    <X size={16} style={{ color: COLORS.TEXT_MUTED }} />
-                  </button>
+                  <h3 className="text-base font-bold text-slate-900 truncate">
+                    {selectedPersona.nombres} {selectedPersona.apellidos}
+                  </h3>
+                  <p className="text-xs text-slate-500 truncate">
+                    {selectedPersona.correo || "Sin correo electrónico"}
+                  </p>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={closeModal}
+                className="size-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            {/* ─── FORM ─── */}
-            <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-6">
-              {/* Username */}
-              <div className="rounded-2xl border-2 p-5 transition-all" style={{ borderColor: `${tipo.accent}20`, background: `${tipo.accent}04` }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em]" style={{ color: COLORS.TEXT_MUTED }}>Usuario</span>
-                  <span className="text-[10px] text-red-400 font-bold">*</span>
+            {/* Formulario */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Usuario */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">
+                  Nombre de Usuario <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <User
+                    size={15}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="ej. juan.perez"
+                    required
+                    className="w-full pl-9 pr-4 h-10 text-xs font-mono font-bold rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 outline-none transition-all"
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  className="w-full mt-2 px-4 py-3 bg-white border-2 rounded-xl text-sm font-medium outline-none transition-all focus:ring-4"
-                  style={{
-                    borderColor: COLORS.BORDER_SUBTLE,
-                    color: COLORS.CHARCOAL,
-                  }}
-                  onFocus={e => {
-                    e.currentTarget.style.borderColor = tipo.accent
-                    e.currentTarget.style.boxShadow = `0 0 0 4px ${tipo.accent}18`
-                  }}
-                  onBlur={e => {
-                    e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-                    e.currentTarget.style.boxShadow = "none"
-                  }}
-                  required
-                />
-                <p className="text-[10px] mt-1.5 px-1" style={{ color: COLORS.TEXT_MUTED }}>Nombre de inicio de sesión único en el sistema</p>
+                <p className="text-[11px] text-slate-400">
+                  Identificador único para iniciar sesión en Comunikate.
+                </p>
               </div>
 
-              {/* Password */}
-              <div className="rounded-2xl border-2 p-5 transition-all" style={{ borderColor: modalMode === "editar" && !editPassword ? "oklch(0.88 0 0)" : `${tipo.accent}20`, background: modalMode === "editar" && !editPassword ? "oklch(0.985 0 0)" : `${tipo.accent}04` }}>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.15em]" style={{ color: COLORS.TEXT_MUTED }}>Contraseña</span>
-                    {modalMode === "crear" && <span className="text-[10px] text-red-400 font-bold">*</span>}
-                  </div>
+              {/* Contraseña */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Contraseña {modalMode === "crear" && <span className="text-rose-500">*</span>}
+                  </label>
+
                   {modalMode === "editar" && (
                     <button
                       type="button"
-                      onClick={() => { setEditPassword(!editPassword); if (!editPassword) setPassword("") }}
-                      className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg transition-all"
-                      style={{
-                        backgroundColor: editPassword ? `${tipo.accent}12` : "oklch(0.95 0 0)",
-                        color: editPassword ? tipo.accent : COLORS.TEXT_MUTED,
+                      onClick={() => {
+                        setEditPassword(!editPassword)
+                        if (!editPassword) setPassword("")
                       }}
+                      className={cn(
+                        "text-[11px] font-bold px-2 py-0.5 rounded-md transition-colors cursor-pointer",
+                        editPassword
+                          ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
                     >
                       {editPassword ? "Cancelar cambio" : "Cambiar contraseña"}
                     </button>
                   )}
                 </div>
+
                 {(modalMode === "crear" || editPassword) && (
-                  <div className="relative mt-2">
+                  <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border-2 rounded-xl text-sm font-medium outline-none transition-all focus:ring-4 pr-12"
-                      style={{
-                        borderColor: COLORS.BORDER_SUBTLE,
-                        color: COLORS.CHARCOAL,
-                      }}
-                      onFocus={e => {
-                        e.currentTarget.style.borderColor = tipo.accent
-                        e.currentTarget.style.boxShadow = `0 0 0 4px ${tipo.accent}18`
-                      }}
-                      onBlur={e => {
-                        e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE
-                        e.currentTarget.style.boxShadow = "none"
-                      }}
-                      placeholder={modalMode === "editar" ? "Nueva contraseña..." : "Mín 6 caracteres"}
-                      required={modalMode === "crear"}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={
+                        modalMode === "editar"
+                          ? "Escribe la nueva contraseña..."
+                          : "Dejar vacío para usar 'cambio123'"
+                      }
                       minLength={6}
+                      className="w-full pl-3.5 pr-10 h-10 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 outline-none transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors hover:bg-black/5"
-                      style={{ color: COLORS.TEXT_MUTED }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
                     >
                       {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
                 )}
-                {modalMode === "editar" && !editPassword && (
-                  <p className="mt-3 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-                    <Check size={12} className="inline mr-1" style={{ color: "oklch(0.55 0.18 150)" }} />
-                    La contraseña actual se mantiene sin cambios
+
+                {modalMode === "crear" && (
+                  <p className="text-[11px] text-slate-400">
+                    Si no especificas una contraseña, se asignará{" "}
+                    <code className="px-1.5 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
+                      cambio123
+                    </code>{" "}
+                    por defecto.
                   </p>
                 )}
-                {modalMode === "crear" && (
-                  <p className="text-[10px] mt-1.5 px-1" style={{ color: COLORS.TEXT_MUTED }}>Si se deja vacía, se usará "cambio123" como contraseña por defecto</p>
+
+                {modalMode === "editar" && !editPassword && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center gap-2 text-xs text-slate-600">
+                    <Check size={14} className="text-emerald-600 shrink-0" />
+                    <span>La contraseña actual se mantendrá sin modificaciones.</span>
+                  </div>
                 )}
               </div>
 
-              {/* ─── FOOTER ─── */}
-              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
+              {/* Botones de Acción */}
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-6 py-3 rounded-xl text-sm font-medium transition-all border active:scale-[0.98]"
-                  style={{
-                    backgroundColor: "white",
-                    color: COLORS.TEXT_MUTED,
-                    borderColor: COLORS.BORDER_SUBTLE,
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "oklch(0.98 0 0)" }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "white" }}
+                  className="h-10 px-4 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-semibold transition-all cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-200 active:scale-[0.97] hover:translate-y-[-1px]"
-                  style={{
-                    background: `linear-gradient(135deg, ${tipo.accent} 0%, color-mix(in srgb, ${tipo.accent} 78%, black) 100%)`,
-                    opacity: saving ? 0.65 : 1,
-                    boxShadow: `0 18px 34px -20px ${tipo.accent}`,
-                  }}
+                  className="h-10 px-5 rounded-xl bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   {saving ? (
                     <>
-                      <div className="size-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                      Guardando...
+                      <div className="size-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      <span>Guardando...</span>
                     </>
                   ) : modalMode === "editar" ? (
-                    <><Check size={16} /> Actualizar cuenta</>
+                    <>
+                      <Check size={15} />
+                      <span>Actualizar cuenta</span>
+                    </>
                   ) : (
-                    <><KeyRound size={16} /> Crear cuenta</>
+                    <>
+                      <KeyRound size={15} />
+                      <span>Crear cuenta</span>
+                    </>
                   )}
                 </button>
               </div>

@@ -126,9 +126,9 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
       }
     }
     for (const c of cursosPersonalizados) {
-      if ((!selectedModalidad || c.modalidad === selectedModalidad) && c.ciudad_id && c.ciudad && !seen.has(c.ciudad_id)) {
-        seen.add(c.ciudad_id)
-        result.push({ id: c.ciudad_id, nombre: c.ciudad })
+      if ((!selectedModalidad || c.modalidad === selectedModalidad) && c.ciudad_id && c.ciudad && !seen.has(Number(c.ciudad_id))) {
+        seen.add(Number(c.ciudad_id))
+        result.push({ id: Number(c.ciudad_id), nombre: c.ciudad })
       }
     }
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -139,7 +139,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
   const personalizadoSel = cursosPersonalizados.find(c => c.id === selectedCourseId)
   const cursosPersonalizadosVisibles = cursosPersonalizados.filter(c =>
     (!selectedModalidad || c.modalidad === selectedModalidad) &&
-    (!selectedCiudadId || c.ciudad_id === selectedCiudadId)
+    (!selectedCiudadId || Number(c.ciudad_id) === Number(selectedCiudadId))
   )
   const cursoPago = curso || (personalizadoSel ? {
     id: personalizadoSel.id,
@@ -352,7 +352,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
       } else {
         const formData = new FormData()
         formData.append("curso_abierto_id", selectedCourseId)
-        const precioCurso = Number(curso?.precio_base || 0)
+        const precioCurso = Number(cursoPago?.precio_base || 0)
         const montoNum = parseFloat(montoDeclarado) || 0
         const esCompleto = precioCurso > 0 && montoNum >= precioCurso
         formData.append("tipo_pago", esCompleto ? "completo" : "abono")

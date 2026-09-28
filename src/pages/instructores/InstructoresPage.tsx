@@ -383,6 +383,10 @@ export function InstructoresPage() {
             {rows.map((p) => {
               const initials = `${p.nombres?.[0] || ""}${p.apellidos?.[0] || ""}`.toUpperCase()
               const ciudadNombre = getCiudadNombre(p.ciudad)
+              const cursosAct = p.cursos_actuales_count || 0
+              const cursosProx = p.cursos_proximos_count || 0
+              const talleresAct = p.talleres_actuales_count || 0
+              const talleresProx = p.talleres_proximos_count || 0
 
               return (
                 <div
@@ -458,8 +462,22 @@ export function InstructoresPage() {
                   <div className="mt-5 pt-3.5 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <div className="mb-3.5 flex items-center justify-between text-xs">
                       <span className="text-gray-500">Carga académica:</span>
-                      <span className="font-semibold text-gray-800">
-                        {p.cursos_actuales_count || 0} cursos · {p.talleres_actuales_count || 0} talleres
+                      <span className="font-semibold text-gray-800 flex items-center gap-1.5">
+                        <span>
+                          {cursosAct > 0
+                            ? `${cursosAct} en curso${cursosProx > 0 ? ` (+${cursosProx} próx.)` : ""}`
+                            : cursosProx > 0
+                            ? `${cursosProx} próx.`
+                            : "0 cursos"}
+                        </span>
+                        <span className="text-gray-300">·</span>
+                        <span>
+                          {talleresAct > 0
+                            ? `${talleresAct} en curso${talleresProx > 0 ? ` (+${talleresProx} próx.)` : ""}`
+                            : talleresProx > 0
+                            ? `${talleresProx} próx.`
+                            : "0 talleres"}
+                        </span>
                       </span>
                     </div>
 
@@ -516,7 +534,7 @@ export function InstructoresPage() {
                     <th className="p-4">Contacto</th>
                     <th className="p-4">Ciudad</th>
                     <th className="p-4">Especialidad</th>
-                    <th className="p-4">Actividad Actual</th>
+                    <th className="p-4">Carga Académica</th>
                     <th className="p-4 text-center">Estado</th>
                     <th className="p-4 text-right">Acciones</th>
                   </tr>
@@ -528,6 +546,12 @@ export function InstructoresPage() {
                   {rows.map((p) => {
                     const initials = `${p.nombres?.[0] || ""}${p.apellidos?.[0] || ""}`.toUpperCase()
                     const ciudadNombre = getCiudadNombre(p.ciudad)
+                    const cursosAct = p.cursos_actuales_count || 0
+                    const cursosProx = p.cursos_proximos_count || 0
+                    const totalCursos = cursosAct + cursosProx
+                    const talleresAct = p.talleres_actuales_count || 0
+                    const talleresProx = p.talleres_proximos_count || 0
+                    const totalTalleres = talleresAct + talleresProx
 
                     return (
                       <tr
@@ -593,15 +617,62 @@ export function InstructoresPage() {
                           </span>
                         </td>
 
-                        {/* Actividad actual */}
+                        {/* Carga Académica */}
                         <td className="p-4">
-                          <div className="flex flex-wrap gap-1.5">
-                            <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200">
-                              {p.cursos_actuales_count || 0} cursos
-                            </span>
-                            <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200">
-                              {p.talleres_actuales_count || 0} talleres
-                            </span>
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            {/* Cursos */}
+                            {totalCursos > 0 ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200"
+                                title={`${cursosAct} en curso · ${cursosProx} próximos`}
+                              >
+                                {cursosAct > 0 ? (
+                                  <>
+                                    <span>{cursosAct} en curso</span>
+                                    {cursosProx > 0 && (
+                                      <span className="text-blue-500 font-normal">
+                                        (+{cursosProx} próx.)
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span>
+                                    {cursosProx} {cursosProx === 1 ? "curso próx." : "cursos próx."}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="rounded-md bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-400 border border-gray-200">
+                                0 cursos
+                              </span>
+                            )}
+
+                            {/* Talleres */}
+                            {totalTalleres > 0 ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200"
+                                title={`${talleresAct} en curso · ${talleresProx} próximos`}
+                              >
+                                {talleresAct > 0 ? (
+                                  <>
+                                    <span>{talleresAct} en curso</span>
+                                    {talleresProx > 0 && (
+                                      <span className="text-purple-500 font-normal">
+                                        (+{talleresProx} próx.)
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span>
+                                    {talleresProx} {talleresProx === 1 ? "taller próx." : "talleres próx."}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="rounded-md bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-400 border border-gray-200">
+                                0 talleres
+                              </span>
+                            )}
                           </div>
                         </td>
 

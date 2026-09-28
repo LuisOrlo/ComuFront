@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from "react"
 import { tareasService, type TareaStaff, type TareaFilters } from "@/services/tareas.service"
 import { edicionVideoService } from "@/services/edicion-video.service"
@@ -34,34 +35,74 @@ export function useTareas() {
         edicionVideoService.getTrabajos({ per_page: 100 }),
       ])
 
-      const trabajos: TareaStaff[] = trabajosRes.data
-        .filter((trabajo) => trabajo.estado !== "entregado" && trabajo.editor_ids.length > 0)
-        .flatMap((trabajo): (TareaStaff | null)[] => trabajo.editor_ids.map((editorId) => {
-          const editor = trabajo.editores?.find((persona) => persona.id === editorId)
-          if (!editor) return null
+      const trabajos: TareaStaff[] = (trabajosRes.data || [])
+        .filter((trabajo) => trabajo.estado !== "entregado" && trabajo.editor_ids && trabajo.editor_ids.length > 0)
+        .flatMap((trabajo): (TareaStaff | null)[] =>
+          trabajo.editor_ids.map((editorId) => {
+            const editor = trabajo.editores?.find((persona) => persona.id === editorId)
+            if (!editor) return null
 
-          return {
-            id: `edicion-video-${trabajo.id}-${editor.id}`,
-            titulo: `Edición de video: ${trabajo.titulo}`,
-            descripcion: trabajo.descripcion,
-            persona_id: editor.id,
-            persona: { ...editor, tipo: "staff" },
-            fecha_inicio: trabajo.fecha_recibo,
-            fecha_fin: trabajo.fecha_limite,
-            estado: trabajo.estado === "recibido" ? "pendiente" : "en_progreso",
-            created_at: trabajo.created_at || trabajo.fecha_recibo,
-            origen: "edicion_video" as const,
-          } satisfies TareaStaff
-        }))
+            return {
+              id: `edicion-video-${trabajo.id}-${editor.id}`,
+              titulo: `Edición de video: ${trabajo.titulo}`,
+              descripcion: trabajo.descripcion,
+              persona_id: editor.id,
+              persona: { ...editor, tipo: "staff" },
+              fecha_inicio: trabajo.fecha_recibo,
+              fecha_fin: trabajo.fecha_limite,
+              estado: trabajo.estado === "recibido" ? "pendiente" : "en_progreso",
+              created_at: trabajo.created_at || trabajo.fecha_recibo,
+              origen: "edicion_video" as const,
+              trabajo_id: trabajo.id,
+            } satisfies TareaStaff
+          })
+        )
         .filter((tarea): tarea is TareaStaff => tarea !== null)
 
-      const tareasCombinadas = [...res.tareas, ...trabajos]
+      // Filtrar los trabajos de edición de video con los filtros activos
+      const trabajosFiltrados = trabajos.filter((t) => {
+        if (filters.estado && t.estado !== filters.estado) return false
+        if (filters.persona_id && t.persona_id !== filters.persona_id) return false
+        if (filters.titulo) {
+          const query = filters.titulo.toLowerCase()
+          const matchTitulo = t.titulo.toLowerCase().includes(query)
+          const matchDesc = t.descripcion ? t.descripcion.toLowerCase().includes(query) : false
+          if (!matchTitulo && !matchDesc) return false
+        }
+        return true
+      })
+
+      // Sumar los totales de ambas fuentes (tareas manuales + trabajos de video)
+      const totalesCombinados = {
+        total: (res.totales?.total || 0) + trabajos.length,
+        pendiente:
+          (res.totales?.pendiente || 0) +
+          trabajos.filter((t) => t.estado === "pendiente").length,
+        en_progreso:
+          (res.totales?.en_progreso || 0) +
+          trabajos.filter((t) => t.estado === "en_progreso").length,
+        completada:
+          (res.totales?.completada || 0) +
+          trabajos.filter((t) => t.estado === "completada").length,
+      }
+
+      // Combinar y ordenar
+      const tareasCombinadas = [...res.tareas, ...trabajosFiltrados].sort((a, b) => {
+        const dir = filters.dir === "asc" ? 1 : -1
+        const field = filters.sort || "created_at"
+        const valA = (a as any)[field] || ""
+        const valB = (b as any)[field] || ""
+        if (valA < valB) return -1 * dir
+        if (valA > valB) return 1 * dir
+        return 0
+      })
+
       setState({
         tareas: tareasCombinadas,
         loading: false,
-        totales: res.totales,
-        currentPage: res.meta.current_page,
-        lastPage: res.meta.last_page,
+        totales: totalesCombinados,
+        currentPage: res.meta?.current_page || 1,
+        lastPage: Math.max(1, res.meta?.last_page || 1),
       })
     } catch {
       setState((prev) => ({ ...prev, loading: false }))
@@ -69,7 +110,6 @@ export function useTareas() {
   }, [filters])
 
   useEffect(() => {
-
     fetchTareas()
   }, [fetchTareas])
 

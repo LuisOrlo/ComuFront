@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo } from "react"
-import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AiFolderIcon,
   Cancel01Icon,
   LayersIcon,
+  Search01Icon,
 } from "@hugeicons/core-free-icons"
 import {
   Mic,
@@ -36,17 +36,11 @@ import {
   type SortingState,
   type PaginationState,
 } from "@tanstack/react-table"
-import { COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
 import { PaginationControls } from "@/components/table/PaginationControls"
-
-const ACCENT = COLORS.ACCENT
-const CHARCOAL = COLORS.CHARCOAL
-const MUTED = COLORS.TEXT_MUTED
-const BORDER = COLORS.BORDER_SUBTLE
 
 const FK_A_TIPO: Record<string, string> = {
   reserva_podcast_id: "Podcast",
@@ -513,92 +507,118 @@ export function ServiciosCuentasPage() {
   }
 
   return (
-    <div className="px-8 py-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-black" style={{ color: CHARCOAL }}>
-            Servicios
-          </h2>
-          <p className="text-xs opacity-40 mt-1">
-            {searchFiltered.length} registro{searchFiltered.length !== 1 ? "s" : ""} de servicios con cuentas por cobrar
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={tipo}
-            onChange={e => setTipo(e.target.value)}
-            className="px-3 py-2 rounded-xl border text-xs font-medium outline-none bg-white"
-            style={{ borderColor: BORDER, color: CHARCOAL }}
-          >
-            <option value="todos">Todos los tipos</option>
-            {tipoOptions.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar servicio o cliente..."
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              className="w-48 pl-3 pr-8 py-2 rounded-xl border text-xs font-medium outline-none transition-all focus:w-64"
-              style={{ borderColor: BORDER, color: CHARCOAL }}
-            />
-            {searchInput && (
-              <button
-                onClick={() => { setSearchInput(""); setSearch("") }}
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} size={14} style={{ color: MUTED }} />
-              </button>
-            )}
+    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
+      {/* Barra de Filtros y Búsqueda */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-xs">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-slate-900">
+              Cuentas de Servicios
+            </h2>
+            <p className="text-xs text-slate-500">
+              {searchFiltered.length} registro{searchFiltered.length !== 1 ? "s" : ""} de servicios con cuentas por cobrar
+            </p>
           </div>
-          <button
-            onClick={() => setDense(d => !d)}
-            title={dense ? "Vista cómoda" : "Vista compacta"}
-            className="size-9 rounded-xl border flex items-center justify-center transition-all hover:bg-gray-50"
-            style={{ borderColor: BORDER }}
-          >
-            <HugeiconsIcon icon={LayersIcon} size={16} style={{ color: dense ? ACCENT : MUTED }} />
-          </button>
-        </div>
-      </div>
 
-      <div className="flex gap-1.5">
-        {[
-          { key: "todos", label: "Todos" },
-          { key: "pendiente", label: "Pendiente" },
-          { key: "en_progreso", label: "En Progreso" },
-          { key: "completado", label: "Completado" },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
-              filter === f.key ? "text-white shadow-sm" : "hover:opacity-60"
-            )}
-            style={filter === f.key ? { backgroundColor: ACCENT } : { color: MUTED, backgroundColor: "oklch(0.95 0 0)" }}
-          >
-            {f.label}
-          </button>
-        ))}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Estado Tabs */}
+            <div className="flex items-center p-0.5 bg-slate-100/80 rounded-xl border border-slate-200/60">
+              {[
+                { key: "todos", label: "Todos" },
+                { key: "pendiente", label: "Pendiente" },
+                { key: "en_progreso", label: "En progreso" },
+                { key: "completado", label: "Completado" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+                    filter === f.key
+                      ? "bg-white text-slate-900 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Selector de Tipo */}
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              className="h-9 px-3 rounded-xl border border-slate-200/90 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-[#fd761a] transition-colors cursor-pointer"
+            >
+              <option value="todos">Todos los tipos</option>
+              {tipoOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+
+            {/* Input de Búsqueda */}
+            <div className="relative flex-1 sm:w-60">
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+              <input
+                type="text"
+                placeholder="Buscar servicio o cliente..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full h-9 pl-9 pr-8 text-xs rounded-xl border border-slate-200/90 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("")
+                    setSearch("")
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Botón de Densidad */}
+            <button
+              type="button"
+              onClick={() => setDense((d) => !d)}
+              title={dense ? "Vista normal" : "Vista compacta"}
+              className={cn(
+                "size-9 rounded-xl border flex items-center justify-center transition-all",
+                dense
+                  ? "bg-orange-50 border-orange-200 text-[#fd761a]"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              <HugeiconsIcon icon={LayersIcon} size={16} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {searchFiltered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="size-16 rounded-[1.5rem] flex items-center justify-center mb-4" style={{ backgroundColor: "oklch(0.95 0.01 45)" }}>
-            <HugeiconsIcon icon={AiFolderIcon} size={28} style={{ color: ACCENT }} />
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center text-[#fd761a] mx-auto mb-3">
+            <HugeiconsIcon icon={AiFolderIcon} size={24} />
           </div>
-          <p className="text-sm font-bold" style={{ color: CHARCOAL }}>No hay servicios registrados</p>
-          <p className="text-xs opacity-40 mt-1">Los servicios con pagos aparecerán aquí</p>
+          <h3 className="text-base font-bold text-slate-900 mb-1">
+            No hay servicios registrados
+          </h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Los servicios con pagos pendientes o cobrados aparecerán aquí.
+          </p>
         </div>
       ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
-        >
+        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -672,10 +692,10 @@ export function ServiciosCuentasPage() {
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+          <div className="px-4 py-3 border-t border-slate-100 bg-white">
             <PaginationControls table={table} pageSizes={[10, 25, 50]} />
           </div>
-        </motion.div>
+        </div>
         )}
     </div>
   )

@@ -352,7 +352,7 @@ export function HistorialEquipoPage() {
             </span>
 
             <button
-              onClick={() => navigate("/servicios/equipos/nuevo-alquiler")}
+              onClick={() => navigate(`/servicios/equipos/nuevo-alquiler/${id || equipo.id}`)}
               className="h-10 px-4 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
               type="button"
             >
@@ -469,6 +469,18 @@ export function HistorialEquipoPage() {
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 Este equipo no registra alquileres con los filtros seleccionados.
               </p>
+              {!cedula && !filtroEstado && (
+                <div className="pt-2">
+                  <button
+                    onClick={() => navigate(`/servicios/equipos/nuevo-alquiler/${id || equipo?.id}`)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                    type="button"
+                  >
+                    <HugeiconsIcon icon={Add01Icon} size={15} />
+                    <span>Registrar Primer Alquiler</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">

@@ -10,12 +10,19 @@ import {
   type SortingState,
 } from "@tanstack/react-table"
 import { createPortal } from "react-dom"
-import { motion } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Search01Icon, ArrowUp01Icon, ArrowDown01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons"
-import { Trash2, Download, Upload, Eye, MoreHorizontal, BadgeCheck } from "lucide-react"
-import { COLORS } from "@/lib/constants"
-import { CERT_STATUS_LABELS, CERT_STATUS_COLORS } from "../certStatus"
+import {
+  Search01Icon,
+  ArrowUp01Icon,
+  ArrowDown01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  BadgeCheckIcon,
+  Download04Icon,
+  Upload04Icon,
+} from "@hugeicons/core-free-icons"
+import { Trash2, Eye, MoreHorizontal, BadgeCheck } from "lucide-react"
+import { CERT_STATUS_LABELS } from "../certStatus"
 import type { EstudiantePanel } from "@/services/certificados.service"
 
 interface CertificadosTableProps {
@@ -28,23 +35,29 @@ interface CertificadosTableProps {
   onOpenDelete: (row: EstudiantePanel) => void
 }
 
-const GREEN = "#0F9F6E"
-const AMBER = "#D97706"
-const GRAY = "#6B7280"
-const BORDER = COLORS.BORDER_SUBTLE
-const CHARCOAL = COLORS.CHARCOAL
-const TEXT_MUTED = COLORS.TEXT_MUTED
-const ACCENT = COLORS.ACCENT
-
 const PAGE_SIZES = [15, 25, 50, 100]
-const MENU_WIDTH = 180
-const MENU_HEIGHT = 232
+const MENU_WIDTH = 190
+const MENU_HEIGHT = 220
 
 function getIniciales(name: string) {
-  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
 }
+
 function getAvatarColor(name: string) {
-  const colors = ["#0F9F6E", "#2563EB", "#7C3AED", "#D97706", "#DC2626"]
+  const colors = [
+    "bg-emerald-600",
+    "bg-blue-600",
+    "bg-violet-600",
+    "bg-amber-600",
+    "bg-rose-600",
+    "bg-cyan-600",
+  ]
   return colors[(name.charCodeAt(0) || 0) % colors.length]
 }
 
@@ -70,126 +83,202 @@ export function CertificadosTable({
   const filteredData = useMemo(() => {
     const term = globalFilter.trim().toLowerCase()
     if (!term) return rows
-    return rows.filter(r =>
+    return rows.filter((r) =>
       [
-        [r.nombres, r.apellidos].filter(Boolean).join(" "), r.nombres, r.apellidos, r.cedula,
-      ].filter(Boolean).join(" ").toLowerCase().includes(term),
+        [r.nombres, r.apellidos].filter(Boolean).join(" "),
+        r.nombres,
+        r.apellidos,
+        r.cedula,
+        r.nombre_instancia,
+        r.catalogo_nombre,
+        r.codigo_certificado,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term)
     )
   }, [rows, globalFilter])
 
-  const columns = useMemo<ColumnDef<EstudiantePanel>[]>(() => [
-    {
-      id: "estudiante",
-      accessorFn: (r) => [r.nombres, r.apellidos].filter(Boolean).join(" "),
-      header: "Estudiante",
-      cell: ({ row }) => {
-        const nombreCompleto = [row.original.nombres, row.original.apellidos].filter(Boolean).join(" ").trim() || "Estudiante sin nombre"
-        return (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="size-10 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white"
-              style={{ backgroundColor: getAvatarColor(nombreCompleto) }}>
-              {getIniciales(nombreCompleto)}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate" style={{ color: CHARCOAL }}>{nombreCompleto}</p>
-              <p className="text-xs opacity-40">{row.original.cedula || "—"}</p>
-            </div>
-          </div>
-        )
-      },
-      enableSorting: true,
-      size: 280,
-    },
-    {
-      id: "curso",
-      accessorFn: (r) => r.nombre_instancia || r.catalogo_nombre,
-      header: "Curso",
-      cell: ({ row }) => {
-        const r = row.original
-        return (
-          <div className="min-w-0">
-            <p className="text-xs font-medium truncate" style={{ color: CHARCOAL }}>{r.nombre_instancia || r.catalogo_nombre}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                style={{ color: GREEN, backgroundColor: `${GREEN}08` }}>
-                {r.catalogo_nombre}
-              </span>
-              {r.modalidad && <span className="text-[10px] opacity-30 capitalize">· {r.modalidad}</span>}
-            </div>
-          </div>
-        )
-      },
-      enableSorting: true,
-    },
-    {
-      id: "estado",
-      accessorFn: (r) => getEstado(r),
-      header: "Estado",
-      cell: ({ getValue }) => {
-        const estado = getValue<string>()
-        const color = CERT_STATUS_COLORS[estado] || GRAY
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold whitespace-nowrap">
-            <span className="size-2 rounded-full" style={{ backgroundColor: color }} />
-            <span style={{ color }}>{CERT_STATUS_LABELS[estado] || estado}</span>
-          </span>
-        )
-      },
-      enableSorting: true,
-      size: 130,
-    },
-    {
-      id: "acciones",
-      header: "",
-      cell: ({ row }) => {
-        const r = row.original
-        const estado = getEstado(r)
-        return (
-          <div className="flex items-center gap-2 justify-end">
-            {estado === "pendiente" ? (
-              <button onClick={() => onEmitir(r)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-                style={{ backgroundColor: GREEN }}>
-                <BadgeCheck size={13} /> Emitir
-              </button>
-            ) : r.archivo_purgado ? (
-              <button onClick={() => onReupload(r)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 border"
-                style={{ color: AMBER, borderColor: `${AMBER}40`, backgroundColor: `${AMBER}08` }}>
-                <Upload size={13} /> Re-subir PDF
-              </button>
-            ) : r.archivo_pdf_url ? (
-              <button onClick={() => r.certificado_id && onDescargar(r.certificado_id)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 border"
-                style={{ color: CERT_STATUS_COLORS[estado] || GRAY, borderColor: `${CERT_STATUS_COLORS[estado] || GRAY}40`, backgroundColor: `${CERT_STATUS_COLORS[estado] || GRAY}08` }}>
-                <Download size={13} /> Descargar
-              </button>
-            ) : null}
+  const columns = useMemo<ColumnDef<EstudiantePanel>[]>(
+    () => [
+      {
+        id: "estudiante",
+        accessorFn: (r) => [r.nombres, r.apellidos].filter(Boolean).join(" "),
+        header: "Estudiante",
+        cell: ({ row }) => {
+          const nombreCompleto =
+            [row.original.nombres, row.original.apellidos].filter(Boolean).join(" ").trim() ||
+            "Estudiante sin nombre"
+          const avatarBg = getAvatarColor(nombreCompleto)
 
-            {r.certificado_id && (
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    if (menuOpen === r.matricula_id) { setMenuOpen(null); return }
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const left = Math.max(8, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8))
-                    const top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - MENU_HEIGHT))
-                    setMenuPos({ top, left })
-                    setMenuOpen(r.matricula_id)
-                  }}
-                  className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-200/60 transition-colors">
-                  <MoreHorizontal size={16} />
-                </button>
+          return (
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white shadow-2xs ${avatarBg}`}
+              >
+                {getIniciales(nombreCompleto)}
               </div>
-            )}
-          </div>
-        )
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-[#0b1c30] truncate">
+                  {nombreCompleto}
+                </p>
+                <p className="text-[11px] text-[#76777d] mt-0.5">
+                  {row.original.cedula ? `C.I. ${row.original.cedula}` : "Sin cédula"}
+                </p>
+              </div>
+            </div>
+          )
+        },
+        enableSorting: true,
+        size: 260,
       },
-      enableSorting: false,
-      size: 240,
-    },
+      {
+        id: "curso",
+        accessorFn: (r) => r.nombre_instancia || r.catalogo_nombre,
+        header: "Curso / Programa",
+        cell: ({ row }) => {
+          const r = row.original
+          return (
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-bold text-[#0b1c30] truncate">
+                {r.nombre_instancia || r.catalogo_nombre}
+              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff4ff] text-[#0b1c30] border border-[#c6c6cd]/30">
+                  {r.catalogo_nombre}
+                </span>
+                {r.modalidad && (
+                  <span className="text-[10px] font-semibold text-[#76777d] capitalize bg-gray-100 px-2 py-0.5 rounded-full">
+                    {r.modalidad}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        },
+        enableSorting: true,
+      },
+      {
+        id: "estado",
+        accessorFn: (r) => getEstado(r),
+        header: "Estado",
+        cell: ({ getValue }) => {
+          const estado = getValue<string>()
+
+          if (estado === "pendiente") {
+            return (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>Pendiente</span>
+              </span>
+            )
+          }
+
+          if (estado === "generado") {
+            return (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span>Emitido</span>
+              </span>
+            )
+          }
+
+          if (estado === "entregado") {
+            return (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span>Entregado</span>
+              </span>
+            )
+          }
+
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-bold border border-gray-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+              <span>{CERT_STATUS_LABELS[estado] || estado}</span>
+            </span>
+          )
+        },
+        enableSorting: true,
+        size: 130,
+      },
+      {
+        id: "acciones",
+        header: "",
+        cell: ({ row }) => {
+          const r = row.original
+          const estado = getEstado(r)
+
+          return (
+            <div className="flex items-center gap-2 justify-end">
+              {estado === "pendiente" ? (
+                <button
+                  type="button"
+                  onClick={() => onEmitir(r)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-2xs active:scale-[0.98] cursor-pointer"
+                >
+                  <HugeiconsIcon icon={BadgeCheckIcon} size={14} />
+                  <span>Emitir</span>
+                </button>
+              ) : r.archivo_purgado ? (
+                <button
+                  type="button"
+                  onClick={() => onReupload(r)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 hover:bg-amber-100 transition-all cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Upload04Icon} size={14} />
+                  <span>Re-subir PDF</span>
+                </button>
+              ) : r.archivo_pdf_url ? (
+                <button
+                  type="button"
+                  onClick={() => r.certificado_id && onDescargar(r.certificado_id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#0b1c30] bg-white border border-[#c6c6cd]/40 hover:bg-[#eff4ff] hover:border-[#fd761a]/40 transition-all shadow-2xs cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Download04Icon} size={14} />
+                  <span>Descargar</span>
+                </button>
+              ) : null}
+
+              {r.certificado_id && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      if (menuOpen === r.matricula_id) {
+                        setMenuOpen(null)
+                        return
+                      }
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const left = Math.max(
+                        8,
+                        Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8)
+                      )
+                      const top = Math.max(
+                        8,
+                        Math.min(rect.bottom + 4, window.innerHeight - MENU_HEIGHT)
+                      )
+                      setMenuPos({ top, left })
+                      setMenuOpen(r.matricula_id)
+                    }}
+                    className="w-8 h-8 flex items-center justify-center rounded-xl text-[#76777d] hover:text-[#0b1c30] hover:bg-[#eff4ff] transition-colors cursor-pointer"
+                    title="Más acciones"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        },
+        enableSorting: false,
+        size: 230,
+      },
+    ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [])
+    [menuOpen]
+  )
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -204,7 +293,7 @@ export function CertificadosTable({
     autoResetAll: false,
   })
 
-  const menuRow = menuOpen ? rows.find(r => r.matricula_id === menuOpen) : undefined
+  const menuRow = menuOpen ? rows.find((r) => r.matricula_id === menuOpen) : undefined
 
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
@@ -215,52 +304,71 @@ export function CertificadosTable({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <HugeiconsIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" />
+      {/* Barra de Búsqueda y Filtros Rápidos */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-md">
+          <HugeiconsIcon
+            icon={Search01Icon}
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#76777d]"
+          />
           <input
             type="text"
             value={globalFilter}
-            onChange={(e) => { setGlobalFilter(e.target.value); setPagination(p => ({ ...p, pageIndex: 0 })) }}
-            placeholder="Buscar por nombre o cédula..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl border bg-gray-50 text-xs outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20"
-            style={{ borderColor: BORDER }}
+            onChange={(e) => {
+              setGlobalFilter(e.target.value)
+              setPagination((p) => ({ ...p, pageIndex: 0 }))
+            }}
+            placeholder="Buscar por nombre, cédula o curso..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#c6c6cd]/40 bg-gray-50/50 hover:bg-white focus:bg-white text-xs sm:text-sm text-[#0b1c30] font-medium outline-none focus:ring-2 focus:ring-[#fd761a]/20 focus:border-[#fd761a] transition-all shadow-2xs"
           />
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-[#76777d] justify-end">
+          <span>
+            Mostrando <strong>{filteredData.length}</strong> de <strong>{rows.length}</strong> registros
+          </span>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border overflow-hidden" style={{ borderColor: BORDER }}>
+      {/* Tabla Estilizada */}
+      <div className="rounded-2xl border border-[#c6c6cd]/25 overflow-hidden bg-white shadow-2xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+          <table className="w-full text-left border-collapse">
             <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="bg-gray-50/80" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                <tr
+                  key={hg.id}
+                  className="bg-[#eff4ff] border-b border-[#c6c6cd]/30 text-[11px] font-bold uppercase tracking-wider text-[#45464d]"
+                >
                   {hg.headers.map((header) => {
                     const canSort = header.column.getCanSort()
                     const sorted = header.column.getIsSorted()
                     return (
-                      <th key={header.id}
+                      <th
+                        key={header.id}
                         onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                        className={canSort ? "cursor-pointer select-none" : ""}
+                        className={`py-3.5 px-4 ${
+                          canSort ? "cursor-pointer select-none hover:text-[#fd761a]" : ""
+                        }`}
                         style={{
                           width: header.getSize() !== 150 ? header.getSize() : undefined,
-                          padding: "10px 16px",
-                          textAlign: "left",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
-                          whiteSpace: "nowrap",
-                          color: TEXT_MUTED,
-                        }}>
-                        <div className="flex items-center gap-1">
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5">
                           <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
                           {canSort && (
                             <span className="inline-flex flex-col leading-none ml-1">
-                              <HugeiconsIcon icon={ArrowUp01Icon} size={10} className={sorted === "asc" ? "" : "opacity-40"} />
-                              <HugeiconsIcon icon={ArrowDown01Icon} size={10} className={sorted === "desc" ? "" : "opacity-40"} />
+                              <HugeiconsIcon
+                                icon={ArrowUp01Icon}
+                                size={10}
+                                className={sorted === "asc" ? "text-[#fd761a]" : "opacity-40"}
+                              />
+                              <HugeiconsIcon
+                                icon={ArrowDown01Icon}
+                                size={10}
+                                className={sorted === "desc" ? "text-[#fd761a]" : "opacity-40"}
+                              />
                             </span>
                           )}
                         </div>
@@ -270,129 +378,202 @@ export function CertificadosTable({
                 </tr>
               ))}
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#e5eeff]/60 text-xs text-[#0b1c30]">
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} style={{ padding: "48px 16px", textAlign: "center", color: TEXT_MUTED }}>
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-                      <div className="size-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${AMBER}10` }}>
-                        <BadgeCheck size={28} opacity={0.3} color={AMBER} />
-                      </div>
-                      <p className="text-sm font-bold opacity-30">Sin resultados</p>
-                      <p className="text-xs opacity-20">Ajusta los filtros o emite nuevos certificados</p>
-                    </motion.div>
+                  <td colSpan={columns.length} className="px-8 py-16 text-center text-[#76777d]">
+                    <div className="w-12 h-12 rounded-xl bg-[#eff4ff] text-[#fd761a] flex items-center justify-center mx-auto mb-3">
+                      <HugeiconsIcon icon={BadgeCheckIcon} size={24} />
+                    </div>
+                    <p className="font-bold text-sm text-[#0b1c30]">Sin coincidencias de búsqueda</p>
+                    <p className="text-xs text-[#45464d] mt-1">
+                      No encontramos ningún registro que coincida con &quot;{globalFilter}&quot;.
+                    </p>
                   </td>
                 </tr>
               ) : (
-                table.getRowModel().rows.map((row) => {
-                  return (
-                    <tr key={row.id} style={{ borderBottom: `1px solid ${BORDER}60` }}
-                      className="hover:bg-amber-50/40 transition-colors">
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} style={{ padding: "10px 16px", fontSize: "13px", color: CHARCOAL }}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-[#eff4ff]/40 transition-colors">
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="py-3 px-4">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: TEXT_MUTED }}>
-        <div className="flex items-center gap-2">
-          <span>Filas por página:</span>
-          <select value={pageSize} onChange={(e) => table.setPageSize(Number(e.target.value))}
-            className="px-2 py-1.5 rounded-lg border bg-white outline-none text-xs font-medium"
-            style={{ borderColor: BORDER }}>
-            {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
+        {/* Footer de Paginación Integrado en la Tabla */}
+        <div className="p-3.5 px-5 bg-[#eff4ff]/80 border-t border-[#c6c6cd]/25 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          {/* Lado izquierdo: Selector de filas y conteo */}
+          <div className="flex items-center gap-3 flex-wrap justify-center md:justify-start">
+            <div className="inline-flex items-center gap-2 whitespace-nowrap">
+              <span className="text-[#45464d] font-medium">Filas por página:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => table.setPageSize(Number(e.target.value))}
+                className="h-8 px-2.5 rounded-lg border border-[#c6c6cd]/40 bg-white text-xs font-bold text-[#0b1c30] outline-none focus:ring-2 focus:ring-[#fd761a]/20 cursor-pointer shadow-2xs"
+              >
+                {PAGE_SIZES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="text-[#c6c6cd] hidden sm:inline">|</span>
+            <span className="text-[#45464d] whitespace-nowrap">
+              Mostrando <strong className="text-[#0b1c30]">{from}–{to}</strong> de{" "}
+              <strong className="text-[#0b1c30]">{totalRows}</strong> estudiantes
+            </span>
+          </div>
 
-        <span className="font-medium">{from}–{to} de {totalRows}</span>
-
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}
-            className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
-            style={{ borderColor: BORDER }}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="-ml-2" />
-          </button>
-          <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}
-            className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
-            style={{ borderColor: BORDER }}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
-          </button>
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-            const start = Math.max(0, Math.min(currentPage - 3, totalPages - 5))
-            const pageNum = start + i + 1
-            return (
-              <button key={pageNum} type="button" onClick={() => table.setPageIndex(pageNum - 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
-                style={{
-                  backgroundColor: currentPage === pageNum ? ACCENT : "transparent",
-                  color: currentPage === pageNum ? "white" : TEXT_MUTED,
-                  boxShadow: currentPage === pageNum ? `0 2px 6px ${ACCENT}44` : "none",
-                }}>
-                {pageNum}
-              </button>
-            )
-          })}
-          <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}
-            className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
-            style={{ borderColor: BORDER }}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="rotate-180" />
-          </button>
-          <button type="button" onClick={() => table.setPageIndex(totalPages - 1)} disabled={!table.getCanNextPage()}
-            className="px-2 py-1.5 rounded-lg border text-xs font-medium disabled:opacity-30 hover:bg-gray-50 transition-colors"
-            style={{ borderColor: BORDER }}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="rotate-180" />
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={12} className="-ml-2 rotate-180" />
-          </button>
-        </div>
-      </div>
-
-      {/* Context menu (portal to body) */}
-      {menuOpen && menuRow && menuRow.certificado_id && createPortal(
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
-          <div className="fixed z-50 bg-white rounded-xl shadow-xl border py-1 min-w-[160px]"
-            style={{ top: menuPos.top, left: menuPos.left, borderColor: BORDER }}>
-            <button onClick={() => { onOpenDetail(menuRow.certificado_id!); setMenuOpen(null) }}
-              className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
-              <Eye size={13} /> Ver certificado
+          {/* Lado derecho: Botones de navegación Anterior / Páginas / Siguiente */}
+          <div className="inline-flex items-center gap-1.5 flex-nowrap">
+            <button
+              type="button"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="h-8 px-3 rounded-lg border border-[#c6c6cd]/30 bg-white text-[#0b1c30] text-xs font-semibold shadow-2xs hover:bg-[#eff4ff] hover:border-[#fd761a]/30 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+              <span className="hidden sm:inline">Anterior</span>
             </button>
-            {getEstado(menuRow) === "generado" && (
-              <button onClick={() => { onMarcarEntregado(menuRow.certificado_id!); setMenuOpen(null) }}
-                className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
-                <BadgeCheck size={13} /> Marcar entregado
-              </button>
-            )}
-            {menuRow.archivo_purgado ? (
-              <button onClick={() => { onReupload(menuRow); setMenuOpen(null) }}
-                className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-amber-50 flex items-center gap-2 text-amber-600">
-                <Upload size={13} /> Re-subir PDF
-              </button>
-            ) : menuRow.archivo_pdf_url ? (
-              <button onClick={() => { onDescargar(menuRow.certificado_id!); setMenuOpen(null) }}
-                className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center gap-2" style={{ color: CHARCOAL }}>
-                <Download size={13} /> Descargar
-              </button>
-            ) : null}
-            <div className="border-t my-1" style={{ borderColor: BORDER }} />
-            <button onClick={() => { onOpenDelete(menuRow); setMenuOpen(null) }}
-              className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-red-50 flex items-center gap-2 text-red-600">
-              <Trash2 size={13} /> Eliminar PDF
+
+            <div className="inline-flex items-center gap-1 flex-nowrap">
+              {Array.from({ length: totalPages }, (_, i) => {
+                const pageNum = i + 1
+                const isActive = currentPage === pageNum
+
+                if (
+                  totalPages > 7 &&
+                  pageNum !== 1 &&
+                  pageNum !== totalPages &&
+                  Math.abs(pageNum - currentPage) > 1
+                ) {
+                  if (Math.abs(pageNum - currentPage) === 2) {
+                    return (
+                      <span key={pageNum} className="px-1 text-[#76777d]">
+                        ...
+                      </span>
+                    )
+                  }
+                  return null
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => table.setPageIndex(pageNum - 1)}
+                    className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-[#fd761a] text-white shadow-xs"
+                        : "bg-white border border-[#c6c6cd]/30 text-[#0b1c30] hover:bg-[#eff4ff] hover:border-[#fd761a]/30"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="h-8 px-3 rounded-lg border border-[#c6c6cd]/30 bg-white text-[#0b1c30] text-xs font-semibold shadow-2xs hover:bg-[#eff4ff] hover:border-[#fd761a]/30 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <span className="hidden sm:inline">Siguiente</span>
+              <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
             </button>
           </div>
-        </>,
-        document.body
-      )}
+        </div>
+      </div>
+
+      {/* Menú Contextual Flotante (Portal) */}
+      {menuOpen &&
+        menuRow &&
+        menuRow.certificado_id &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
+            <div
+              className="fixed z-50 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-[#c6c6cd]/30 p-1.5 min-w-[170px] animate-in fade-in zoom-in-95 duration-100"
+              style={{ top: menuPos.top, left: menuPos.left }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenDetail(menuRow.certificado_id!)
+                  setMenuOpen(null)
+                }}
+                className="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl hover:bg-[#eff4ff] text-[#0b1c30] flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Eye size={14} className="text-[#fd761a]" />
+                <span>Ver detalle</span>
+              </button>
+
+              {getEstado(menuRow) === "generado" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onMarcarEntregado(menuRow.certificado_id!)
+                    setMenuOpen(null)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl hover:bg-emerald-50 text-emerald-700 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <BadgeCheck size={14} className="text-emerald-600" />
+                  <span>Marcar entregado</span>
+                </button>
+              )}
+
+              {menuRow.archivo_purgado ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onReupload(menuRow)
+                    setMenuOpen(null)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl hover:bg-amber-50 text-amber-700 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Upload04Icon} size={14} className="text-amber-600" />
+                  <span>Re-subir PDF</span>
+                </button>
+              ) : menuRow.archivo_pdf_url ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDescargar(menuRow.certificado_id!)
+                    setMenuOpen(null)
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl hover:bg-[#eff4ff] text-[#0b1c30] flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Download04Icon} size={14} className="text-[#fd761a]" />
+                  <span>Descargar PDF</span>
+                </button>
+              ) : null}
+
+              <div className="border-t border-[#c6c6cd]/20 my-1" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenDelete(menuRow)
+                  setMenuOpen(null)
+                }}
+                className="w-full text-left px-3 py-2 text-xs font-semibold rounded-xl hover:bg-red-50 text-red-600 flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Trash2 size={14} />
+                <span>Eliminar archivo PDF</span>
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   )
 }

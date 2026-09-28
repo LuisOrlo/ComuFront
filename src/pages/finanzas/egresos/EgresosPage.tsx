@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router"
 import { FileDown, Plus, AlertTriangle } from "lucide-react"
-import { jsPDF } from "jspdf"
 import { toast } from "sonner"
 import { financeService } from "@/services/finance.service"
 import { EgresosKPIs } from "./components/EgresosKPIs"
 import { EgresosGraficos } from "./components/EgresosGraficos"
 import { EgresosFiltros } from "./components/EgresosFiltros"
 import { EgresosTabla } from "./components/EgresosTabla"
+import { generarEgresosPDF } from "./components/generarEgresosPDF"
 
 export function EgresosPage() {
   const navigate = useNavigate()
@@ -77,51 +77,12 @@ export function EgresosPage() {
   }
 
   const handleExportPDF = () => {
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-    let y = 20
-    pdf.setFontSize(16)
-    pdf.setFont("helvetica", "bold")
-    pdf.text("REPORTE DE EGRESOS", 105, y, { align: "center" })
-    y += 8
-    pdf.setFontSize(10)
-    pdf.setFont("helvetica", "normal")
-    pdf.text(
-      `Total: $${(totales.total || 0).toLocaleString()} | Personal: $${(totales.personal || 0).toLocaleString()} | Servicios: $${(totales.servicios || 0).toLocaleString()}`,
-      105,
-      y,
-      { align: "center" }
-    )
-    y += 10
-    pdf.setFontSize(9)
-    pdf.setFont("helvetica", "bold")
-    pdf.text("#", 14, y)
-    pdf.text("Fecha", 22, y)
-    pdf.text("Descripción", 44, y)
-    pdf.text("Categoría", 110, y)
-    pdf.text("Proveedor", 138, y)
-    pdf.text("Monto", 180, y)
-    y += 4
-    pdf.line(14, y, 195, y)
-    y += 3
-    pdf.setFont("helvetica", "normal")
-    data.forEach((item, i) => {
-      if (y > 270) {
-        pdf.addPage()
-        y = 20
-      }
-      pdf.text(`${i + 1}`, 14, y)
-      pdf.text(item.fecha_pago, 22, y)
-      pdf.text((item.descripcion || "—").substring(0, 35), 44, y)
-      pdf.text((item.categoria_nombre || "—").substring(0, 16), 110, y)
-      pdf.text((item.proveedor_beneficiario || "—").substring(0, 16), 138, y)
-      pdf.text(`$${Number(item.monto || 0).toLocaleString()}`, 180, y, { align: "right" })
-      y += 5
-    })
-    y += 5
-    pdf.line(14, y, 195, y)
-    pdf.text(`Total: $${(totales.total || 0).toLocaleString()}`, 195, y + 6, { align: "right" })
-    pdf.save("reporte-egresos.pdf")
-    toast.success("Reporte PDF descargado")
+    try {
+      generarEgresosPDF({ data, totales, filtros, categorias })
+      toast.success("Reporte PDF descargado")
+    } catch {
+      toast.error("Error al generar el reporte PDF")
+    }
   }
 
   return (
