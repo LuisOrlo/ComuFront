@@ -17,7 +17,7 @@ import {
   CheckmarkCircle04Icon,
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { UserPlus, Loader2, Tag, X, Check, Clock } from "lucide-react"
+import { UserPlus, Loader2, Tag, X, Check, Clock, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   edicionVideoService,
@@ -79,6 +79,11 @@ export function EdicionVideoFormPage() {
   const [descuentoValor, setDescuentoValor] = useState<string>("")
   const [motivoDescuento, setMotivoDescuento] = useState<string>("")
   const [showDescuento, setShowDescuento] = useState(false)
+
+  // Recargos
+  const [recargoValor, setRecargoValor] = useState<string>("")
+  const [motivoRecargo, setMotivoRecargo] = useState<string>("")
+  const [showRecargo, setShowRecargo] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
@@ -118,6 +123,11 @@ export function EdicionVideoFormPage() {
           setDescuentoTipo("fijo")
           setDescuentoValor(t.monto_descuento.toString())
           setMotivoDescuento(t.motivo_descuento || "")
+        }
+        if (t.monto_recargo && t.monto_recargo > 0) {
+          setShowRecargo(true)
+          setRecargoValor(t.monto_recargo.toString())
+          setMotivoRecargo(t.motivo_recargo || "")
         }
         setNotas(t.notas || "")
         setEditorIds(t.editor_ids || [])
@@ -359,7 +369,19 @@ export function EdicionVideoFormPage() {
       montoDescuentoCalculado = (precioOriginalNum * (Number(descuentoValor) || 0)) / 100
     }
   }
-  const precioCobradoFinal = Math.max(0, precioOriginalNum - montoDescuentoCalculado)
+  montoDescuentoCalculado = Math.min(precioOriginalNum, Math.max(0, montoDescuentoCalculado))
+
+  let montoRecargoCalculado = 0
+  if (showRecargo && recargoValor) {
+    montoRecargoCalculado = Math.max(0, Number(recargoValor) || 0)
+  }
+
+  const tieneAjustes =
+    (showDescuento && montoDescuentoCalculado > 0) || (showRecargo && montoRecargoCalculado > 0)
+  const precioCobradoFinal = Math.max(
+    0,
+    precioOriginalNum - montoDescuentoCalculado + montoRecargoCalculado
+  )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -378,11 +400,16 @@ export function EdicionVideoFormPage() {
         cliente_externo_id: clienteTipo === "cliente_externo" ? clienteId : undefined,
         editor_ids: editorIds,
         precio_cobrado: precioCobrado ? precioCobradoFinal : null,
-        precio_original: showDescuento && montoDescuentoCalculado > 0 ? precioOriginalNum : null,
+        precio_original: tieneAjustes && precioCobrado ? precioOriginalNum : null,
         monto_descuento: showDescuento && montoDescuentoCalculado > 0 ? montoDescuentoCalculado : 0,
         motivo_descuento:
           showDescuento && montoDescuentoCalculado > 0 && motivoDescuento.trim()
             ? motivoDescuento.trim()
+            : null,
+        monto_recargo: showRecargo && montoRecargoCalculado > 0 ? montoRecargoCalculado : 0,
+        motivo_recargo:
+          showRecargo && montoRecargoCalculado > 0 && motivoRecargo.trim()
+            ? motivoRecargo.trim()
             : null,
         notas: notas.trim() || undefined,
       }
@@ -993,6 +1020,81 @@ export function EdicionVideoFormPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Botón o Formulario de Recargo */}
+                {!showRecargo ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRecargo(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100/70 border border-amber-200/80 px-3 py-2 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-98"
+                  >
+                    <TrendingUp size={14} />
+                    <span>+ Agregar recargo adicional</span>
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between pb-2 border-b border-amber-200/60">
+                      <div className="flex items-center gap-2">
+                        <div className="size-6 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center">
+                          <TrendingUp size={13} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-800">
+                          Recargo Adicional
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRecargo(false)
+                          setRecargoValor("")
+                          setMotivoRecargo("")
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                        title="Quitar recargo"
+                      >
+                        <X size={14} />
+                        <span>Quitar</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-0.5">
+                      {/* Monto fijo de recargo */}
+                      <div className="sm:col-span-5 space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Monto del recargo ($ USD)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={recargoValor}
+                            onChange={(e) => setRecargoValor(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-7 pr-3 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Motivo */}
+                      <div className="sm:col-span-7 space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Motivo o justificación
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej: Entrega urgente en 24h, animaciones 3D complejas..."
+                          value={motivoRecargo}
+                          onChange={(e) => setMotivoRecargo(e.target.value)}
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1187,11 +1289,25 @@ export function EdicionVideoFormPage() {
                   </div>
                 )}
 
+                {showRecargo && montoRecargoCalculado > 0 && (
+                  <div className="flex justify-between text-amber-600 font-semibold">
+                    <span>Recargo adicional:</span>
+                    <span>+${montoRecargoCalculado.toFixed(2)}</span>
+                  </div>
+                )}
+
                 <div className="pt-2 border-t border-slate-200/80 flex items-baseline justify-between">
                   <span className="text-sm font-bold text-slate-900">Total a Facturar:</span>
-                  <span className="text-2xl font-black text-[#fd761a] tabular-nums">
-                    ${(precioCobrado ? precioCobradoFinal : 0).toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    {tieneAjustes && precioOriginalNum > 0 && (
+                      <span className="text-xs text-slate-400 line-through block">
+                        ${precioOriginalNum.toFixed(2)}
+                      </span>
+                    )}
+                    <span className="text-2xl font-black text-[#fd761a] tabular-nums">
+                      ${(precioCobrado ? precioCobradoFinal : 0).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
 

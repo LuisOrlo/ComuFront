@@ -35,6 +35,8 @@ export interface ReservaPodcast {
   precio_original?: number | null
   monto_descuento?: number
   motivo_descuento?: string | null
+  monto_recargo?: number
+  motivo_recargo?: string | null
   pago_registrado: boolean
   estado: "pendiente" | "confirmado" | "en_progreso" | "completado" | "cancelado"
   notas?: string

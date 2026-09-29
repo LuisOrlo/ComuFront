@@ -20,6 +20,8 @@ export interface ReservaAula {
   precio_original?: number | null
   monto_descuento?: number
   motivo_descuento?: string | null
+  monto_recargo?: number
+  motivo_recargo?: string | null
   estado: "reservado" | "confirmado" | "en_progreso" | "completado" | "cancelado"
   observaciones?: string
   aula?: Aula

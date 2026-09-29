@@ -106,6 +106,34 @@ export function IngresoDetallePage() {
 
   const comprobanteUrl = data.comprobante_url ? getStorageUrl(data.comprobante_url) : null
 
+  const getTitularNombre = () => {
+    if (data?.estudiante_nombre) return data.estudiante_nombre
+    const cp = data?.cuenta_por_cobrar
+    if (!cp) return "—"
+    const candidates = [
+      cp.matricula?.estudiante,
+      cp.solicitud_inscripcion?.estudiante,
+      cp.solicitud_inscripcion?.participante_externo,
+      cp.inscripcion_taller,
+      cp.reserva_podcast?.persona,
+      cp.reserva_podcast?.cliente_externo,
+      cp.reserva_aula?.persona,
+      cp.reserva_aula?.cliente_externo,
+      cp.alquiler_equipo?.persona,
+      cp.alquiler_equipo?.cliente_externo,
+      cp.reserva_radio?.persona,
+      cp.reserva_radio?.cliente_externo,
+      cp.edicion_video?.cliente,
+      cp.edicion_video?.cliente_externo,
+    ]
+    for (const c of candidates) {
+      if (c?.nombre_mostrado) return c.nombre_mostrado
+      if (c?.nombre_empresa && c?.tipo_cliente === "empresa") return c.nombre_empresa
+      if (c?.nombres || c?.apellidos) return `${c.nombres || ""} ${c.apellidos || ""}`.trim()
+    }
+    return "—"
+  }
+
   return (
     <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16 flex flex-col">
       {/* Header Sticky Contextual */}
@@ -271,7 +299,7 @@ export function IngresoDetallePage() {
                     <span>Estudiante / Cliente</span>
                   </p>
                   <p className="text-sm font-bold text-slate-900">
-                    {data.estudiante_nombre || "—"}
+                    {getTitularNombre()}
                   </p>
                 </div>
 

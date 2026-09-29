@@ -24,6 +24,7 @@ import {
   Clock,
   Radio,
   X,
+  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { radioService, type TarifaRadio } from "@/services/radio.service"
@@ -56,6 +57,9 @@ interface Draft {
   showDescuento: boolean
   descuentoValor: string
   motivoDescuento: string
+  showRecargo: boolean
+  recargoValor: string
+  motivoRecargo: string
   errors: Record<string, string>
 }
 
@@ -80,6 +84,9 @@ const blank = (copy?: Draft): Draft => ({
   showDescuento: false,
   descuentoValor: "",
   motivoDescuento: "",
+  showRecargo: false,
+  recargoValor: "",
+  motivoRecargo: "",
   errors: {},
 })
 
@@ -287,14 +294,16 @@ export function ReservaBatchForm({
     const hours = Math.round((duration / 60) * 100) / 100
     const original = tarifa ? Math.round(hours * Number(tarifa.precio_por_hora) * 100) / 100 : 0
     const discount = r.showDescuento ? Math.min(Math.max(0, Number(r.descuentoValor) || 0), original) : 0
-    const final = Math.max(0, Math.round((original - discount) * 100) / 100)
-    return { original, discount, final, hours, duration }
+    const surcharge = r.showRecargo ? Math.max(0, Number(r.recargoValor) || 0) : 0
+    const final = Math.max(0, Math.round((original - discount + surcharge) * 100) / 100)
+    return { original, discount, surcharge, final, hours, duration }
   }, [tarifas])
 
   // Totales consolidados de la tanda
   const totals = useMemo(() => {
     let sumOriginal = 0
     let sumDiscount = 0
+    let sumSurcharge = 0
     let sumTotal = 0
     let sumMinutes = 0
 
@@ -302,12 +311,13 @@ export function ReservaBatchForm({
       const p = getPrices(r)
       sumOriginal += p.original
       sumDiscount += p.discount
+      sumSurcharge += p.surcharge
       sumTotal += p.final
       sumMinutes += p.duration
     })
 
     const sumHours = Math.round((sumMinutes / 60) * 100) / 100
-    return { sumOriginal, sumDiscount, sumTotal, sumHours, sumMinutes }
+    return { sumOriginal, sumDiscount, sumSurcharge, sumTotal, sumHours, sumMinutes }
   }, [reservas, getPrices])
 
   const validate = () => {
@@ -326,6 +336,9 @@ export function ReservaBatchForm({
       }
       if (r.showDescuento && Number(r.descuentoValor) > getPrices(r).original) {
         errors.descuento = "El descuento no puede superar el precio original"
+      }
+      if (r.showRecargo && Number(r.recargoValor) < 0) {
+        errors.recargo = "El recargo no puede ser negativo"
       }
       return { ...r, errors }
     })
@@ -360,6 +373,7 @@ export function ReservaBatchForm({
         cliente_externo_id: cliente.tipo === "cliente_externo" ? cliente.id : null,
         reservas: reservas.map((r) => {
           const prices = getPrices(r)
+          const hasAdjustments = (r.showDescuento && prices.discount > 0) || (r.showRecargo && prices.surcharge > 0)
           return {
             tarifa_id: Number(r.tarifa_id),
             fecha_reserva: r.fecha_reserva,
@@ -367,9 +381,12 @@ export function ReservaBatchForm({
             hora_fin: calculateEndTime(r.hora_inicio, r.duracion),
             incluye_operador: r.incluye_operador,
             operador_id: r.incluye_operador ? r.operador_id : null,
-            precio_original: r.showDescuento && prices.discount > 0 ? prices.original : null,
+            precio_total: prices.final,
+            precio_original: hasAdjustments ? prices.original : null,
             monto_descuento: prices.discount,
             motivo_descuento: r.showDescuento && prices.discount > 0 ? r.motivoDescuento.trim() || null : null,
+            monto_recargo: prices.surcharge,
+            motivo_recargo: r.showRecargo && prices.surcharge > 0 ? r.motivoRecargo.trim() || null : null,
             observaciones: r.observaciones?.trim() || null,
             estado: "reservado",
           }
@@ -994,6 +1011,91 @@ export function ReservaBatchForm({
                           </div>
                         )}
 
+                        {/* Recargo Opcional */}
+                        {!r.showRecargo ? (
+                          <div className="sm:col-span-2 md:col-span-4 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => update(r.id, { showRecargo: true })}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:text-amber-800 bg-amber-50/70 hover:bg-amber-100/80 border border-amber-200/70 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-98"
+                            >
+                              <TrendingUp size={13} />
+                              <span>+ Agregar recargo a esta sesión</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="sm:col-span-2 md:col-span-4 rounded-xl border border-amber-200/80 bg-amber-50/40 p-3.5 space-y-2.5 animate-in fade-in">
+                            <div className="flex items-center justify-between pb-1 border-b border-amber-200/50">
+                              <div className="flex items-center gap-2">
+                                <div className="size-6 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center">
+                                  <TrendingUp size={12} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-800">
+                                  Recargo Opcional
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  update(r.id, {
+                                    showRecargo: false,
+                                    recargoValor: "",
+                                    motivoRecargo: "",
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                title="Quitar recargo y ocultar"
+                              >
+                                <X size={12} />
+                                <span>Quitar recargo</span>
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                              {/* Monto Recargo */}
+                              <div className="space-y-1 sm:col-span-1">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                                  <HugeiconsIcon icon={Money01Icon} size={12} className="text-slate-400" />
+                                  <span>Recargo ($)</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                                    $
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={r.recargoValor}
+                                    onChange={(e) => update(r.id, { recargoValor: e.target.value })}
+                                    className="w-full h-10 pl-7 pr-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                                  />
+                                </div>
+                                {r.errors.recargo && (
+                                  <small className="text-red-600 text-[10px] block mt-0.5">
+                                    {r.errors.recargo}
+                                  </small>
+                                )}
+                              </div>
+
+                              {/* Motivo Recargo */}
+                              <div className="space-y-1 sm:col-span-2">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                  Motivo del Recargo
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Ej. Fuera de horario, requerimientos técnicos..."
+                                  value={r.motivoRecargo}
+                                  onChange={(e) => update(r.id, { motivoRecargo: e.target.value })}
+                                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Operador Técnico */}
                         <div className="sm:col-span-2 md:col-span-4 space-y-1.5">
                           <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
@@ -1163,6 +1265,12 @@ export function ReservaBatchForm({
                     <span>-${totals.sumDiscount.toFixed(2)}</span>
                   </div>
                 )}
+                {totals.sumSurcharge > 0 && (
+                  <div className="flex justify-between text-amber-600 font-semibold">
+                    <span>Recargos acumulados:</span>
+                    <span>+${totals.sumSurcharge.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Caja Oscura con Total Final a Facturar */}
@@ -1176,7 +1284,7 @@ export function ReservaBatchForm({
                   </p>
                 </div>
                 <div className="text-right">
-                  {totals.sumDiscount > 0 && (
+                  {(totals.sumDiscount > 0 || totals.sumSurcharge > 0) && (
                     <span className="text-xs text-slate-400 line-through block">
                       ${totals.sumOriginal.toFixed(2)}
                     </span>

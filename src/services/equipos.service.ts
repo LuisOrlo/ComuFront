@@ -27,6 +27,8 @@ export interface AlquilerEquipo {
   precio_original?: number | null
   monto_descuento?: number
   motivo_descuento?: string | null
+  monto_recargo?: number
+  motivo_recargo?: string | null
   estado: "activo" | "devuelto" | "vencido" | "pendiente" | "entregado"
   created_at?: string
   updated_at?: string

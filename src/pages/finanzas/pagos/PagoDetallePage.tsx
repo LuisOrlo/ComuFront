@@ -145,6 +145,17 @@ export function PagoDetallePage() {
     const rr = cp.reserva_radio
     if (rr?.persona) return `${rr.persona.nombres || ""} ${rr.persona.apellidos || ""}`.trim()
     if (rr?.cliente_externo) return `${rr.cliente_externo.nombres || ""} ${rr.cliente_externo.apellidos || ""}`.trim()
+    const ev = cp.edicion_video
+    if (ev?.cliente) return `${ev.cliente.nombres || ""} ${ev.cliente.apellidos || ""}`.trim()
+    if (ev?.cliente_externo) {
+      return (
+        ev.cliente_externo.nombre_mostrado ||
+        (ev.cliente_externo.tipo_cliente === "empresa" && ev.cliente_externo.nombre_empresa
+          ? ev.cliente_externo.nombre_empresa
+          : `${ev.cliente_externo.nombres || ""} ${ev.cliente_externo.apellidos || ""}`.trim())
+      )
+    }
+    if (ev?.persona) return `${ev.persona.nombres || ""} ${ev.persona.apellidos || ""}`.trim()
     return "—"
   }
 
@@ -184,7 +195,7 @@ export function PagoDetallePage() {
       ["reserva_podcast_id", cp.reserva_podcast?.titulo ?? cp.reserva_podcast?.paquete?.nombre ?? "Podcast"],
       ["reserva_aula_id", cp.reserva_aula?.aula?.nombre ?? "Aula"],
       ["alquiler_equipo_id", cp.alquiler_equipo?.equipo?.nombre ?? "Equipo"],
-      ["edicion_video_id", "Edición de Video"],
+      ["edicion_video_id", cp.edicion_video?.titulo || "Edición de Video"],
       ["reserva_radio_id", "Radio"],
     ] as const
     for (const [idField, label] of servicio) {

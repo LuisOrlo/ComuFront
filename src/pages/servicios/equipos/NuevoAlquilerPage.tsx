@@ -18,7 +18,7 @@ import {
   Delete02Icon,
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons"
-import { UserPlus, Loader2, Tag, X } from "lucide-react"
+import { UserPlus, Loader2, Tag, X, TrendingUp } from "lucide-react"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { equiposService, type Equipo } from "@/services/equipos.service"
 import { personasService } from "@/services/personas.service"
@@ -60,6 +60,11 @@ export function NuevoAlquilerPage() {
   const [descuentoValor, setDescuentoValor] = useState<string>("")
   const [motivoDescuento, setMotivoDescuento] = useState<string>("")
   const [showDescuento, setShowDescuento] = useState(false)
+
+  // Recargos
+  const [recargoValor, setRecargoValor] = useState<string>("")
+  const [motivoRecargo, setMotivoRecargo] = useState<string>("")
+  const [showRecargo, setShowRecargo] = useState(false)
 
   const [clienteId, setClienteId] = useState("")
   const [clienteTipo, setClienteTipo] = useState<"persona" | "cliente_externo" | "">("")
@@ -105,6 +110,12 @@ export function NuevoAlquilerPage() {
             setDescuentoTipo("fijo")
             setDescuentoValor(alquiler.monto_descuento.toString())
             setMotivoDescuento(alquiler.motivo_descuento || "")
+          }
+
+          if (alquiler.monto_recargo && alquiler.monto_recargo > 0) {
+            setShowRecargo(true)
+            setRecargoValor(alquiler.monto_recargo.toString())
+            setMotivoRecargo(alquiler.motivo_recargo || "")
           }
 
           if (alquiler.persona_id) {
@@ -285,7 +296,15 @@ export function NuevoAlquilerPage() {
       montoDescuento = (precioOriginal * (Number(descuentoValor) || 0)) / 100
     }
   }
-  const precioTotal = Math.max(0, precioOriginal - montoDescuento)
+  montoDescuento = Math.min(precioOriginal, Math.max(0, montoDescuento))
+
+  let montoRecargo = 0
+  if (showRecargo && recargoValor) {
+    montoRecargo = Math.max(0, Number(recargoValor) || 0)
+  }
+
+  const tieneAjustes = (showDescuento && montoDescuento > 0) || (showRecargo && montoRecargo > 0)
+  const precioTotal = Math.max(0, precioOriginal - montoDescuento + montoRecargo)
 
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -336,11 +355,19 @@ export function NuevoAlquilerPage() {
       form.append("fecha_entrega", new Date(fechaEntrega).toISOString())
       form.append("fecha_devolucion_esperada", new Date(fechaDevolucion).toISOString())
       form.append("precio_total", String(precioTotal))
-      if (showDescuento && montoDescuento > 0) {
+      if (tieneAjustes) {
         form.append("precio_original", String(precioOriginal))
+      }
+      if (showDescuento && montoDescuento > 0) {
         form.append("monto_descuento", String(montoDescuento))
         if (motivoDescuento.trim()) {
           form.append("motivo_descuento", motivoDescuento.trim())
+        }
+      }
+      if (showRecargo && montoRecargo > 0) {
+        form.append("monto_recargo", String(montoRecargo))
+        if (motivoRecargo.trim()) {
+          form.append("motivo_recargo", motivoRecargo.trim())
         }
       }
       if (observaciones.trim()) form.append("observaciones", observaciones.trim())
@@ -1080,6 +1107,82 @@ export function NuevoAlquilerPage() {
                   </div>
                 )}
 
+                {/* Recargo */}
+                {!showRecargo ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRecargo(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 hover:underline cursor-pointer pt-1"
+                  >
+                    <TrendingUp size={13} />
+                    <span>+ Agregar recargo adicional</span>
+                  </button>
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <TrendingUp size={13} className="text-amber-600" />
+                        Recargo adicional
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRecargo(false)
+                          setRecargoValor("")
+                          setMotivoRecargo("")
+                        }}
+                        className="text-slate-400 hover:text-red-600 p-0.5 cursor-pointer"
+                        title="Quitar recargo"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                          Monto ($)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={recargoValor}
+                          onChange={(e) => setRecargoValor(e.target.value)}
+                          className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800 outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                          Motivo
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Entrega fuera de horario"
+                          value={motivoRecargo}
+                          onChange={(e) => setMotivoRecargo(e.target.value)}
+                          className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Desglose de ajustes */}
+                {showDescuento && montoDescuento > 0 && (
+                  <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100 text-emerald-600">
+                    <span>Descuento aplicado</span>
+                    <span className="font-semibold">-${montoDescuento.toFixed(2)}</span>
+                  </div>
+                )}
+                {showRecargo && montoRecargo > 0 && (
+                  <div className="flex items-center justify-between text-xs py-1 border-b border-slate-100 text-amber-600">
+                    <span>Recargo adicional</span>
+                    <span className="font-semibold">+${montoRecargo.toFixed(2)}</span>
+                  </div>
+                )}
+
                 {/* Total Final */}
                 <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between shadow-xs">
                   <div>
@@ -1091,7 +1194,7 @@ export function NuevoAlquilerPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    {showDescuento && montoDescuento > 0 && (
+                    {tieneAjustes && (
                       <span className="text-xs text-slate-400 line-through block">
                         ${precioOriginal.toFixed(2)}
                       </span>

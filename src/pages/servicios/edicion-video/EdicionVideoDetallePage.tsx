@@ -275,11 +275,7 @@ export function EdicionVideoDetallePage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span>Edición de Video</span>
-                  <span>/</span>
-                  <span className="text-slate-700 font-medium">Detalle del Trabajo</span>
-                </div>
+                
               </div>
             </div>
 
@@ -608,13 +604,9 @@ export function EdicionVideoDetallePage() {
                       <span className="text-base font-bold text-slate-900">
                         ${Number(trabajo.precio_cobrado).toFixed(2)}
                       </span>
-                      {trabajo.monto_descuento && Number(trabajo.monto_descuento) > 0 && (
+                      {trabajo.precio_original && Number(trabajo.precio_original) > 0 && (
                         <span className="text-[11px] text-slate-400 line-through">
-                          $
-                          {(
-                            Number(trabajo.precio_original) ||
-                            Number(trabajo.precio_cobrado) + Number(trabajo.monto_descuento)
-                          ).toFixed(2)}
+                          ${Number(trabajo.precio_original).toFixed(2)}
                         </span>
                       )}
                     </div>
@@ -627,6 +619,17 @@ export function EdicionVideoDetallePage() {
                       </p>
                       {trabajo.motivo_descuento && (
                         <p className="italic text-orange-700">"{trabajo.motivo_descuento}"</p>
+                      )}
+                    </div>
+                  )}
+
+                  {trabajo.monto_recargo && Number(trabajo.monto_recargo) > 0 && (
+                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 space-y-0.5">
+                      <p className="font-semibold">
+                        Recargo: +${Number(trabajo.monto_recargo).toFixed(2)}
+                      </p>
+                      {trabajo.motivo_recargo && (
+                        <p className="italic text-amber-800">"{trabajo.motivo_recargo}"</p>
                       )}
                     </div>
                   )}

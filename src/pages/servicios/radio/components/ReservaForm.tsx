@@ -19,6 +19,7 @@ import {
   Radio,
   X,
   RadioTower,
+  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { radioService, type TarifaRadio, type ReservaRadio } from "@/services/radio.service"
@@ -78,6 +79,11 @@ export function ReservaForm({
   const [descuentoValor, setDescuentoValor] = useState<string>("")
   const [motivoDescuento, setMotivoDescuento] = useState<string>("")
   const [showDescuento, setShowDescuento] = useState(false)
+
+  // Recargo
+  const [recargoValor, setRecargoValor] = useState<string>("")
+  const [motivoRecargo, setMotivoRecargo] = useState<string>("")
+  const [showRecargo, setShowRecargo] = useState(false)
 
   // Cliente
   const [cliente, setCliente] = useState<ClienteOption | null>(null)
@@ -196,6 +202,26 @@ export function ReservaForm({
           celular: editingReserva.cliente_externo.celular,
         })
       }
+
+      if (editingReserva.monto_descuento && Number(editingReserva.monto_descuento) > 0) {
+        setShowDescuento(true)
+        setDescuentoValor(String(editingReserva.monto_descuento))
+        setMotivoDescuento(editingReserva.motivo_descuento || "")
+      } else {
+        setShowDescuento(false)
+        setDescuentoValor("")
+        setMotivoDescuento("")
+      }
+
+      if (editingReserva.monto_recargo && Number(editingReserva.monto_recargo) > 0) {
+        setShowRecargo(true)
+        setRecargoValor(String(editingReserva.monto_recargo))
+        setMotivoRecargo(editingReserva.motivo_recargo || "")
+      } else {
+        setShowRecargo(false)
+        setRecargoValor("")
+        setMotivoRecargo("")
+      }
     } else {
       setTarifaId(tarifas[0]?.id ? String(tarifas[0].id) : "")
       setFecha(fechaPreseleccionada || new Date().toISOString().split("T")[0])
@@ -206,6 +232,12 @@ export function ReservaForm({
       setObservaciones("")
       setCliente(null)
       horarioOriginal.current = null
+      setShowDescuento(false)
+      setDescuentoValor("")
+      setMotivoDescuento("")
+      setShowRecargo(false)
+      setRecargoValor("")
+      setMotivoRecargo("")
     }
   }, [isOpen, editingReserva, fechaPreseleccionada, horaPreseleccionada, tarifas])
 
@@ -340,7 +372,15 @@ export function ReservaForm({
     }
   }
   montoDescuentoCalculado = Math.min(precioOriginal, Math.max(0, montoDescuentoCalculado))
-  const precioFinal = Math.max(0, precioOriginal - montoDescuentoCalculado)
+
+  let montoRecargoCalculado = 0
+  if (showRecargo && recargoValor) {
+    montoRecargoCalculado = Math.max(0, Number(recargoValor) || 0)
+  }
+
+  const tieneAjustes =
+    (showDescuento && montoDescuentoCalculado > 0) || (showRecargo && montoRecargoCalculado > 0)
+  const precioFinal = Math.max(0, precioOriginal - montoDescuentoCalculado + montoRecargoCalculado)
 
   // Verificación de Conflictos de Horario
   useEffect(() => {
@@ -432,11 +472,16 @@ export function ReservaForm({
         hora_inicio: normalizarHora(horaInicio),
         hora_fin: normalizarHora(horaFin),
         precio_total: precioFinal,
-        precio_original: showDescuento && montoDescuentoCalculado > 0 ? precioOriginal : null,
+        precio_original: tieneAjustes ? precioOriginal : null,
         monto_descuento: showDescuento && montoDescuentoCalculado > 0 ? montoDescuentoCalculado : 0,
         motivo_descuento:
           showDescuento && montoDescuentoCalculado > 0 && motivoDescuento.trim()
             ? motivoDescuento.trim()
+            : null,
+        monto_recargo: showRecargo && montoRecargoCalculado > 0 ? montoRecargoCalculado : 0,
+        motivo_recargo:
+          showRecargo && montoRecargoCalculado > 0 && motivoRecargo.trim()
+            ? motivoRecargo.trim()
             : null,
         incluye_operador: incluyeOperador,
         operador_id: incluyeOperador ? operadorId : null,
@@ -1054,6 +1099,95 @@ export function ReservaForm({
                 </div>
               )}
             </div>
+
+            {/* Card 5: Recargo Adicional a la Reserva */}
+            <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-5 space-y-4">
+              {!showRecargo ? (
+                <button
+                  type="button"
+                  onClick={() => setShowRecargo(true)}
+                  className="w-full py-3 px-4 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 hover:bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <TrendingUp size={15} />
+                  <span>+ Agregar recargo adicional a la reserva</span>
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-amber-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                        <TrendingUp size={16} />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900">
+                          Recargo a la Reserva
+                        </h3>
+                        <p className="text-[10px] text-slate-500">
+                          Aplica un valor adicional por conceptos especiales
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {montoRecargoCalculado > 0 && (
+                        <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                          +${montoRecargoCalculado.toFixed(2)} USD
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRecargo(false)
+                          setRecargoValor("")
+                          setMotivoRecargo("")
+                        }}
+                        className="size-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Quitar recargo"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+                    {/* Monto del recargo */}
+                    <div className="sm:col-span-5 space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Monto del recargo ($ USD)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={recargoValor}
+                          onChange={(e) => setRecargoValor(e.target.value)}
+                          className="w-full h-9 pl-7 pr-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Motivo */}
+                    <div className="sm:col-span-7 space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Motivo o concepto del recargo
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Transmisión fuera de horario, soporte técnico..."
+                        value={motivoRecargo}
+                        onChange={(e) => setMotivoRecargo(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Columna Derecha Sticky (4 columnas) */}
@@ -1133,6 +1267,13 @@ export function ReservaForm({
                   <div className="flex items-center justify-between text-xs text-emerald-400">
                     <span>Descuento aplicado</span>
                     <span className="font-medium">-${montoDescuentoCalculado.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {showRecargo && montoRecargoCalculado > 0 && (
+                  <div className="flex items-center justify-between text-xs text-amber-400">
+                    <span>Recargo adicional</span>
+                    <span className="font-medium">+${montoRecargoCalculado.toFixed(2)}</span>
                   </div>
                 )}
 

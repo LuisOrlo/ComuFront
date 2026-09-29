@@ -72,20 +72,20 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
     },
     {
       id: "tipo",
-      accessorFn: (c) => (c.tipo_cliente === "empresa" ? "Cliente" : "Persona"),
+      accessorFn: (c) => (c.tipo_cliente === "empresa" ? "Empresa" : "Cliente"),
       header: "Tipo",
       cell: ({ row }) => {
         const c = row.original
-        const isCliente = c.tipo_cliente === "empresa"
-        return isCliente ? (
+        const isEmpresa = c.tipo_cliente === "empresa"
+        return isEmpresa ? (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-orange-50 border border-orange-200/80 text-[#9d4300]">
             <span className="size-1.5 rounded-full bg-[#fd761a]" />
-            Cliente
+            Empresa
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-50 border border-blue-200/80 text-blue-700">
             <span className="size-1.5 rounded-full bg-blue-600" />
-            Persona
+            Cliente
           </span>
         )
       },

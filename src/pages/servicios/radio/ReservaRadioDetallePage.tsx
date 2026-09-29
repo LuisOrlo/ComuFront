@@ -402,21 +402,40 @@ export function ReservaRadioDetallePage() {
                 <HugeiconsIcon icon={Money01Icon} size={13} className="text-emerald-500" />
                 Inversión Total
               </span>
-              {reserva.pago_registrado ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                  <CheckCircle2 size={11} />
-                  Al día
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                  <DollarSign size={11} />
-                  Pendiente
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {Number(reserva.monto_descuento ?? 0) > 0 && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                    Desc. -${Number(reserva.monto_descuento).toFixed(2)}
+                  </span>
+                )}
+                {Number(reserva.monto_recargo ?? 0) > 0 && (
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                    Rec. +${Number(reserva.monto_recargo).toFixed(2)}
+                  </span>
+                )}
+                {reserva.pago_registrado ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                    <CheckCircle2 size={11} />
+                    Al día
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                    <DollarSign size={11} />
+                    Pendiente
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-black text-slate-900 tracking-tight">
+                ${Number(reserva.precio_total).toFixed(2)}
+              </p>
+              {reserva.precio_original && Number(reserva.precio_original) > 0 && (
+                <span className="text-sm font-semibold text-slate-400 line-through">
+                  ${Number(reserva.precio_original).toFixed(2)}
                 </span>
               )}
             </div>
-            <p className="text-2xl font-black text-slate-900 tracking-tight">
-              ${Number(reserva.precio_total).toFixed(2)}
-            </p>
             <p className="text-[11px] text-slate-500 mt-1 truncate">
               {reserva.tarifa?.nombre || "Tarifa estándar"} (${Number(reserva.tarifa?.precio_por_hora ?? 0).toFixed(2)}/h)
             </p>
@@ -548,7 +567,7 @@ export function ReservaRadioDetallePage() {
               </div>
             </div>
 
-            {/* Tarifa Detalle */}
+            {/* Tarifa y Liquidación Detalle */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-100 text-slate-600">
                 <span>Tarifa por hora:</span>
@@ -560,8 +579,32 @@ export function ReservaRadioDetallePage() {
                 <span>Tiempo contratado:</span>
                 <span className="font-semibold text-slate-800">{duracion}</span>
               </div>
+              {reserva.precio_original && Number(reserva.precio_original) > 0 && (
+                <div className="flex justify-between py-1 border-b border-slate-100 text-slate-600">
+                  <span>Precio base original:</span>
+                  <span className="font-semibold text-slate-700">
+                    ${Number(reserva.precio_original).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {Number(reserva.monto_descuento ?? 0) > 0 && (
+                <div className="flex justify-between py-1 border-b border-slate-100 text-emerald-600">
+                  <span>
+                    Descuento {reserva.motivo_descuento ? `(${reserva.motivo_descuento})` : ""}:
+                  </span>
+                  <span className="font-bold">-${Number(reserva.monto_descuento).toFixed(2)}</span>
+                </div>
+              )}
+              {Number(reserva.monto_recargo ?? 0) > 0 && (
+                <div className="flex justify-between py-1 border-b border-slate-100 text-amber-600">
+                  <span>
+                    Recargo {reserva.motivo_recargo ? `(${reserva.motivo_recargo})` : ""}:
+                  </span>
+                  <span className="font-bold">+${Number(reserva.monto_recargo).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between py-1 text-slate-800 font-bold">
-                <span>Subtotal liquidado:</span>
+                <span>Total liquidado:</span>
                 <span className="text-slate-900">${Number(reserva.precio_total).toFixed(2)}</span>
               </div>
             </div>

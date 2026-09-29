@@ -69,7 +69,7 @@ export function DetalleReservaModal({
     { icon: Calendar03Icon, label: "Fecha", value: formatDate(reserva.fecha_reserva) },
     { icon: Clock01Icon, label: "Horario", value: `${reserva.hora_inicio.substring(0, 5)} – ${reserva.hora_fin.substring(0, 5)}` },
     { icon: Money01Icon, label: "Tarifa", value: `${reserva.tarifa?.nombre || "—"} ($${(reserva.tarifa?.precio_por_hora ?? 0).toFixed(2)}/h)` },
-    { icon: Money01Icon, label: "Total", value: `$${reserva.precio_total.toFixed(2)}` },
+    { icon: Money01Icon, label: "Total", value: reserva.precio_original && Number(reserva.precio_original) > 0 ? `$${Number(reserva.precio_total).toFixed(2)} (Base: $${Number(reserva.precio_original).toFixed(2)})` : `$${Number(reserva.precio_total).toFixed(2)}` },
     { icon: UserIcon, label: "Responsable", value: reserva.persona ? `${reserva.persona.nombres} ${reserva.persona.apellidos}` : reserva.cliente_externo?.nombres || "—" },
     { icon: UserGroupIcon, label: "Operador", value: reserva.incluye_operador && reserva.operador ? `${reserva.operador.nombres} ${reserva.operador.apellidos}` : reserva.incluye_operador ? "Sin asignar" : "No requiere" },
   ]
@@ -165,14 +165,28 @@ export function DetalleReservaModal({
           )}
 
           {reserva.monto_descuento && Number(reserva.monto_descuento) > 0 && (
-            <div className="mt-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1">
-              <div className="flex items-center justify-between font-bold text-amber-900">
+            <div className="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-1">
+              <div className="flex items-center justify-between font-bold text-emerald-900">
                 <span>Descuento Aplicado:</span>
                 <span>-${Number(reserva.monto_descuento).toFixed(2)}</span>
               </div>
               {reserva.motivo_descuento && (
-                <p className="text-amber-800 font-medium">
+                <p className="text-emerald-800 font-medium">
                   <span className="font-bold">Motivo:</span> "{reserva.motivo_descuento}"
+                </p>
+              )}
+            </div>
+          )}
+
+          {reserva.monto_recargo && Number(reserva.monto_recargo) > 0 && (
+            <div className="mt-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1">
+              <div className="flex items-center justify-between font-bold text-amber-900">
+                <span>Recargo Adicional:</span>
+                <span>+${Number(reserva.monto_recargo).toFixed(2)}</span>
+              </div>
+              {reserva.motivo_recargo && (
+                <p className="text-amber-800 font-medium">
+                  <span className="font-bold">Motivo:</span> "{reserva.motivo_recargo}"
                 </p>
               )}
             </div>
@@ -193,6 +207,8 @@ interface ReservaRadio {
   precio_original?: number | null
   monto_descuento?: number
   motivo_descuento?: string | null
+  monto_recargo?: number
+  motivo_recargo?: string | null
   observaciones?: string
   incluye_operador: boolean
   tarifa?: { nombre: string; precio_por_hora: number }

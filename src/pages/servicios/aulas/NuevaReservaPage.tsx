@@ -68,6 +68,12 @@ export function NuevaReservaIndividualPage() {
   const [motivoDescuento, setMotivoDescuento] = useState<string>("")
   const [showDescuento, setShowDescuento] = useState(false)
 
+  // Recargos
+  const [recargoTipo, setRecargoTipo] = useState<"fijo" | "porcentaje">("fijo")
+  const [recargoValor, setRecargoValor] = useState<string>("")
+  const [motivoRecargo, setMotivoRecargo] = useState<string>("")
+  const [showRecargo, setShowRecargo] = useState(false)
+
   const [conflicto, setConflicto] = useState<ReservaAula | null>(null)
   const [verificandoConflicto, setVerificandoConflicto] = useState(false)
   const [horarioOriginal, setHorarioOriginal] = useState<{ fecha: string; horaInicio: string; horaFin: string; aulaId?: string } | null>(null)
@@ -131,6 +137,12 @@ export function NuevaReservaIndividualPage() {
             setDescuentoTipo("fijo")
             setDescuentoValor(r.monto_descuento.toString())
             setMotivoDescuento(r.motivo_descuento || "")
+          }
+          if (r.monto_recargo && r.monto_recargo > 0) {
+            setShowRecargo(true)
+            setRecargoTipo("fijo")
+            setRecargoValor(r.monto_recargo.toString())
+            setMotivoRecargo(r.motivo_recargo || "")
           }
           const aulaReserva = todas.find(a => a.id === r.aula_id) || null
           setAula(aulaReserva)
@@ -289,7 +301,15 @@ export function NuevaReservaIndividualPage() {
       montoDescuento = Math.round((precioOriginal * (Number(descuentoValor) || 0) / 100) * 100) / 100
     }
   }
-  const precioTotal = Math.max(0, Math.round((precioOriginal - montoDescuento) * 100) / 100)
+  let montoRecargo = 0
+  if (showRecargo && recargoValor) {
+    if (recargoTipo === "fijo") {
+      montoRecargo = Math.max(0, Number(recargoValor) || 0)
+    } else {
+      montoRecargo = Math.round((precioOriginal * (Number(recargoValor) || 0) / 100) * 100) / 100
+    }
+  }
+  const precioTotal = Math.max(0, Math.round((precioOriginal - montoDescuento + montoRecargo) * 100) / 100)
 
   const selectCliente = (opt: ClienteOption) => {
     setSelectedCliente(opt)
@@ -343,9 +363,11 @@ export function NuevaReservaIndividualPage() {
         hora_inicio: horaInicio,
         hora_fin: horaFin,
         precio_total: precioTotal,
-        precio_original: showDescuento ? precioOriginal : null,
+        precio_original: (showDescuento || showRecargo) ? precioOriginal : null,
         monto_descuento: showDescuento ? montoDescuento : 0,
         motivo_descuento: showDescuento ? motivoDescuento : null,
+        monto_recargo: showRecargo ? montoRecargo : 0,
+        motivo_recargo: showRecargo ? motivoRecargo : null,
       }
       if (isEdit) {
         payload.estado = estadoOriginal
@@ -865,35 +887,49 @@ export function NuevaReservaIndividualPage() {
             </div>
 
             {/* Card 3: Descuento / Ajuste de Tarifa */}
+            {/* Card 5: Descuento / Recargo / Ajustes */}
             <div className="rounded-xl shadow-xs bg-white border border-slate-200/90 p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <div className="size-9 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 flex items-center justify-center shrink-0">
                     <Tag size={16} />
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                      Descuento y Ajustes de Tarifa
+                      Descuentos y Recargos
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Aplica rebajas especiales o motivos de descuento institucional
+                      Aplica rebajas institucionales o recargos adicionales
                     </p>
                   </div>
                 </div>
 
-                {!showDescuento && (
-                  <button
-                    type="button"
-                    onClick={() => setShowDescuento(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#fd761a] hover:bg-orange-100 border border-orange-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
-                  >
-                    <Plus size={13} />
-                    <span>Agregar Descuento</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!showDescuento && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDescuento(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#fd761a] hover:bg-orange-100 border border-orange-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      <Plus size={13} />
+                      <span>Agregar Descuento</span>
+                    </button>
+                  )}
+                  {!showRecargo && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRecargo(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 text-xs font-semibold transition-all cursor-pointer shadow-2xs active:scale-95"
+                    >
+                      <Plus size={13} />
+                      <span>Agregar Recargo</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {showDescuento ? (
+              {/* Bloque Descuento */}
+              {showDescuento && (
                 <div className="p-4 rounded-xl bg-orange-50/50 border border-orange-200/80 space-y-3.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-orange-950">Configurar Descuento</span>
@@ -960,9 +996,81 @@ export function NuevaReservaIndividualPage() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {/* Bloque Recargo */}
+              {showRecargo && (
+                <div className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/80 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-950">Configurar Recargo Adicional</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowRecargo(false)
+                        setRecargoValor("")
+                        setMotivoRecargo("")
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-red-600 cursor-pointer flex items-center gap-1"
+                    >
+                      <X size={13} />
+                      <span>Quitar recargo</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        Tipo
+                      </label>
+                      <select
+                        value={recargoTipo}
+                        onChange={(e) => setRecargoTipo(e.target.value as "fijo" | "porcentaje")}
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-amber-500"
+                      >
+                        <option value="fijo">Monto Fijo ($)</option>
+                        <option value="porcentaje">Porcentaje (%)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        Valor del Recargo
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={recargoValor}
+                          onChange={(e) => setRecargoValor(e.target.value)}
+                          placeholder={recargoTipo === "fijo" ? "0.00" : "0"}
+                          className="w-full h-10 pl-7 pr-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-amber-500"
+                        />
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                          {recargoTipo === "fijo" ? "$" : "%"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        Motivo / Razón
+                      </label>
+                      <input
+                        type="text"
+                        value={motivoRecargo}
+                        onChange={(e) => setMotivoRecargo(e.target.value)}
+                        placeholder="Ej: Horario nocturno, fin de semana, limpieza especial..."
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!showDescuento && !showRecargo && (
                 <p className="text-xs text-slate-400 italic">
-                  Sin descuentos aplicados a esta reserva.
+                  Sin descuentos ni recargos aplicados a esta reserva.
                 </p>
               )}
             </div>
@@ -1038,6 +1146,12 @@ export function NuevaReservaIndividualPage() {
                     <span>-${montoDescuento.toFixed(2)}</span>
                   </div>
                 )}
+                {showRecargo && montoRecargo > 0 && (
+                  <div className="flex justify-between text-amber-600 font-semibold">
+                    <span>Recargo adicional:</span>
+                    <span>+${montoRecargo.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               {/* Caja Oscura con Total Final a Facturar */}
@@ -1051,7 +1165,7 @@ export function NuevaReservaIndividualPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  {showDescuento && montoDescuento > 0 && (
+                  {(showDescuento || showRecargo) && (montoDescuento > 0 || montoRecargo > 0) && (
                     <span className="text-xs text-slate-400 line-through block">
                       ${precioOriginal.toFixed(2)}
                     </span>

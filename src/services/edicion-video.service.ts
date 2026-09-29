@@ -21,6 +21,8 @@ export interface TrabajoEdicion {
   precio_original?: number | null
   monto_descuento?: number
   motivo_descuento?: string | null
+  monto_recargo?: number
+  motivo_recargo?: string | null
   cobro_registrado: boolean
   notas?: string
   created_at?: string

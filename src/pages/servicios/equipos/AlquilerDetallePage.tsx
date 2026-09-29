@@ -198,15 +198,20 @@ export function AlquilerDetallePage() {
               </p>
               <div className="flex items-baseline gap-2">
                 <p className="text-lg font-black" style={{ color: COLORS.CHARCOAL }}>${Number(alquiler.precio_total).toFixed(2)}</p>
-                {alquiler.monto_descuento && Number(alquiler.monto_descuento) > 0 && (
+                {alquiler.precio_original && Number(alquiler.precio_original) > 0 && (
                   <span className="text-xs text-gray-400 line-through font-semibold">
-                    ${(Number(alquiler.precio_original || Number(alquiler.precio_total) + Number(alquiler.monto_descuento))).toFixed(2)}
+                    ${Number(alquiler.precio_original).toFixed(2)}
                   </span>
                 )}
               </div>
-              {alquiler.motivo_descuento && (
-                <p className="text-[11px] text-amber-600 font-medium truncate" title={alquiler.motivo_descuento}>
-                  Motivo: "{alquiler.motivo_descuento}"
+              {alquiler.monto_descuento && Number(alquiler.monto_descuento) > 0 && (
+                <p className="text-[11px] text-emerald-600 font-medium truncate" title={alquiler.motivo_descuento || ""}>
+                  Desc: -${Number(alquiler.monto_descuento).toFixed(2)}{alquiler.motivo_descuento ? ` (${alquiler.motivo_descuento})` : ""}
+                </p>
+              )}
+              {alquiler.monto_recargo && Number(alquiler.monto_recargo) > 0 && (
+                <p className="text-[11px] text-amber-600 font-medium truncate" title={alquiler.motivo_recargo || ""}>
+                  Recargo: +${Number(alquiler.monto_recargo).toFixed(2)}{alquiler.motivo_recargo ? ` (${alquiler.motivo_recargo})` : ""}
                 </p>
               )}
             </div>
