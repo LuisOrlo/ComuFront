@@ -13,6 +13,7 @@ export interface CatalogoCurso {
   creditos?: number
   horas_totales?: number
   modulos_default?: number
+  precio_inscripcion?: number
   es_activo: boolean
   categoria: "regular" | "taller" | "personalizado"
   imagen?: string
@@ -68,6 +69,7 @@ export interface CursoAbierto {
   docente_id?: string | null
   es_personalizado?: boolean
   precio_base?: number
+  precio_matricula?: number
   es_activo: boolean
   modalidad?: "presencial" | "virtual"
   ciudad_id?: number
@@ -133,6 +135,7 @@ export interface Curso {
   horaInicio: string
   horaFin: string
   precioBase: number
+  precioMatricula?: number
   horasTotales: number
   observaciones: string
   catalogoNombre?: string
@@ -306,6 +309,7 @@ function transformCursoAbiertoToCurso(data: CursoAbierto): Curso {
     horaInicio: typed.horario?.hora_inicio?.substring(0, 5) || "",
     horaFin: typed.horario?.hora_fin?.substring(0, 5) || "",
     precioBase: Number(typed.precio_base) || 0,
+    precioMatricula: typed.precio_matricula != null ? Number(typed.precio_matricula) : 0,
     horasTotales: Number(typed.catalogo?.horas_totales) || 0,
     observaciones: typed.observaciones || "",
     colorCatalogo: typed.catalogo?.color,
@@ -384,7 +388,18 @@ function mapEstadoCurso(
 // ============================================================================
 
 export const cursosService = {
-  async inscribirEstudianteDesdePerfil(data: { estudiante_id: string; curso_abierto_id: string; pagos?: Record<string, unknown>[]; pago_inicial?: number; metodo_pago?: string; sin_registro_financiero?: boolean; archivo_comprobante_url?: string }) {
+  async inscribirEstudianteDesdePerfil(data: {
+    estudiante_id: string
+    curso_abierto_id: string
+    pagos?: Record<string, unknown>[]
+    pago_inicial?: number
+    precio_inscripcion?: number
+    inscripcion_cubierta?: number
+    motivo_ajuste?: string
+    metodo_pago?: string
+    sin_registro_financiero?: boolean
+    archivo_comprobante_url?: string
+  }) {
     const response = await api.post("/academic/matriculas/inscribir-desde-perfil", data)
     return response.data
   },
@@ -602,6 +617,9 @@ export const cursosService = {
     observaciones?: string
     modalidad?: "presencial" | "virtual"
     ciudad_id?: string | number
+    precio_base?: number
+    precio_matricula?: number
+    dias_semana?: number[]
     modulos?: { nombre?: string; fecha_inicio?: string; fecha_fin?: string }[]
   }): Promise<CursoAbierto> {
     const response = await api.post<{ data: CursoAbierto; message: string }>(

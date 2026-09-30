@@ -44,6 +44,7 @@ export function NuevoClientePage() {
   const [nombres, setNombres] = useState("")
   const [apellidos, setApellidos] = useState("")
   const [nombreEmpresa, setNombreEmpresa] = useState("")
+  const [ruc, setRuc] = useState("")
   const [cedula, setCedula] = useState("")
   const [celular, setCelular] = useState("")
   const [correo, setCorreo] = useState("")
@@ -64,6 +65,7 @@ export function NuevoClientePage() {
         setNombres(cliente.nombres || "")
         setApellidos(cliente.apellidos || "")
         setNombreEmpresa(cliente.nombre_empresa || "")
+        setRuc(cliente.ruc || "")
         setCedula(cliente.cedula || "")
         setCelular(cliente.celular || "")
         setCorreo(cliente.correo || "")
@@ -142,6 +144,7 @@ export function NuevoClientePage() {
         nombres: tipoCliente === "persona" ? nombres.trim() : undefined,
         apellidos: tipoCliente === "persona" ? apellidos.trim() || undefined : undefined,
         nombre_empresa: tipoCliente === "empresa" ? nombreEmpresa.trim() : undefined,
+        ruc: tipoCliente === "empresa" ? ruc.trim() || undefined : undefined,
         cedula: tipoCliente === "persona" ? cedula.trim() || undefined : undefined,
         celular: celular.trim() || undefined,
         correo: correo.trim() || undefined,
@@ -558,7 +561,7 @@ export function NuevoClientePage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 md:col-span-2">
+                  <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700">
                       Nombre de la empresa <span className="text-red-500">*</span>
                     </label>
@@ -569,6 +572,27 @@ export function NuevoClientePage() {
                       onChange={(e) => setNombreEmpresa(e.target.value)}
                       required
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">
+                      RUC <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional, 13 dígitos)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400 font-mono"
+                        placeholder="Ej. 1790012345001"
+                        value={ruc}
+                        onChange={(e) => setRuc(e.target.value.replace(/\D/g, "").slice(0, 13))}
+                        maxLength={13}
+                      />
+                      <HugeiconsIcon
+                        icon={IdentificationIcon}
+                        size={17}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">

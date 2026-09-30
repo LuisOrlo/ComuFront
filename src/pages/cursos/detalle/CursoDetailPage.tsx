@@ -258,9 +258,79 @@ export function CursoDetailPage() {
                 </div>
 
                 <section className="lg:col-span-5 p-5 sm:p-6 rounded-xl bg-white shadow-sm">
-                  <div className="flex items-center justify-between pb-4"><div><h2 className="text-lg font-semibold tracking-tight text-[#0b1c30]">Precio por estudiante</h2><p className="text-xs text-[#45464d] mt-1">Precios desglosados por persona y módulo</p></div><div className="size-9 rounded-lg bg-[#ffdbca] text-[#5c2400] flex items-center justify-center"><HugeiconsIcon icon={Money01Icon} size={18} /></div></div>
-                  <div className="space-y-2 mt-2">{modulos.length ? [...modulos].sort((a,b) => (a.numero_orden ?? 999)-(b.numero_orden ?? 999)).map((mod, idx) => <div key={mod.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[#eff4ff]"><div><span className="text-sm font-medium text-[#0b1c30]">Módulo {mod.numero_orden || idx + 1}: {mod.nombre_modulo || "Sin definir"}</span><span className="block text-xs text-[#45464d] mt-0.5">{mod.horas_academicas ? `${mod.horas_academicas} horas lectivas` : "Precio por módulo"}</span></div><strong className="text-base text-[#0b1c30] whitespace-nowrap">{mod.precio_base != null ? `$${Number(mod.precio_base).toFixed(2)}` : "—"}</strong></div>) : <p className="text-xs text-[#45464d]">Sin precios de módulo registrados.</p>}</div>
-                  <div className="mt-4 p-4 rounded-xl bg-[#e5eeff] flex items-center justify-between gap-3"><div><span className="text-[10px] uppercase tracking-wider font-bold text-[#45464d]">Total por estudiante</span><span className="block text-xs text-[#45464d] mt-1">Suma de los módulos del curso</span></div><div className="text-right"><strong className="text-2xl text-[#9d4300]">${modulos.reduce((sum, m) => sum + (Number(m.precio_base) || 0), 0).toFixed(2)}</strong><span className="block text-[10px] text-[#45464d]">USD / participante</span></div></div>
+                  <div className="flex items-center justify-between pb-4">
+                    <div>
+                      <h2 className="text-lg font-semibold tracking-tight text-[#0b1c30]">Precio por estudiante</h2>
+                      <p className="text-xs text-[#45464d] mt-1">Precios desglosados por persona y módulo</p>
+                    </div>
+                    <div className="size-9 rounded-lg bg-[#ffdbca] text-[#5c2400] flex items-center justify-center">
+                      <HugeiconsIcon icon={Money01Icon} size={18} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mt-2">
+                    {/* Cuota de matrícula / inscripción */}
+                    <div className={`flex items-center justify-between gap-3 p-3 rounded-lg ${Number(curso.precioMatricula) > 0 ? "bg-orange-50/70 border border-orange-200/70" : "bg-[#eff4ff]"}`}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${Number(curso.precioMatricula) > 0 ? "bg-orange-100 text-[#fd761a]" : "bg-[#dce9ff] text-[#45464d]"}`}>
+                          <HugeiconsIcon icon={CapIcon} size={16} />
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-[#0b1c30]">Inscripción / Matrícula</span>
+                          <span className="block text-xs text-[#45464d] mt-0.5">
+                            {Number(curso.precioMatricula) > 0 ? "Cuota inicial de inscripción" : "Sin costo de inscripción"}
+                          </span>
+                        </div>
+                      </div>
+                      {Number(curso.precioMatricula) > 0 ? (
+                        <strong className="text-base whitespace-nowrap text-[#9d4300]">
+                          ${Number(curso.precioMatricula).toFixed(2)}
+                        </strong>
+                      ) : (
+                        <span className="text-xs font-semibold text-[#76777d] whitespace-nowrap bg-white/80 px-2.5 py-1 rounded-md border border-[#dce9ff]">
+                          Sin precio de inscripción
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Módulos */}
+                    {modulos.length ? (
+                      [...modulos].sort((a,b) => (a.numero_orden ?? 999)-(b.numero_orden ?? 999)).map((mod, idx) => (
+                        <div key={mod.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[#eff4ff]">
+                          <div>
+                            <span className="text-sm font-medium text-[#0b1c30]">Módulo {mod.numero_orden || idx + 1}: {mod.nombre_modulo || "Sin definir"}</span>
+                            <span className="block text-xs text-[#45464d] mt-0.5">{mod.horas_academicas ? `${mod.horas_academicas} horas lectivas` : "Precio por módulo"}</span>
+                          </div>
+                          <strong className="text-base text-[#0b1c30] whitespace-nowrap">{mod.precio_base != null ? `$${Number(mod.precio_base).toFixed(2)}` : "—"}</strong>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-[#45464d]">Sin precios de módulo registrados.</p>
+                    )}
+                  </div>
+
+                  {(() => {
+                    const sumaModulos = modulos.reduce((sum, m) => sum + (Number(m.precio_base) || 0), 0)
+                    const precioMatricula = Number(curso.precioMatricula) || 0
+                    const totalPorEstudiante = sumaModulos + precioMatricula
+
+                    return (
+                      <div className="mt-4 p-4 rounded-xl bg-[#e5eeff] flex items-center justify-between gap-3">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-[#45464d]">Total por estudiante</span>
+                          <span className="block text-xs text-[#45464d] mt-1">
+                            {precioMatricula > 0
+                              ? `Módulos ($${sumaModulos.toFixed(2)}) + Matrícula ($${precioMatricula.toFixed(2)})`
+                              : "Suma de los módulos del curso"}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <strong className="text-2xl text-[#9d4300]">${totalPorEstudiante.toFixed(2)}</strong>
+                          <span className="block text-[10px] text-[#45464d]">USD / participante</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </section>
               </div>
 

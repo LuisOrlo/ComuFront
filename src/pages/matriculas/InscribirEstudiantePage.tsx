@@ -336,7 +336,11 @@ export function InscribirEstudiantePage() {
     [talleres, search]
   )
 
-  const submitCurso = async (pagos: Record<string, unknown>[], metodoPago: string) => {
+  const submitCurso = async (
+    pagos: Record<string, unknown>[],
+    metodoPago: string,
+    inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string }
+  ) => {
     if (!id || !selectedCurso) return
     setSaving(true)
     try {
@@ -346,6 +350,9 @@ export function InscribirEstudiantePage() {
         curso_abierto_id: selectedCurso.id,
         pagos,
         metodo_pago: metodoPago,
+        precio_inscripcion: !sinRegistroFinanciero && inscripcion && inscripcion.total > 0 ? inscripcion.total : undefined,
+        inscripcion_cubierta: !sinRegistroFinanciero && inscripcion ? inscripcion.cubierto : undefined,
+        motivo_ajuste: !sinRegistroFinanciero ? inscripcion?.motivo_ajuste : undefined,
         sin_registro_financiero: sinRegistroFinanciero,
         archivo_comprobante_url: comprobante?.url,
       })
@@ -832,6 +839,7 @@ export function InscribirEstudiantePage() {
                 ref={cursoPagoRef}
                 cursoAbiertoId={selectedCurso.id}
                 cursoNombre={selectedCurso.nombre_instancia || selectedCurso.catalogo?.nombre || "Curso"}
+                precioMatricula={selectedCurso.precio_matricula != null ? Number(selectedCurso.precio_matricula) : undefined}
                 metodoPagoInicial={metodoCurso}
                 onMontoValidoChange={setCursoPagoValido}
                 onSubmit={submitCurso}

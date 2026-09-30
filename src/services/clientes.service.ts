@@ -7,6 +7,7 @@ export interface ClienteExterno {
   nombre_empresa?: string
   apellidos?: string
   cedula?: string
+  ruc?: string
   correo?: string
   celular?: string
   ciudad_id?: number

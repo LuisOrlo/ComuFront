@@ -8,7 +8,10 @@ export function InfoBasica({ cliente }: { cliente: ClienteExterno }) {
   const nombre = cliente.nombre_mostrado || (esEmpresa ? cliente.nombre_empresa || "" : `${cliente.nombres} ${cliente.apellidos || ""}`).trim()
   const iniciales = nombre.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase()
   const groups = [
-    { title: "Identificación", icon: IdIcon, fields: [{ label: esEmpresa ? "Tipo de cliente" : "Número de identificación", value: esEmpresa ? "Empresa" : cliente.cedula, icon: IdIcon }] },
+    { title: "Identificación", icon: IdIcon, fields: [
+      { label: esEmpresa ? "RUC" : "Número de identificación", value: esEmpresa ? (cliente.ruc || "—") : (cliente.cedula || "—"), icon: IdIcon },
+      ...(esEmpresa ? [{ label: "Tipo de cliente", value: "Empresa", icon: IdIcon }] : []),
+    ] },
     { title: "Contacto directo", icon: CallIcon, fields: [{ label: "Teléfono / celular", value: cliente.celular, icon: CallIcon }, { label: "Correo electrónico", value: cliente.correo, icon: Mail01Icon }] },
     { title: "Ubicación", icon: Location01Icon, fields: [{ label: "Ciudad / provincia", value: cliente.ciudad, icon: Location01Icon }, { label: "Dirección", value: cliente.direccion, icon: Location01Icon }, ...(esEmpresa ? [] : [{ label: "Ocupación / profesión", value: cliente.ocupacion, icon: Briefcase01Icon }, { label: "Estado civil", value: cliente.estado_civil, icon: HeartIcon }])] },
   ]

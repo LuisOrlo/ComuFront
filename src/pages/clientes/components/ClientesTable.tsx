@@ -59,9 +59,12 @@ export function ClientesTable({ clientes, loading, search, onSearchChange }: Cli
               >
                 {displayName}
               </span>
-              {c.tipo_cliente === "empresa" && c.contactos && c.contactos.length > 0 && (
+              {c.tipo_cliente === "empresa" && (
                 <span className="block truncate text-[11px] text-slate-400 font-medium">
-                  Contacto: {c.contactos[0].nombres} {c.contactos[0].apellidos || ""}
+                  {c.ruc && <span className="font-mono text-slate-500 font-semibold mr-1.5">RUC: {c.ruc}</span>}
+                  {c.contactos && c.contactos.length > 0 && (
+                    <span>{c.ruc ? "· " : ""}Contacto: {c.contactos[0].nombres} {c.contactos[0].apellidos || ""}</span>
+                  )}
                 </span>
               )}
             </div>

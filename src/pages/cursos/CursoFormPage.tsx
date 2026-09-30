@@ -23,6 +23,7 @@ import {
   Sparkles,
   AlertTriangle,
   RefreshCw,
+  BookOpen,
 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MapPinIcon, Cancel01Icon, Loading02Icon } from "@hugeicons/core-free-icons"
@@ -138,6 +139,7 @@ export function CursoFormPage() {
     hora_fin: "",
     capacidad_maxima: 18,
     precio_base: "",
+    precio_matricula: "",
     docente_id: "",
     modalidad: "presencial" as "presencial" | "virtual",
     ciudad_id: 0,
@@ -151,6 +153,24 @@ function toDateInputValue(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0")
   const d = String(date.getDate()).padStart(2, "0")
   return `${y}-${m}-${d}`
+}
+
+function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, diasSemana: number[] = []): number {
+  if (!fechaInicioStr || !fechaFinStr || diasSemana.length === 0) return 0
+  const inicio = parseLocalDate(fechaInicioStr)
+  const fin = parseLocalDate(fechaFinStr)
+  if (isNaN(inicio.getTime()) || isNaN(fin.getTime()) || inicio > fin) return 0
+
+  let clases = 0
+  const curr = new Date(inicio)
+  while (curr.getTime() <= fin.getTime()) {
+    const isoDay = curr.getDay() === 0 ? 7 : curr.getDay()
+    if (diasSemana.includes(isoDay)) {
+      clases++
+    }
+    curr.setDate(curr.getDate() + 1)
+  }
+  return clases
 }
 
   const selectedCatalogo = catalogos.find((c) => c.id === form.catalogo_curso_id)
@@ -225,6 +245,7 @@ function toDateInputValue(date: Date): string {
             hora_fin: String(horario?.hora_fin || "").substring(0, 5),
             capacidad_maxima: Number(raw.capacidad_maxima) || 18,
             precio_base: raw.precio_base != null ? String(raw.precio_base) : "",
+            precio_matricula: raw.precio_matricula != null ? String(raw.precio_matricula) : "",
             docente_id: String(raw.docente_id || ""),
             modalidad: (String(raw.modalidad || "presencial")) as "presencial" | "virtual",
             ciudad_id: Number(raw.ciudad_id) || 0,
@@ -417,6 +438,7 @@ function toDateInputValue(date: Date): string {
       const maxCap = form.modalidad === "presencial" ? 18 : 99
       if (!form.capacidad_maxima || form.capacidad_maxima < 1 || form.capacidad_maxima > maxCap) return false
       if (form.precio_base === "" || isNaN(Number(form.precio_base)) || Number(form.precio_base) < 0) return false
+      if (form.precio_matricula !== "" && (isNaN(Number(form.precio_matricula)) || Number(form.precio_matricula) < 0)) return false
       if (form.modalidad === "presencial" && (!form.ciudad_id || form.ciudad_id <= 0)) return false
       return true
     }
@@ -465,6 +487,9 @@ function toDateInputValue(date: Date): string {
       }
       if (form.precio_base === "" || isNaN(Number(form.precio_base)) || Number(form.precio_base) < 0) {
         newErrors.precio_base = "El precio base por módulo es obligatorio"
+      }
+      if (form.precio_matricula !== "" && (isNaN(Number(form.precio_matricula)) || Number(form.precio_matricula) < 0)) {
+        newErrors.precio_matricula = "El precio de matrícula no puede ser negativo"
       }
       if (form.modalidad === "presencial" && (!form.ciudad_id || form.ciudad_id <= 0)) {
         newErrors.ciudad_id = "Debes seleccionar la sede o ciudad para la modalidad presencial"
@@ -560,6 +585,7 @@ function toDateInputValue(date: Date): string {
         hora_fin: form.hora_fin || undefined,
         capacidad_maxima: form.capacidad_maxima,
         precio_base: Number(form.precio_base) || 0,
+        precio_matricula: form.precio_matricula !== "" ? Number(form.precio_matricula) : 0,
         docente_id: form.docente_id || undefined,
         modalidad: form.modalidad,
         ciudad_id: form.modalidad === "presencial" && form.ciudad_id ? form.ciudad_id : undefined,
@@ -1230,46 +1256,46 @@ function toDateInputValue(date: Date): string {
               </div>
 
               <div className="flex flex-col gap-5">
-                {/* 2 Columns: Capacity & Pricing */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Capacity */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                      <span>
-                        Capacidad máxima de estudiantes <span className="text-[#fd761a]">*</span>
-                      </span>
-                      <span className="text-xs font-normal text-slate-400">
-                        {form.modalidad === "presencial" ? "Máx: 18 aula" : "Máx: 99 virtual"}
-                      </span>
-                    </label>
-                    <div className="relative">
-                      <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
-                      <input
-                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
-                          getError("capacidad_maxima") ? "border-red-400 bg-red-50/20" : "border-slate-200"
-                        }`}
-                        type="number"
-                        min={1}
-                        max={form.modalidad === "presencial" ? 18 : 99}
-                        value={form.capacidad_maxima}
-                        onChange={(e) => {
-                          let val = parseInt(e.target.value) || 1
-                          if (form.modalidad === "presencial" && val > 18) val = 18
-                          if (val > 99) val = 99
-                          updateField("capacidad_maxima", val)
-                        }}
-                      />
-                    </div>
-                    <span className="text-[11px] text-slate-500">
-                      {form.modalidad === "presencial"
-                        ? "Capacidad máxima para cursos presenciales: 18 estudiantes."
-                        : "Aforo operativo para cursos en modalidad online o virtual."}
+                {/* Capacity */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>
+                      Capacidad máxima de estudiantes <span className="text-[#fd761a]">*</span>
                     </span>
-                    {getError("capacidad_maxima") && (
-                      <p className="text-xs text-red-500 mt-0.5">{getError("capacidad_maxima")}</p>
-                    )}
+                    <span className="text-xs font-normal text-slate-400">
+                      {form.modalidad === "presencial" ? "Máx: 18 aula" : "Máx: 99 virtual"}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                    <input
+                      className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                        getError("capacidad_maxima") ? "border-red-400 bg-red-50/20" : "border-slate-200"
+                      }`}
+                      type="number"
+                      min={1}
+                      max={form.modalidad === "presencial" ? 18 : 99}
+                      value={form.capacidad_maxima}
+                      onChange={(e) => {
+                        let val = parseInt(e.target.value) || 1
+                        if (form.modalidad === "presencial" && val > 18) val = 18
+                        if (val > 99) val = 99
+                        updateField("capacidad_maxima", val)
+                      }}
+                    />
                   </div>
+                  <span className="text-[11px] text-slate-500">
+                    {form.modalidad === "presencial"
+                      ? "Capacidad máxima para cursos presenciales: 18 estudiantes."
+                      : "Aforo operativo para cursos en modalidad online o virtual."}
+                  </span>
+                  {getError("capacidad_maxima") && (
+                    <p className="text-xs text-red-500 mt-0.5">{getError("capacidad_maxima")}</p>
+                  )}
+                </div>
 
+                {/* 2 Columns: Pricing (Module Price & Registration Fee) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Pricing */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
@@ -1306,6 +1332,45 @@ function toDateInputValue(date: Date): string {
                       <p className="text-xs text-red-500 mt-0.5">{getError("precio_base")}</p>
                     )}
                     <p className="text-[11px] text-slate-500">Si no existe información de cobros para el curso, registra $0.00. Al inscribir estudiantes podrás omitir la creación de movimientos financieros.</p>
+                  </div>
+
+                  {/* Registration Fee */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span>
+                        Precio de inscripción ($ USD)
+                      </span>
+                      <span className="text-xs font-semibold text-blue-600">Por estudiante</span>
+                    </label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                      <input
+                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                          getError("precio_matricula") ? "border-red-400 bg-red-50/20" : "border-slate-200"
+                        }`}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.precio_matricula}
+                        onChange={(e) => updateField("precio_matricula", e.target.value)}
+                      />
+                    </div>
+
+                    {/* Registration Fee Summary */}
+                    <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between text-xs">
+                      <span className="text-slate-700">Matrícula por alumno:</span>
+                      <span className="font-bold text-blue-700">
+                        ${Number(form.precio_matricula) > 0 ? Number(form.precio_matricula).toFixed(2) : "0.00"} USD
+                      </span>
+                    </div>
+
+                    {getError("precio_matricula") && (
+                      <p className="text-xs text-red-500 mt-0.5">{getError("precio_matricula")}</p>
+                    )}
+                    <p className="text-[11px] text-slate-500">
+                      Cuota inicial de inscripción asignada por defecto a cada estudiante que se matricule (opcional).
+                    </p>
                   </div>
                 </div>
 
@@ -1505,14 +1570,16 @@ function toDateInputValue(date: Date): string {
                         )
                       : null
 
+                  const clasesModulo = calcularClasesModulo(mod.fecha_inicio, mod.fecha_fin, form.dias_semana)
+
                   return (
                     <div
                       key={i}
                       className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 shadow-xs flex flex-col gap-4 hover:border-slate-300 transition-all"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 rounded-lg bg-[#fd761a] text-white flex items-center justify-center font-bold text-xs">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                          <span className="w-7 h-7 rounded-lg bg-[#fd761a] text-white flex items-center justify-center font-bold text-xs shrink-0">
                             {String(i + 1).padStart(2, "0")}
                           </span>
                           <span className="text-sm sm:text-base font-bold text-slate-900 truncate">
@@ -1521,6 +1588,22 @@ function toDateInputValue(date: Date): string {
                           {diasModulo && (
                             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[11px] font-semibold">
                               {diasModulo} días lectivos
+                            </span>
+                          )}
+                          {form.dias_semana.length > 0 ? (
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 ${
+                                clasesModulo > 0
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200/60"
+                                  : "bg-slate-200 text-slate-600"
+                              }`}
+                            >
+                              <BookOpen size={12} />
+                              {clasesModulo} {clasesModulo === 1 ? "clase" : "clases"}
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold">
+                              Días no definidos
                             </span>
                           )}
                         </div>
@@ -1680,9 +1763,20 @@ function toDateInputValue(date: Date): string {
                     Todos los requisitos previos se encuentran listos para registrar el curso.
                   </span>
                 </div>
-                <span className="text-xs sm:text-sm font-bold text-slate-900">
-                  {form.modulos.length} {form.modulos.length === 1 ? "Módulo" : "Módulos"} configurados
-                </span>
+                <div className="text-right">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 block">
+                    {form.modulos.length} {form.modulos.length === 1 ? "Módulo" : "Módulos"} configurados
+                  </span>
+                  {form.dias_semana.length > 0 && (
+                    <span className="text-[11px] font-semibold text-blue-700 block">
+                      {form.modulos.reduce(
+                        (acc, m) => acc + calcularClasesModulo(m.fecha_inicio, m.fecha_fin, form.dias_semana),
+                        0
+                      )}{" "}
+                      clases en total
+                    </span>
+                  )}
+                </div>
               </div>
             </section>
           )}

@@ -293,12 +293,12 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                 <tr className="border-b bg-[#eff4ff]" style={{ borderColor: BORDER }}>
                   <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-5 py-3.5 w-12" style={{ color: "#45464d" }}>#</th>
                   <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-5 py-3.5" style={{ color: "#45464d" }}>Estudiante</th>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Matrícula (${Number(curso?.precioMatricula ?? estudiantes[0]?.inscripcion?.monto_ajustado ?? 0).toFixed(2)})</th>
                   {modulosOrdenados.map(mod => (
                     <th key={mod.id} className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>
                       M{mod.numero_orden ?? ""} (${Number(mod.precio_base ?? 0).toFixed(2)})
                     </th>
                   ))}
-                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Matrícula (${Number(estudiantes[0]?.inscripcion?.monto_ajustado || 0).toFixed(2)})</th>
                   <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Total Pagado</th>
                   <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5" style={{ color: "#45464d" }}>Deuda</th>
                 </tr>
@@ -315,6 +315,9 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                         style={{ borderColor: BORDER }}>
                         <td className="px-5 py-4 text-xs" style={{ color: "#45464d" }}>#{idx + 1}</td>
                         <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: "#0b1c30" }}><span className="inline-flex items-center gap-2">{expandido === est.matricula_id ? <ChevronDown size={14} style={{ color: TEXT_MUTED }} /> : <ChevronRight size={14} style={{ color: TEXT_MUTED }} />}{est.nombre}</span></td>
+                        <td className="px-4 py-4 font-mono" style={{ color: "#0b1c30" }}>
+                          <span className="font-semibold" style={{ color: Number(est.inscripcion?.monto_abonado || 0) >= Number(est.inscripcion?.monto_ajustado || 0) && Number(est.inscripcion?.monto_ajustado || 0) > 0 ? "#009668" : "#76777d" }}>${Number(est.inscripcion?.monto_abonado || 0).toFixed(2)}</span>
+                        </td>
                         {modulosOrdenados.map(mod => {
                           const md = modData[mod.id]
                           const abonado = md?.abonado ?? 0
@@ -327,9 +330,6 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                             </td>
                           )
                         })}
-                        <td className="px-4 py-4 font-mono" style={{ color: "#0b1c30" }}>
-                          <span className="font-semibold" style={{ color: Number(est.inscripcion?.monto_abonado || 0) >= Number(est.inscripcion?.monto_ajustado || 0) && Number(est.inscripcion?.monto_ajustado || 0) > 0 ? "#009668" : "#76777d" }}>${Number(est.inscripcion?.monto_abonado || 0).toFixed(2)}</span>
-                        </td>
                         <td className="px-4 py-4 font-mono font-bold" style={{ color: "#0b1c30" }}>
                           ${Number(est.total_pagado ?? 0).toFixed(2)}
                         </td>

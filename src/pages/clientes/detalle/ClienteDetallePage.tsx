@@ -87,7 +87,11 @@ export function ClienteDetallePage() {
               <span className="hidden rounded-full bg-[#e5eeff] px-2.5 py-1 text-[11px] font-semibold text-[#45464d] sm:inline">{cliente.tipo_cliente === "empresa" ? "Empresa" : "Cliente externo"}</span>
               </div>
               <p className="mt-1 text-sm text-[#73747b]">
-                {cliente.cedula && <span>{cliente.cedula} · </span>}
+                {cliente.tipo_cliente === "empresa" ? (
+                  cliente.ruc && <span>RUC: {cliente.ruc} · </span>
+                ) : (
+                  cliente.cedula && <span>{cliente.cedula} · </span>
+                )}
                 {cliente.celular && <span>{cliente.celular}</span>}
                 {cliente.correo && <span> · {cliente.correo}</span>}
                 {cliente.ciudad && <span> · {cliente.ciudad}</span>}

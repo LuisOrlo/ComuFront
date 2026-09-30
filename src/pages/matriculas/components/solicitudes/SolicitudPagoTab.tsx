@@ -36,7 +36,7 @@ interface SolicitudSeleccionada {
       comprobante_purgado?: boolean
     }
   }
-  curso?: { id?: string; nombre?: string; es_personalizado?: boolean; precio_base?: number }
+  curso?: { id?: string; nombre?: string; es_personalizado?: boolean; precio_base?: number; precio_matricula?: number }
   lineas_pago?: {
     modulos?: ModuloLineaPago[]
     inscripcion?: { id: string; monto_ajustado: number; monto_abonado: number; estado: string }
@@ -446,6 +446,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             cursoNombre={getCursoNombre()}
             esPersonalizado={esPersonalizado}
             precioCurso={Number(selected.curso.precio_base || 0)}
+            precioMatricula={selected.curso.precio_matricula != null ? Number(selected.curso.precio_matricula) : undefined}
             metodoPagoInicial={tipoPagoNormalizado || "efectivo"}
             onMontoValidoChange={setMontoValido}
             onTotalPrecioChange={setTotalPrecioModulos}
