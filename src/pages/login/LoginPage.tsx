@@ -8,6 +8,7 @@ import {
   LockPasswordIcon,
   ArrowRight01Icon,
   Alert02Icon,
+  Calendar03Icon,
 } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -353,6 +354,18 @@ export function LoginPage() {
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               Verificar certificados
+            </Link>
+          </div>
+
+          {/* Public Agenda Link */}
+          <div className="mt-2.5 text-center">
+            <Link
+              to="/agenda-publica"
+              className="group inline-flex items-center gap-2 text-sm transition-all hover:opacity-80 active:scale-95"
+              style={{ color: TEXT_MUTED }}
+            >
+              <HugeiconsIcon icon={Calendar03Icon} size={16} className="shrink-0" />
+              <span>Consultar agenda pública</span>
             </Link>
           </div>
 

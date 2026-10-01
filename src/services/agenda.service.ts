@@ -89,3 +89,25 @@ export const agendaService = {
     return response.data
   },
 }
+
+export const agendaPublicaService = {
+  async getEvents(params: AgendaEventParams): Promise<AgendaResponse> {
+    const response = await api.get("/agenda-publica", { params })
+    return response.data
+  },
+
+  async getEventDetail(tipoEvento: string, referenciaId: string): Promise<AgendaEventDetail> {
+    const response = await api.get(`/agenda-publica/${tipoEvento}/${referenciaId}`)
+    return response.data.data
+  },
+
+  async getAllEvents(params: Omit<AgendaEventParams, "page">): Promise<AgendaResponse> {
+    const firstPage = await this.getEvents({ ...params, page: 1, per_page: 500 })
+    const pages = Array.from({ length: Math.max(firstPage.meta.last_page - 1, 0) }, (_, index) => index + 2)
+    const rest = await Promise.all(pages.map(page => this.getEvents({ ...params, page, per_page: 500 })))
+    return {
+      ...firstPage,
+      data: [firstPage.data, ...rest.map(response => response.data)].flat(),
+    }
+  },
+}

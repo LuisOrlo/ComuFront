@@ -130,6 +130,7 @@ const EstudianteStatsPage = lazyNamed(() => import("@/pages/estudiantes/Estudian
 const EstudianteSegmentsPage = lazyNamed(() => import("@/pages/estudiantes/EstudianteSegmentsPage"), "EstudianteSegmentsPage")
 const ImportarEstudiantesPage = lazyNamed(() => import("@/pages/estudiantes/ImportarEstudiantesPage"), "ImportarEstudiantesPage")
 const AgendaPage = lazyNamed(() => import("@/pages/agenda/AgendaPage"), "AgendaPage")
+const AgendaPublicaPage = lazyNamed(() => import("@/pages/agenda/AgendaPublicaPage"), "AgendaPublicaPage")
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
@@ -369,6 +370,7 @@ function App() {
           <Routes>
             <Route path="/matricula/nueva" element={<NuevaMatriculaPublicaPage />} />
             <Route path="/verificar-certificados" element={<VerificarCertificadosPage />} />
+            <Route path="/agenda-publica" element={<AgendaPublicaPage />} />
             <Route
               path="/*"
               element={
