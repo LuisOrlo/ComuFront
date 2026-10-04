@@ -33,6 +33,8 @@ const emptyContacto = (): ContactoForm => ({
   activo: true,
 })
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export function NuevoClientePage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -109,7 +111,8 @@ export function NuevoClientePage() {
         apellidos.trim() &&
         cedula.trim() &&
         celular.trim() &&
-        correo.trim()
+        correo.trim() &&
+        EMAIL_REGEX.test(correo.trim())
       )
     }
 
@@ -117,14 +120,17 @@ export function NuevoClientePage() {
       const empresaOk = Boolean(
         nombreEmpresa.trim() &&
         celular.trim() &&
-        correo.trim()
+        correo.trim() &&
+        EMAIL_REGEX.test(correo.trim())
       )
       const activeContactos = contactos.filter((c) => c.activo !== false)
       if (activeContactos.length === 0) return false
 
-      const contactosOk = activeContactos.every(
-        (c) => Boolean(c.nombres.trim()) && Boolean(c.celular?.trim())
-      )
+      const contactosOk = activeContactos.every((c) => {
+        const hasRequired = Boolean(c.nombres.trim()) && Boolean(c.celular?.trim())
+        const validEmail = !c.correo?.trim() || EMAIL_REGEX.test(c.correo.trim())
+        return hasRequired && validEmail
+      })
       return empresaOk && contactosOk
     }
 
@@ -133,6 +139,25 @@ export function NuevoClientePage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    const cleanCorreo = correo.trim().toLowerCase()
+
+    if (!cleanCorreo) {
+      return toast.error("El correo electrónico es obligatorio.")
+    }
+
+    if (!EMAIL_REGEX.test(cleanCorreo)) {
+      return toast.error("El formato del correo electrónico es inválido (ejemplo: usuario@correo.com).")
+    }
+
+    if (tipoCliente === "empresa") {
+      for (const contacto of contactos.filter((c) => c.activo !== false)) {
+        const contactoCorreo = contacto.correo?.trim().toLowerCase()
+        if (contactoCorreo && !EMAIL_REGEX.test(contactoCorreo)) {
+          return toast.error(`El correo del contacto "${contacto.nombres || 'delegado'}" es inválido.`)
+        }
+      }
+    }
+
     if (!isFormValid) {
       return toast.error("Por favor completa todos los campos obligatorios antes de continuar")
     }
@@ -147,7 +172,7 @@ export function NuevoClientePage() {
         ruc: tipoCliente === "empresa" ? ruc.trim() || undefined : undefined,
         cedula: tipoCliente === "persona" ? cedula.trim() || undefined : undefined,
         celular: celular.trim() || undefined,
-        correo: correo.trim() || undefined,
+        correo: cleanCorreo || undefined,
         ciudad: ciudad.trim() || undefined,
         direccion: direccion.trim() || undefined,
         ocupacion: tipoCliente === "persona" ? ocupacion.trim() || undefined : undefined,
@@ -160,6 +185,9 @@ export function NuevoClientePage() {
                   ...c,
                   nombres: c.nombres.trim(),
                   apellidos: c.apellidos?.trim() || undefined,
+                  cargo: c.cargo?.trim() || undefined,
+                  celular: c.celular?.trim() || undefined,
+                  correo: c.correo?.trim() ? c.correo.trim().toLowerCase() : undefined,
                 }))
             : undefined,
       }
@@ -365,10 +393,13 @@ export function NuevoClientePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-nombres" className="text-xs font-bold text-slate-700">
                       Nombres <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="cliente-nombres"
+                      name="given-name"
+                      autoComplete="given-name"
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                       placeholder="Ej. Sofía Elizabeth"
                       value={nombres}
@@ -378,10 +409,13 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-apellidos" className="text-xs font-bold text-slate-700">
                       Apellidos <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="cliente-apellidos"
+                      name="family-name"
+                      autoComplete="family-name"
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                       placeholder="Ej. Morales Carrera"
                       value={apellidos}
@@ -391,11 +425,14 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-cedula" className="text-xs font-bold text-slate-700">
                       Cédula / Documento <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
+                        id="cliente-cedula"
+                        name="cedula"
+                        autoComplete="off"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400 font-mono"
                         placeholder="10 dígitos numéricos"
                         value={cedula}
@@ -412,11 +449,14 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-ocupacion" className="text-xs font-bold text-slate-700">
                       Ocupación / Profesión <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                     </label>
                     <div className="relative">
                       <input
+                        id="cliente-ocupacion"
+                        name="organization-title"
+                        autoComplete="organization-title"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                         placeholder="Ej. Productor Audiovisual"
                         value={ocupacion}
@@ -431,10 +471,13 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-estado-civil" className="text-xs font-bold text-slate-700">
                       Estado civil <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                     </label>
                     <select
+                      id="cliente-estado-civil"
+                      name="estado_civil"
+                      autoComplete="off"
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all cursor-pointer"
                       value={estadoCivil}
                       onChange={(e) => setEstadoCivil(e.target.value)}
@@ -461,12 +504,15 @@ export function NuevoClientePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-celular" className="text-xs font-bold text-slate-700">
                       Celular personal <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
                         type="tel"
+                        id="cliente-celular"
+                        name="tel"
+                        autoComplete="tel"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400 font-mono"
                         placeholder="Ej. 0998765432"
                         value={celular}
@@ -483,16 +529,19 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-correo" className="text-xs font-bold text-slate-700">
                       Correo electrónico <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
                         type="email"
+                        id="cliente-correo"
+                        name="email"
+                        autoComplete="email"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                         placeholder="ejemplo@correo.com"
                         value={correo}
-                        onChange={(e) => setCorreo(e.target.value)}
+                        onChange={(e) => setCorreo(e.target.value.replace(/\s+/g, ""))}
                         required
                       />
                       <HugeiconsIcon
@@ -504,10 +553,13 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-ciudad" className="text-xs font-bold text-slate-700">
                       Ciudad <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                     </label>
                     <select
+                      id="cliente-ciudad"
+                      name="address-level2"
+                      autoComplete="address-level2"
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all cursor-pointer"
                       value={ciudad}
                       onChange={(e) => setCiudad(e.target.value)}
@@ -525,11 +577,14 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="cliente-direccion" className="text-xs font-bold text-slate-700">
                       Dirección domiciliaria <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                     </label>
                     <div className="relative">
                       <input
+                        id="cliente-direccion"
+                        name="street-address"
+                        autoComplete="street-address"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                         placeholder="Calle principal, número y secundaria"
                         value={direccion}
@@ -562,10 +617,13 @@ export function NuevoClientePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="empresa-nombre" className="text-xs font-bold text-slate-700">
                       Nombre de la empresa <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="empresa-nombre"
+                      name="organization"
+                      autoComplete="organization"
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                       placeholder="Ej. Corporación Audiovisual del Austro S.A."
                       value={nombreEmpresa}
@@ -575,12 +633,15 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="empresa-ruc" className="text-xs font-bold text-slate-700">
                       RUC <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional, 13 dígitos)</span>
                     </label>
                     <div className="relative">
                       <input
                         type="text"
+                        id="empresa-ruc"
+                        name="ruc"
+                        autoComplete="off"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400 font-mono"
                         placeholder="Ej. 1790012345001"
                         value={ruc}
@@ -596,12 +657,15 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="empresa-celular" className="text-xs font-bold text-slate-700">
                       Teléfono / Celular general <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
                         type="tel"
+                        id="empresa-celular"
+                        name="tel"
+                        autoComplete="tel"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400 font-mono"
                         placeholder="Ej. 0998765432"
                         value={celular}
@@ -618,16 +682,19 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="empresa-correo" className="text-xs font-bold text-slate-700">
                       Correo electrónico general / facturación <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <input
                         type="email"
+                        id="empresa-correo"
+                        name="email"
+                        autoComplete="email"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                         placeholder="contacto@empresa.com"
                         value={correo}
-                        onChange={(e) => setCorreo(e.target.value)}
+                        onChange={(e) => setCorreo(e.target.value.replace(/\s+/g, ""))}
                         required
                       />
                       <HugeiconsIcon
@@ -639,10 +706,13 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="empresa-ciudad" className="text-xs font-bold text-slate-700">
                       Ciudad <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                     </label>
                     <select
+                      id="empresa-ciudad"
+                      name="address-level2"
+                      autoComplete="address-level2"
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all cursor-pointer"
                       value={ciudad}
                       onChange={(e) => setCiudad(e.target.value)}
@@ -660,11 +730,14 @@ export function NuevoClientePage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label htmlFor="empresa-direccion" className="text-xs font-bold text-slate-700">
                       Dirección fiscal / Sede administrativa <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                     </label>
                     <div className="relative">
                       <input
+                        id="empresa-direccion"
+                        name="street-address"
+                        autoComplete="street-address"
                         className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-slate-200 bg-slate-50/50 text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                         placeholder="Calle principal, número y secundaria"
                         value={direccion}
@@ -756,10 +829,13 @@ export function NuevoClientePage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700">
+                            <label htmlFor={`contacto-nombres-${index}`} className="text-[11px] font-bold text-slate-700">
                               Nombres <span className="text-red-500">*</span>
                             </label>
                             <input
+                              id={`contacto-nombres-${index}`}
+                              name={`contacto_nombres_${index}`}
+                              autoComplete="given-name"
                               className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                               placeholder="Ej. Mateo Alejandro"
                               value={contacto.nombres}
@@ -769,10 +845,13 @@ export function NuevoClientePage() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700">
+                            <label htmlFor={`contacto-apellidos-${index}`} className="text-[11px] font-bold text-slate-700">
                               Apellidos <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                             </label>
                             <input
+                              id={`contacto-apellidos-${index}`}
+                              name={`contacto_apellidos_${index}`}
+                              autoComplete="family-name"
                               className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                               placeholder="Ej. Silva Donoso"
                               value={contacto.apellidos || ""}
@@ -781,10 +860,13 @@ export function NuevoClientePage() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700">
+                            <label htmlFor={`contacto-cargo-${index}`} className="text-[11px] font-bold text-slate-700">
                               Cargo o función <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                             </label>
                             <input
+                              id={`contacto-cargo-${index}`}
+                              name={`contacto_cargo_${index}`}
+                              autoComplete="organization-title"
                               className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                               placeholder="Ej. Coordinador de Producción"
                               value={contacto.cargo || ""}
@@ -793,12 +875,15 @@ export function NuevoClientePage() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700">
+                            <label htmlFor={`contacto-celular-${index}`} className="text-[11px] font-bold text-slate-700">
                               Celular directo <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
                               <input
+                                id={`contacto-celular-${index}`}
+                                name={`contacto_celular_${index}`}
                                 type="tel"
+                                autoComplete="tel"
                                 className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400 font-mono"
                                 placeholder="0998765432"
                                 value={contacto.celular || ""}
@@ -815,16 +900,19 @@ export function NuevoClientePage() {
                           </div>
 
                           <div className="space-y-1 sm:col-span-2">
-                            <label className="text-[11px] font-bold text-slate-700">
+                            <label htmlFor={`contacto-correo-${index}`} className="text-[11px] font-bold text-slate-700">
                               Correo electrónico laboral <span className="text-slate-400 font-normal text-[11px] ml-1">(opcional)</span>
                             </label>
                             <div className="relative">
                               <input
+                                id={`contacto-correo-${index}`}
+                                name={`contacto_correo_${index}`}
                                 type="email"
+                                autoComplete="email"
                                 className="w-full h-10 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 outline-none transition-all placeholder:text-slate-400"
                                 placeholder="contacto@empresa.com"
                                 value={contacto.correo || ""}
-                                onChange={(e) => updateContacto(index, "correo", e.target.value)}
+                                onChange={(e) => updateContacto(index, "correo", e.target.value.replace(/\s+/g, ""))}
                               />
                               <HugeiconsIcon
                                 icon={Mail01Icon}
