@@ -4,6 +4,7 @@ import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { authService, type LoginResponse } from "@/services/auth.service"
 import { queryClient } from "@/lib/queryClient"
+import { isPublicRoute } from "@/lib/constants"
 
 interface AuthContextType {
   user: LoginResponse["datos"]["usuario"] | null
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       queryClient.clear()
       setUser(null)
-      if (window.location.pathname === "/matricula/nueva") return
+      if (isPublicRoute(window.location.pathname)) return
 
       toast.info("Sesión cerrada", {
         description: "La sesión se cerró desde otra pestaña.",
@@ -94,12 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !isPublicRoute(window.location.pathname)) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="text-gray-500 font-medium animate-pulse">Iniciando sesión...</p>
+          <p className="text-gray-500 font-medium animate-pulse">Cargando...</p>
         </div>
       </div>
     )

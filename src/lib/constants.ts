@@ -12,3 +12,15 @@ export const ESTADO_ASISTENCIA_BADGE: Record<string, { bg: string; text: string;
   ausente: { bg: "#fee2e2", text: "#991b1b", label: "No" },
   justificado: { bg: "#dbeafe", text: "#1e40af", label: "Justificado" },
 }
+
+export const PUBLIC_ROUTES = [
+  "/matricula/nueva",
+  "/verificar-certificados",
+  "/agenda-publica",
+] as const
+
+export function isPublicRoute(pathname: string): boolean {
+  const cleanPath = pathname.split("?")[0].replace(/\/+$/, "")
+  return PUBLIC_ROUTES.some((route) => cleanPath === route || cleanPath.startsWith(`${route}/`))
+}
+
