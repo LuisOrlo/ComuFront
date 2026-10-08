@@ -72,6 +72,10 @@ const HistorialEdicionVideoPage = lazyNamed(() => import("@/pages/servicios/edic
 const RadioPage = lazyNamed(() => import("@/pages/servicios/radio/RadioPage"), "RadioPage")
 const RadioHistorialPage = lazyNamed(() => import("@/pages/servicios/radio/RadioHistorialPage"), "RadioHistorialPage")
 const ReservaRadioDetallePage = lazyNamed(() => import("@/pages/servicios/radio/ReservaRadioDetallePage"), "ReservaRadioDetallePage")
+const StreamingListPage = lazyNamed(() => import("@/pages/servicios/streaming/StreamingListPage"), "StreamingListPage")
+const StreamingFormPage = lazyNamed(() => import("@/pages/servicios/streaming/StreamingFormPage"), "StreamingFormPage")
+const StreamingDetallePage = lazyNamed(() => import("@/pages/servicios/streaming/StreamingDetallePage"), "StreamingDetallePage")
+const StreamingPagoPage = lazyNamed(() => import("@/pages/servicios/streaming/StreamingPagoPage"), "StreamingPagoPage")
 const ClientesPage = lazyNamed(() => import("@/pages/clientes/ClientesPage"), "ClientesPage")
 const NuevoClientePage = lazyNamed(() => import("@/pages/clientes/NuevoClientePage"), "NuevoClientePage")
 const ClienteDetallePage = lazyNamed(() => import("@/pages/clientes/detalle/ClienteDetallePage"), "ClienteDetallePage")
@@ -267,6 +271,11 @@ function AppLayout() {
             <Route path="/servicios/radio/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioPage /></RoleGuard>} />
             <Route path="/servicios/radio/tarifas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RadioTarifasPage /></RoleGuard>} />
             <Route path="/servicios/radio/reservas/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ReservaRadioDetallePage /></RoleGuard>} />
+            <Route path="/servicios/streaming" element={<RoleGuard roles={["Administrador", "Secretaria"]}><StreamingListPage /></RoleGuard>} />
+            <Route path="/servicios/streaming/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><StreamingFormPage /></RoleGuard>} />
+            <Route path="/servicios/streaming/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><StreamingDetallePage /></RoleGuard>} />
+            <Route path="/servicios/streaming/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><StreamingFormPage /></RoleGuard>} />
+            <Route path="/servicios/streaming/:id/pago" element={<RoleGuard roles={["Administrador", "Secretaria"]}><StreamingPagoPage /></RoleGuard>} />
             <Route path="/finanzas/pagos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><FinancePagosPage /></RoleGuard>}>
               <Route index element={<Navigate to="cuentas/cursos" replace />} />
               <Route path="resumen" element={<Navigate to="/finanzas/pagos" replace />} />

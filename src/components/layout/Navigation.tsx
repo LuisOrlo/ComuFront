@@ -31,6 +31,7 @@ import {
   BarChartIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  CameraVideoIcon,
 } from "@hugeicons/core-free-icons"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
@@ -217,6 +218,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
         { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
         { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
         { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
+        { icon: CameraVideoIcon, label: "Streaming", path: "/servicios/streaming" },
       ],
     },
     {
@@ -260,6 +262,7 @@ if (isAdmin) {
         { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
         { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
         { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
+        { icon: CameraVideoIcon, label: "Streaming", path: "/servicios/streaming" },
       ],
     },
     {

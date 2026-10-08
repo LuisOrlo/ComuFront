@@ -59,15 +59,24 @@ export const AgendaDayView: React.FC<AgendaDayViewProps> = ({
                 ? `Clase: ${event.nombre_instancia}`
                 : event.titulo
 
-            const subInfo = [
-              event.instructor_nombre,
-              event.ciudad_nombre,
-              event.participantes_count != null
-                ? `${event.participantes_count} participantes confirmados`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")
+            const subInfo =
+              event.tipo_evento === "STREAMING"
+                ? [
+                    event.instructor_nombre ? `Cliente: ${event.instructor_nombre}` : null,
+                    event.aula_nombre || "Locación externa",
+                    event.ciudad_nombre,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : [
+                    event.instructor_nombre,
+                    event.ciudad_nombre,
+                    event.participantes_count != null
+                      ? `${event.participantes_count} participantes confirmados`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
 
             return (
               <div

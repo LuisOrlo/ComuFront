@@ -218,11 +218,24 @@ export const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({
                           <span className={`text-xs font-bold leading-tight line-clamp-2 ${theme.title}`}>
                             {displayTitle}
                           </span>
-                          {ev.instructor_nombre && (
+                          {ev.tipo_evento === "STREAMING" ? (
+                            <div className="flex flex-col gap-0.5 text-[11px] opacity-90">
+                              {ev.instructor_nombre && (
+                                <span className={`font-semibold truncate ${theme.sub}`}>
+                                  👤 {ev.instructor_nombre}
+                                </span>
+                              )}
+                              {ev.aula_nombre && (
+                                <span className="text-[10px] text-slate-500 font-medium truncate">
+                                  📍 {ev.aula_nombre}
+                                </span>
+                              )}
+                            </div>
+                          ) : ev.instructor_nombre ? (
                             <span className={`text-[11px] font-medium opacity-85 truncate ${theme.sub}`}>
                               {ev.instructor_nombre}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       )
                     })}
@@ -333,11 +346,24 @@ export const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({
                       <span className={`text-xs sm:text-sm font-bold leading-tight ${theme.title}`}>
                         {displayTitle}
                       </span>
-                      {ev.instructor_nombre && (
+                      {ev.tipo_evento === "STREAMING" ? (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                          {ev.instructor_nombre && (
+                            <span className={`font-semibold truncate ${theme.sub}`}>
+                              👤 {ev.instructor_nombre}
+                            </span>
+                          )}
+                          {ev.aula_nombre && (
+                            <span className="text-slate-500 font-medium truncate text-[11px]">
+                              📍 {ev.aula_nombre}
+                            </span>
+                          )}
+                        </div>
+                      ) : ev.instructor_nombre ? (
                         <span className={`text-xs font-medium opacity-85 truncate ${theme.sub}`}>
                           {ev.instructor_nombre}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   )
                 })}

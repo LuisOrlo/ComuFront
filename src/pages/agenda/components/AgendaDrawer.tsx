@@ -13,6 +13,8 @@ import {
   NoteIcon,
   UserGroupIcon,
   Money01Icon,
+  CallIcon,
+  ToolsIcon,
 } from "@hugeicons/core-free-icons"
 import { type AgendaEvent, type AgendaEventDetail, agendaService, agendaPublicaService } from "@/services/agenda.service"
 import { getEventPersonLabel, getEventStyles } from "@/pages/agenda/utils"
@@ -296,8 +298,8 @@ export function AgendaDrawer({
                   </div>
                 </div>
 
-                {/* Tarjeta de Inversión / Arancel si está disponible */}
-                {precio != null && Number(precio) > 0 && (
+                {/* Tarjeta de Inversión / Arancel si está disponible (excluyendo STREAMING) */}
+                {data.tipo_evento !== "STREAMING" && precio != null && Number(precio) > 0 && (
                   <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="size-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -332,14 +334,16 @@ export function AgendaDrawer({
                         {data.instructor_nombre}
                       </span>
                       <span className="text-[11px] text-slate-500 font-medium block">
-                        Responsable / titular del registro
+                        {data.tipo_evento === "STREAMING"
+                          ? "Cliente contratante del servicio"
+                          : "Responsable / titular del registro"}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* Sede y Espacio / Aula */}
-                {(Boolean(data.ciudad_nombre) || Boolean(data.aula_nombre)) && (
+                {/* Sede y Espacio / Aula (Para eventos estándar distintos a STREAMING o como fallback) */}
+                {data.tipo_evento !== "STREAMING" && (Boolean(data.ciudad_nombre) || Boolean(data.aula_nombre)) && (
                   <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3.5">
                     <div className="size-11 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                       <HugeiconsIcon icon={Location01Icon} size={20} />
@@ -356,6 +360,128 @@ export function AgendaDrawer({
                         Modalidad {data.modalidad || "presencial"}
                       </span>
                     </div>
+                  </div>
+                )}
+
+                {/* BLOQUE ESPECIAL STREAMING: Locación, Dirección y Referencias */}
+                {data.tipo_evento === "STREAMING" && (
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4.5 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <div className="size-6 rounded-lg bg-orange-50 text-[#fd761a] flex items-center justify-center">
+                          <HugeiconsIcon icon={Location01Icon} size={14} />
+                        </div>
+                        <span>Locación & Acceso</span>
+                      </div>
+                      {data.ciudad_nombre && (
+                        <span className="text-[11px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200/70">
+                          {data.ciudad_nombre}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Recinto / Lugar
+                      </span>
+                      <p className="text-sm font-bold text-slate-900 mt-0.5">
+                        {String(data.detalle?.lugar || data.aula_nombre || "Locación externa")}
+                      </p>
+                    </div>
+
+                    {Boolean(data.detalle?.direccion) && (
+                      <div className="pt-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                          Dirección Exacta
+                        </span>
+                        <p className="text-xs text-slate-700 font-medium mt-0.5 leading-relaxed">
+                          {String(data.detalle?.direccion)}
+                        </p>
+                      </div>
+                    )}
+
+                    {Boolean(data.detalle?.referencias_ubicacion) && (
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
+                        <span className="font-bold text-slate-700 block mb-0.5">
+                          Referencias de acceso:
+                        </span>
+                        <p className="leading-relaxed">
+                          {String(data.detalle?.referencias_ubicacion)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* BLOQUE ESPECIAL STREAMING: Personal Técnico Asignado */}
+                {data.tipo_evento === "STREAMING" && (
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4.5 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <div className="size-6 rounded-lg bg-orange-50 text-[#fd761a] flex items-center justify-center">
+                          <HugeiconsIcon icon={UserGroupIcon} size={14} />
+                        </div>
+                        <span>Personal Técnico Asignado</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-400">
+                        {Array.isArray(data.detalle?.personal_tecnico)
+                          ? (data.detalle.personal_tecnico as any[]).length
+                          : 0}{" "}
+                        técnico(s)
+                      </span>
+                    </div>
+
+                    {Array.isArray(data.detalle?.personal_tecnico) &&
+                    (data.detalle.personal_tecnico as any[]).length > 0 ? (
+                      <div className="space-y-2">
+                        {(data.detalle.personal_tecnico as any[]).map((tech, idx) => (
+                          <div
+                            key={tech.persona_id || idx}
+                            className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="size-8 rounded-lg bg-orange-100 text-[#fd761a] flex items-center justify-center font-bold text-xs shrink-0">
+                                {(tech.nombre_completo || "T").charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-slate-900 truncate">
+                                  {tech.nombre_completo || "Técnico"}
+                                </p>
+                                <p className="text-[10px] text-slate-400">
+                                  Personal de Cobertura
+                                </p>
+                              </div>
+                            </div>
+                            {tech.celular && (
+                              <a
+                                href={`tel:${tech.celular}`}
+                                className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-500 hover:text-emerald-600 transition-colors shrink-0"
+                              >
+                                <HugeiconsIcon icon={CallIcon} size={12} />
+                                <span>{tech.celular}</span>
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic py-1">
+                        Sin personal técnico asignado por el momento.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* BLOQUE ESPECIAL STREAMING: Equipos y Material Requerido */}
+                {data.tipo_evento === "STREAMING" && Boolean(data.detalle?.equipos_detalle) && (
+                  <div className="bg-amber-50/40 border border-amber-200/70 rounded-2xl p-4.5 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-900 pb-1 border-b border-amber-200/40">
+                      <HugeiconsIcon icon={ToolsIcon} size={15} className="text-amber-700" />
+                      <span>Equipos & Material Requerido</span>
+                    </div>
+                    <p className="text-xs text-amber-950 font-medium whitespace-pre-wrap leading-relaxed">
+                      {String(data.detalle?.equipos_detalle)}
+                    </p>
                   </div>
                 )}
 
@@ -569,6 +695,19 @@ export function AgendaDrawer({
                       className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-pink-600 hover:bg-pink-700 shadow-sm shadow-pink-600/30 transition-all cursor-pointer"
                     >
                       <span>Ver Reserva Radio</span>
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+                    </button>
+                  )}
+                  {data.tipo_evento === "STREAMING" && data.referencia_id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        navigate(`/servicios/streaming/${data.referencia_id}`)
+                      }}
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm shadow-rose-600/30 transition-all cursor-pointer"
+                    >
+                      <span>Ver Servicio Streaming</span>
                       <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
                     </button>
                   )}
