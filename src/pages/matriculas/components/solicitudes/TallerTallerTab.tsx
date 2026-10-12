@@ -5,6 +5,7 @@ import {
   UserIcon,
 } from "@hugeicons/core-free-icons"
 import { CiudadBadge, ModalidadBadge } from "../../../estudiantes/components/Badges"
+import { formatDate } from "@/lib/utils"
 
 interface TallerTallerTabProps {
   selected: any
@@ -64,7 +65,7 @@ export function TallerTallerTab({ selected }: TallerTallerTabProps) {
               <span className="text-xs font-bold uppercase tracking-wider">Fecha Inicio</span>
             </div>
             <span className="font-bold text-slate-900 text-sm block">
-              {taller?.fecha ? new Date(taller.fecha).toLocaleDateString("es-EC") : "—"}
+              {taller?.fecha ? formatDate(taller.fecha) : "—"}
             </span>
           </div>
 
@@ -74,7 +75,7 @@ export function TallerTallerTab({ selected }: TallerTallerTabProps) {
               <span className="text-xs font-bold uppercase tracking-wider">Fecha Fin</span>
             </div>
             <span className="font-bold text-slate-900 text-sm block">
-              {taller?.fecha_fin ? new Date(taller.fecha_fin).toLocaleDateString("es-EC") : "Mismo día"}
+              {taller?.fecha_fin ? formatDate(taller.fecha_fin) : "Mismo día"}
             </span>
           </div>
 

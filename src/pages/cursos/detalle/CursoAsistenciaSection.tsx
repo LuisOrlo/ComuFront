@@ -23,6 +23,9 @@ import {
   Loader2,
   RotateCcw,
   ClipboardCheck,
+  X,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react"
 import { parseLocalDate } from "@/lib/utils"
 import {
@@ -150,6 +153,9 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   const [expandedModulos, setExpandedModulos] = useState<Record<string, boolean>>({})
   const [estudianteSearch, setEstudianteSearch] = useState("")
   const [overviewSearch, setOverviewSearch] = useState("")
+
+  // Panel lateral desplegable del cronograma (Slide-over derecho)
+  const [isCronogramaOpen, setIsCronogramaOpen] = useState(false)
 
   // Modal para editar fecha/hora (solo admin)
   const [editClase, setEditClase] = useState<ClaseItem | null>(null)
@@ -829,7 +835,24 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={() => setIsCronogramaOpen((prev) => !prev)}
+            className={`px-4 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+              isCronogramaOpen
+                ? "bg-[#0b1c30] text-white border-[#0b1c30]"
+                : "bg-white text-[#0b1c30] border-[#e5eeff] hover:bg-[#eff4ff]"
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-[#fd761a]" />
+            <span>Cronograma del curso</span>
+            {isCronogramaOpen ? (
+              <PanelRightClose className="w-4 h-4 text-white" />
+            ) : (
+              <PanelRightOpen className="w-4 h-4 text-[#76777d]" />
+            )}
+          </button>
+
           <button
             onClick={handleExportarReporte}
             disabled={exporting}
@@ -923,304 +946,24 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
         </div>
       </div>
 
-      {/* ─── Grid Principal a 2 Columnas ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* ─── COLUMNA IZQUIERDA (5 cols): Cronograma del Curso ─── */}
-        <section aria-label="Cronograma de Clases" className="lg:col-span-5 flex flex-col gap-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-[#e5eeff] overflow-hidden flex flex-col">
-            {/* Header columna izquierda */}
-            <div className="p-4 space-y-3 bg-[#eff4ff]/60 border-b border-[#e5eeff]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#45464d]" />
-                  <h2 className="text-base font-bold text-[#0b1c30]">Cronograma del Curso</h2>
-                </div>
-                {proximaClasePendiente && (
-                  <button
-                    onClick={handleRegistrarProximaClase}
-                    className="px-2.5 py-1 rounded-full bg-[#ffdbca] text-[#341100] text-[11px] font-bold flex items-center gap-1 hover:bg-[#ffb690] transition-all"
-                  >
-                    <Zap className="w-3 h-3 text-[#fd761a]" />
-                    Ir a próxima
-                  </button>
-                )}
-              </div>
-
-              {/* Buscador de clase */}
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d]" />
-                <input
-                  type="text"
-                  value={claseSearch}
-                  onChange={(e) => setClaseSearch(e.target.value)}
-                  placeholder="Buscar por fecha, mes o día..."
-                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl text-xs text-[#0b1c30] border border-[#e5eeff] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#fd761a] transition-all"
-                />
-              </div>
-
-              {/* Pills de filtro */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                <button
-                  onClick={() => setClaseFiltro("todas")}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                    claseFiltro === "todas"
-                      ? "bg-[#0b1c30] text-white shadow-sm"
-                      : "bg-white text-[#45464d] hover:bg-[#e5eeff]"
-                  }`}
-                >
-                  Todas ({totalClasesGeneral})
-                </button>
-                <button
-                  onClick={() => setClaseFiltro("pendientes")}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                    claseFiltro === "pendientes"
-                      ? "bg-[#0b1c30] text-white shadow-sm"
-                      : "bg-white text-[#45464d] hover:bg-[#e5eeff]"
-                  }`}
-                >
-                  Pendientes ({totalClasesPendientes})
-                </button>
-                <button
-                  onClick={() => setClaseFiltro("registradas")}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
-                    claseFiltro === "registradas"
-                      ? "bg-[#0b1c30] text-white shadow-sm"
-                      : "bg-white text-[#45464d] hover:bg-[#e5eeff]"
-                  }`}
-                >
-                  Registradas ({totalClasesRegistradas})
-                </button>
-              </div>
-            </div>
-
-            {/* Listado de Módulos y Clases */}
-            <div className="p-3 space-y-3 max-h-[820px] overflow-y-auto">
-              {loadingInitial ? (
-                <div className="p-10 text-center text-xs text-[#76777d]">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#fd761a]" />
-                  Cargando cronograma del curso...
-                </div>
-              ) : modulosFiltrados.length === 0 ? (
-                <div className="p-10 text-center text-xs text-[#76777d] border border-dashed rounded-xl border-[#e5eeff]">
-                  No se encontraron clases con los filtros aplicados.
-                </div>
-              ) : (
-                modulosFiltrados.map(({ modulo, clases, registradas, total }) => {
-                  const isExpanded = !!expandedModulos[modulo.id]
-                  const pct = total > 0 ? Math.round((registradas / total) * 100) : 0
-
-                  return (
-                    <div key={modulo.id} className="space-y-1.5">
-                      {(() => {
-                        const isSelectedModulo = selectedModulo?.id === modulo.id
-                        return (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpandedModulos((prev) => ({
-                                ...prev,
-                                [modulo.id]: !prev[modulo.id],
-                              }))
-                            }
-                            className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all text-left group border ${
-                              isSelectedModulo
-                                ? "bg-[#ffdbca]/40 border-[#fd761a]/50 shadow-sm"
-                                : "bg-[#eff4ff]/70 hover:bg-[#eff4ff] border-transparent"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              {isExpanded ? (
-                                <FolderOpen
-                                  className={`w-4 h-4 shrink-0 transition-colors ${
-                                    isSelectedModulo ? "text-[#fd761a]" : "text-[#76777d]"
-                                  }`}
-                                />
-                              ) : (
-                                <Folder
-                                  className={`w-4 h-4 shrink-0 transition-colors ${
-                                    isSelectedModulo ? "text-[#fd761a]" : "text-[#76777d]"
-                                  }`}
-                                />
-                              )}
-                              <span
-                                className={`text-xs uppercase tracking-wider truncate transition-colors ${
-                                  isSelectedModulo
-                                    ? "text-[#fd761a] font-black"
-                                    : "text-[#0b1c30] font-bold"
-                                }`}
-                              >
-                                MÓDULO {modulo.numero_orden ?? "—"}: {modulo.nombre_modulo}
-                              </span>
-                              {isSelectedModulo && (
-                                <span className="px-1.5 py-0.5 rounded bg-[#fd761a] text-white text-[9px] font-extrabold uppercase shrink-0">
-                                  Módulo actual
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
-                                  isSelectedModulo
-                                    ? "bg-[#ffdbca] text-[#341100]"
-                                    : "bg-[#dce9ff] text-[#45464d]"
-                                }`}
-                              >
-                                {registradas} / {total} ({pct}%)
-                              </span>
-                              <ChevronDown
-                                className={`w-4 h-4 transition-transform duration-200 ${
-                                  isSelectedModulo ? "text-[#fd761a]" : "text-[#76777d]"
-                                } ${isExpanded ? "rotate-180" : ""}`}
-                              />
-                            </div>
-                          </button>
-                        )
-                      })()}
-
-                      <AnimatePresence initial={false}>
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden space-y-1.5 pl-1"
-                          >
-                            {clases.length === 0 ? (
-                              <div className="p-4 text-center text-xs text-[#76777d]">
-                                Sin clases programadas en este módulo
-                              </div>
-                            ) : (
-                              clases.map((clase) => {
-                                const isSelected = selectedClase?.id === clase.id
-                                const isNext = proximaClasePendiente?.clase.id === clase.id
-                                const isRegistered = clase.asistencia_registrada
-
-                                return (
-                                  <div
-                                    key={clase.id}
-                                    onClick={() => cargarAsistenciaDeClase(clase, modulo)}
-                                    role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        cargarAsistenciaDeClase(clase, modulo)
-                                      }
-                                    }}
-                                    className={`relative p-3 rounded-xl transition-all cursor-pointer flex items-center justify-between gap-3 text-left ${
-                                      isSelected
-                                        ? "bg-white shadow-md ring-2 ring-[#fd761a]"
-                                        : "bg-white hover:bg-[#eff4ff]/60 border border-[#e5eeff] shadow-sm"
-                                    }`}
-                                  >
-                                    {isSelected && (
-                                      <div className="absolute -left-0.5 top-2 bottom-2 w-1 bg-[#fd761a] rounded-r" />
-                                    )}
-
-                                    <div className="flex items-center gap-3 min-w-0 pl-1">
-                                      <div
-                                        className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center text-center shrink-0 ${
-                                          isSelected
-                                            ? "bg-[#ffdbca] text-[#341100]"
-                                            : isRegistered
-                                            ? "bg-[#eff4ff] text-[#0b1c30]"
-                                            : "bg-[#eff4ff] text-[#45464d]"
-                                        }`}
-                                      >
-                                        <span className="text-[9px] uppercase font-extrabold leading-none">
-                                          {getMesAbrev(clase.fecha_clase)}
-                                        </span>
-                                        <span className="text-base font-black leading-tight">
-                                          {getDiaNumero(clase.fecha_clase)}
-                                        </span>
-                                      </div>
-
-                                      <div className="flex flex-col min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <span className="text-xs font-bold text-[#0b1c30] truncate">
-                                            {getFechaLarga(clase.fecha_clase)}
-                                          </span>
-
-                                          {isRegistered ? (
-                                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[#d3e4fe] text-[#005236] text-[10px] font-bold">
-                                              <Check className="w-3 h-3" />
-                                              REGISTRADA
-                                            </span>
-                                          ) : isNext ? (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ffdbca] text-[#341100] text-[10px] font-bold">
-                                              <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a] animate-ping" />
-                                              Próxima clase
-                                            </span>
-                                          ) : (
-                                            <span className="px-1.5 py-0.2 rounded bg-[#dce9ff] text-[#76777d] text-[10px] font-semibold">
-                                              PENDIENTE
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        <span
-                                          className={`text-[11px] truncate mt-0.5 ${
-                                            isSelected
-                                              ? "text-[#fd761a] font-medium"
-                                              : "text-[#76777d]"
-                                          }`}
-                                        >
-                                          {clase.hora_inicio} – {clase.hora_fin}
-                                          {isRegistered && (
-                                            <>
-                                              {" "}· {clase.asistencias_presentes ?? presentesCount}/
-                                              {clase.asistencias_total ?? estudiantes.length} Asistencias
-                                            </>
-                                          )}
-                                          {!isRegistered && isSelected && (
-                                            <> · En curso para registrar</>
-                                          )}
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {isSelected ? (
-                                        <>
-                                          <span className="hidden sm:inline-flex px-2 py-0.5 rounded bg-[#fd761a] text-white text-[10px] font-bold">
-                                            Registrando
-                                          </span>
-                                          <ChevronRight className="w-4 h-4 text-[#fd761a]" />
-                                        </>
-                                      ) : isRegistered ? (
-                                        <span className="px-2.5 py-1 rounded-lg bg-[#eff4ff] hover:bg-[#e5eeff] text-[#0b1c30] text-[11px] font-medium transition-all">
-                                          Ver
-                                        </span>
-                                      ) : (
-                                        <span className="px-2.5 py-1 rounded-lg bg-[#e5eeff] hover:bg-[#dce9ff] text-[#0b1c30] text-[11px] font-medium transition-all">
-                                          Registrar
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── COLUMNA DERECHA (7 cols): Pase de Lista - Registro Enfocado ─── */}
-        <section aria-label="Pase de Lista de Clase" className="lg:col-span-7 flex flex-col gap-4">
+      {/* ─── Contenedor Principal: Pase de Lista (Ancho Completo) ─── */}
+      <div className="w-full">
+        <section aria-label="Pase de Lista de Clase" className="w-full flex flex-col gap-4">
           {!selectedClase ? (
             <div className="bg-white rounded-2xl shadow-sm border border-[#e5eeff] p-12 text-center text-[#76777d]">
               <Calendar className="w-12 h-12 mx-auto mb-3 text-[#dce9ff]" />
               <p className="text-base font-bold text-[#0b1c30]">Ninguna clase seleccionada</p>
-              <p className="text-xs text-[#76777d] mt-1">
-                Selecciona una clase del cronograma a la izquierda para registrar o verificar la asistencia.
+              <p className="text-xs text-[#76777d] mt-1 mb-4">
+                Abre el cronograma a la derecha para seleccionar una clase y registrar o verificar la asistencia.
               </p>
+              <button
+                type="button"
+                onClick={() => setIsCronogramaOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#fd761a] hover:bg-[#9d4300] text-white text-xs font-bold transition-all shadow-sm shadow-[#fd761a]/25"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Ver cronograma de clases</span>
+              </button>
             </div>
           ) : (
             <div className="bg-white rounded-2xl shadow-sm border border-[#e5eeff] overflow-hidden flex flex-col">
@@ -1276,18 +1019,31 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                     </div>
                   </div>
 
-                  {/* Contador en vivo a la derecha */}
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1 p-3 rounded-xl bg-[#eff4ff] border border-[#e5eeff] shrink-0">
-                    <span className="text-[11px] text-[#45464d] font-medium">Estado estimado:</span>
-                    <div className="flex items-center gap-1.5 text-[#009668]">
-                      <CheckCircle2 className="w-4 h-4 text-[#009668]" />
-                      <span className="text-lg font-bold text-[#0b1c30]">
-                        {presentesCount} de {totalAlumnosClase}
+                  {/* Acciones del encabezado y contador en vivo */}
+                  <div className="flex items-center sm:items-start gap-3 self-end sm:self-auto flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setIsCronogramaOpen(true)}
+                      className="px-3 py-2 rounded-xl bg-white border border-[#e5eeff] hover:bg-[#eff4ff] text-[#0b1c30] text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                      title="Abrir cronograma de clases"
+                    >
+                      <Calendar className="w-4 h-4 text-[#fd761a]" />
+                      <span>Cronograma</span>
+                      <PanelRightOpen className="w-3.5 h-3.5 text-[#76777d]" />
+                    </button>
+
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1 p-3 rounded-xl bg-[#eff4ff] border border-[#e5eeff] shrink-0">
+                      <span className="text-[11px] text-[#45464d] font-medium">Estado estimado:</span>
+                      <div className="flex items-center gap-1.5 text-[#009668]">
+                        <CheckCircle2 className="w-4 h-4 text-[#009668]" />
+                        <span className="text-lg font-bold text-[#0b1c30]">
+                          {presentesCount} de {totalAlumnosClase}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#009668] font-bold">
+                        {porcentajePresentes}% Presentes
                       </span>
                     </div>
-                    <span className="text-[11px] text-[#009668] font-bold">
-                      {porcentajePresentes}% Presentes
-                    </span>
                   </div>
                 </div>
 
@@ -1526,6 +1282,360 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           )}
         </section>
       </div>
+
+      {/* ─── PANEL LATERAL DESPLEGABLE: CRONOGRAMA DEL CURSO (LADO DERECHO) ─── */}
+      {createPortal(
+        <AnimatePresence>
+          {isCronogramaOpen && (
+            <div className="fixed inset-0 z-50 flex justify-end">
+              {/* Backdrop oscuro */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsCronogramaOpen(false)}
+                className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs"
+              />
+
+              {/* Panel Slide-Over desde la derecha */}
+              <motion.aside
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                className="relative z-10 w-full max-w-md md:max-w-lg h-full bg-white shadow-2xl flex flex-col border-l border-[#e5eeff] overflow-hidden"
+              >
+                {/* Header del Panel Lateral */}
+                <div className="p-4 sm:p-5 bg-gradient-to-b from-[#eff4ff]/80 to-[#eff4ff]/30 border-b border-[#e5eeff] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-white border border-[#e5eeff] flex items-center justify-center text-[#fd761a] shadow-xs">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-[#0b1c30] leading-tight">
+                          Cronograma del Curso
+                        </h2>
+                        <p className="text-[11px] text-[#76777d]">
+                          {totalClasesGeneral} clases programadas · {progresoGeneralPct}% completado
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {proximaClasePendiente && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleRegistrarProximaClase()
+                            setIsCronogramaOpen(false)
+                          }}
+                          className="px-2.5 py-1 rounded-full bg-[#ffdbca] text-[#341100] text-[11px] font-bold flex items-center gap-1 hover:bg-[#ffb690] transition-all"
+                        >
+                          <Zap className="w-3 h-3 text-[#fd761a]" />
+                          <span>Ir a próxima</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsCronogramaOpen(false)}
+                        className="p-1.5 rounded-xl hover:bg-slate-200/60 text-[#76777d] hover:text-[#0b1c30] transition-colors"
+                        aria-label="Cerrar cronograma"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Buscador de clase */}
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d]" />
+                    <input
+                      type="text"
+                      value={claseSearch}
+                      onChange={(e) => setClaseSearch(e.target.value)}
+                      placeholder="Buscar por fecha, mes o día..."
+                      className="w-full pl-9 pr-3 py-2 bg-white rounded-xl text-xs text-[#0b1c30] border border-[#e5eeff] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#fd761a] transition-all shadow-xs"
+                    />
+                  </div>
+
+                  {/* Pills de filtro */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setClaseFiltro("todas")}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                        claseFiltro === "todas"
+                          ? "bg-[#0b1c30] text-white shadow-sm"
+                          : "bg-white text-[#45464d] hover:bg-[#e5eeff]"
+                      }`}
+                    >
+                      Todas ({totalClasesGeneral})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClaseFiltro("pendientes")}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                        claseFiltro === "pendientes"
+                          ? "bg-[#0b1c30] text-white shadow-sm"
+                          : "bg-white text-[#45464d] hover:bg-[#e5eeff]"
+                      }`}
+                    >
+                      Pendientes ({totalClasesPendientes})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClaseFiltro("registradas")}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
+                        claseFiltro === "registradas"
+                          ? "bg-[#0b1c30] text-white shadow-sm"
+                          : "bg-white text-[#45464d] hover:bg-[#e5eeff]"
+                      }`}
+                    >
+                      Registradas ({totalClasesRegistradas})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Listado de Módulos y Clases con scroll */}
+                <div className="p-3.5 space-y-3 overflow-y-auto flex-1">
+                  {loadingInitial ? (
+                    <div className="p-10 text-center text-xs text-[#76777d]">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#fd761a]" />
+                      Cargando cronograma del curso...
+                    </div>
+                  ) : modulosFiltrados.length === 0 ? (
+                    <div className="p-10 text-center text-xs text-[#76777d] border border-dashed rounded-xl border-[#e5eeff]">
+                      No se encontraron clases con los filtros aplicados.
+                    </div>
+                  ) : (
+                    modulosFiltrados.map(({ modulo, clases, registradas, total }) => {
+                      const isExpanded = !!expandedModulos[modulo.id]
+                      const pct = total > 0 ? Math.round((registradas / total) * 100) : 0
+
+                      return (
+                        <div key={modulo.id} className="space-y-1.5">
+                          {(() => {
+                            const isSelectedModulo = selectedModulo?.id === modulo.id
+                            return (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedModulos((prev) => ({
+                                    ...prev,
+                                    [modulo.id]: !prev[modulo.id],
+                                  }))
+                                }
+                                className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all text-left group border ${
+                                  isSelectedModulo
+                                    ? "bg-[#ffdbca]/40 border-[#fd761a]/50 shadow-sm"
+                                    : "bg-[#eff4ff]/70 hover:bg-[#eff4ff] border-transparent"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {isExpanded ? (
+                                    <FolderOpen
+                                      className={`w-4 h-4 shrink-0 transition-colors ${
+                                        isSelectedModulo ? "text-[#fd761a]" : "text-[#76777d]"
+                                      }`}
+                                    />
+                                  ) : (
+                                    <Folder
+                                      className={`w-4 h-4 shrink-0 transition-colors ${
+                                        isSelectedModulo ? "text-[#fd761a]" : "text-[#76777d]"
+                                      }`}
+                                    />
+                                  )}
+                                  <span
+                                    className={`text-xs uppercase tracking-wider truncate transition-colors ${
+                                      isSelectedModulo
+                                        ? "text-[#fd761a] font-black"
+                                        : "text-[#0b1c30] font-bold"
+                                    }`}
+                                  >
+                                    MÓDULO {modulo.numero_orden ?? "—"}: {modulo.nombre_modulo}
+                                  </span>
+                                  {isSelectedModulo && (
+                                    <span className="px-1.5 py-0.5 rounded bg-[#fd761a] text-white text-[9px] font-extrabold uppercase shrink-0">
+                                      Módulo actual
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                                      isSelectedModulo
+                                        ? "bg-[#ffdbca] text-[#341100]"
+                                        : "bg-[#dce9ff] text-[#45464d]"
+                                    }`}
+                                  >
+                                    {registradas} / {total} ({pct}%)
+                                  </span>
+                                  <ChevronDown
+                                    className={`w-4 h-4 transition-transform duration-200 ${
+                                      isSelectedModulo ? "text-[#fd761a]" : "text-[#76777d]"
+                                    } ${isExpanded ? "rotate-180" : ""}`}
+                                  />
+                                </div>
+                              </button>
+                            )
+                          })()}
+
+                          <AnimatePresence initial={false}>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden space-y-1.5 pl-1"
+                              >
+                                {clases.length === 0 ? (
+                                  <div className="p-4 text-center text-xs text-[#76777d]">
+                                    Sin clases programadas en este módulo
+                                  </div>
+                                ) : (
+                                  clases.map((clase) => {
+                                    const isSelected = selectedClase?.id === clase.id
+                                    const isNext = proximaClasePendiente?.clase.id === clase.id
+                                    const isRegistered = clase.asistencia_registrada
+
+                                    return (
+                                      <div
+                                        key={clase.id}
+                                        onClick={() => {
+                                          cargarAsistenciaDeClase(clase, modulo)
+                                          setIsCronogramaOpen(false)
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter" || e.key === " ") {
+                                            cargarAsistenciaDeClase(clase, modulo)
+                                            setIsCronogramaOpen(false)
+                                          }
+                                        }}
+                                        className={`relative p-3 rounded-xl transition-all cursor-pointer flex items-center justify-between gap-3 text-left ${
+                                          isSelected
+                                            ? "bg-white shadow-md ring-2 ring-[#fd761a]"
+                                            : "bg-white hover:bg-[#eff4ff]/60 border border-[#e5eeff] shadow-sm"
+                                        }`}
+                                      >
+                                        {isSelected && (
+                                          <div className="absolute -left-0.5 top-2 bottom-2 w-1 bg-[#fd761a] rounded-r" />
+                                        )}
+
+                                        <div className="flex items-center gap-3 min-w-0 pl-1">
+                                          <div
+                                            className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center text-center shrink-0 ${
+                                              isSelected
+                                                ? "bg-[#ffdbca] text-[#341100]"
+                                                : isRegistered
+                                                ? "bg-[#eff4ff] text-[#0b1c30]"
+                                                : "bg-[#eff4ff] text-[#45464d]"
+                                            }`}
+                                          >
+                                            <span className="text-[9px] uppercase font-extrabold leading-none">
+                                              {getMesAbrev(clase.fecha_clase)}
+                                            </span>
+                                            <span className="text-base font-black leading-tight">
+                                              {getDiaNumero(clase.fecha_clase)}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex flex-col min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="text-xs font-bold text-[#0b1c30] truncate">
+                                                {getFechaLarga(clase.fecha_clase)}
+                                              </span>
+
+                                              {isRegistered ? (
+                                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-[#d3e4fe] text-[#005236] text-[10px] font-bold">
+                                                  <Check className="w-3 h-3" />
+                                                  REGISTRADA
+                                                </span>
+                                              ) : isNext ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#ffdbca] text-[#341100] text-[10px] font-bold">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a] animate-ping" />
+                                                  Próxima clase
+                                                </span>
+                                              ) : (
+                                                <span className="px-1.5 py-0.2 rounded bg-[#dce9ff] text-[#76777d] text-[10px] font-semibold">
+                                                  PENDIENTE
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <span
+                                              className={`text-[11px] truncate mt-0.5 ${
+                                                isSelected
+                                                  ? "text-[#fd761a] font-medium"
+                                                  : "text-[#76777d]"
+                                              }`}
+                                            >
+                                              {clase.hora_inicio} – {clase.hora_fin}
+                                              {isRegistered && (
+                                                <>
+                                                  {" "}· {clase.asistencias_presentes ?? presentesCount}/
+                                                  {clase.asistencias_total ?? estudiantes.length} Asistencias
+                                                </>
+                                              )}
+                                              {!isRegistered && isSelected && (
+                                                <> · En curso para registrar</>
+                                              )}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          {isSelected ? (
+                                            <>
+                                              <span className="hidden sm:inline-flex px-2 py-0.5 rounded bg-[#fd761a] text-white text-[10px] font-bold">
+                                                Registrando
+                                              </span>
+                                              <ChevronRight className="w-4 h-4 text-[#fd761a]" />
+                                            </>
+                                          ) : isRegistered ? (
+                                            <span className="px-2.5 py-1 rounded-lg bg-[#eff4ff] hover:bg-[#e5eeff] text-[#0b1c30] text-[11px] font-medium transition-all">
+                                              Ver
+                                            </span>
+                                          ) : (
+                                            <span className="px-2.5 py-1 rounded-lg bg-[#e5eeff] hover:bg-[#dce9ff] text-[#0b1c30] text-[11px] font-medium transition-all">
+                                              Registrar
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )
+                                  })
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+
+                {/* Footer del Drawer */}
+                <div className="p-3 bg-slate-50 border-t border-[#e5eeff] flex items-center justify-between text-xs text-[#76777d]">
+                  <span>Selecciona una clase para cargar su nómina</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCronogramaOpen(false)}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] hover:bg-[#eff4ff] text-[#0b1c30] font-semibold transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </motion.aside>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* ─── Modal de Edición de Fecha y Hora (Solo Administrador) ─── */}
       {editClase &&

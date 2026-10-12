@@ -9,6 +9,7 @@ import {
   ArrowRight01Icon,
   Alert02Icon,
   Calendar03Icon,
+  CertificateIcon,
 } from "@hugeicons/core-free-icons"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -312,60 +313,59 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* New Enrollment Link */}
-          <div className="mt-8 pt-8 border-t" style={{ borderColor: BORDER_SUBTLE }}>
-            <div className="text-center space-y-4">
-              <p className="text-sm" style={{ color: TEXT_MUTED }}>
+          {/* New Enrollment Link as Button */}
+          <div className="mt-8 pt-7 border-t" style={{ borderColor: BORDER_SUBTLE }}>
+            <div className="space-y-3 text-center">
+              <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: TEXT_MUTED }}>
                 ¿Eres un nuevo estudiante?
               </p>
               <Link
                 to="/matricula/nueva"
-                className="group inline-flex items-center gap-2 text-sm font-semibold transition-all hover:opacity-80 active:scale-95"
-                style={{ color: ACCENT_TOMATO }}
+                className="group w-full flex items-center justify-center gap-2 h-11 px-5 rounded-xl font-medium text-sm transition-all duration-200 border shadow-xs hover:shadow-md active:scale-[0.99]"
+                style={{
+                  backgroundColor: "oklch(0.65 0.2 45 / 0.08)",
+                  borderColor: "oklch(0.65 0.2 45 / 0.25)",
+                  color: ACCENT_TOMATO,
+                }}
               >
-                Comenzar nueva matrícula
-                <HugeiconsIcon 
-                  icon={ArrowRight01Icon} 
-                  size={18} 
-                  className="transition-transform group-hover:translate-x-1" 
+                <span>Comenzar nueva matrícula</span>
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={16}
+                  className="transition-transform group-hover:translate-x-1 shrink-0"
                 />
               </Link>
             </div>
           </div>
 
-          {/* Certificate Verification Link */}
-          <div className="mt-4 text-center">
+          {/* Public Services Links (Certificates & Agenda) */}
+          <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm">
             <Link
               to="/verificar-certificados"
-              className="group inline-flex items-center gap-2 text-sm transition-all hover:opacity-80 active:scale-95"
+              className="inline-flex items-center justify-center gap-2 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
               style={{ color: TEXT_MUTED }}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="shrink-0"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-              Verificar certificados
+              <HugeiconsIcon
+                icon={CertificateIcon}
+                size={16}
+                className="shrink-0 text-slate-500"
+              />
+              <span className="leading-none">Verificar certificados</span>
             </Link>
-          </div>
 
-          {/* Public Agenda Link */}
-          <div className="mt-2.5 text-center">
+            <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-300" aria-hidden="true" />
+
             <Link
               to="/agenda-publica"
-              className="group inline-flex items-center gap-2 text-sm transition-all hover:opacity-80 active:scale-95"
+              className="inline-flex items-center justify-center gap-2 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
               style={{ color: TEXT_MUTED }}
             >
-              <HugeiconsIcon icon={Calendar03Icon} size={16} className="shrink-0" />
-              <span>Consultar agenda pública</span>
+              <HugeiconsIcon
+                icon={Calendar03Icon}
+                size={16}
+                className="shrink-0 text-slate-500"
+              />
+              <span className="leading-none">Consultar agenda</span>
             </Link>
           </div>
 

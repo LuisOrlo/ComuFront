@@ -53,20 +53,20 @@ export function CourseTable({
                   className="group hover:bg-slate-50/80 transition-colors"
                 >
                   {/* Nombre del curso */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
+                  <td className="py-4 px-4 min-w-[150px] max-w-[190px]">
+                    <div className="flex items-start gap-2.5">
                       <div
-                        className="w-1.5 h-10 rounded-full shrink-0"
+                        className="w-1.5 h-8 rounded-full shrink-0 mt-0.5"
                         style={{
                           backgroundColor: c.colorCatalogo || "#fd761a",
                         }}
                       />
-                      <div className="min-w-0">
-                        <span className="text-sm font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors block truncate max-w-xs sm:max-w-sm">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[13px] font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors block leading-snug whitespace-normal break-words">
                           {c.nombre}
                         </span>
                         {c.tipo && (
-                          <span className="text-[11px] font-semibold text-slate-400 capitalize">
+                          <span className="text-[11px] font-semibold text-slate-400 capitalize block mt-0.5">
                             Curso {c.tipo}
                           </span>
                         )}

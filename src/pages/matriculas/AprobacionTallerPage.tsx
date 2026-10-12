@@ -30,6 +30,7 @@ import { CiudadBadge, ModalidadBadge } from "../estudiantes/components/Badges"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
+import { formatDate } from "@/lib/utils"
 
 type TabId = "resumen" | "participante" | "taller" | "pago" | "documento"
 
@@ -521,7 +522,7 @@ export function AprobacionTallerPage() {
                     <div className="flex justify-between items-center">
                       <dt className="text-slate-500 font-medium">Fecha:</dt>
                       <dd className="text-slate-800 font-medium">
-                        {selected.taller?.fecha ? new Date(selected.taller.fecha).toLocaleDateString("es-EC") : "—"}
+                        {selected.taller?.fecha ? formatDate(selected.taller.fecha) : "—"}
                       </dd>
                     </div>
                     <div className="flex justify-between items-center">
@@ -581,7 +582,7 @@ export function AprobacionTallerPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 font-medium">Fecha declarada:</span>
                       <span className="text-slate-800 text-xs font-mono">
-                        {selected.fecha_pago ? new Date(selected.fecha_pago).toLocaleDateString("es-EC") : "—"}
+                        {selected.fecha_pago ? formatDate(selected.fecha_pago) : "—"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center bg-orange-50/70 p-2 rounded-lg border border-orange-100">

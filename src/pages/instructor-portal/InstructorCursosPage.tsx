@@ -4,33 +4,35 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpen01Icon, Calendar03Icon, ArrowRight01Icon, Time03Icon,
   GraduationCapIcon, PlayIcon, GlobeIcon, Building01Icon,
-  Search01Icon, ArrowDown01Icon,
+  Search01Icon, Cancel01Icon, CheckmarkCircle01Icon, MapsLocation01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { instructorService, type InstructorCurso } from "@/services/instructor.service"
 import { toast } from "sonner"
 
-const statusConfig: Record<string, { color: string; label: string }> = {
-  pendiente: { color: "#f59e0b", label: "Pendiente" },
-  activo: { color: "#3b82f6", label: "Activo" },
-  en_progreso: { color: "#3b82f6", label: "En Progreso" },
-  completado: { color: "#10b981", label: "Completado" },
-  finalizado: { color: "#10b981", label: "Finalizado" },
-  aprobado: { color: "#10b981", label: "Aprobado" },
+type TabModalidad = "todos" | "presencial" | "virtual"
+type SubTabEstado = "todos" | "en_progreso" | "por_iniciar" | "completados"
+
+const statusConfig: Record<string, { color: string; label: string; bg: string; border: string }> = {
+  pendiente: { color: "#d97706", label: "Por iniciar", bg: "#fef3c7", border: "#fde68a" },
+  por_iniciar: { color: "#d97706", label: "Por iniciar", bg: "#fef3c7", border: "#fde68a" },
+  activo: { color: "#2563eb", label: "En progreso", bg: "#dbeafe", border: "#bfdbfe" },
+  en_progreso: { color: "#2563eb", label: "En progreso", bg: "#dbeafe", border: "#bfdbfe" },
+  completado: { color: "#059669", label: "Completado", bg: "#d1fae5", border: "#a7f3d0" },
+  finalizado: { color: "#059669", label: "Completado", bg: "#d1fae5", border: "#a7f3d0" },
+  aprobado: { color: "#059669", label: "Completado", bg: "#d1fae5", border: "#a7f3d0" },
 }
 
-const ESTADO_OPTIONS = [
-  { value: "todos", label: "Todos los estados" },
-  { value: "pendiente", label: "Pendiente" },
-  { value: "en_progreso", label: "En progreso" },
-  { value: "completado", label: "Completado" },
-  { value: "finalizado", label: "Finalizado" },
-]
-
-const MAX_VISIBLE = 6
-
 function getStatusConfig(estado: string) {
-  return statusConfig[estado.toLowerCase()] ?? { color: "#6b7280", label: estado }
+  const norm = estado.toLowerCase().trim()
+  return (
+    statusConfig[norm] ?? {
+      color: "#4b5563",
+      label: estado,
+      bg: "#f3f4f6",
+      border: "#e5e7eb",
+    }
+  )
 }
 
 function inferModality(curso: InstructorCurso): "presencial" | "virtual" {
@@ -40,80 +42,130 @@ function inferModality(curso: InstructorCurso): "presencial" | "virtual" {
   return "presencial"
 }
 
-function getProgreso(curso: InstructorCurso): number {
-  const inicio = new Date(curso.fecha_inicio).getTime()
-  const fin = new Date(curso.fecha_fin).getTime()
-  const ahora = Date.now()
-  if (ahora <= inicio) return 0
-  if (ahora >= fin) return 100
-  return Math.round(((ahora - inicio) / (fin - inicio)) * 100)
+function matchesSubTab(curso: InstructorCurso, subTab: SubTabEstado): boolean {
+  if (subTab === "todos") return true
+  const norm = curso.estado.toLowerCase().trim()
+
+  if (subTab === "en_progreso") {
+    return norm === "en_progreso" || norm === "activo"
+  }
+  if (subTab === "por_iniciar") {
+    return norm === "pendiente" || norm === "por_iniciar"
+  }
+  if (subTab === "completados") {
+    return norm === "completado" || norm === "finalizado" || norm === "aprobado"
+  }
+  return true
 }
 
 function CursoCard({ curso }: { curso: InstructorCurso }) {
-  const prog = getProgreso(curso)
   const status = getStatusConfig(curso.estado)
+  const esVirtual = inferModality(curso) === "virtual"
 
   return (
     <Link
       to={`/instructor/cursos/${curso.id}`}
-      className="group relative flex flex-col bg-white rounded-xl border border-gray-200 p-4 transition-all duration-200 hover:bg-orange-50/80 hover:border-orange-300 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]"
+      className="group relative flex flex-col bg-white rounded-2xl border border-slate-200/90 p-5 transition-all duration-200 hover:border-orange-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.99] overflow-hidden"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="size-9 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `color-mix(in srgb, ${status.color} 14%, transparent)`, color: status.color }}>
-          <HugeiconsIcon icon={prog > 0 && prog < 100 ? PlayIcon : GraduationCapIcon} size={18} />
+      {/* Indicador de acento superior sutil */}
+      <div
+        className="absolute top-0 left-0 right-0 h-1 transition-opacity opacity-0 group-hover:opacity-100"
+        style={{ backgroundColor: COLORS.ACCENT }}
+      />
+
+      {/* Cabecera de la tarjeta: Icono modalidad + Estado */}
+      <div className="flex items-start justify-between gap-2 mb-3.5">
+        <div
+          className="size-10 rounded-xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105"
+          style={{
+            backgroundColor: esVirtual ? "oklch(0.96 0.03 280)" : "oklch(0.97 0.04 45)",
+            borderColor: esVirtual ? "oklch(0.90 0.05 280)" : "oklch(0.90 0.06 45)",
+            color: esVirtual ? "#7c3aed" : COLORS.ACCENT,
+          }}
+          title={esVirtual ? "Modalidad Virtual" : "Modalidad Presencial"}
+        >
+          <HugeiconsIcon icon={esVirtual ? GlobeIcon : Building01Icon} size={20} />
         </div>
-        <div className="flex items-center gap-1">
-          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-            style={{ backgroundColor: `color-mix(in srgb, ${status.color} 12%, transparent)`, color: status.color }}>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border shadow-2xs"
+            style={{
+              backgroundColor: status.bg,
+              borderColor: status.border,
+              color: status.color,
+            }}
+          >
+            <span
+              className="size-1.5 rounded-full"
+              style={{ backgroundColor: status.color }}
+            />
             {status.label}
           </span>
-          <div className="opacity-0 group-hover:opacity-100 transition-all duration-200" style={{ color: COLORS.ACCENT }}>
-            <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-          </div>
         </div>
       </div>
 
-      <h3 className="text-base font-black leading-tight mb-0.5 truncate" style={{ color: COLORS.CHARCOAL }} title={curso.nombre_instancia}>
-        {curso.nombre_instancia}
-      </h3>
-      <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: COLORS.TEXT_MUTED }}>
-        {curso.catalogo?.color && <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />}
-        {curso.catalogo?.nombre ?? "Sin catálogo"}
-      </p>
+      {/* Título y Catálogo */}
+      <div className="mb-3.5">
+        <h3
+          className="text-base font-extrabold leading-snug tracking-tight text-slate-900 group-hover:text-[#fd761a] transition-colors line-clamp-2"
+          title={curso.nombre_instancia}
+        >
+          {curso.nombre_instancia}
+        </h3>
+        <p className="text-xs mt-1 flex items-center gap-1.5 text-slate-500 font-medium">
+          {curso.catalogo?.color ? (
+            <span
+              className="size-2 rounded-full shrink-0"
+              style={{ backgroundColor: curso.catalogo.color }}
+            />
+          ) : (
+            <span className="size-2 rounded-full shrink-0 bg-slate-300" />
+          )}
+          <span className="truncate">{curso.catalogo?.nombre ?? "Sin catálogo"}</span>
+        </p>
+      </div>
 
-      <div className="space-y-2 flex-1">
-        <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-          <HugeiconsIcon icon={Calendar03Icon} size={14} />
-          <span>{curso.horario?.nombre_referencial ?? "Sin horario"}</span>
+      {/* Metadatos del curso */}
+      <div className="space-y-2 flex-1 pt-1 border-t border-slate-100">
+        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+          <HugeiconsIcon icon={MapsLocation01Icon} size={15} className="shrink-0 text-slate-400" />
+          <span className="truncate">
+            {curso.ciudad?.nombre ? curso.ciudad.nombre : esVirtual ? "Plataforma Virtual" : "Sede no asignada"}
+          </span>
+          <span className="ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+            {esVirtual ? "Virtual" : "Presencial"}
+          </span>
         </div>
-        <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-          <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: status.color }} />
-          <span>{curso.ciudad?.nombre ?? "Sin ciudad"}</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs" style={{ color: COLORS.TEXT_MUTED }}>
-          <HugeiconsIcon icon={Time03Icon} size={14} />
-          <span>
-            {new Date(curso.fecha_inicio).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+
+        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+          <HugeiconsIcon icon={Time03Icon} size={15} className="shrink-0 text-slate-400" />
+          <span className="truncate">
+            {new Date(curso.fecha_inicio).toLocaleDateString("es-ES", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
             {" — "}
-            {curso.fecha_fin ? new Date(curso.fecha_fin).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "N/A"}
+            {curso.fecha_fin
+              ? new Date(curso.fecha_fin).toLocaleDateString("es-ES", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "Sin fin"}
           </span>
         </div>
       </div>
 
-      <div className="mt-4 pt-3 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>Progreso</span>
-          <span className="text-[10px] font-bold tabular-nums" style={{ color: status.color }}>{prog}%</span>
-        </div>
-        <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${prog}%`, backgroundColor: status.color }} />
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <span className="inline-flex items-center gap-1 text-xs font-bold transition-colors" style={{ color: COLORS.ACCENT }}>
-          <HugeiconsIcon icon={ArrowRight01Icon} size={13} />Ver clases
+      {/* Acción inferior */}
+      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span
+          className="inline-flex items-center gap-1.5 text-xs font-bold transition-all group-hover:translate-x-0.5"
+          style={{ color: COLORS.ACCENT }}
+        >
+          <span>Gestionar clases y asistencias</span>
+          <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
         </span>
       </div>
     </Link>
@@ -126,10 +178,9 @@ export function InstructorCursosPage() {
 
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
-  const [estadoFilter, setEstadoFilter] = useState("todos")
+  const [tabModalidad, setTabModalidad] = useState<TabModalidad>("todos")
+  const [subTabEstado, setSubTabEstado] = useState<SubTabEstado>("todos")
   const [ciudadFilter, setCiudadFilter] = useState("todos")
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ presencial: true, virtual: true })
-  const [showAll, setShowAll] = useState<Record<string, boolean>>({})
 
   const loadCursos = async () => {
     try {
@@ -142,168 +193,372 @@ export function InstructorCursosPage() {
     }
   }
 
-  useEffect(() => { loadCursos() }, [])
+  useEffect(() => {
+    loadCursos()
+  }, [])
 
   useEffect(() => {
-    const timer = setTimeout(() => setSearch(searchInput), 300)
+    const timer = setTimeout(() => setSearch(searchInput), 250)
     return () => clearTimeout(timer)
   }, [searchInput])
 
   const ciudades = useMemo(() => {
-    const set = new Set(cursos.map(c => c.ciudad?.nombre).filter(Boolean))
+    const set = new Set(cursos.map((c) => c.ciudad?.nombre).filter(Boolean))
     return Array.from(set).sort() as string[]
   }, [cursos])
 
-  const filtered = useMemo(() => cursos.filter(c => {
-    if (search) {
-      const q = search.toLowerCase()
-      const nameMatch = c.nombre_instancia.toLowerCase().includes(q)
-      const catalogoMatch = (c.catalogo?.nombre || "").toLowerCase().includes(q)
-      if (!nameMatch && !catalogoMatch) return false
+  // Contadores por modalidad
+  const countsModalidad = useMemo(() => {
+    const presenciales = cursos.filter((c) => inferModality(c) === "presencial").length
+    const virtuales = cursos.filter((c) => inferModality(c) === "virtual").length
+    return {
+      todos: cursos.length,
+      presencial: presenciales,
+      virtual: virtuales,
     }
-    if (estadoFilter !== "todos" && c.estado !== estadoFilter) return false
-    if (ciudadFilter !== "todos" && c.ciudad?.nombre !== ciudadFilter) return false
-    return true
-  }), [cursos, search, estadoFilter, ciudadFilter])
+  }, [cursos])
 
-  const modales = (["presencial", "virtual"] as const).map(tipo => ({
-    tipo,
-    cursos: filtered.filter(c => inferModality(c) === tipo),
-  }))
-
-  const getResumen = (cursosMod: InstructorCurso[]) => {
-    const grouped: Record<string, number> = {}
-    cursosMod.forEach(c => {
-      const label = getStatusConfig(c.estado).label
-      grouped[label] = (grouped[label] || 0) + 1
+  // Cursos filtrados por modalidad y ciudad para calcular los conteos de sub-tabs en contexto
+  const cursosEnModalidadYCiudad = useMemo(() => {
+    return cursos.filter((c) => {
+      if (tabModalidad !== "todos" && inferModality(c) !== tabModalidad) return false
+      if (ciudadFilter !== "todos" && c.ciudad?.nombre !== ciudadFilter) return false
+      return true
     })
-    return Object.entries(grouped).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(" · ")
-  }
+  }, [cursos, tabModalidad, ciudadFilter])
+
+  // Contadores dinámicos para los sub-tabs según la modalidad activa
+  const countsSubTabs = useMemo(() => {
+    return {
+      todos: cursosEnModalidadYCiudad.length,
+      en_progreso: cursosEnModalidadYCiudad.filter((c) => matchesSubTab(c, "en_progreso")).length,
+      por_iniciar: cursosEnModalidadYCiudad.filter((c) => matchesSubTab(c, "por_iniciar")).length,
+      completados: cursosEnModalidadYCiudad.filter((c) => matchesSubTab(c, "completados")).length,
+    }
+  }, [cursosEnModalidadYCiudad])
+
+  // Cursos finales que se muestran en el grid
+  const cursosVisibles = useMemo(() => {
+    return cursos.filter((c) => {
+      // 1. Filtro de Modalidad (Tap principal)
+      if (tabModalidad !== "todos" && inferModality(c) !== tabModalidad) return false
+
+      // 2. Filtro de Sub-tab de Estado
+      if (!matchesSubTab(c, subTabEstado)) return false
+
+      // 3. Filtro de Ciudad
+      if (ciudadFilter !== "todos" && c.ciudad?.nombre !== ciudadFilter) return false
+
+      // 4. Búsqueda por texto (nombre de instancia o catálogo)
+      if (search.trim()) {
+        const q = search.toLowerCase().trim()
+        const nameMatch = (c.nombre_instancia || "").toLowerCase().includes(q)
+        const catMatch = (c.catalogo?.nombre || "").toLowerCase().includes(q)
+        const ciudadMatch = (c.ciudad?.nombre || "").toLowerCase().includes(q)
+        if (!nameMatch && !catMatch && !ciudadMatch) return false
+      }
+
+      return true
+    })
+  }, [cursos, tabModalidad, subTabEstado, ciudadFilter, search])
 
   if (loading) {
     return (
-      <div className="p-8 text-center" style={{ color: COLORS.TEXT_MUTED }}>
-        Cargando tus cursos...
+      <div className="p-16 text-center space-y-3">
+        <div className="size-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto animate-spin">
+          <HugeiconsIcon icon={BookOpen01Icon} size={20} />
+        </div>
+        <p className="text-sm font-bold text-slate-500">Cargando tus cursos asignados...</p>
       </div>
     )
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-black tracking-tight" style={{ color: COLORS.CHARCOAL }}>
-          Mis Cursos Asignados
-        </h1>
-        <p className="mt-0.5 text-sm" style={{ color: COLORS.TEXT_MUTED }}>
-          Gestiona las clases, asistencias y notas de tus cursos.
-        </p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      {/* Encabezado */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            Mis Cursos Asignados
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Consulta y gestiona las clases, asistencias y participantes de tus cursos.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+            {cursos.length} curso{cursos.length !== 1 ? "s" : ""} asignado{cursos.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </header>
 
       {cursos.length === 0 ? (
-        <div className="bg-white rounded-2xl p-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]" style={{ border: "1px solid #f1f3f5" }}>
-          <div className="size-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-            style={{ backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)` }}>
-            <HugeiconsIcon icon={BookOpen01Icon} size={28} style={{ color: COLORS.ACCENT }} />
+        <div className="bg-white rounded-3xl p-14 text-center border border-slate-200/90 shadow-sm">
+          <div
+            className="size-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: "oklch(0.96 0.04 45)" }}
+          >
+            <HugeiconsIcon icon={BookOpen01Icon} size={30} style={{ color: COLORS.ACCENT }} />
           </div>
-          <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>No tienes cursos asignados</h3>
-          <p className="text-sm mt-1" style={{ color: COLORS.TEXT_MUTED }}>
-            Contacta con administración si crees que esto es un error.
+          <h3 className="text-lg font-black text-slate-900">No tienes cursos asignados</h3>
+          <p className="text-sm mt-1 text-slate-500 max-w-md mx-auto">
+            Actualmente no figuras como instructor asignado a ningún curso activo. Contacta con coordinación académica si consideras que es un error.
           </p>
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            <div className="relative max-w-sm">
-              <HugeiconsIcon icon={Search01Icon} size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ color: COLORS.TEXT_MUTED }} />
-              <input
-                type="text" placeholder="Buscar por nombre o catálogo..."
-                value={searchInput} onChange={e => setSearchInput(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 text-sm border rounded-lg outline-none transition-all"
-                style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}
-                onFocus={e => { e.currentTarget.style.borderColor = COLORS.ACCENT; e.currentTarget.style.boxShadow = `0 0 0 3px ${COLORS.ACCENT}15` }}
-                onBlur={e => { e.currentTarget.style.borderColor = COLORS.BORDER_SUBTLE; e.currentTarget.style.boxShadow = "none" }}
-              />
+          {/* ═══════════════════════════════════════════════════════════════════
+              TABS PRINCIPALES (MODALIDAD: Todos / Presenciales / Virtuales)
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="bg-white rounded-2xl p-2 border border-slate-200/90 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <nav className="inline-flex p-1 rounded-xl bg-slate-100/90 gap-1 border border-slate-200/70" aria-label="Modalidad">
+                <button
+                  type="button"
+                  onClick={() => setTabModalidad("todos")}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    tabModalidad === "todos"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={GraduationCapIcon} size={15} />
+                  <span>Todos los cursos</span>
+                  <span
+                    className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      tabModalidad === "todos" ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {countsModalidad.todos}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTabModalidad("presencial")}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    tabModalidad === "presencial"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={Building01Icon} size={15} className="text-[#fd761a]" />
+                  <span>Presenciales</span>
+                  <span
+                    className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      tabModalidad === "presencial" ? "bg-[#fd761a] text-white" : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {countsModalidad.presencial}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTabModalidad("virtual")}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    tabModalidad === "virtual"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={GlobeIcon} size={15} className="text-violet-600" />
+                  <span>Virtuales</span>
+                  <span
+                    className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      tabModalidad === "virtual" ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {countsModalidad.virtual}
+                  </span>
+                </button>
+              </nav>
+
+              {/* Selector de Ciudad (visible si hay ciudades y no es exclusivamente virtual) */}
+              {ciudades.length > 0 && tabModalidad !== "virtual" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 hidden sm:inline">Ciudad:</span>
+                  <select
+                    value={ciudadFilter}
+                    onChange={(e) => setCiudadFilter(e.target.value)}
+                    className="px-3 py-2 text-xs font-bold border rounded-xl bg-white text-slate-700 border-slate-200 outline-none hover:border-slate-300 transition-colors cursor-pointer"
+                  >
+                    <option value="todos">Todas las ciudades</option>
+                    {ciudades.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
-            <select value={estadoFilter} onChange={e => setEstadoFilter(e.target.value)}
-              className="px-3 py-2 text-sm border rounded-lg outline-none bg-white cursor-pointer"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
-              {ESTADO_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-            </select>
-            <select value={ciudadFilter} onChange={e => setCiudadFilter(e.target.value)}
-              className="px-3 py-2 text-sm border rounded-lg outline-none bg-white cursor-pointer"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.CHARCOAL }}>
-              <option value="todos">Todas las ciudades</option>
-              {ciudades.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            {filtered.length < cursos.length && (
-              <span className="text-xs font-medium" style={{ color: COLORS.TEXT_MUTED }}>
-                {filtered.length} de {cursos.length} cursos
-              </span>
-            )}
+
+            {/* ═══════════════════════════════════════════════════════════════════
+                SUB-TABS DE ESTADO (Todos / En curso o en progreso / Por iniciar / Completados)
+                + BUSCADOR RÁPIDO
+                ═══════════════════════════════════════════════════════════════════ */}
+            <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Sub-tabs segmentados */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0" role="tablist">
+                <button
+                  type="button"
+                  onClick={() => setSubTabEstado("todos")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    subTabEstado === "todos"
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  <span>Todos</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                      subTabEstado === "todos" ? "bg-white/20 text-white" : "bg-white text-slate-700"
+                    }`}
+                  >
+                    {countsSubTabs.todos}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSubTabEstado("en_progreso")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    subTabEstado === "en_progreso"
+                      ? "bg-blue-600 text-white shadow-2xs"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={PlayIcon} size={13} />
+                  <span>En curso / En progreso</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                      subTabEstado === "en_progreso" ? "bg-white/20 text-white" : "bg-white text-blue-800"
+                    }`}
+                  >
+                    {countsSubTabs.en_progreso}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSubTabEstado("por_iniciar")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    subTabEstado === "por_iniciar"
+                      ? "bg-amber-600 text-white shadow-2xs"
+                      : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={Calendar03Icon} size={13} />
+                  <span>Por iniciar</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                      subTabEstado === "por_iniciar" ? "bg-white/20 text-white" : "bg-white text-amber-900"
+                    }`}
+                  >
+                    {countsSubTabs.por_iniciar}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSubTabEstado("completados")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    subTabEstado === "completados"
+                      ? "bg-emerald-600 text-white shadow-2xs"
+                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60"
+                  }`}
+                >
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />
+                  <span>Completados</span>
+                  <span
+                    className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+                      subTabEstado === "completados" ? "bg-white/20 text-white" : "bg-white text-emerald-900"
+                    }`}
+                  >
+                    {countsSubTabs.completados}
+                  </span>
+                </button>
+              </div>
+
+              {/* Buscador de cursos */}
+              <div className="relative w-full md:w-72 shrink-0">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
+                />
+                <input
+                  type="text"
+                  placeholder="Buscar curso o catálogo..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 text-xs font-medium border rounded-xl outline-none bg-slate-50/70 text-slate-800 border-slate-200 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm font-bold" style={{ color: COLORS.TEXT_MUTED }}>
-                {search || estadoFilter !== "todos" || ciudadFilter !== "todos"
-                  ? "Sin resultados para los filtros seleccionados" : "No tienes cursos asignados"}
+          {/* ═══════════════════════════════════════════════════════════════════
+              GRID DE RESULTADOS
+              ═══════════════════════════════════════════════════════════════════ */}
+          {cursosVisibles.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/90 shadow-xs space-y-3">
+              <div className="size-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                <HugeiconsIcon icon={Search01Icon} size={22} />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">
+                No se encontraron cursos
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                No hay cursos que coincidan con la modalidad, el estado o la búsqueda seleccionada.
               </p>
+              {(search || subTabEstado !== "todos" || tabModalidad !== "todos" || ciudadFilter !== "todos") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTabModalidad("todos")
+                    setSubTabEstado("todos")
+                    setCiudadFilter("todos")
+                    setSearchInput("")
+                    setSearch("")
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#fd761a] text-xs font-bold transition-colors inline-block"
+                >
+                  Restablecer todos los filtros
+                </button>
+              )}
             </div>
           ) : (
-            modales.map(({ tipo, cursos: cursosMod }) => {
-              if (cursosMod.length === 0) return null
-              const isVirtual = tipo === "virtual"
-              const isOpen = expanded[tipo]
-              const showing = showAll[tipo] ? cursosMod : cursosMod.slice(0, MAX_VISIBLE)
-              const resumen = getResumen(cursosMod)
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-500 px-1 font-medium">
+                <span>
+                  Mostrando <strong className="text-slate-800 font-bold">{cursosVisibles.length}</strong> curso
+                  {cursosVisibles.length !== 1 ? "s" : ""}
+                </span>
+                {cursosVisibles.length < cursos.length && (
+                  <span className="text-[11px] text-slate-400">
+                    Filtrado de un total de {cursos.length}
+                  </span>
+                )}
+              </div>
 
-              return (
-                <section key={tipo} className="mb-6 last:mb-0">
-                  <button
-                    onClick={() => setExpanded(prev => ({ ...prev, [tipo]: !prev[tipo] }))}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border bg-white hover:bg-gray-50/50 transition-colors mb-3"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                  >
-                    <HugeiconsIcon icon={ArrowDown01Icon} size={15}
-                      className="shrink-0 transition-transform duration-200"
-                      style={{ color: COLORS.TEXT_MUTED, transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)" }} />
-                    <div className="size-8 rounded-lg flex items-center justify-center" style={{
-                      backgroundColor: isVirtual ? `color-mix(in srgb, #8b5cf6 12%, transparent)` : `color-mix(in srgb, #f97316 12%, transparent)`,
-                      color: isVirtual ? "#8b5cf6" : "#f97316",
-                    }}>
-                      <HugeiconsIcon icon={isVirtual ? GlobeIcon : Building01Icon} size={16} />
-                    </div>
-                    <div className="text-left">
-                      <h2 className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>
-                        {isVirtual ? "Virtuales" : "Presenciales"}
-                        <span className="ml-1.5 text-xs font-medium opacity-50">({cursosMod.length})</span>
-                      </h2>
-                      {resumen && (
-                        <p className="text-[11px]" style={{ color: COLORS.TEXT_MUTED }}>{resumen}</p>
-                      )}
-                    </div>
-                  </button>
-
-                  {isOpen && (
-                    <>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {showing.map(curso => <CursoCard key={curso.id} curso={curso} />)}
-                      </div>
-                      {cursosMod.length > MAX_VISIBLE && (
-                        <button
-                          onClick={() => setShowAll(prev => ({ ...prev, [tipo]: !prev[tipo] }))}
-                          className="mt-3 w-full py-2.5 rounded-xl border border-dashed text-xs font-bold hover:bg-gray-50 transition-colors"
-                          style={{ borderColor: COLORS.BORDER_SUBTLE, color: COLORS.ACCENT }}>
-                          {showAll[tipo] ? "Mostrar menos" : `Ver ${cursosMod.length - MAX_VISIBLE} cursos más →`}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </section>
-              )
-            })
+              <div className="grid gap-4.5 sm:grid-cols-2 lg:grid-cols-3">
+                {cursosVisibles.map((curso) => (
+                  <CursoCard key={curso.id} curso={curso} />
+                ))}
+              </div>
+            </div>
           )}
         </>
       )}

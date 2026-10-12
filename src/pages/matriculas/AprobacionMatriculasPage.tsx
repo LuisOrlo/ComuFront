@@ -19,6 +19,7 @@ import { cursosService, type CatalogoCurso } from "@/services/cursos.service"
 import { tallerService } from "@/services/taller.service"
 import { CiudadBadge, ModalidadBadge } from "../estudiantes/components/Badges"
 import { toast } from "sonner"
+import { formatDate } from "@/lib/utils"
 
 function getInitials(nombres?: string, apellidos?: string): string {
   const n = (nombres || "").trim()
@@ -28,21 +29,44 @@ function getInitials(nombres?: string, apellidos?: string): string {
   return (first + second).toUpperCase() || "?"
 }
 
-function getRelativeDateLabel(dateStr: string): { label: string; badge?: string } {
-  if (!dateStr) return { label: "Fecha no especificada" }
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return { label: "Fecha no especificada" }
+function getEcuadorDateKey(dateStr?: string | null): string | null {
+  if (!dateStr) return null
+  const str = String(dateStr).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str
+  const d = new Date(str)
+  if (isNaN(d.getTime())) return null
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Guayaquil",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d)
+}
 
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const itemDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+function getRelativeDateLabel(dateKey: string): { label: string; badge?: string } {
+  if (!dateKey) return { label: "Fecha no especificada" }
+  const parts = dateKey.split("-").map(Number)
+  if (parts.length !== 3 || parts.some(isNaN)) return { label: "Fecha no especificada" }
+  const [year, month, day] = parts
+  const itemDate = new Date(year, month - 1, day)
+
+  const nowEcuadorKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Guayaquil",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date())
+
+  const [tYear, tMonth, tDay] = nowEcuadorKey.split("-").map(Number)
+  const today = new Date(tYear, tMonth - 1, tDay)
+
   const diffTime = today.getTime() - itemDate.getTime()
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
 
   const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
   const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
-  const fullLabel = `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`
+  const fullLabel = `${dias[itemDate.getDay()]} ${itemDate.getDate()} de ${meses[itemDate.getMonth()]}`
 
   if (diffDays === 0) {
     return { label: fullLabel, badge: "Hoy" }
@@ -318,9 +342,8 @@ interface SolicitudItem {
 
     for (const item of unifiedItems) {
       if (!item.fecha) continue
-      const d = new Date(item.fecha)
-      if (isNaN(d.getTime())) continue
-      const dateKey = String(item.fecha).slice(0, 10)
+      const dateKey = getEcuadorDateKey(item.fecha)
+      if (!dateKey) continue
       if (!map.has(dateKey)) map.set(dateKey, [])
       map.get(dateKey)!.push(item)
     }
@@ -925,7 +948,7 @@ interface SolicitudItem {
                               <HugeiconsIcon icon={Clock01Icon} size={12} className="text-slate-400 shrink-0" />
                               {item.isAprobado ? (
                                 <span>
-                                  Procesada el {item.fecha ? new Date(item.fecha).toLocaleDateString("es-EC") : ""}
+                                  Procesada el {item.fecha ? formatDate(item.fecha) : ""}
                                   {item.validador && ` por ${item.validador}`}
                                 </span>
                               ) : (

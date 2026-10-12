@@ -10,6 +10,7 @@ import {
   AssignmentsIcon,
   ArrowRight01Icon,
   Download04Icon,
+  ArrowDown01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
@@ -36,6 +37,15 @@ export function InstructorCursoDetailPage() {
   const [asistenciasPorClase, setAsistenciasPorClase] = useState<Record<string, AsistenciaClaseEstudiante[]>>({})
   const [cargandoClases, setCargandoClases] = useState(false)
   const [selectedClaseId, setSelectedClaseId] = useState<string | null>(null)
+  const [expandedModulos, setExpandedModulos] = useState<Record<string, boolean>>({})
+  const [progresoPeriodo, setProgresoPeriodo] = useState<number>(0)
+
+  const toggleModulo = (moduloId: string) => {
+    setExpandedModulos((prev) => ({
+      ...prev,
+      [moduloId]: prev[moduloId] === undefined ? false : !prev[moduloId],
+    }))
+  }
 
   const loadData = async () => {
     try {
@@ -45,6 +55,19 @@ export function InstructorCursoDetailPage() {
       ])
       setCurso(cursoData)
       setEstudiantes(estudiantesData)
+
+      if (cursoData) {
+        const inicio = new Date(cursoData.fecha_inicio).getTime()
+        const fin = new Date(cursoData.fecha_fin).getTime()
+        const ahora = Date.now()
+        let prog = 0
+        if (!Number.isNaN(inicio) && !Number.isNaN(fin) && fin > inicio) {
+          if (ahora <= inicio) prog = 0
+          else if (ahora >= fin) prog = 100
+          else prog = Math.round(((ahora - inicio) / (fin - inicio)) * 100)
+        }
+        setProgresoPeriodo(prog)
+      }
     } catch {
       toast.error("Error al cargar la información del curso")
     } finally {
@@ -152,57 +175,79 @@ export function InstructorCursoDetailPage() {
         Volver a mis cursos
       </Link>
 
-      <div
-        className="bg-white rounded-3xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.03)] border border-gray-200 mb-4"
-      >
-        <div
-          className="p-8 md:p-10 border-b"
-          style={{ borderColor: "#f1f3f5" }}
-        >
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-            <div className="space-y-3">
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-none" style={{ color: COLORS.CHARCOAL }}>
+      {/* Tarjeta de Encabezado Principal del Curso */}
+      <div className="bg-white rounded-3xl overflow-hidden shadow-xs border border-slate-200/90 mb-5">
+        <div className="p-6 md:p-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-2.5 max-w-2xl">
+              <div className="flex items-center gap-2 flex-wrap">
+                {curso.catalogo?.color && (
+                  <span
+                    className="size-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: curso.catalogo.color }}
+                  />
+                )}
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {curso.catalogo?.nombre ?? "Curso"}
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase">
+                  {curso.modalidad || "Presencial"}
+                </span>
+              </div>
+
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-snug">
                 {curso.nombre_instancia}
               </h1>
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: COLORS.TEXT_MUTED }}>
+
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500 pt-0.5">
                 <span className="flex items-center gap-1.5">
-                  <HugeiconsIcon icon={BookOpen01Icon} size={15} />
-                  {curso.catalogo?.color && (
-                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
-                  )}
-                  {curso.catalogo?.nombre ?? "Sin nombre"}
+                  <HugeiconsIcon icon={Calendar03Icon} size={14} className="text-slate-400" />
+                  <span>{curso.horario?.nombre_referencial ?? "Sin horario asignado"}</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <HugeiconsIcon icon={Calendar03Icon} size={15} />
-                  {curso.horario?.nombre_referencial ?? "—"}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <HugeiconsIcon icon={UserGroupIcon} size={15} />
-                  {estudiantes.length} estudiante{estudiantes.length !== 1 ? "s" : ""}
+                  <HugeiconsIcon icon={UserGroupIcon} size={14} className="text-slate-400" />
+                  <span>{estudiantes.length} estudiante{estudiantes.length !== 1 ? "s" : ""} matriculado{estudiantes.length !== 1 ? "s" : ""}</span>
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-             <button
-  onClick={handleDescargarAsistencia}
-  className="shrink-0 px-4 py-2.5 rounded-2xl text-xs font-bold border border-emerald-500 bg-emerald-500 text-white flex items-center gap-2 transition-all duration-200 hover:bg-emerald-600 hover:border-emerald-600 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
->
-  <HugeiconsIcon icon={Download04Icon} size={14} />
-  Descargar Listado
-</button>
-              <div
-                className="shrink-0 px-5 py-2.5 rounded-2xl text-center border"
-                style={{
-                  backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, transparent)`,
-                  borderColor: `color-mix(in srgb, ${COLORS.ACCENT} 20%, transparent)`,
-                }}
+
+            <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
+              <button
+                onClick={handleDescargarAsistencia}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-emerald-500 bg-emerald-500 text-white flex items-center gap-2 transition-all duration-200 hover:bg-emerald-600 hover:border-emerald-600 hover:shadow-sm active:scale-[0.98] cursor-pointer"
               >
-                <span className="block text-[10px] uppercase tracking-widest font-semibold" style={{ color: COLORS.TEXT_MUTED }}>
-                  Estado
-                </span>
-                <span className="text-sm font-black uppercase tracking-wide" style={{ color: COLORS.ACCENT }}>{curso.estado}</span>
-              </div>
+                <HugeiconsIcon icon={Download04Icon} size={14} />
+                <span>Descargar Listado</span>
+              </button>
             </div>
+          </div>
+        </div>
+
+        {/* Barra de progreso ubicada abajo */}
+        <div className="px-6 md:px-8 py-3.5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="font-bold text-slate-700">Periodo académico:</span>
+            <span>
+              {new Date(curso.fecha_inicio).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}
+              {" — "}
+              {curso.fecha_fin ? new Date(curso.fecha_fin).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : "Indefinido"}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 sm:w-64">
+            <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${progresoPeriodo}%`,
+                  backgroundColor: progresoPeriodo >= 100 ? "#059669" : progresoPeriodo > 0 ? COLORS.ACCENT : "#94a3b8",
+                }}
+              />
+            </div>
+            <span className="text-xs font-black tabular-nums text-slate-700 shrink-0">
+              {progresoPeriodo}%
+            </span>
           </div>
         </div>
       </div>
@@ -423,43 +468,65 @@ export function InstructorCursoDetailPage() {
                 curso.modulos.map(modulo => {
                   const clases = clasesPorModulo[modulo.id]
                   if (!clases || clases.length === 0) return null
+                  const isExpanded = expandedModulos[modulo.id] !== false
 
                   return (
-                    <div key={modulo.id} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#f1f3f5" }}>
-                      <div className="px-5 py-3 border-b" style={{ borderColor: "#f1f3f5", backgroundColor: "#fafafa" }}>
-                        <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: COLORS.ACCENT }}>
-                          Módulo {modulo.numero_orden}
-                        </span>
-                        <span className="text-sm font-bold ml-3" style={{ color: COLORS.CHARCOAL }}>
-                          {modulo.nombre_modulo}
-                        </span>
-                        <span className="text-xs ml-3" style={{ color: COLORS.TEXT_MUTED }}>
-                          {clases.filter(c => c.asistencia_registrada).length}/{clases.length} clases con asistencia
-                        </span>
-                      </div>
+                    <div key={modulo.id} className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs mb-3 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => toggleModulo(modulo.id)}
+                        className="w-full px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between text-left cursor-pointer select-none"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-100 text-[#fd761a]">
+                            Módulo {modulo.numero_orden}
+                          </span>
+                          <span className="text-sm font-bold text-slate-900 truncate">
+                            {modulo.nombre_modulo}
+                          </span>
+                          <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+                            · {clases.filter(c => c.asistencia_registrada).length} de {clases.length} clases con asistencia
+                          </span>
+                        </div>
 
-                      <div className="divide-y" style={{ borderColor: "#f1f3f5" }}>
-                        {clases.map(clase => {
-                          const asistencias = asistenciasPorClase[clase.id] || []
-                          const asistentes = asistencias.filter(a => a.asistio).length
-                          const total = asistencias.length
-                          const pct = total > 0 ? Math.round((asistentes / total) * 100) : 0
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] font-semibold text-slate-400 sm:hidden">
+                            {clases.filter(c => c.asistencia_registrada).length}/{clases.length}
+                          </span>
+                          <HugeiconsIcon
+                            icon={ArrowDown01Icon}
+                            size={16}
+                            className={`text-slate-400 transition-transform duration-200 ${
+                              isExpanded ? "rotate-0" : "-rotate-90"
+                            }`}
+                          />
+                        </div>
+                      </button>
 
-                          return (
-                            <ClaseAsistenciaCard
-                              key={clase.id}
-                              clase={clase}
-                              asistencias={asistencias}
-                              asistentes={asistentes}
-                              total={total}
-                              pct={pct}
-                              cursoId={curso.id}
-                              cursoNombre={curso.nombre_instancia}
-                              onClickVerDetalle={setSelectedClaseId}
-                            />
-                          )
-                        })}
-                      </div>
+                      {isExpanded && (
+                        <div className="divide-y divide-slate-100">
+                          {clases.map(clase => {
+                            const asistencias = asistenciasPorClase[clase.id] || []
+                            const asistentes = asistencias.filter(a => a.asistio).length
+                            const total = asistencias.length
+                            const pct = total > 0 ? Math.round((asistentes / total) * 100) : 0
+
+                            return (
+                              <ClaseAsistenciaCard
+                                key={clase.id}
+                                clase={clase}
+                                asistencias={asistencias}
+                                asistentes={asistentes}
+                                total={total}
+                                pct={pct}
+                                cursoId={curso.id}
+                                cursoNombre={curso.nombre_instancia}
+                                onClickVerDetalle={setSelectedClaseId}
+                              />
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   )
                 })

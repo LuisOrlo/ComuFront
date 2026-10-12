@@ -4,9 +4,11 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
   SaveIcon,
-  InformationCircleIcon,
-  UserGroupIcon,
   Calendar03Icon,
+  CheckCheckIcon,
+  CheckmarkCircle01Icon,
+  Cancel01Icon,
+  Clock01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { parseLocalDate } from "@/lib/utils"
@@ -20,7 +22,7 @@ import { toast } from "sonner"
 
 type AsistenciaLocal = {
   asistio: boolean
-  estado: string
+  estado: "presente" | "ausente"
   observaciones: string
 }
 
@@ -70,21 +72,39 @@ export function AsistenciaRegistroPage() {
 
   useEffect(() => {
     if (cursoId) {
-
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursoId])
 
-  const handleStatusChange = (matriculaId: string, estado: string) => {
+  const handleStatusChange = (matriculaId: string, estado: "presente" | "ausente") => {
     setAsistenciasLocal((prev) => ({
       ...prev,
       [matriculaId]: {
         ...prev[matriculaId],
         estado,
-        asistio: estado === "presente" || estado === "tardanza",
+        asistio: estado === "presente",
       },
     }))
+  }
+
+  const handleMarcarTodos = (estado: "presente" | "ausente") => {
+    setAsistenciasLocal((prev) => {
+      const next: Record<string, AsistenciaLocal> = {}
+      Object.keys(prev).forEach((id) => {
+        next[id] = {
+          ...prev[id],
+          estado,
+          asistio: estado === "presente",
+        }
+      })
+      return next
+    })
+    toast.success(
+      estado === "presente"
+        ? "Todos los estudiantes fueron marcados como presentes"
+        : "Todos los estudiantes fueron marcados como ausentes",
+    )
   }
 
   const handleObservacionChange = (matriculaId: string, value: string) => {
@@ -106,7 +126,11 @@ export function AsistenciaRegistroPage() {
         }),
       )
 
-      await instructorService.registrarAsistencia(claseId!, payload, claseObservaciones.trim() || undefined)
+      await instructorService.registrarAsistencia(
+        claseId!,
+        payload,
+        claseObservaciones.trim() || undefined,
+      )
       toast.success("Asistencia guardada correctamente")
       navigate(`/instructor/cursos/${cursoId}?tab=attendance`)
     } catch {
@@ -118,20 +142,21 @@ export function AsistenciaRegistroPage() {
 
   if (loading)
     return (
-      <div className="p-8 text-center" style={{ color: COLORS.TEXT_MUTED }}>
-        Cargando...
+      <div className="p-12 text-center" style={{ color: COLORS.TEXT_MUTED }}>
+        Cargando datos de asistencia...
       </div>
     )
   if (!curso)
     return (
-      <div className="p-8 text-center" style={{ color: COLORS.TEXT_MUTED }}>
+      <div className="p-12 text-center" style={{ color: COLORS.TEXT_MUTED }}>
         Curso no encontrado
       </div>
     )
 
   const presentesCount = Object.values(asistenciasLocal).filter(
-    (a) => a.estado === "presente" || a.estado === "tardanza",
+    (a) => a.estado === "presente",
   ).length
+  const ausentesCount = estudiantes.length - presentesCount
 
   const getEstudianteName = (e: EstudianteCurso) => {
     if (e.estudiante) {
@@ -147,304 +172,237 @@ export function AsistenciaRegistroPage() {
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      {/* Navegación de retorno */}
       <Link
         to={`/instructor/cursos/${cursoId}?tab=attendance`}
-        className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
-        style={{ color: COLORS.TEXT_MUTED }}
+        className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium"
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
         Volver al curso
       </Link>
 
-      <div
-        className="bg-white rounded-2xl overflow-hidden shadow-sm"
-        style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
-      >
-        <div
-          className="p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-          style={{
-            borderBottomColor: COLORS.BORDER_SUBTLE,
-            borderBottomWidth: 1,
-            backgroundColor: "oklch(0.97 0 0)",
-          }}
-        >
-          <div>
-            <span
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: COLORS.ACCENT }}
-            >
-              Registro de Asistencia
-            </span>
-            <h1 className="text-2xl font-bold" style={{ color: COLORS.CHARCOAL }}>
-              Pase de Lista
-            </h1>
-            <p style={{ color: COLORS.TEXT_MUTED }} className="text-sm flex items-center gap-1.5">
-              {curso.catalogo?.color && (
-                <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: curso.catalogo.color }} />
-              )}
-              {curso.catalogo?.nombre ?? "Curso"} - {curso.nombre_instancia}
-            </p>
-            {clase && (
-              <div
-                className="flex items-center gap-2 mt-1 text-sm"
-                style={{ color: COLORS.ACCENT }}
-              >
-                <HugeiconsIcon icon={Calendar03Icon} size={16} />
-                <span className="font-medium">
-                  {parseLocalDate(clase.fecha_clase)?.toLocaleDateString("es", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </span>
-                <span style={{ color: "oklch(0.9 0.01 45)" }} className="mx-1">
-                  •
-                </span>
-                <span>
-                  {clase.hora_inicio} - {clase.hora_fin}
-                </span>
-              </div>
+      {/* Encabezado sin contenedor cerrado rígido */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+        <div>
+          <div className="inline-flex items-center gap-2 mb-1">
+            {curso.catalogo?.color && (
+              <span
+                className="size-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: curso.catalogo.color }}
+              />
             )}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {curso.catalogo?.nombre ?? "Curso"} • {curso.nombre_instancia}
+            </span>
           </div>
-          <div
-            className="px-6 py-3 rounded-2xl text-center text-white"
-            style={{ backgroundColor: COLORS.ACCENT, boxShadow: `0 4px 12px ${COLORS.ACCENT}40` }}
-          >
-            <span
-              className="block text-[10px] font-bold uppercase tracking-wider"
-              style={{ color: "oklch(0.9 0.01 45)" }}
-            >
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Pase de Lista
+          </h1>
+          {clase && (
+            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs sm:text-sm text-slate-600">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <HugeiconsIcon icon={Calendar03Icon} size={16} className="text-slate-400" />
+                {parseLocalDate(clase.fecha_clase)?.toLocaleDateString("es", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="inline-flex items-center gap-1.5 text-slate-500">
+                <HugeiconsIcon icon={Clock01Icon} size={15} className="text-slate-400" />
+                {clase.hora_inicio} – {clase.hora_fin}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Resumen de conteo */}
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="px-4 py-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">
               Presentes
             </span>
-            <span className="text-2xl font-bold">
+            <span className="text-xl font-black text-emerald-700">
               {presentesCount}{" "}
-              <span
-                className="text-sm font-normal"
-                style={{ color: "oklch(0.9 0.01 45)" }}
-              >
-                de {estudiantes.length}
+              <span className="text-xs font-semibold text-emerald-600/80">
+                / {estudiantes.length}
               </span>
             </span>
           </div>
-        </div>
-
-        <div className="p-8">
-          <div
-            className="rounded-xl p-4 flex gap-3 mb-8"
-            style={{
-              backgroundColor: "oklch(0.97 0.01 45)",
-              borderColor: "oklch(0.9 0.02 45)",
-              borderWidth: 1,
-            }}
-          >
-            <HugeiconsIcon
-              icon={InformationCircleIcon}
-              size={20}
-              style={{ color: COLORS.ACCENT, flexShrink: 0 }}
-            />
-            <p className="text-sm" style={{ color: COLORS.CHARCOAL }}>
-              Selecciona el estado de asistencia para cada estudiante. Por
-              defecto todos están marcados como <b>Presente</b>.
-            </p>
+          <div className="px-4 py-2.5 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-rose-700">
+              Ausentes
+            </span>
+            <span className="text-xl font-black text-rose-700">
+              {ausentesCount}
+            </span>
           </div>
+        </div>
+      </div>
 
-          <div className="space-y-4">
-            {estudiantes.length === 0 ? (
+      {/* Barra de acciones rápidas */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+        <span className="text-xs font-medium text-slate-600 px-1">
+          {estudiantes.length === 0
+            ? "Sin estudiantes"
+            : `${estudiantes.length} estudiante${estudiantes.length === 1 ? "" : "s"} registrado${estudiantes.length === 1 ? "" : "s"}`}
+        </span>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleMarcarTodos("presente")}
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
+          >
+            <HugeiconsIcon icon={CheckCheckIcon} size={18} />
+            Marcar todos presentes
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMarcarTodos("ausente")}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-all"
+            title="Marcar todos ausentes"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} size={15} />
+            <span className="hidden sm:inline">Todos ausentes</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Lista abierta de estudiantes */}
+      <div className="space-y-3">
+        {estudiantes.length === 0 ? (
+          <div className="p-12 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-slate-400">
+            No hay estudiantes matriculados en este curso.
+          </div>
+        ) : (
+          estudiantes.map((e, index) => {
+            const currentStatus = asistenciasLocal[e.id]?.estado ?? "presente"
+            const isPresent = currentStatus === "presente"
+
+            return (
               <div
-                className="text-center py-12"
-                style={{ color: COLORS.TEXT_MUTED }}
+                key={e.id}
+                className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
-                No hay estudiantes matriculados para registrar asistencia.
-              </div>
-            ) : (
-              estudiantes.map((e) => {
-                const currentStatus = asistenciasLocal[e.id]?.estado
-
-                return (
+                {/* Identificación del estudiante */}
+                <div className="flex items-center gap-3.5 min-w-0 md:w-5/12">
                   <div
-                    key={e.id}
-                    className="grid md:grid-cols-12 gap-4 items-center p-4 rounded-xl transition-colors"
-                    style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
+                    className={`size-10 rounded-2xl flex items-center justify-center font-bold text-xs shrink-0 transition-colors ${
+                      isPresent
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-rose-100 text-rose-800"
+                    }`}
                   >
-                    <div className="md:col-span-4 flex items-center gap-3">
-                      <div
-                        className="size-10 rounded-full flex items-center justify-center"
-                        style={{
-                          backgroundColor: "oklch(0.95 0 0)",
-                          color: COLORS.TEXT_MUTED,
-                        }}
-                      >
-                        <HugeiconsIcon icon={UserGroupIcon} size={20} />
-                      </div>
-                      <div>
-                        <div
-                          className="font-bold leading-tight"
-                          style={{ color: COLORS.CHARCOAL }}
-                        >
-                          {getEstudianteName(e)}
-                        </div>
-                        <div
-                          className="text-[10px] mt-0.5"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          {getEstudianteCedula(e)}
-                        </div>
-                      </div>
+                    <HugeiconsIcon
+                      icon={isPresent ? CheckmarkCircle01Icon : Cancel01Icon}
+                      size={20}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-slate-900 truncate">
+                      <span className="text-slate-400 font-normal mr-1.5 text-xs">
+                        #{index + 1}
+                      </span>
+                      {getEstudianteName(e)}
                     </div>
-
-                    <div className="md:col-span-5">
-                      <div
-                        className="flex p-1 rounded-xl"
-                        style={{ backgroundColor: "oklch(0.95 0 0)" }}
-                      >
-                        {[
-                          {
-                            id: "presente",
-                            label: "P",
-                            activeBg: "oklch(0.5 0.1 150)",
-                            activeColor: "white",
-                          },
-                          {
-                            id: "ausente",
-                            label: "A",
-                            activeBg: "oklch(0.45 0.15 20)",
-                            activeColor: "white",
-                          },
-                          {
-                            id: "tardanza",
-                            label: "T",
-                            activeBg: "oklch(0.6 0.15 65)",
-                            activeColor: "white",
-                          },
-                          {
-                            id: "justificado",
-                            label: "J",
-                            activeBg: "oklch(0.5 0.12 240)",
-                            activeColor: "white",
-                          },
-                        ].map((status) => (
-                          <button
-                            key={status.id}
-                            onClick={() => handleStatusChange(e.id, status.id)}
-                            className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
-                            style={{
-                              backgroundColor:
-                                currentStatus === status.id
-                                  ? status.activeBg
-                                  : "transparent",
-                              color:
-                                currentStatus === status.id
-                                  ? status.activeColor
-                                  : COLORS.TEXT_MUTED,
-                              boxShadow:
-                                currentStatus === status.id
-                                  ? `0 2px 6px ${status.activeBg}40`
-                                  : "none",
-                            }}
-                          >
-                            {status.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex justify-between px-2 mt-1">
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Presente
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Ausente
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Tarde
-                        </span>
-                        <span
-                          className="text-[9px] font-bold uppercase"
-                          style={{ color: COLORS.TEXT_MUTED }}
-                        >
-                          Justificado
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-3">
-                      <input
-                        type="text"
-                        value={asistenciasLocal[e.id]?.observaciones || ""}
-                        onChange={(ev) =>
-                          handleObservacionChange(e.id, ev.target.value)
-                        }
-                        placeholder="Nota..."
-                        className="w-full h-10 px-3 text-xs rounded-xl outline-none transition-all"
-                        style={{
-                          borderWidth: 1,
-                          borderColor: COLORS.BORDER_SUBTLE,
-                          color: COLORS.CHARCOAL,
-                        }}
-                      />
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      C.I: {getEstudianteCedula(e)}
                     </div>
                   </div>
-                )
-              })
-            )}
-          </div>
+                </div>
 
-          <div className="mt-8">
-            <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: COLORS.TEXT_MUTED }}>
-              Observaciones de la clase
-            </label>
-            <textarea
-              value={claseObservaciones}
-              onChange={(e) => setClaseObservaciones(e.target.value)}
-              placeholder="Agregar observaciones para esta clase..."
-              maxLength={500}
-              rows={3}
-              className="w-full px-4 py-3 text-sm rounded-xl outline-none resize-none transition-all"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.CHARCOAL }}
-            />
-            <p className="text-[10px] mt-1 text-right" style={{ color: COLORS.TEXT_MUTED }}>
-              {claseObservaciones.length}/500
-            </p>
-          </div>
+                {/* Controles de asistencia: Solo Presente y Ausente */}
+                <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+                  <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200/60 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(e.id, "presente")}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        isPresent
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={15} />
+                      Presente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(e.id, "ausente")}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        !isPresent
+                          ? "bg-rose-600 text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <HugeiconsIcon icon={Cancel01Icon} size={15} />
+                      Ausente
+                    </button>
+                  </div>
+                </div>
 
-          <div className="mt-12 flex justify-end gap-4">
-            <Link
-              to={`/instructor/cursos/${cursoId}?tab=attendance`}
-              className="px-6 py-3 rounded-xl font-bold transition-all"
-              style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1, color: COLORS.TEXT_MUTED }}
-            >
-              Cancelar
-            </Link>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-8 py-3 rounded-xl text-white font-bold transition-all flex items-center gap-2 disabled:opacity-50"
-              style={{
-                backgroundColor: COLORS.ACCENT,
-                boxShadow: `0 4px 12px ${COLORS.ACCENT}40`,
-              }}
-            >
-              {saving ? (
-                "Guardando..."
-              ) : (
-                <>
-                  <HugeiconsIcon icon={SaveIcon} size={20} />
-                  Guardar Asistencia
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+                {/* Nota / Observación individual */}
+                <div className="w-full md:w-3/12">
+                  <input
+                    type="text"
+                    value={asistenciasLocal[e.id]?.observaciones || ""}
+                    onChange={(ev) =>
+                      handleObservacionChange(e.id, ev.target.value)
+                    }
+                    placeholder="Nota individual..."
+                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white focus:border-slate-400 outline-none text-slate-800 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Observaciones generales de la clase */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-2">
+        <label
+          htmlFor="claseObservaciones"
+          className="block text-xs font-bold uppercase tracking-wider text-slate-500"
+        >
+          Observaciones de la clase (opcional)
+        </label>
+        <textarea
+          id="claseObservaciones"
+          value={claseObservaciones}
+          onChange={(e) => setClaseObservaciones(e.target.value)}
+          placeholder="Escribe temas tratados, novedades o notas de esta sesión..."
+          maxLength={500}
+          rows={3}
+          className="w-full px-4 py-3 text-sm rounded-xl border border-slate-200 focus:border-slate-400 bg-slate-50/40 focus:bg-white outline-none resize-none transition-all text-slate-800 placeholder:text-slate-400"
+        />
+        <p className="text-[10px] text-right text-slate-400">
+          {claseObservaciones.length}/500
+        </p>
+      </div>
+
+      {/* Botones inferiores de acción */}
+      <div className="flex items-center justify-end gap-3 pt-2 pb-8">
+        <Link
+          to={`/instructor/cursos/${cursoId}?tab=attendance`}
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
+        >
+          Cancelar
+        </Link>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-2.5 rounded-xl text-white text-sm font-bold bg-slate-900 hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+        >
+          <HugeiconsIcon icon={SaveIcon} size={18} />
+          {saving ? "Guardando..." : "Guardar Asistencia"}
+        </button>
       </div>
     </div>
   )
 }
+
