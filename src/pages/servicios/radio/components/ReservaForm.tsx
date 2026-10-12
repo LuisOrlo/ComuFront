@@ -32,8 +32,10 @@ import { toast } from "sonner"
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
   id: string
-  nombres: string
-  apellidos: string
+  nombres?: string
+  apellidos?: string
+  nombre_empresa?: string
+  tipo_cliente?: "persona" | "empresa"
   cedula?: string
   correo?: string
   celular?: string
@@ -286,9 +288,11 @@ export function ReservaForm({
               result.push({
                 tipo: "cliente_externo" as const,
                 id: c.id,
-                nombres: c.nombres,
+                nombres: c.nombres || c.nombre_empresa || "Cliente",
                 apellidos: c.apellidos || "",
-                cedula: c.cedula,
+                nombre_empresa: c.nombre_empresa,
+                tipo_cliente: c.tipo_cliente,
+                cedula: c.cedula || c.ruc,
                 correo: c.correo,
                 celular: c.celular,
               })
@@ -331,9 +335,11 @@ export function ReservaForm({
     selectCliente({
       tipo: "cliente_externo",
       id: nuevo.id,
-      nombres: nuevo.nombres,
+      nombres: nuevo.nombres || nuevo.nombre_empresa || "Cliente",
       apellidos: nuevo.apellidos || "",
-      cedula: nuevo.cedula,
+      nombre_empresa: nuevo.nombre_empresa,
+      tipo_cliente: nuevo.tipo_cliente,
+      cedula: nuevo.cedula || nuevo.ruc,
       correo: nuevo.correo,
       celular: nuevo.celular,
     })
@@ -601,25 +607,39 @@ export function ReservaForm({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
                     <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                       <div className="size-11 rounded-xl bg-emerald-500 text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
-                        {cliente.nombres.charAt(0)}
-                        {cliente.apellidos?.charAt(0) || ""}
+                        {(cliente.nombre_empresa || cliente.nombres || "C").charAt(0).toUpperCase()}
+                        {cliente.tipo_cliente === "empresa"
+                          ? ""
+                          : (cliente.apellidos?.charAt(0) || "")}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                            {cliente.tipo === "persona" ? "Institucional" : "Cliente Externo"}
+                            {cliente.tipo === "persona"
+                              ? "Institucional"
+                              : cliente.tipo_cliente === "empresa"
+                                ? "Empresa"
+                                : "Cliente Externo"}
                           </span>
                           <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 px-2 py-0.5 rounded-md">
                             Responsable asignado
                           </span>
                         </div>
                         <h3 className="text-sm font-bold text-slate-900 truncate">
-                          {cliente.nombres} {cliente.apellidos}
+                          {cliente.nombre_empresa || `${cliente.nombres || ""} ${cliente.apellidos || ""}`.trim()}
                         </h3>
+                        {cliente.tipo_cliente === "empresa" && cliente.nombres && cliente.nombres !== cliente.nombre_empresa && (
+                          <p className="text-xs text-slate-500 font-medium">
+                            Contacto: {cliente.nombres} {cliente.apellidos || ""}
+                          </p>
+                        )}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 mt-1">
                           {cliente.cedula && (
                             <span className="font-medium">
-                              <span className="text-slate-400">C.I:</span> {cliente.cedula}
+                              <span className="text-slate-400">
+                                {cliente.tipo_cliente === "empresa" ? "RUC / ID:" : "C.I:"}
+                              </span>{" "}
+                              {cliente.cedula}
                             </span>
                           )}
                           {cliente.celular && (
@@ -734,7 +754,7 @@ export function ReservaForm({
                                     className="w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-orange-50/60 border-l-4 border-l-transparent hover:border-l-[#fd761a] flex items-center gap-3 cursor-pointer"
                                   >
                                     <div className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-orange-100 text-[#fd761a] font-bold text-xs">
-                                      {opt.nombres.charAt(0)}
+                                      {(opt.nombres || "P").charAt(0)}
                                       {opt.apellidos?.charAt(0) || ""}
                                     </div>
                                     <div className="min-w-0 flex-1">
@@ -764,33 +784,47 @@ export function ReservaForm({
                                   <span>Clientes Externos</span>
                                   <span>{externosEnLista.length}</span>
                                 </div>
-                                {externosEnLista.map((opt) => (
-                                  <button
-                                    key={`externo-${opt.id}`}
-                                    type="button"
-                                    onClick={() => selectCliente(opt)}
-                                    className="w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-emerald-50/60 border-l-4 border-l-transparent hover:border-l-emerald-500 flex items-center gap-3 cursor-pointer"
-                                  >
-                                    <div className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-100 text-emerald-700 font-bold text-xs">
-                                      {opt.nombres.charAt(0)}
-                                      {opt.apellidos?.charAt(0) || ""}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="font-bold text-slate-900 truncate">
-                                          {opt.nombres} {opt.apellidos}
-                                        </span>
-                                        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                                          Externo
-                                        </span>
+                                {externosEnLista.map((opt) => {
+                                  const displayName =
+                                    opt.nombre_empresa ||
+                                    `${opt.nombres || ""} ${opt.apellidos || ""}`.trim() ||
+                                    "Cliente Externo"
+                                  const initial = (opt.nombre_empresa || opt.nombres || "E")
+                                    .charAt(0)
+                                    .toUpperCase()
+
+                                  return (
+                                    <button
+                                      key={`externo-${opt.id}`}
+                                      type="button"
+                                      onClick={() => selectCliente(opt)}
+                                      className="w-full text-left px-4 py-3 text-xs font-medium transition-colors hover:bg-emerald-50/60 border-l-4 border-l-transparent hover:border-l-emerald-500 flex items-center gap-3 cursor-pointer"
+                                    >
+                                      <div className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-100 text-emerald-700 font-bold text-xs">
+                                        {initial}
                                       </div>
-                                      <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
-                                        {opt.cedula && <span><b>C.I:</b> {opt.cedula}</span>}
-                                        {opt.celular && <span><b>Tel:</b> {opt.celular}</span>}
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="font-bold text-slate-900 truncate">
+                                            {displayName}
+                                          </span>
+                                          <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                                            {opt.tipo_cliente === "empresa" ? "Empresa" : "Externo"}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
+                                          {opt.cedula && (
+                                            <span>
+                                              <b>{opt.tipo_cliente === "empresa" ? "RUC:" : "C.I:"}</b>{" "}
+                                              {opt.cedula}
+                                            </span>
+                                          )}
+                                          {opt.celular && <span><b>Tel:</b> {opt.celular}</span>}
+                                        </div>
                                       </div>
-                                    </div>
-                                  </button>
-                                ))}
+                                    </button>
+                                  )
+                                })}
                               </div>
                             )}
                           </>

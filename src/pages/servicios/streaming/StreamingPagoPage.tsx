@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate, useParams, Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -69,7 +69,7 @@ export function StreamingPagoPage() {
   const [modalImage, setModalImage] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
@@ -90,11 +90,11 @@ export function StreamingPagoPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, navigate])
 
   useEffect(() => {
     loadData()
-  }, [id])
+  }, [loadData])
 
   useEffect(() => {
     return () => {

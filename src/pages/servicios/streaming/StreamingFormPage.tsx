@@ -35,8 +35,10 @@ import { toast } from "sonner"
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
   id: string
-  nombres: string
-  apellidos: string
+  nombres?: string
+  apellidos?: string
+  nombre_empresa?: string
+  tipo_cliente?: "persona" | "empresa"
   cedula?: string
   correo?: string
   celular?: string
@@ -262,8 +264,10 @@ export function StreamingFormPage() {
               result.push({
                 tipo: "cliente_externo" as const,
                 id: c.id,
-                nombres: c.nombres,
+                nombres: c.nombres || c.nombre_empresa || "Cliente",
                 apellidos: c.apellidos || "",
+                nombre_empresa: c.nombre_empresa,
+                tipo_cliente: c.tipo_cliente,
                 cedula: c.cedula || c.ruc,
                 correo: c.correo,
                 celular: c.celular,
@@ -570,20 +574,35 @@ export function StreamingFormPage() {
                 <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/80 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="size-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-base shadow-xs">
-                      {cliente.nombres.charAt(0)}
+                      {(cliente.nombre_empresa || cliente.nombres || "C").charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
                           <HugeiconsIcon icon={CheckmarkCircle04Icon} size={11} />
-                          <span>{cliente.tipo === "persona" ? "Institucional" : "Cliente Externo"}</span>
+                          <span>
+                            {cliente.tipo === "persona"
+                              ? "Institucional"
+                              : cliente.tipo_cliente === "empresa"
+                                ? "Empresa"
+                                : "Cliente Externo"}
+                          </span>
                         </span>
                       </div>
                       <h3 className="text-sm font-bold text-slate-900 truncate">
-                        {cliente.nombres} {cliente.apellidos}
+                        {cliente.nombre_empresa || `${cliente.nombres || ""} ${cliente.apellidos || ""}`.trim()}
                       </h3>
+                      {cliente.tipo_cliente === "empresa" && cliente.nombres && cliente.nombres !== cliente.nombre_empresa && (
+                        <p className="text-xs text-slate-500 font-medium">
+                          Contacto: {cliente.nombres} {cliente.apellidos || ""}
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-x-3 text-xs text-slate-500 mt-0.5">
-                        {cliente.cedula && <span>ID: {cliente.cedula}</span>}
+                        {cliente.cedula && (
+                          <span>
+                            {cliente.tipo_cliente === "empresa" ? "RUC / ID:" : "ID:"} {cliente.cedula}
+                          </span>
+                        )}
                         {cliente.celular && <span>Tel: {cliente.celular}</span>}
                         {cliente.correo && <span>Email: {cliente.correo}</span>}
                       </div>
@@ -656,15 +675,21 @@ export function StreamingFormPage() {
                             >
                               <div>
                                 <p className="text-xs font-bold text-slate-800">
-                                  {opt.nombres} {opt.apellidos}
+                                  {opt.nombre_empresa || `${opt.nombres || ""} ${opt.apellidos || ""}`.trim()}
                                 </p>
                                 <p className="text-[11px] text-slate-400">
-                                  {opt.cedula ? `ID: ${opt.cedula} · ` : ""}
+                                  {opt.cedula
+                                    ? `${opt.tipo_cliente === "empresa" ? "RUC:" : "ID:"} ${opt.cedula} · `
+                                    : ""}
                                   {opt.celular || opt.correo || ""}
                                 </p>
                               </div>
                               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                                {opt.tipo === "persona" ? "Interno" : "Externo"}
+                                {opt.tipo === "persona"
+                                  ? "Interno"
+                                  : opt.tipo_cliente === "empresa"
+                                    ? "Empresa"
+                                    : "Externo"}
                               </span>
                             </button>
                           ))
@@ -1119,7 +1144,7 @@ export function StreamingFormPage() {
                 </span>
                 {cliente ? (
                   <p className="text-xs font-bold text-slate-900 truncate">
-                    {cliente.nombres} {cliente.apellidos}
+                    {cliente.nombre_empresa || `${cliente.nombres || ""} ${cliente.apellidos || ""}`.trim()}
                   </p>
                 ) : (
                   <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
@@ -1251,9 +1276,11 @@ export function StreamingFormPage() {
           setCliente({
             tipo: "cliente_externo",
             id: c.id,
-            nombres: c.nombres,
+            nombres: c.nombres || c.nombre_empresa || "Cliente",
             apellidos: c.apellidos || "",
-            cedula: c.cedula,
+            nombre_empresa: c.nombre_empresa,
+            tipo_cliente: c.tipo_cliente,
+            cedula: c.cedula || c.ruc,
             correo: c.correo,
             celular: c.celular,
           })

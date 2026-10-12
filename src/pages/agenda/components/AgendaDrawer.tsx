@@ -74,6 +74,13 @@ export interface AgendaDrawerProps {
   isPublic?: boolean
 }
 
+interface TecnicoAsignado {
+  persona_id?: string
+  nombre_completo?: string
+  celular?: string
+  rol?: string
+}
+
 export function AgendaDrawer({
   event,
   daySelection,
@@ -425,16 +432,16 @@ export function AgendaDrawer({
                       </div>
                       <span className="text-[11px] font-bold text-slate-400">
                         {Array.isArray(data.detalle?.personal_tecnico)
-                          ? (data.detalle.personal_tecnico as any[]).length
+                          ? (data.detalle.personal_tecnico as TecnicoAsignado[]).length
                           : 0}{" "}
                         técnico(s)
                       </span>
                     </div>
 
                     {Array.isArray(data.detalle?.personal_tecnico) &&
-                    (data.detalle.personal_tecnico as any[]).length > 0 ? (
+                    (data.detalle.personal_tecnico as TecnicoAsignado[]).length > 0 ? (
                       <div className="space-y-2">
-                        {(data.detalle.personal_tecnico as any[]).map((tech, idx) => (
+                        {(data.detalle.personal_tecnico as TecnicoAsignado[]).map((tech, idx) => (
                           <div
                             key={tech.persona_id || idx}
                             className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs"
