@@ -347,12 +347,21 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
     while (nombresFinales.length < nuevoTotal) {
       nombresFinales.push(`Módulo ${nombresFinales.length + 1}`)
     }
+    const defaultPrice = form.precio_base !== "" && !isNaN(Number(form.precio_base)) ? Number(form.precio_base) : undefined
     if (nuevasFechas.length === 0) {
-      return nombresFinales.map((nombre) => ({ nombre, fecha_inicio: "", fecha_fin: "" }))
+      return nombresFinales.map((nombre, i) => ({
+        id: form.modulos[i]?.id,
+        nombre,
+        fecha_inicio: "",
+        fecha_fin: "",
+        precio_base: form.modulos[i]?.precio_base ?? defaultPrice,
+      }))
     }
     return nuevasFechas.map((f, i) => ({
       ...f,
+      id: form.modulos[i]?.id,
       nombre: nombresFinales[i] || `Módulo ${i + 1}`,
+      precio_base: form.modulos[i]?.precio_base ?? defaultPrice,
     }))
   }
 
@@ -400,8 +409,15 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
 
   const eliminarModulo = (indice: number) => {
     if (form.modulos.length <= 1) return
-    const nuevosNombres = form.modulos.filter((_, i) => i !== indice).map((m) => m.nombre)
-    const nuevosModulos = redistribuirFechas(form.modulos.length - 1, nuevosNombres)
+    const modulosFiltrados = form.modulos.filter((_, i) => i !== indice)
+    const nuevosNombres = modulosFiltrados.map((m) => m.nombre)
+    const nuevasFechas = calcularFechasModulos(modulosFiltrados.length, form.fecha_inicio, form.fecha_fin)
+    const nuevosModulos = modulosFiltrados.map((m, i) => ({
+      ...m,
+      nombre: nuevosNombres[i] || `Módulo ${i + 1}`,
+      fecha_inicio: nuevasFechas[i]?.fecha_inicio || m.fecha_inicio,
+      fecha_fin: nuevasFechas[i]?.fecha_fin || m.fecha_fin,
+    }))
     setForm((prev) => ({ ...prev, modulos: nuevosModulos }))
   }
 
@@ -520,6 +536,75 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
     return Object.keys(newErrors).length === 0
   }
 
+  const preciosModulos = useMemo(() => {
+    return form.modulos.map((m) =>
+      m.precio_base != null ? Number(m.precio_base) : (Number(form.precio_base) || 0)
+    )
+  }, [form.modulos, form.precio_base])
+
+  const hayPreciosDiferentes = useMemo(() => {
+    if (form.modulos.length <= 1) return false
+    const primerPrecio = preciosModulos[0]
+    return preciosModulos.some((p) => p !== primerPrecio)
+  }, [form.modulos.length, preciosModulos])
+
+  const sumaRealModulos = useMemo(() => {
+    return preciosModulos.reduce((acc, p) => acc + (isNaN(p) ? 0 : p), 0)
+  }, [preciosModulos])
+
+  const totalCursoCalculado = sumaRealModulos.toFixed(2)
+
+  const handlePrecioBaseChange = (nuevoPrecioStr: string) => {
+    updateField("precio_base", nuevoPrecioStr)
+    if (!hayPreciosDiferentes && form.modulos.length > 0) {
+      const num = nuevoPrecioStr === "" ? undefined : Number(nuevoPrecioStr)
+      setForm((prev) => ({
+        ...prev,
+        precio_base: nuevoPrecioStr,
+        modulos: prev.modulos.map((m) => ({
+          ...m,
+          precio_base: num,
+        })),
+      }))
+    }
+  }
+
+  const aplicarPrecioBaseATodosLosModulos = () => {
+    const num = form.precio_base === "" ? 0 : Number(form.precio_base)
+    const val = isNaN(num) ? 0 : num
+    setForm((prev) => ({
+      ...prev,
+      modulos: prev.modulos.map((m) => ({
+        ...m,
+        precio_base: val,
+      })),
+    }))
+    toast.success(`Se aplicó el arancel de $${val.toFixed(2)} USD a todos los módulos`)
+  }
+
+  const sincronizarPreciosPaso4a5 = () => {
+    const baseNum = Number(form.precio_base)
+    if (!isNaN(baseNum) && baseNum >= 0) {
+      if (!hayPreciosDiferentes) {
+        setForm((prev) => ({
+          ...prev,
+          modulos: prev.modulos.map((m) => ({
+            ...m,
+            precio_base: baseNum,
+          })),
+        }))
+      } else {
+        setForm((prev) => ({
+          ...prev,
+          modulos: prev.modulos.map((m) => ({
+            ...m,
+            precio_base: m.precio_base != null ? m.precio_base : baseNum,
+          })),
+        }))
+      }
+    }
+  }
+
   const handleNextStep = () => {
     if (!isStepValid(currentStep)) {
       validateStep(currentStep)
@@ -527,6 +612,9 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       return
     }
     if (validateStep(currentStep)) {
+      if (currentStep === 4) {
+        sincronizarPreciosPaso4a5()
+      }
       setCurrentStep((prev) => Math.min(prev + 1, 5))
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
@@ -549,6 +637,9 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         toast.info(`Completa el Paso ${s}: ${STEP_META[s - 1].title} para avanzar`)
         return
       }
+    }
+    if (currentStep === 4 && targetStep === 5) {
+      sincronizarPreciosPaso4a5()
     }
     setCurrentStep(targetStep)
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -593,10 +684,17 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         dias_semana: form.dias_semana.length > 0 ? form.dias_semana : undefined,
       }
 
+      const modulosParaEnviar = form.modulos.length > 0
+        ? form.modulos.map((m) => ({
+            ...m,
+            precio_base: m.precio_base != null ? Number(m.precio_base) : (Number(form.precio_base) || 0),
+          }))
+        : undefined
+
       if (isEdit && id) {
         await cursosService.actualizarCursoAbierto(id, {
           ...baseData,
-          modulos: form.modulos.length > 0 ? form.modulos : undefined,
+          modulos: modulosParaEnviar,
           confirmar_regeneracion_clases: confirmarRegeneracion || undefined,
         })
         toast.success("Curso actualizado exitosamente")
@@ -604,7 +702,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         await cursosService.crearCursoAbierto({
           ...baseData,
           catalogo_curso_id: form.catalogo_curso_id,
-          modulos: form.modulos.length > 0 ? form.modulos : undefined,
+          modulos: modulosParaEnviar,
         })
         toast.success("Curso creado exitosamente")
       }
@@ -668,7 +766,6 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
 
   const selectedDocente = instructores.find((d) => d.id === form.docente_id)
   const currentStepIsValid = isStepValid(currentStep)
-  const totalCursoCalculado = (form.modulos.length * (Number(form.precio_base) || 0)).toFixed(2)
 
   // Day toggle helpers
   const toggleDia = (diaVal: number) => {
@@ -1315,15 +1412,23 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                         step="0.01"
                         placeholder="0.00"
                         value={form.precio_base}
-                        onChange={(e) => updateField("precio_base", e.target.value)}
+                        onChange={(e) => handlePrecioBaseChange(e.target.value)}
                       />
                     </div>
 
                     {/* Live Financial Calculator */}
                     <div className="p-2.5 rounded-xl bg-orange-50/70 border border-orange-200 flex items-center justify-between text-xs">
                       <span className="text-slate-700">
-                        Cálculo de curso: <strong>{form.modulos.length} módulos</strong> × $
-                        {Number(form.precio_base) > 0 ? Number(form.precio_base).toFixed(2) : "0.00"}
+                        {hayPreciosDiferentes ? (
+                          <>
+                            Cálculo de curso: <strong>{form.modulos.length} módulos</strong> (aranceles individuales)
+                          </>
+                        ) : (
+                          <>
+                            Cálculo de curso: <strong>{form.modulos.length} módulos</strong> × $
+                            {Number(form.precio_base) > 0 ? Number(form.precio_base).toFixed(2) : "0.00"}
+                          </>
+                        )}
                       </span>
                       <span className="font-bold text-[#fd761a]">Total: ${totalCursoCalculado} USD</span>
                     </div>
@@ -1373,6 +1478,63 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                     </p>
                   </div>
                 </div>
+
+                {/* Banner de alerta y gestión cuando los módulos tienen precios diferenciados */}
+                {hayPreciosDiferentes && form.modulos.length > 0 && (
+                  <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-300/80 flex flex-col gap-3 shadow-2xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="size-4 text-amber-600 shrink-0" />
+                        <span className="text-xs font-bold text-amber-900">
+                          Módulos con aranceles diferenciados
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleGoToStep(5)}
+                        className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Gestionar en Paso 5</span>
+                        <ChevronRight size={13} />
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Se detectaron valores personalizados en los módulos de este curso. Puedes revisarlos a continuación, ir al Paso 5 para modificarlos individualmente, o unificarlos con el precio base configurado arriba (${Number(form.precio_base) > 0 ? Number(form.precio_base).toFixed(2) : "0.00"}).
+                    </p>
+
+                    {/* Desglose de cada módulo */}
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                      {form.modulos.map((m, idx) => {
+                        const p = m.precio_base != null ? Number(m.precio_base) : (Number(form.precio_base) || 0)
+                        return (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-amber-900 text-xs shadow-2xs"
+                          >
+                            <span className="font-semibold text-slate-700">{m.nombre || `Módulo ${idx + 1}`}:</span>
+                            <span className="font-mono font-bold text-[#fd761a]">${p.toFixed(2)} USD</span>
+                          </span>
+                        )
+                      })}
+                    </div>
+
+                    {/* Acciones para unificar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-amber-200/70">
+                      <span className="text-[11px] text-amber-800 font-medium">
+                        ¿Deseas igualar todos los módulos al precio base de este paso?
+                      </span>
+                      <button
+                        type="button"
+                        onClick={aplicarPrecioBaseATodosLosModulos}
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs shrink-0"
+                      >
+                        <Check size={14} />
+                        <span>Aplicar ${Number(form.precio_base) > 0 ? Number(form.precio_base).toFixed(2) : "0.00"} a todos</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Modality Segmented Selector & City Dropdown */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -1491,14 +1653,20 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                     Las fechas y asignaciones se configuran de acuerdo a la duración del ciclo.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={agregarModulo}
-                  className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-bold shadow-sm transition-all self-start sm:self-center"
-                >
-                  <Plus size={16} />
-                  <span>Agregar módulo</span>
-                </button>
+                <div className="flex items-center gap-2.5 self-start sm:self-center">
+                  <div className="px-3 py-2 rounded-xl bg-orange-50 border border-orange-200 text-xs flex items-center gap-1.5 shadow-2xs">
+                    <span className="text-slate-600 font-medium">Total modular:</span>
+                    <span className="font-bold font-mono text-[#fd761a]">${totalCursoCalculado} USD</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={agregarModulo}
+                    className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-bold shadow-sm transition-all"
+                  >
+                    <Plus size={16} />
+                    <span>Agregar módulo</span>
+                  </button>
+                </div>
               </div>
 
               {/* Sync Helper Banner */}

@@ -47,21 +47,7 @@ export function SolicitudResumenTab({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Notice */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-            Resumen de la solicitud
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Inspección rápida antes de auditoría y aprobación
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-50 border border-orange-200/60 text-xs font-semibold text-orange-800 self-start sm:self-auto">
-          <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="text-orange-600" />
-          <span>Listo para revisión formal y distribución contable</span>
-        </div>
-      </div>
+      
 
       {/* 4 Summary Cards Grid (Design from code.html) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
