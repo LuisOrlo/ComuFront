@@ -321,18 +321,13 @@ export function LoginPage() {
               </p>
               <Link
                 to="/matricula/nueva"
-                className="group w-full flex items-center justify-center gap-2 h-11 px-5 rounded-xl font-medium text-sm transition-all duration-200 border shadow-xs hover:shadow-md active:scale-[0.99]"
-                style={{
-                  backgroundColor: "oklch(0.65 0.2 45 / 0.08)",
-                  borderColor: "oklch(0.65 0.2 45 / 0.25)",
-                  color: ACCENT_TOMATO,
-                }}
+                className="group w-full flex items-center justify-center gap-2 h-11 px-5 rounded-xl font-semibold text-sm transition-all duration-200 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 hover:text-emerald-950 shadow-2xs hover:shadow-xs active:scale-[0.99]"
               >
                 <span>Comenzar nueva matrícula</span>
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
                   size={16}
-                  className="transition-transform group-hover:translate-x-1 shrink-0"
+                  className="transition-transform group-hover:translate-x-1 shrink-0 text-emerald-700 group-hover:text-emerald-950"
                 />
               </Link>
             </div>
