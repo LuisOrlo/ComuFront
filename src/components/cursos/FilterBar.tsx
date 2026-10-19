@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { FilterIcon, SearchIcon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import { FilterIcon, SearchIcon, Cancel01Icon, Calendar03Icon } from "@hugeicons/core-free-icons"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 
 export interface FilterBarProps {
@@ -9,6 +9,8 @@ export interface FilterBarProps {
     modalidad?: string
     estado?: string
     search?: string
+    fecha_desde?: string
+    fecha_hasta?: string
   }) => void
 }
 
@@ -19,6 +21,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     ciudad: "",
     modalidad: "",
     estado: "",
+    fecha_desde: "",
+    fecha_hasta: "",
   })
   const [cargando, setCargando] = useState(true)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,6 +54,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
         ciudad: nuevosFiltros.ciudad || undefined,
         modalidad: nuevosFiltros.modalidad || undefined,
         estado: nuevosFiltros.estado || undefined,
+        fecha_desde: nuevosFiltros.fecha_desde || undefined,
+        fecha_hasta: nuevosFiltros.fecha_hasta || undefined,
         search: search || undefined,
       })
     }
@@ -64,6 +70,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
         ciudad: filtros.ciudad || undefined,
         modalidad: filtros.modalidad || undefined,
         estado: filtros.estado || undefined,
+        fecha_desde: filtros.fecha_desde || undefined,
+        fecha_hasta: filtros.fecha_hasta || undefined,
         search: value || undefined,
       })
     }, 300)
@@ -79,6 +87,8 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
       ciudad: "",
       modalidad: "",
       estado: "",
+      fecha_desde: "",
+      fecha_hasta: "",
     }
     setFiltros(filtroVacio)
     setSearch("")
@@ -88,7 +98,9 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
     }
   }
 
-  const tieneFiltrosActivos = Boolean(filtros.ciudad || filtros.modalidad || filtros.estado || search)
+  const tieneFiltrosActivos = Boolean(
+    filtros.ciudad || filtros.modalidad || filtros.estado || filtros.fecha_desde || filtros.fecha_hasta || search
+  )
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-wrap items-center gap-3">
@@ -182,6 +194,59 @@ export function FilterBar({ onFilterChange }: FilterBarProps) {
         <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
           ▼
         </span>
+      </div>
+
+      {/* Rango de Fechas (Calendario Desde - Hasta) */}
+      <div className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-[#fd761a] focus-within:ring-2 focus-within:ring-[#fd761a]/20 transition-all">
+        <HugeiconsIcon icon={Calendar03Icon} size={16} className="text-slate-400 shrink-0" />
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+            Desde
+          </span>
+          <input
+            type="date"
+            aria-label="Fecha desde"
+            value={filtros.fecha_desde}
+            max={filtros.fecha_hasta || undefined}
+            onChange={(e) => handleFilterChange("fecha_desde", e.target.value)}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+          />
+        </div>
+        <span className="text-slate-300 font-bold px-0.5">—</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+            Hasta
+          </span>
+          <input
+            type="date"
+            aria-label="Fecha hasta"
+            value={filtros.fecha_hasta}
+            min={filtros.fecha_desde || undefined}
+            onChange={(e) => handleFilterChange("fecha_hasta", e.target.value)}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+          />
+        </div>
+        {(filtros.fecha_desde || filtros.fecha_hasta) && (
+          <button
+            type="button"
+            onClick={() => {
+              const nuevosFiltros = { ...filtros, fecha_desde: "", fecha_hasta: "" }
+              setFiltros(nuevosFiltros)
+              onFilterChange?.({
+                ciudad: nuevosFiltros.ciudad || undefined,
+                modalidad: nuevosFiltros.modalidad || undefined,
+                estado: nuevosFiltros.estado || undefined,
+                search: search || undefined,
+              })
+            }}
+            title="Quitar filtro de fechas"
+            className="p-0.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 cursor-pointer transition-colors ml-0.5"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} size={13} />
+          </button>
+        )}
       </div>
 
       {/* Botón Limpiar */}

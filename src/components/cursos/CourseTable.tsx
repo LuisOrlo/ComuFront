@@ -65,11 +65,18 @@ export function CourseTable({
                         <span className="text-[13px] font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors block leading-snug whitespace-normal break-words">
                           {c.nombre}
                         </span>
-                        {c.tipo && (
-                          <span className="text-[11px] font-semibold text-slate-400 capitalize block mt-0.5">
-                            Curso {c.tipo}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          {c.tipo && (
+                            <span className="text-[11px] font-semibold text-slate-400 capitalize">
+                              Curso {c.tipo}
+                            </span>
+                          )}
+                          {c.fechaInicio && (
+                            <span className="text-[11px] font-medium text-slate-400">
+                              · {c.fechaInicio}{c.fechaFin ? ` al ${c.fechaFin}` : ""}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>

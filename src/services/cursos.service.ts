@@ -169,6 +169,8 @@ export interface CursoFilters {
   search?: string
   per_page?: number
   dias_desde_inicio?: number
+  fecha_desde?: string
+  fecha_hasta?: string
 }
 
 // ============================================================================
@@ -443,6 +445,12 @@ export const cursosService = {
     }
     if (filters?.dias_desde_inicio) {
       params.dias_desde_inicio = filters.dias_desde_inicio
+    }
+    if (filters?.fecha_desde) {
+      params.fecha_desde = filters.fecha_desde
+    }
+    if (filters?.fecha_hasta) {
+      params.fecha_hasta = filters.fecha_hasta
     }
 
     const response = await api.get<{ data: CursoAbierto[]; meta: { current_page: number; last_page: number; per_page: number; total: number } }>(

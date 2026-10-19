@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowRight01Icon, UserIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, UserIcon, Calendar03Icon } from "@hugeicons/core-free-icons"
 import { CiudadBadge } from "./CiudadBadge"
 import { ModalidadBadge } from "@/pages/estudiantes/components/Badges"
 import type { Curso } from "@/services/cursos.service"
@@ -77,6 +77,16 @@ export function CourseCard({
               {curso.nombre}
             </h3>
           </div>
+
+          {/* Fechas de inicio y fin */}
+          {curso.fechaInicio && (
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+              <HugeiconsIcon icon={Calendar03Icon} size={13} className="text-slate-400 shrink-0" />
+              <span>
+                {curso.fechaInicio}{curso.fechaFin ? ` — ${curso.fechaFin}` : ""}
+              </span>
+            </div>
+          )}
 
           {/* Docente */}
           <div className="flex items-center gap-2 pt-0.5">
