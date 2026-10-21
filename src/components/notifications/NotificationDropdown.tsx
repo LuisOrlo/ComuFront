@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
-import { motion, AnimatePresence } from "motion/react"
+import { LazyMotion, domAnimation, m, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { BellIcon, AiLearningIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -69,17 +69,18 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
   }, [isOpen, onClose, anchorRef])
 
   return (
-    <AnimatePresence mode="wait">
-      {isOpen && (
-        <motion.div
-          ref={dropdownRef}
-          initial={{ opacity: 0, y: -6, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -6, scale: 0.97 }}
-          transition={{ duration: 0.12, ease: "easeOut" }}
-          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl border shadow-2xl shadow-black/10 overflow-hidden z-50"
-          style={{ borderColor: COLORS.BORDER_SUBTLE }}
-        >
+    <LazyMotion features={domAnimation}>
+      <AnimatePresence mode="wait">
+        {isOpen && (
+          <m.div
+            ref={dropdownRef}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.12, ease: "easeOut" }}
+            className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl border shadow-2xl shadow-black/10 overflow-hidden z-50"
+            style={{ borderColor: COLORS.BORDER_SUBTLE }}
+          >
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="flex items-center gap-2">
               <HugeiconsIcon icon={BellIcon} size={16} style={{ color: COLORS.ACCENT }} />
@@ -187,8 +188,9 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
               </Link>
             </div>
           )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   )
 }
