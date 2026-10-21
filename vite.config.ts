@@ -29,6 +29,29 @@ export default defineConfig({
 
   build: {
     sourcemap: false,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor-react",
+              test: /node_modules[\\/](react|react-dom|scheduler)/,
+              priority: 2,
+            },
+            {
+              name: "vendor-router",
+              test: /node_modules[\\/]react-router/,
+              priority: 2,
+            },
+            {
+              name: "vendor-query",
+              test: /node_modules[\\/]@tanstack/,
+              priority: 2,
+            },
+          ],
+        },
+      },
+    },
   },
 
   server: {
