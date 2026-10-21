@@ -1,38 +1,37 @@
 import { Link, useLocation } from "react-router"
 import { useRef, useEffect, useMemo, useState } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import type { IconSvgElement } from "@hugeicons/react"
+import type { LucideIcon } from "lucide-react"
 import {
   LayoutDashboard,
-  VideoIcon,
-  GraduationCapIcon,
-  UserGroupIcon,
-  BookOpenIcon,
-  MoneyIcon,
-  Invoice02Icon,
-  CalendarIcon,
-  CalendarDaysIcon,
-  ClipboardCheckIcon,
-  CertificateIcon,
-  UserCheckIcon,
-  SettingsIcon,
-  BellIcon,
-  Menu09Icon,
-  AiFolderIcon,
-  AiLearningIcon,
-  BookmarkIcon,
-  Logout03Icon,
-  SchoolIcon,
-  Microphone,
-  RadioIcon,
-  UserIcon,
-  CoinsDollarIcon,
-  BanknoteArrowDownIcon,
-  BarChartIcon,
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-  CameraVideoIcon,
-} from "@hugeicons/core-free-icons"
+  Video,
+  Film,
+  GraduationCap,
+  Users,
+  BookOpen,
+  CircleDollarSign,
+  Receipt,
+  Calendar,
+  CalendarDays,
+  ClipboardCheck,
+  Award,
+  UserCheck,
+  Settings,
+  Bell,
+  Menu,
+  Folder,
+  Sparkles,
+  Bookmark,
+  LogOut,
+  School,
+  Mic,
+  Radio,
+  User,
+  Coins,
+  TrendingDown,
+  BarChart3,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
 
@@ -42,7 +41,7 @@ const ACCENT = COLORS.ACCENT
 const ACTIVE_NEON = ACCENT
 
 interface NavItemData {
-  icon: IconSvgElement
+  icon: LucideIcon
   label: string
   path: string
   badge?: string
@@ -55,7 +54,7 @@ interface SidebarProps {
 }
 
 function NavItem({
-  icon,
+  icon: Icon,
   label,
   path,
   badge,
@@ -97,8 +96,7 @@ function NavItem({
           event.currentTarget.style.boxShadow = "none"
         }}
       >
-        <HugeiconsIcon
-          icon={icon}
+        <Icon
           size={18}
           className="relative shrink-0 transition-transform duration-200 ease-out group-hover:scale-110"
           style={{ color: isActive ? ACTIVE_NEON : "currentColor", filter: isActive ? `drop-shadow(0 0 5px color-mix(in srgb, ${ACCENT} 75%, transparent))` : undefined }}
@@ -163,9 +161,9 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
       groups.push({
         label: "Portal Instructor",
         items: [
-          { icon: BookOpenIcon, label: "Mis Cursos", path: "/instructor/cursos" },
-          { icon: AiFolderIcon, label: "Mis Talleres", path: "/instructor/talleres" },
-          { icon: CalendarIcon, label: "Mi Horario", path: "/instructor/horario" },
+          { icon: BookOpen, label: "Mis Cursos", path: "/instructor/cursos" },
+          { icon: Folder, label: "Mis Talleres", path: "/instructor/talleres" },
+          { icon: Calendar, label: "Mi Horario", path: "/instructor/horario" },
         ],
       })
     }
@@ -181,38 +179,38 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
     {
       label: "Académico",
       items: [
-        { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
-        { icon: AiLearningIcon, label: "Matrículas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
-        { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
-        { icon: AiLearningIcon, label: "Cursos personalizados", path: "/cursos-personalizados" },
-        { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
-        { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
+        { icon: User, label: "Estudiantes", path: "/estudiantes" },
+        { icon: Sparkles, label: "Matrículas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
+        { icon: GraduationCap, label: "Cursos", path: "/cursos" },
+        { icon: Sparkles, label: "Cursos personalizados", path: "/cursos-personalizados" },
+        { icon: BookOpen, label: "Talleres", path: "/talleres" },
+        { icon: Award, label: "Certificados", path: "/certificados" },
       ],
     },
     {
       label: "Servicios",
       items: [
-        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
-        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
-        { icon: Microphone, label: "Podcast", path: "/servicios/podcast" },
-        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
-        { icon: RadioIcon, label: "Radio", path: "/servicios/radio" },
-        { icon: CameraVideoIcon, label: "Streaming", path: "/servicios/streaming" },
+        { icon: School, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: Folder, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+        { icon: Mic, label: "Podcast", path: "/servicios/podcast" },
+        { icon: Film, label: "Edición de Video", path: "/servicios/edicion-video" },
+        { icon: Radio, label: "Radio", path: "/servicios/radio" },
+        { icon: Video, label: "Streaming", path: "/servicios/streaming" },
       ],
     },
     {
       label: "Operaciones",
       items: [
-        { icon: CalendarDaysIcon, label: "Agenda", path: "/agenda" },
-        { icon: ClipboardCheckIcon, label: "Tareas", path: "/tareas" },
-        { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
+        { icon: CalendarDays, label: "Agenda", path: "/agenda" },
+        { icon: ClipboardCheck, label: "Tareas", path: "/tareas" },
+        { icon: Users, label: "Clientes", path: "/clientes" },
       ],
     },
     {
       label: "Finanzas",
       items: [
-        { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
-        { icon: Invoice02Icon, label: "Movimientos", path: "/finanzas/movimientos" },
+        { icon: CircleDollarSign, label: "Pagos y cobros", path: "/finanzas/pagos" },
+        { icon: Receipt, label: "Movimientos", path: "/finanzas/movimientos" },
       ],
     },
     
@@ -224,51 +222,51 @@ if (isAdmin) {
     {
       label: "Académico",
       items: [
-        { icon: UserIcon, label: "Estudiantes", path: "/estudiantes" },
-        { icon: AiLearningIcon, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
-        { icon: GraduationCapIcon, label: "Cursos", path: "/cursos" },
-        { icon: AiLearningIcon, label: "Cursos personalizados", path: "/cursos-personalizados" },
-        { icon: BookOpenIcon, label: "Talleres", path: "/talleres" },
-        { icon: CertificateIcon, label: "Certificados", path: "/certificados" },
-        { icon: AiFolderIcon, label: "Categorías", path: "/catalogos" },
+        { icon: User, label: "Estudiantes", path: "/estudiantes" },
+        { icon: Sparkles, label: "Matriculas", path: "/matriculas", badge: pendientesCount != null && pendientesCount > 0 ? String(pendientesCount) : undefined },
+        { icon: GraduationCap, label: "Cursos", path: "/cursos" },
+        { icon: Sparkles, label: "Cursos personalizados", path: "/cursos-personalizados" },
+        { icon: BookOpen, label: "Talleres", path: "/talleres" },
+        { icon: Award, label: "Certificados", path: "/certificados" },
+        { icon: Folder, label: "Categorías", path: "/catalogos" },
       ],
     },
     {
       label: "Servicios",
       items: [
-        { icon: SchoolIcon, label: "Alquiler de Aulas", path: "/servicios/aulas" },
-        { icon: AiFolderIcon, label: "Alquiler de Equipos", path: "/servicios/equipos" },
-        { icon: Microphone, label: "Reservas de Podcast", path: "/servicios/podcast" },
-        { icon: VideoIcon, label: "Edición de Video", path: "/servicios/edicion-video" },
-        { icon: RadioIcon, label: "Alquiler de Radio", path: "/servicios/radio" },
-        { icon: CameraVideoIcon, label: "Streaming", path: "/servicios/streaming" },
+        { icon: School, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: Folder, label: "Alquiler de Equipos", path: "/servicios/equipos" },
+        { icon: Mic, label: "Reservas de Podcast", path: "/servicios/podcast" },
+        { icon: Film, label: "Edición de Video", path: "/servicios/edicion-video" },
+        { icon: Radio, label: "Alquiler de Radio", path: "/servicios/radio" },
+        { icon: Video, label: "Streaming", path: "/servicios/streaming" },
       ],
     },
     {
       label: "Operaciones",
       items: [
-        { icon: CalendarDaysIcon, label: "Agenda", path: "/agenda" },
-        { icon: ClipboardCheckIcon, label: "Tareas", path: "/tareas" },
-        { icon: UserGroupIcon, label: "Clientes", path: "/clientes" },
+        { icon: CalendarDays, label: "Agenda", path: "/agenda" },
+        { icon: ClipboardCheck, label: "Tareas", path: "/tareas" },
+        { icon: Users, label: "Clientes", path: "/clientes" },
       ],
     },
     {
       label: "Finanzas",
       items: [
-        { icon: MoneyIcon, label: "Pagos y cobros", path: "/finanzas/pagos" },
-        { icon: Invoice02Icon, label: "Movimientos", path: "/finanzas/movimientos" },
-        { icon: CoinsDollarIcon, label: "Ingresos", path: "/finanzas/ingresos" },
-        { icon: BanknoteArrowDownIcon, label: "Egresos", path: "/finanzas/egresos" },
-        { icon: BarChartIcon, label: "Estadísticas", path: "/finanzas/estadisticas" },
+        { icon: CircleDollarSign, label: "Pagos y cobros", path: "/finanzas/pagos" },
+        { icon: Receipt, label: "Movimientos", path: "/finanzas/movimientos" },
+        { icon: Coins, label: "Ingresos", path: "/finanzas/ingresos" },
+        { icon: TrendingDown, label: "Egresos", path: "/finanzas/egresos" },
+        { icon: BarChart3, label: "Estadísticas", path: "/finanzas/estadisticas" },
       ],
     },
     {
       label: "Gestión",
       items: [
-        { icon: UserCheckIcon, label: "Personal", path: "/personas" },
-        { icon: GraduationCapIcon, label: "Instructores", path: "/instructores" },
-        { icon: SettingsIcon, label: "Cuentas", path: "/cuentas" },
-        { icon: BookmarkIcon, label: "Ciudades", path: "/ciudades" },
+        { icon: UserCheck, label: "Personal", path: "/personas" },
+        { icon: GraduationCap, label: "Instructores", path: "/instructores" },
+        { icon: Settings, label: "Cuentas", path: "/cuentas" },
+        { icon: Bookmark, label: "Ciudades", path: "/ciudades" },
       ],
     },
     
@@ -335,12 +333,19 @@ if (isAdmin) {
               e.currentTarget.style.backgroundColor = "transparent"
             }}
           >
-            <HugeiconsIcon
-              icon={collapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon}
-              size={16}
-              className="opacity-30 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200"
-              style={{ color: COLORS.ACCENT }}
-            />
+            {collapsed ? (
+              <PanelLeftOpen
+                size={16}
+                className="opacity-30 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200"
+                style={{ color: COLORS.ACCENT }}
+              />
+            ) : (
+              <PanelLeftClose
+                size={16}
+                className="opacity-30 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200"
+                style={{ color: COLORS.ACCENT }}
+              />
+            )}
           </button>
         )}
       </div>
@@ -418,8 +423,7 @@ if (isAdmin) {
             e.currentTarget.style.backgroundColor = "transparent"
           }}
         >
-          <HugeiconsIcon
-            icon={Logout03Icon}
+          <LogOut
             size={16}
             className="shrink-0 transition-transform duration-200 ease-out group-hover:scale-110"
           />
@@ -466,7 +470,7 @@ export function TopBar({
           onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.95)")}
           onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
         >
-          <HugeiconsIcon icon={Menu09Icon} size={20} />
+          <Menu size={20} />
         </button>
       </div>
 
@@ -479,7 +483,7 @@ export function TopBar({
             className="relative flex items-center justify-center size-9 rounded-lg text-[--muted-foreground] select-none"
             style={{ transition: "background-color 150ms ease-out" }}
           >
-            <HugeiconsIcon icon={BellIcon} size={18} />
+            <Bell size={18} />
             {pendientesCount > 0 && (
               <span
                 className="absolute flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold text-white"

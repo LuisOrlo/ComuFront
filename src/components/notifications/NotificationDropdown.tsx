@@ -2,8 +2,7 @@ import { useEffect, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { LazyMotion, domAnimation, m, AnimatePresence } from "motion/react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { BellIcon, AiLearningIcon } from "@hugeicons/core-free-icons"
+import { Bell, GraduationCap } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cursosService, type NotificacionesResponse } from "@/services/cursos.service"
 
@@ -83,7 +82,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
           >
           <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="flex items-center gap-2">
-              <HugeiconsIcon icon={BellIcon} size={16} style={{ color: COLORS.ACCENT }} />
+              <Bell size={16} style={{ color: COLORS.ACCENT }} />
               <h3 className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>Notificaciones</h3>
             </div>
             {pendientesCount > 0 && (
@@ -109,7 +108,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
             {!loading && data && data.recientes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                 <div className="size-12 rounded-2xl bg-black/5 flex items-center justify-center mb-3">
-                  <HugeiconsIcon icon={BellIcon} size={22} style={{ color: COLORS.TEXT_MUTED }} />
+                  <Bell size={22} style={{ color: COLORS.TEXT_MUTED }} />
                 </div>
                 <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Sin notificaciones</p>
                 <p className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>
@@ -183,7 +182,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                   color: COLORS.ACCENT,
                 }}
               >
-                <HugeiconsIcon icon={AiLearningIcon} size={14} />
+                <GraduationCap size={14} />
                 Ver todas las solicitudes
               </Link>
             </div>

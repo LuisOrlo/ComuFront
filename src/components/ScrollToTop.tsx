@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowUp01Icon } from "@hugeicons/core-free-icons"
+import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COLORS } from "@/lib/constants"
 
@@ -65,7 +64,7 @@ export function ScrollToTop() {
       }}
       title="Volver arriba"
     >
-      <HugeiconsIcon icon={ArrowUp01Icon} size={18} strokeWidth={2.5} />
+      <ArrowUp size={18} strokeWidth={2.5} />
     </button>
   )
 }
