@@ -1,12 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { visualizer } from 'rollup-plugin-visualizer'
 import path from "path"
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    ...(process.env.ANALYZE === '1' || process.env.ANALYZE === 'true'
+      ? [
+          visualizer({
+            filename: 'dist/bundle-analysis.html',
+            template: 'treemap',
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
   ],
 
   resolve: {
