@@ -6,6 +6,24 @@ import type { Curso } from "@/services/cursos.service"
 
 export type { Curso }
 
+const MESES_ABR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+/**
+ * Formato corto y amigable para la fecha de inicio del curso.
+ * Si es del año actual: "Inicia 14 oct"
+ * Si es de otro año: "Inicia 14 ene 2027"
+ */
+function formatFechaInicio(fechaStr?: string | null): string {
+  if (!fechaStr) return ""
+  const clean = fechaStr.split("T")[0]
+  const parts = clean.split("-").map(Number)
+  if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return clean
+  const [y, m, d] = parts
+  const mesNombre = MESES_ABR[m - 1] || ""
+  const anioActual = new Date().getFullYear()
+  return y === anioActual ? `Inicia ${d} ${mesNombre}` : `Inicia ${d} ${mesNombre} ${y}`
+}
+
 export function CourseTable({
   cursos,
   onView,
@@ -65,18 +83,14 @@ export function CourseTable({
                         <span className="text-[13px] font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors block leading-snug whitespace-normal break-words">
                           {c.nombre}
                         </span>
-                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                          {c.tipo && (
-                            <span className="text-[11px] font-semibold text-slate-400 capitalize">
-                              Curso {c.tipo}
-                            </span>
-                          )}
-                          {c.fechaInicio && (
-                            <span className="text-[11px] font-medium text-slate-400">
-                              · {c.fechaInicio}{c.fechaFin ? ` al ${c.fechaFin}` : ""}
-                            </span>
-                          )}
-                        </div>
+                        {c.fechaInicio && (
+                          <span
+                            className="text-[11px] font-medium text-slate-400 block mt-0.5"
+                            title={c.fechaFin ? `Período: ${c.fechaInicio} al ${c.fechaFin}` : `Inicia: ${c.fechaInicio}`}
+                          >
+                            {formatFechaInicio(c.fechaInicio)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>

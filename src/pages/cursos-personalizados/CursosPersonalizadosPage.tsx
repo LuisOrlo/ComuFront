@@ -308,25 +308,25 @@ export function CursosPersonalizadosPage() {
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wider text-slate-500 select-none">
-                <th scope="col" className="py-3.5 pl-6 pr-4">
+                <th scope="col" className="py-3.5 pl-6 pr-4 min-w-[160px] max-w-[220px]">
                   Curso
                 </th>
-                <th scope="col" className="py-3.5 px-4">
+                <th scope="col" className="py-3.5 px-4 whitespace-nowrap">
                   Modalidad / Sede
                 </th>
-                <th scope="col" className="py-3.5 px-4">
+                <th scope="col" className="py-3.5 px-4 min-w-[140px] max-w-[190px]">
                   Docente
                 </th>
-                <th scope="col" className="py-3.5 px-4">
+                <th scope="col" className="py-3.5 px-4 whitespace-nowrap">
                   Fechas y Horario
                 </th>
-                <th scope="col" className="py-3.5 px-4">
+                <th scope="col" className="py-3.5 px-4 whitespace-nowrap">
                   Ocupación
                 </th>
-                <th scope="col" className="py-3.5 px-4">
+                <th scope="col" className="py-3.5 px-4 whitespace-nowrap">
                   Precio
                 </th>
-                <th scope="col" className="py-3.5 pl-4 pr-6 text-right">
+                <th scope="col" className="py-3.5 pl-4 pr-6 text-right whitespace-nowrap">
                   Acción
                 </th>
               </tr>
@@ -391,12 +391,18 @@ export function CursosPersonalizadosPage() {
                       className="transition-colors hover:bg-slate-50/70"
                     >
                       {/* Curso */}
-                      <td className="py-4 pl-6 pr-4 max-w-xs">
+                      <td className="py-4 pl-6 pr-4 min-w-[160px] max-w-[220px]">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-slate-900 line-clamp-1">
+                          <span
+                            className="font-bold text-slate-900 leading-snug whitespace-normal break-words line-clamp-2"
+                            title={curso.nombre}
+                          >
                             {curso.nombre}
                           </span>
-                          <span className="text-xs text-slate-400 line-clamp-1">
+                          <span
+                            className="text-xs text-slate-400 leading-snug whitespace-normal break-words line-clamp-2 mt-0.5"
+                            title={curso.descripcion || undefined}
+                          >
                             {curso.descripcion || "Sin descripción adicional."}
                           </span>
                         </div>
@@ -428,13 +434,16 @@ export function CursosPersonalizadosPage() {
                       </td>
 
                       {/* Docente */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700">
+                      <td className="py-4 px-4 min-w-[140px] max-w-[190px]">
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 shrink-0 mt-0.5">
                             {initials}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-800">
+                          <div className="flex flex-col min-w-0">
+                            <span
+                              className="text-xs font-semibold text-slate-800 leading-snug whitespace-normal break-words"
+                              title={teacherFullName}
+                            >
                               {teacherFullName}
                             </span>
                             <span className="text-[11px] text-slate-400">

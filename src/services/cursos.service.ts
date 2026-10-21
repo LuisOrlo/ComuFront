@@ -164,6 +164,7 @@ export interface CursosResponse {
 export interface CursoFilters {
   modalidad?: string
   ciudad?: string
+  ciudad_id?: number | string
   catalogo_curso_id?: string
   estado?: string
   search?: string
@@ -436,6 +437,9 @@ export const cursosService = {
     }
     if (filters?.ciudad) {
       params.ciudad = filters.ciudad
+    }
+    if (filters?.ciudad_id) {
+      params.ciudad_id = filters.ciudad_id
     }
     if (filters?.estado) {
       params.estado = filters.estado
