@@ -37,8 +37,6 @@ import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
 
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown"
-import "overlayscrollbars/overlayscrollbars.css"
-import { useOverlayScrollbars } from "overlayscrollbars-react"
 
 const ACCENT = COLORS.ACCENT
 const ACTIVE_NEON = ACCENT
@@ -142,25 +140,6 @@ function findActiveGroupKey(pathname: string, groups: { label: string; items: Na
 export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: SidebarProps & { pendientesCount?: number }) {
   const { logout, user } = useAuth()
   const location = useLocation()
-  const navRef = useRef<HTMLDivElement>(null)
-  const [initialize, getInstance] = useOverlayScrollbars({
-    options: {
-      scrollbars: { autoHide: "scroll", autoHideDelay: 600 },
-      overflow: { x: "hidden", y: "scroll" },
-    },
-  })
-  const osInstanceRef = useRef<ReturnType<typeof getInstance>>(null)
-
-  useEffect(() => {
-    if (navRef.current) {
-      initialize({ target: navRef.current })
-    }
-    osInstanceRef.current = getInstance()
-    return () => {
-      osInstanceRef.current?.destroy()
-      osInstanceRef.current = null
-    }
-  }, [initialize, getInstance])
 
   const roles = user?.roles || []
   const isAdmin = roles.includes("Administrador")
@@ -366,7 +345,7 @@ if (isAdmin) {
         )}
       </div>
 
-      <div ref={navRef} className="flex-1 px-3 py-5">
+      <div className="flex-1 px-3 py-5 overflow-y-auto overflow-x-hidden scrollbar-thin">
         {menuGroups.map((group, index) => {
           const groupKey = `${group.label}-${index}`
           const isExpanded = collapsed || Boolean(expandedGroups[groupKey])
