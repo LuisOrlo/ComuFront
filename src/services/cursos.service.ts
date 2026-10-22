@@ -842,6 +842,14 @@ export const cursosService = {
   },
 
   /**
+   * DELETE /api/academic/matriculas/{id}
+   * Elimina una matrícula y sus cuentas por cobrar asociadas
+   */
+  async eliminarMatricula(matriculaId: string): Promise<void> {
+    await api.delete(`/academic/matriculas/${matriculaId}`)
+  },
+
+  /**
    * GET /api/academic/solicitudes-inscripcion
    * Listar solicitudes
    */

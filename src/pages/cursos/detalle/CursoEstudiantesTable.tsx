@@ -12,7 +12,7 @@ import {
   type PaginationState,
 } from "@tanstack/react-table"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreVertical } from "lucide-react"
+import { MoreVertical, Trash2 } from "lucide-react"
 import { Link } from "react-router"
 import {
   ArrowUp01Icon,
@@ -21,12 +21,16 @@ import {
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { parseLocalDate } from "@/lib/utils"
-import type { MatriculaDetallada } from "@/services/cursos.service"
+import { cursosService, type MatriculaDetallada } from "@/services/cursos.service"
+import { estudiantesService } from "@/services/estudiantes.service"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { toast } from "sonner"
 
 interface Props {
   matriculas: MatriculaDetallada[]
   meta?: { total: number; per_page: number; current_page: number; last_page: number }
   onPageChange?: (page: number) => void
+  onMatriculaDeleted?: () => void
 }
 
 const BORDER = COLORS.BORDER_SUBTLE
@@ -58,9 +62,11 @@ function getOcupacion(row: MatriculaDetallada) {
 
 const PAGE_SIZES = [10, 20, 50]
 
-export function CursoEstudiantesTable({ matriculas, meta, onPageChange }: Props) {
+export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatriculaDeleted }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
+  const [matriculaToDelete, setMatriculaToDelete] = useState<MatriculaDetallada | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const columns = useMemo<ColumnDef<MatriculaDetallada>[]>(() => [
     {
@@ -124,9 +130,33 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange }: Props)
     {
       id: "accion",
       header: () => <span className="block text-right">Acción</span>,
-      cell: ({ row }) => row.original.estudiante?.id
-        ? <div className="text-right"><Link to={`/estudiantes/${row.original.estudiante.id}/academico`} aria-label={`Ver perfil de ${getStudentName(row.original)}`} className="inline-flex p-1.5 rounded-lg text-[#45464d] hover:text-[#0b1c30] hover:bg-[#e5eeff] transition-colors"><MoreVertical size={20}/></Link></div>
-        : <span className="block text-right text-[#c6c6cd]">—</span>,
+      cell: ({ row }) => {
+        const studentName = getStudentName(row.original)
+        const studentId = row.original.estudiante?.id
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {studentId && (
+              <Link
+                to={`/estudiantes/${studentId}/academico`}
+                aria-label={`Ver perfil de ${studentName}`}
+                title="Ver perfil académico"
+                className="inline-flex p-1.5 rounded-lg text-[#45464d] hover:text-[#0b1c30] hover:bg-[#e5eeff] transition-colors"
+              >
+                <MoreVertical size={18} />
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setMatriculaToDelete(row.original)}
+              aria-label={`Eliminar a ${studentName}`}
+              title="Eliminar estudiante por completo"
+              className="inline-flex p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        )
+      },
       enableSorting: false,
     },
   ], [])
@@ -150,6 +180,27 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange }: Props)
   const totalRows = meta?.total ?? table.getFilteredRowModel().rows.length
   const from = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const to = Math.min(currentPage * pageSize, totalRows)
+
+  const handleDeleteStudent = async () => {
+    if (!matriculaToDelete) return
+    setIsDeleting(true)
+    const studentId = matriculaToDelete.estudiante?.id
+    try {
+      if (studentId) {
+        await estudiantesService.deleteStudent(studentId)
+      } else {
+        await cursosService.eliminarMatricula(matriculaToDelete.id)
+      }
+      toast.success("Estudiante y todos sus registros eliminados exitosamente")
+      setMatriculaToDelete(null)
+      onMatriculaDeleted?.()
+    } catch (err) {
+      console.error("Error al eliminar estudiante:", err)
+      toast.error("Error al eliminar estudiante. Intenta de nuevo.")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   function renderCellContent(cell: Cell<MatriculaDetallada, unknown>) {
     return flexRender(cell.column.columnDef.cell, cell.getContext())
@@ -288,6 +339,19 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange }: Props)
         </div>
       </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={!!matriculaToDelete}
+        title="¿Eliminar estudiante por completo?"
+        message={`¿Estás seguro de que deseas eliminar definitivamente a ${matriculaToDelete ? getStudentName(matriculaToDelete) : ""}? Esta acción es irreversible y borrará por completo al estudiante de la base de datos, incluyendo todas sus matrículas, calificaciones, asistencias, cuentas por cobrar, líneas de pago y archivos. Se eliminarán todas las deudas o valores pendientes asociados.`}
+        confirmText="Eliminar por completo"
+        cancelText="Cancelar"
+        isDangerous={true}
+        isLoading={isDeleting}
+        icon="trash"
+        onConfirm={handleDeleteStudent}
+        onCancel={() => setMatriculaToDelete(null)}
+      />
     </div>
   )
 }

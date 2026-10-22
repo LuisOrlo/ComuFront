@@ -32,6 +32,8 @@ import {
   type CursoPersonalizadoEstudiante,
   type FinanzasCursoPersonalizado,
 } from "@/services/cursosPersonalizados.service"
+import { estudiantesService } from "@/services/estudiantes.service"
+import { cursosService } from "@/services/cursos.service"
 
 const DIAS_LABEL: Record<number, string> = {
   1: "Lunes",
@@ -178,9 +180,11 @@ export function CursoPersonalizadoDetailPage() {
       ? finance.saldo_pendiente
       : Math.max(0, totalEsperado - totalAbonado)
 
+  const totalEstudiantes = students.length || course.matriculados || 0
+
   const tabs = [
     { key: "resumen" as const, label: "Resumen General", icon: Calendar },
-    { key: "estudiantes" as const, label: `Estudiantes (${students.length})`, icon: Users },
+    { key: "estudiantes" as const, label: `Estudiantes (${totalEstudiantes})`, icon: Users },
     { key: "finanzas" as const, label: "Finanzas & Pagos", icon: Receipt },
   ]
 
@@ -619,7 +623,7 @@ export function CursoPersonalizadoDetailPage() {
         )}
 
         {/* 2. LISTADO DE ESTUDIANTES */}
-        {tab === "estudiantes" && <StudentTableSection students={students} />}
+        {tab === "estudiantes" && <StudentTableSection students={students} onStudentDeleted={load} />}
 
         {/* 3. FINANZAS Y FACTURACIÓN */}
         {tab === "finanzas" && <FinanceSection course={course} finance={finance} students={students} />}
@@ -646,9 +650,17 @@ export function CursoPersonalizadoDetailPage() {
 /* SUB-COMPONENT: STUDENTS TABLE SECTION                                     */
 /* ========================================================================= */
 
-function StudentTableSection({ students }: { students: CursoPersonalizadoEstudiante[] }) {
+function StudentTableSection({
+  students,
+  onStudentDeleted,
+}: {
+  students: CursoPersonalizadoEstudiante[]
+  onStudentDeleted?: () => void
+}) {
   const [search, setSearch] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [studentToDelete, setStudentToDelete] = useState<CursoPersonalizadoEstudiante | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const copyToClipboard = (text: string, id: string) => {
     if (!text || text === "—") return
@@ -656,6 +668,26 @@ function StudentTableSection({ students }: { students: CursoPersonalizadoEstudia
     setCopiedId(id)
     toast.success("Cédula copiada al portapapeles")
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return
+    setIsDeleting(true)
+    try {
+      if (studentToDelete.estudiante?.id) {
+        await estudiantesService.deleteStudent(studentToDelete.estudiante.id)
+      } else if (studentToDelete.matricula_id) {
+        await cursosService.eliminarMatricula(studentToDelete.matricula_id)
+      }
+      toast.success("Estudiante y todos sus registros eliminados exitosamente")
+      setStudentToDelete(null)
+      onStudentDeleted?.()
+    } catch (err) {
+      console.error("Error al eliminar estudiante:", err)
+      toast.error("Error al eliminar estudiante. Intenta de nuevo.")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const filtered = useMemo(() => {
@@ -729,6 +761,7 @@ function StudentTableSection({ students }: { students: CursoPersonalizadoEstudia
                 <th className="py-3.5 px-4 text-right">Monto Pagado</th>
                 <th className="py-3.5 px-4 text-right">Saldo Pendiente</th>
                 <th className="py-3.5 px-5 text-center">Estado Financiero</th>
+                <th className="py-3.5 px-4 text-right">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -807,6 +840,19 @@ function StudentTableSection({ students }: { students: CursoPersonalizadoEstudia
                         {row.estado_financiero || "Pendiente"}
                       </span>
                     </td>
+
+                    {/* Acción */}
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setStudentToDelete(row)}
+                        aria-label={`Eliminar a ${row.estudiante?.nombre || "estudiante"}`}
+                        title="Eliminar estudiante por completo"
+                        className="inline-flex p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
@@ -821,6 +867,19 @@ function StudentTableSection({ students }: { students: CursoPersonalizadoEstudia
           Mostrando <strong>{filtered.length}</strong> de <strong>{students.length}</strong> estudiantes
         </span>
       </div>
+
+      <ConfirmationModal
+        isOpen={!!studentToDelete}
+        title="¿Eliminar estudiante por completo?"
+        message={`¿Estás seguro de que deseas eliminar definitivamente a ${studentToDelete?.estudiante?.nombre || "este estudiante"}? Esta acción es irreversible y borrará por completo al estudiante de la base de datos, incluyendo todas sus matrículas, asistencias, calificaciones, cuentas por cobrar, cuotas y archivos. Se eliminarán todas las deudas o valores pendientes asociados.`}
+        confirmText="Eliminar por completo"
+        cancelText="Cancelar"
+        isDangerous={true}
+        isLoading={isDeleting}
+        icon="trash"
+        onConfirm={handleDeleteStudent}
+        onCancel={() => setStudentToDelete(null)}
+      />
     </div>
   )
 }

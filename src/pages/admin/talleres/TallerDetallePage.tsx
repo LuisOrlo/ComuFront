@@ -56,20 +56,25 @@ export function TallerDetallePage() {
   useEffect(() => {
     if (!id) return
     tallerService.obtener(id)
-      .then(t => setTaller(t))
+      .then(t => {
+        setTaller(t)
+        if (t?.inscripciones && Array.isArray(t.inscripciones) && t.inscripciones.length > 0) {
+          setInscripciones(t.inscripciones)
+        }
+      })
       .catch(() => toast.error("Error al cargar taller"))
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, refreshKey])
 
   useEffect(() => {
-    if (!id || tab !== "participantes") return
+    if (!id) return
     const params: Record<string, unknown> = { per_page: 100 }
     if (searchParticipantes.trim()) params.search = searchParticipantes
     tallerService.listarInscripciones(id, params)
       .then(res => setInscripciones((res as any).data || []))
       .catch(() => {})
       .finally(() => setLoadingInscripciones(false))
-  }, [id, tab, searchParticipantes, refreshKey])
+  }, [id, searchParticipantes, refreshKey])
 
   useEffect(() => {
     if (!id || tab !== "pagos") return
@@ -295,14 +300,17 @@ export function TallerDetallePage() {
     return <div className="min-h-screen flex items-center justify-center" style={{ color: TEXT_MUTED }}>Taller no encontrado</div>
   }
 
+  const totalParticipantes = inscripciones.length || (taller?.inscripciones?.length ?? 0)
+
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "info", label: "Información", icon: CalendarIcon },
-    { key: "participantes", label: "Participantes", icon: UserGroupIcon },
+    { key: "participantes", label: `Participantes (${totalParticipantes})`, icon: UserGroupIcon },
     { key: "pagos", label: "Pagos", icon: Money01Icon },
     { key: "asistencia", label: "Asistencia", icon: CheckmarkCircle01Icon },
   ]
 
-  const inscritosActivos = inscripciones.filter(i => i.estado === "activo")
+  const listaInscripciones = inscripciones.length > 0 ? inscripciones : (taller?.inscripciones || [])
+  const inscritosActivos = listaInscripciones.filter(i => i.estado === "activo")
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-gray-50/50">
@@ -401,7 +409,7 @@ export function TallerDetallePage() {
                 <div>
                   <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Capacidad</p>
                   <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                    {inscripciones.filter(i => i.estado === "activo").length || "0"}/{taller.capacidad_maxima || "0"}
+                    {inscritosActivos.length}/{taller.capacidad_maxima || "0"}
                   </p>
                 </div>
               </div>
@@ -865,9 +873,9 @@ export function TallerDetallePage() {
 
       <ConfirmationModal
         isOpen={!!deleteTarget}
-        title="Eliminar inscripción"
-        message={`¿Estás seguro de eliminar la inscripción de "${deleteTarget?.nombres} ${deleteTarget?.apellidos}"?`}
-        confirmText="Eliminar"
+        title="¿Eliminar participante del taller?"
+        message={`¿Estás seguro de eliminar a "${deleteTarget?.nombres} ${deleteTarget?.apellidos}" de este taller? Esta acción es irreversible y eliminará su inscripción, sus asistencias, su cuenta por cobrar y cualquier deuda o valor pendiente asociado a este taller.`}
+        confirmText="Eliminar por completo"
         cancelText="Cancelar"
         isLoading={deleting}
         icon="trash"

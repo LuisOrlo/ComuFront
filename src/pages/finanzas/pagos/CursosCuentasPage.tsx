@@ -15,6 +15,8 @@ import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
 import { Skeleton } from "@/components/ui/skeleton"
+import { MonthFilterPopover } from "@/components/finanzas/MonthFilterPopover"
+import { CityFilterSelect, type CityOption } from "@/components/finanzas/CityFilterSelect"
 
 export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonalizados?: boolean }) {
   const navigate = useNavigate()
@@ -22,6 +24,11 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
   const [cuentas, setCuentas] = useState<any[]>([])
   const [filter, setFilter] = useState<string>("todos")
   const [modalidad, setModalidad] = useState<string>("todos")
+  const [ciudadId, setCiudadId] = useState<string>("")
+  const [mes, setMes] = useState<string>("")
+  const [anio, setAnio] = useState<string>("")
+  const [rangoFechas, setRangoFechas] = useState<{ fecha_desde?: string; fecha_hasta?: string }>({})
+  const [ciudadesDisponibles, setCiudadesDisponibles] = useState<CityOption[]>([])
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [clientPage, setClientPage] = useState(1)
@@ -34,14 +41,18 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
 
   useEffect(() => {
     setClientPage(1)
-  }, [filter, modalidad, search])
+  }, [filter, modalidad, search, ciudadId, rangoFechas])
 
   useEffect(() => {
     const load = async () => {
       try {
-        const params: any = { origen: "curso", per_page: 50 }
+        const params: any = { origen: "curso", per_page: 500 }
         if (modalidad !== "todos") params.modalidad = modalidad
         if (search) params.search = search
+        if (ciudadId) params.ciudad_id = ciudadId
+        if (rangoFechas.fecha_desde) params.fecha_desde = rangoFechas.fecha_desde
+        if (rangoFechas.fecha_hasta) params.fecha_hasta = rangoFechas.fecha_hasta
+
         const [resumenData, cuentasData] = await Promise.all([
           financeService.getResumen(),
           financeService.getCuentas(params),
@@ -55,6 +66,29 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
           }
         })
         setCuentas(merged)
+
+        // Registrar ciudades encontradas para el filtro
+        const mapCiudades = new Map<string, CityOption>()
+        merged.forEach((c: any) => {
+          const ciudad =
+            c.matricula?.curso_abierto?.ciudad ||
+            c.solicitud_inscripcion?.curso_abierto?.ciudad ||
+            (c.ciudad ? { id: c.ciudad_id || c.ciudad, nombre: c.ciudad } : null)
+          if (ciudad?.nombre) {
+            const cid = String(ciudad.id ?? ciudad.nombre)
+            if (!mapCiudades.has(cid)) {
+              mapCiudades.set(cid, { id: ciudad.id ?? cid, nombre: ciudad.nombre })
+            }
+          }
+        })
+        if (mapCiudades.size > 0) {
+          setCiudadesDisponibles((prev) => {
+            const combined = new Map<string, CityOption>()
+            prev.forEach((p) => combined.set(String(p.id), p))
+            mapCiudades.forEach((v, k) => combined.set(k, v))
+            return Array.from(combined.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))
+          })
+        }
       } catch {
         toast.error("Error al cargar los cursos")
       } finally {
@@ -62,7 +96,7 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
       }
     }
     load()
-  }, [modalidad, search])
+  }, [modalidad, search, ciudadId, rangoFechas])
 
   const grouped = useMemo(() => {
     const groups: Record<string, any> = {}
@@ -151,6 +185,9 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
           esPersonalizado,
           modalidad: curso?.modalidad || "",
           ciudad: curso?.ciudad?.nombre || "",
+          ciudadId: curso?.ciudad_id || curso?.ciudad?.id || "",
+          fechaInicio: curso?.fecha_inicio || "",
+          fechaFin: curso?.fecha_fin || "",
           entries: [],
         }
       }
@@ -169,12 +206,35 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
     return grouped.filter(([, g]) => {
       if (soloPersonalizados !== Boolean(g.esPersonalizado)) return false
       const pct = g.total > 0 ? (g.cobrado / g.total) * 100 : 0
-      if (filter === "pendiente") return g.saldo > 0 && pct < 50
-      if (filter === "en_progreso") return g.saldo > 0 && pct >= 50 && pct < 100
-      if (filter === "completado") return g.saldo <= 0
+      if (filter === "pendiente" && !(g.saldo > 0 && pct < 50)) return false
+      if (filter === "en_progreso" && !(g.saldo > 0 && pct >= 50 && pct < 100)) return false
+      if (filter === "completado" && !(g.saldo <= 0)) return false
+
+      // Filtro Ciudad
+      if (ciudadId && String(g.ciudadId) !== String(ciudadId)) {
+        return false
+      }
+
+      // Filtro Rango de Fechas / Mes:
+      // Aparecen todos los que se encuentren entre esas fechas no importan si acabaron, empezaron o estan por comenzar
+      if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+        const inicio = g.fechaInicio ? g.fechaInicio.split("T")[0] : null
+        const fin = g.fechaFin ? g.fechaFin.split("T")[0] : null
+
+        if (inicio && inicio > rangoFechas.fecha_hasta) return false
+        if (fin && fin < rangoFechas.fecha_desde) return false
+        if (inicio && !fin && inicio < rangoFechas.fecha_desde) {
+          const tieneMovimientoEnRango = g.entries.some((e: any) => {
+            const fechaRef = e.created_at ? e.created_at.split("T")[0] : null
+            return fechaRef && fechaRef >= rangoFechas.fecha_desde! && fechaRef <= rangoFechas.fecha_hasta!
+          })
+          if (!tieneMovimientoEnRango) return false
+        }
+      }
+
       return true
     })
-  }, [grouped, filter, soloPersonalizados])
+  }, [grouped, filter, soloPersonalizados, ciudadId, rangoFechas])
 
   const searchFiltered = useMemo(() => {
     if (!search) return filtered
@@ -192,6 +252,21 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
       })
     })
   }, [filtered, search])
+
+  const hayFiltrosActivos = Boolean(
+    filter !== "todos" || modalidad !== "todos" || searchInput || ciudadId || mes || anio
+  )
+
+  const limpiarTodosLosFiltros = () => {
+    setFilter("todos")
+    setModalidad("todos")
+    setSearchInput("")
+    setSearch("")
+    setCiudadId("")
+    setMes("")
+    setAnio("")
+    setRangoFechas({})
+  }
 
   const paginatedGroups = useMemo(() => {
     const start = (clientPage - 1) * CLIENT_PER_PAGE
@@ -268,6 +343,24 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
               <option value="virtual">Virtual</option>
             </select>
 
+            {/* Ciudad Selector */}
+            <CityFilterSelect
+              ciudades={ciudadesDisponibles}
+              value={ciudadId}
+              onChange={setCiudadId}
+            />
+
+            {/* Mes y Año Popover */}
+            <MonthFilterPopover
+              mes={mes}
+              anio={anio}
+              onChange={(m, y, rango) => {
+                setMes(m)
+                setAnio(y)
+                setRangoFechas(rango)
+              }}
+            />
+
             {/* Input de Búsqueda */}
             <div className="relative flex-1 sm:w-60">
               <HugeiconsIcon
@@ -295,6 +388,18 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
                 </button>
               )}
             </div>
+
+            {/* Botón limpiar filtros cuando hay alguno activo */}
+            {hayFiltrosActivos && (
+              <button
+                type="button"
+                onClick={limpiarTodosLosFiltros}
+                className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+                title="Limpiar todos los filtros"
+              >
+                Limpiar
+              </button>
+            )}
           </div>
         </div>
       </div>

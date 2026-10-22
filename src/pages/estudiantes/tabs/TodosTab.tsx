@@ -240,9 +240,9 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
 
       <ConfirmationModal
         isOpen={confirmDeleteOpen}
-        title="Eliminar estudiantes"
-        message={`Estas seguro de eliminar ${selectedArray.length} estudiante(s)? Esta accion eliminara sus matriculas, calificaciones y cuentas financieras. No se puede deshacer.`}
-        confirmText="Eliminar"
+        title="¿Eliminar estudiante(s) por completo?"
+        message={`¿Estás seguro de eliminar definitivamente a ${selectedArray.length} estudiante(s)? Esta acción es irreversible y borrará por completo a los estudiantes de la base de datos, incluyendo todas sus matrículas, calificaciones, asistencias, cuentas por cobrar, líneas de pago, archivos y cualquier deuda pendiente asociada.`}
+        confirmText="Eliminar por completo"
         cancelText="Cancelar"
         isDangerous
         isLoading={deleting}

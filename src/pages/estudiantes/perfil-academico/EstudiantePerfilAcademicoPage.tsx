@@ -29,6 +29,8 @@ export function EstudiantePerfilAcademicoPage() {
   const navigate = useNavigate()
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
+  const [deleteEstudianteOpen, setDeleteEstudianteOpen] = useState(false)
+  const [deletingEstudiante, setDeletingEstudiante] = useState(false)
   const [cedulaPurgado, setCedulaPurgado] = useState(false)
   const [showCedulaModal, setShowCedulaModal] = useState(false)
   const {
@@ -119,6 +121,21 @@ export function EstudiantePerfilAcademicoPage() {
     }
   }
 
+  const handleDeleteEstudiante = async () => {
+    if (!id) return
+    setDeletingEstudiante(true)
+    try {
+      await estudiantesService.deleteStudent(id)
+      toast.success("Estudiante y todos sus registros eliminados exitosamente")
+      navigate("/estudiantes")
+    } catch (err) {
+      console.error("Error al eliminar estudiante:", err)
+      toast.error("Error al eliminar estudiante. Intenta de nuevo.")
+    } finally {
+      setDeletingEstudiante(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f8f9ff]/60 pb-16">
       {/* TOP CONTEXT BAR */}
@@ -151,6 +168,7 @@ export function EstudiantePerfilAcademicoPage() {
           estadoPago={estadoPago}
           saldoPendiente={saldoPendiente}
           onInscribir={() => id && navigate(`/estudiantes/${id}/inscribir`)}
+          onEliminarEstudiante={() => setDeleteEstudianteOpen(true)}
         />
 
         {/* IDENTITY DOCUMENT COMPACT STRIP */}
@@ -361,6 +379,20 @@ export function EstudiantePerfilAcademicoPage() {
         icon="danger"
         onConfirm={handleDeleteCedula}
         onCancel={() => setDeleteCedulaOpen(false)}
+      />
+
+      {/* Confirmation modal for student deletion */}
+      <ConfirmationModal
+        isOpen={deleteEstudianteOpen}
+        title="¿Eliminar estudiante por completo?"
+        message={`¿Estás seguro de que deseas eliminar definitivamente a ${name}? Esta acción es irreversible y borrará por completo al estudiante de la base de datos, incluyendo todas sus matrículas, calificaciones, asistencias, cuentas por cobrar, líneas de pago y archivos. Se eliminarán todas las deudas o valores pendientes asociados.`}
+        confirmText="Eliminar por completo"
+        cancelText="Cancelar"
+        isDangerous
+        isLoading={deletingEstudiante}
+        icon="trash"
+        onConfirm={handleDeleteEstudiante}
+        onCancel={() => setDeleteEstudianteOpen(false)}
       />
 
       {/* Full image viewer for cédula */}

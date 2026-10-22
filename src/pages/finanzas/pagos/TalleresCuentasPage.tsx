@@ -14,6 +14,8 @@ import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
 import { Skeleton } from "@/components/ui/skeleton"
+import { MonthFilterPopover } from "@/components/finanzas/MonthFilterPopover"
+import { CityFilterSelect, type CityOption } from "@/components/finanzas/CityFilterSelect"
 
 export function TalleresCuentasPage() {
   const navigate = useNavigate()
@@ -21,6 +23,11 @@ export function TalleresCuentasPage() {
   const [cuentas, setCuentas] = useState<any[]>([])
   const [filter, setFilter] = useState<string>("todos")
   const [modalidad, setModalidad] = useState<string>("todos")
+  const [ciudadId, setCiudadId] = useState<string>("")
+  const [mes, setMes] = useState<string>("")
+  const [anio, setAnio] = useState<string>("")
+  const [rangoFechas, setRangoFechas] = useState<{ fecha_desde?: string; fecha_hasta?: string }>({})
+  const [ciudadesDisponibles, setCiudadesDisponibles] = useState<CityOption[]>([])
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [clientPage, setClientPage] = useState(1)
@@ -33,14 +40,18 @@ export function TalleresCuentasPage() {
 
   useEffect(() => {
     setClientPage(1)
-  }, [filter, modalidad, search])
+  }, [filter, modalidad, search, ciudadId, rangoFechas])
 
   useEffect(() => {
     const load = async () => {
       try {
-        const params: any = { origen: "taller", per_page: 50 }
+        const params: any = { origen: "taller", per_page: 500 }
         if (modalidad !== "todos") params.modalidad = modalidad
         if (search) params.search = search
+        if (ciudadId) params.ciudad_id = ciudadId
+        if (rangoFechas.fecha_desde) params.fecha_desde = rangoFechas.fecha_desde
+        if (rangoFechas.fecha_hasta) params.fecha_hasta = rangoFechas.fecha_hasta
+
         const [resumenData, cuentasData] = await Promise.all([
           financeService.getResumen(),
           financeService.getCuentas(params),
@@ -54,6 +65,26 @@ export function TalleresCuentasPage() {
           }
         })
         setCuentas(merged)
+
+        // Registrar ciudades de los talleres registrados
+        const mapCiudades = new Map<string, CityOption>()
+        merged.forEach((c: any) => {
+          const ciudad = c.inscripcion_taller?.taller?.ciudad || (c.ciudad ? { id: c.ciudad_id || c.ciudad, nombre: c.ciudad } : null)
+          if (ciudad?.nombre) {
+            const cid = String(ciudad.id ?? ciudad.nombre)
+            if (!mapCiudades.has(cid)) {
+              mapCiudades.set(cid, { id: ciudad.id ?? cid, nombre: ciudad.nombre })
+            }
+          }
+        })
+        if (mapCiudades.size > 0) {
+          setCiudadesDisponibles((prev) => {
+            const combined = new Map<string, CityOption>()
+            prev.forEach((p) => combined.set(String(p.id), p))
+            mapCiudades.forEach((v, k) => combined.set(k, v))
+            return Array.from(combined.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))
+          })
+        }
       } catch {
         toast.error("Error al cargar los talleres")
       } finally {
@@ -61,20 +92,26 @@ export function TalleresCuentasPage() {
       }
     }
     load()
-  }, [modalidad, search])
+  }, [modalidad, search, ciudadId, rangoFechas])
 
   const grouped = useMemo(() => {
     const groups: Record<string, any> = {}
     cuentas.forEach((c) => {
-      const name = c.inscripcion_taller?.taller?.nombre || c.taller_nombre || "Taller"
+      const taller = c.inscripcion_taller?.taller
+      const name = taller?.nombre || c.taller_nombre || "Taller"
       if (!groups[name]) {
         groups[name] = {
           total: 0,
           cobrado: 0,
           saldo: 0,
           personas: 0,
-          tallerId: c.inscripcion_taller?.taller?.id || c.taller_id || "",
-          modalidad: c.inscripcion_taller?.taller?.modalidad || "",
+          tallerId: taller?.id || c.taller_id || "",
+          modalidad: taller?.modalidad || "",
+          ciudad: taller?.ciudad?.nombre || "",
+          ciudadId: taller?.ciudad_id || taller?.ciudad?.id || "",
+          fecha: taller?.fecha || "",
+          fechaFin: taller?.fecha_fin || "",
+          entries: [],
         }
       }
       const g = groups[name]
@@ -82,6 +119,7 @@ export function TalleresCuentasPage() {
       g.cobrado += Number(c.monto_abonado || 0)
       g.saldo += Number(c.saldo_pendiente || 0)
       g.personas += 1
+      g.entries.push(c)
     })
     return Object.entries(groups)
   }, [cuentas])
@@ -89,18 +127,56 @@ export function TalleresCuentasPage() {
   const filtered = useMemo(() => {
     return grouped.filter(([, g]) => {
       const pct = g.total > 0 ? (g.cobrado / g.total) * 100 : 0
-      if (filter === "pendiente") return g.saldo > 0 && pct < 50
-      if (filter === "en_progreso") return g.saldo > 0 && pct >= 50 && pct < 100
-      if (filter === "completado") return g.saldo <= 0
+      if (filter === "pendiente" && !(g.saldo > 0 && pct < 50)) return false
+      if (filter === "en_progreso" && !(g.saldo > 0 && pct >= 50 && pct < 100)) return false
+      if (filter === "completado" && !(g.saldo <= 0)) return false
+
+      // Filtro Ciudad
+      if (ciudadId && String(g.ciudadId) !== String(ciudadId)) {
+        return false
+      }
+
+      // Filtro Rango de Fechas / Mes:
+      // Aparecen todos los que se encuentren entre esas fechas no importan si acabaron, empezaron o estan por comenzar
+      if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+        const inicio = g.fecha ? g.fecha.split("T")[0] : null
+        const fin = g.fechaFin ? g.fechaFin.split("T")[0] : null
+
+        if (inicio && inicio > rangoFechas.fecha_hasta) return false
+        if (fin && fin < rangoFechas.fecha_desde) return false
+        if (!fin && inicio && inicio < rangoFechas.fecha_desde) {
+          const tieneMovimientoEnRango = g.entries.some((e: any) => {
+            const fechaRef = e.created_at ? e.created_at.split("T")[0] : null
+            return fechaRef && fechaRef >= rangoFechas.fecha_desde! && fechaRef <= rangoFechas.fecha_hasta!
+          })
+          if (!tieneMovimientoEnRango) return false
+        }
+      }
+
       return true
     })
-  }, [grouped, filter])
+  }, [grouped, filter, ciudadId, rangoFechas])
 
   const searchFiltered = useMemo(() => {
     if (!search) return filtered
     const q = search.toLowerCase().trim()
     return filtered.filter(([name]) => name.toLowerCase().includes(q))
   }, [filtered, search])
+
+  const hayFiltrosActivos = Boolean(
+    filter !== "todos" || modalidad !== "todos" || searchInput || ciudadId || mes || anio
+  )
+
+  const limpiarTodosLosFiltros = () => {
+    setFilter("todos")
+    setModalidad("todos")
+    setSearchInput("")
+    setSearch("")
+    setCiudadId("")
+    setMes("")
+    setAnio("")
+    setRangoFechas({})
+  }
 
   const paginatedGroups = useMemo(() => {
     const start = (clientPage - 1) * CLIENT_PER_PAGE
@@ -177,6 +253,24 @@ export function TalleresCuentasPage() {
               <option value="virtual">Virtual</option>
             </select>
 
+            {/* Ciudad Selector */}
+            <CityFilterSelect
+              ciudades={ciudadesDisponibles}
+              value={ciudadId}
+              onChange={setCiudadId}
+            />
+
+            {/* Mes y Año Popover */}
+            <MonthFilterPopover
+              mes={mes}
+              anio={anio}
+              onChange={(m, y, rango) => {
+                setMes(m)
+                setAnio(y)
+                setRangoFechas(rango)
+              }}
+            />
+
             {/* Input de Búsqueda */}
             <div className="relative flex-1 sm:w-60">
               <HugeiconsIcon
@@ -204,6 +298,18 @@ export function TalleresCuentasPage() {
                 </button>
               )}
             </div>
+
+            {/* Botón limpiar filtros */}
+            {hayFiltrosActivos && (
+              <button
+                type="button"
+                onClick={limpiarTodosLosFiltros}
+                className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+                title="Limpiar todos los filtros"
+              >
+                Limpiar
+              </button>
+            )}
           </div>
         </div>
       </div>

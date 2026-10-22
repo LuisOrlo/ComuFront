@@ -7,6 +7,7 @@ import {
   GraduationCapIcon,
   AddCircleIcon,
   UserAccountIcon,
+  Delete02Icon,
 } from "@hugeicons/core-free-icons"
 
 interface ProfileHeaderProps {
@@ -27,6 +28,7 @@ interface ProfileHeaderProps {
   onUpdate?: (fields: Record<string, string>) => void
   saving?: boolean
   onInscribir?: () => void
+  onEliminarEstudiante?: () => void
 }
 
 export function ProfileHeader({
@@ -34,6 +36,7 @@ export function ProfileHeader({
   totalCursos,
   estadoPago,
   onInscribir,
+  onEliminarEstudiante,
 }: ProfileHeaderProps) {
   const initials =
     estudiante.nombre_completo
@@ -178,15 +181,29 @@ export function ProfileHeader({
           </div>
         </div>
 
-        {/* Botón Acción principal: Inscribir a curso/taller */}
-        <button
-          type="button"
-          onClick={onInscribir}
-          className="h-10 px-4 rounded-xl bg-[#fd761a] hover:bg-[#ea580c] active:scale-[0.99] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-xs w-full sm:w-auto cursor-pointer"
-        >
-          <HugeiconsIcon icon={AddCircleIcon} size={16} />
-          <span>Inscribir a curso/taller</span>
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {onEliminarEstudiante && (
+            <button
+              type="button"
+              onClick={onEliminarEstudiante}
+              className="h-10 px-3.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 active:scale-[0.99] font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              title="Eliminar estudiante por completo"
+            >
+              <HugeiconsIcon icon={Delete02Icon} size={16} />
+              <span>Eliminar</span>
+            </button>
+          )}
+
+          {/* Botón Acción principal: Inscribir a curso/taller */}
+          <button
+            type="button"
+            onClick={onInscribir}
+            className="h-10 px-4 rounded-xl bg-[#fd761a] hover:bg-[#ea580c] active:scale-[0.99] text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-all shadow-xs w-full sm:w-auto cursor-pointer"
+          >
+            <HugeiconsIcon icon={AddCircleIcon} size={16} />
+            <span>Inscribir a curso/taller</span>
+          </button>
+        </div>
       </div>
     </div>
   )

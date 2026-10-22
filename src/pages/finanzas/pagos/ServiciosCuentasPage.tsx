@@ -4,7 +4,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AiFolderIcon,
   Cancel01Icon,
-  LayersIcon,
   Search01Icon,
 } from "@hugeicons/core-free-icons"
 import {
@@ -41,6 +40,8 @@ import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
 import { PaginationControls } from "@/components/table/PaginationControls"
+import { MonthFilterPopover } from "@/components/finanzas/MonthFilterPopover"
+import { CityFilterSelect, type CityOption } from "@/components/finanzas/CityFilterSelect"
 
 const FK_A_TIPO: Record<string, string> = {
   reserva_podcast_id: "Podcast",
@@ -178,7 +179,61 @@ interface ServicioRow {
   cobrado: number
   saldo: number
   estado: EstadoServicio
+  fecha?: string | null
+  fechaFin?: string | null
+  ciudad?: string | null
+  ciudadId?: string | number | null
   entry: any
+}
+
+function extractServicioFecha(c: any): { fecha?: string | null; fechaFin?: string | null } {
+  if (c.servicio_streaming?.fecha_evento) {
+    return { fecha: c.servicio_streaming.fecha_evento }
+  }
+  if (c.reserva_podcast?.fecha_reserva) {
+    return { fecha: c.reserva_podcast.fecha_reserva }
+  }
+  if (c.reserva_aula?.fecha_reserva) {
+    return { fecha: c.reserva_aula.fecha_reserva }
+  }
+  if (c.alquiler_equipo) {
+    return {
+      fecha: c.alquiler_equipo.fecha_entrega || c.alquiler_equipo.fecha_inicio,
+      fechaFin: c.alquiler_equipo.fecha_devolucion_esperada || c.alquiler_equipo.fecha_fin,
+    }
+  }
+  if (c.reserva_radio?.fecha_reserva) {
+    return { fecha: c.reserva_radio.fecha_reserva }
+  }
+  if (c.edicion_video) {
+    return { fecha: c.edicion_video.fecha_entrega || c.edicion_video.fecha_recibo }
+  }
+  if (c.created_at) {
+    return { fecha: c.created_at }
+  }
+  return {}
+}
+
+function extractServicioCiudad(c: any): { ciudad?: string | null; ciudadId?: string | number | null } {
+  if (c.servicio_streaming?.ciudad) {
+    return {
+      ciudad: c.servicio_streaming.ciudad.nombre,
+      ciudadId: c.servicio_streaming.ciudad_id || c.servicio_streaming.ciudad.id,
+    }
+  }
+  if (c.reserva_aula?.aula?.ciudad) {
+    return {
+      ciudad: c.reserva_aula.aula.ciudad.nombre,
+      ciudadId: c.reserva_aula.aula.ciudad.id,
+    }
+  }
+  if (c.ciudad) {
+    return {
+      ciudad: typeof c.ciudad === "object" ? c.ciudad.nombre : c.ciudad,
+      ciudadId: c.ciudad_id || (typeof c.ciudad === "object" ? c.ciudad.id : undefined),
+    }
+  }
+  return {}
 }
 
 function getServicioTipo(entry: any): string {
@@ -231,10 +286,14 @@ export function ServiciosCuentasPage() {
   const [cuentas, setCuentas] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [filter, setFilter] = useState("todos")
+  const [ciudadId, setCiudadId] = useState<string>("")
+  const [mes, setMes] = useState<string>("")
+  const [anio, setAnio] = useState<string>("")
+  const [rangoFechas, setRangoFechas] = useState<{ fecha_desde?: string; fecha_hasta?: string }>({})
+  const [ciudadesDisponibles, setCiudadesDisponibles] = useState<CityOption[]>([])
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [tipo, setTipo] = useState("todos")
-  const [dense, setDense] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 })
 
@@ -245,20 +304,49 @@ export function ServiciosCuentasPage() {
 
   useEffect(() => {
     setPagination(p => ({ ...p, pageIndex: 0 }))
-  }, [filter, search, tipo])
+  }, [filter, search, tipo, ciudadId, rangoFechas])
 
   useEffect(() => {
+    const params: Record<string, string | number | undefined> = {
+      per_page: 500,
+      origen: "servicio",
+      search: search || undefined,
+      ciudad_id: ciudadId || undefined,
+      fecha_desde: rangoFechas.fecha_desde,
+      fecha_hasta: rangoFechas.fecha_hasta,
+    }
     Promise.all([
-      financeService.getCuentas({ per_page: 100, origen: "servicio", search }),
+      financeService.getCuentas(params),
       financeService.getResumen(),
     ])
       .then(([cuentasData, resumenData]) => {
-        setCuentas(cuentasData.data ?? [])
+        const items = cuentasData.data ?? []
+        setCuentas(items)
         setStats(resumenData)
+
+        // Registrar ciudades de los servicios que cuentan con ciudad registrada
+        const mapCiudades = new Map<string, CityOption>()
+        items.forEach((c: any) => {
+          const { ciudad, ciudadId: cid } = extractServicioCiudad(c)
+          if (ciudad) {
+            const key = String(cid ?? ciudad)
+            if (!mapCiudades.has(key)) {
+              mapCiudades.set(key, { id: cid ?? key, nombre: ciudad })
+            }
+          }
+        })
+        if (mapCiudades.size > 0) {
+          setCiudadesDisponibles((prev) => {
+            const combined = new Map<string, CityOption>()
+            prev.forEach((p) => combined.set(String(p.id), p))
+            mapCiudades.forEach((v, k) => combined.set(k, v))
+            return Array.from(combined.values()).sort((a, b) => a.nombre.localeCompare(b.nombre))
+          })
+        }
       })
       .catch(() => toast.error("Error al cargar cuentas de servicios"))
       .finally(() => setLoading(false))
-  }, [search])
+  }, [search, ciudadId, rangoFechas])
 
   const rows = useMemo(() => {
     const list: ServicioRow[] = []
@@ -270,6 +358,8 @@ export function ServiciosCuentasPage() {
       const total = Number(c.monto_total || 0)
       const cobrado = Number(c.monto_abonado || 0)
       const saldo = Number(c.saldo_pendiente || 0)
+      const { fecha, fechaFin } = extractServicioFecha(c)
+      const { ciudad, ciudadId: cid } = extractServicioCiudad(c)
       list.push({
         key: c.cuenta_cobrar_id || c.id,
         tipo,
@@ -279,6 +369,10 @@ export function ServiciosCuentasPage() {
         cobrado,
         saldo,
         estado: getEstado(total, cobrado, saldo),
+        fecha,
+        fechaFin,
+        ciudad,
+        ciudadId: cid,
         entry: c,
       })
     })
@@ -290,6 +384,8 @@ export function ServiciosCuentasPage() {
         const total = Number(item.monto_total || 0)
         const cobrado = Number(item.monto_abonado || 0)
         const saldo = Number(item.saldo_pendiente || 0)
+        const { fecha, fechaFin } = extractServicioFecha(item)
+        const { ciudad, ciudadId: cid } = extractServicioCiudad(item)
         list.push({
           key: `sc-${item.tipo || "x"}-${item.id}`,
           tipo: label,
@@ -299,6 +395,10 @@ export function ServiciosCuentasPage() {
           cobrado,
           saldo,
           estado: getEstado(total, cobrado, saldo),
+          fecha,
+          fechaFin,
+          ciudad,
+          ciudadId: cid,
           entry: { ...item, _sin_cuenta: true },
         })
       })
@@ -315,6 +415,25 @@ export function ServiciosCuentasPage() {
   const searchFiltered = useMemo(() => {
     let list = filtered
     if (tipo !== "todos") list = list.filter((r) => r.tipo === tipo)
+
+    // Filtro Ciudad
+    if (ciudadId) {
+      list = list.filter((r) => r.ciudadId && String(r.ciudadId) === String(ciudadId))
+    }
+
+    // Filtro Rango de Fechas / Mes:
+    // Aparecen todos los que se encuentren entre esas fechas no importan si acabaron, empezaron o estan por comenzar
+    if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+      list = list.filter((r) => {
+        const inicio = r.fecha ? r.fecha.split("T")[0] : null
+        const fin = r.fechaFin ? r.fechaFin.split("T")[0] : null
+        if (inicio && inicio > rangoFechas.fecha_hasta!) return false
+        if (fin && fin < rangoFechas.fecha_desde!) return false
+        if (!fin && inicio && inicio < rangoFechas.fecha_desde!) return false
+        return true
+      })
+    }
+
     if (search) {
       const q = search.toLowerCase().trim()
       list = list.filter((r) =>
@@ -324,7 +443,22 @@ export function ServiciosCuentasPage() {
       )
     }
     return list
-  }, [filtered, search, tipo])
+  }, [filtered, search, tipo, ciudadId, rangoFechas])
+
+  const hayFiltrosActivos = Boolean(
+    filter !== "todos" || tipo !== "todos" || searchInput || ciudadId || mes || anio
+  )
+
+  const limpiarTodosLosFiltros = () => {
+    setFilter("todos")
+    setTipo("todos")
+    setSearchInput("")
+    setSearch("")
+    setCiudadId("")
+    setMes("")
+    setAnio("")
+    setRangoFechas({})
+  }
 
   const tipoOptions = useMemo(() => {
     return Array.from(new Set(rows.map((r) => r.tipo))).sort()
@@ -559,6 +693,26 @@ export function ServiciosCuentasPage() {
               ))}
             </select>
 
+            {/* Ciudad Selector (solo si hay servicios con ciudad registrada) */}
+            {ciudadesDisponibles.length > 0 && (
+              <CityFilterSelect
+                ciudades={ciudadesDisponibles}
+                value={ciudadId}
+                onChange={setCiudadId}
+              />
+            )}
+
+            {/* Mes y Año Popover */}
+            <MonthFilterPopover
+              mes={mes}
+              anio={anio}
+              onChange={(m, y, rango) => {
+                setMes(m)
+                setAnio(y)
+                setRangoFechas(rango)
+              }}
+            />
+
             {/* Input de Búsqueda */}
             <div className="relative flex-1 sm:w-60">
               <HugeiconsIcon
@@ -587,20 +741,17 @@ export function ServiciosCuentasPage() {
               )}
             </div>
 
-            {/* Botón de Densidad */}
-            <button
-              type="button"
-              onClick={() => setDense((d) => !d)}
-              title={dense ? "Vista normal" : "Vista compacta"}
-              className={cn(
-                "size-9 rounded-xl border flex items-center justify-center transition-all",
-                dense
-                  ? "bg-orange-50 border-orange-200 text-[#fd761a]"
-                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-              )}
-            >
-              <HugeiconsIcon icon={LayersIcon} size={16} />
-            </button>
+            {/* Botón limpiar filtros */}
+            {hayFiltrosActivos && (
+              <button
+                type="button"
+                onClick={limpiarTodosLosFiltros}
+                className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap"
+                title="Limpiar todos los filtros"
+              >
+                Limpiar
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -677,8 +828,7 @@ export function ServiciosCuentasPage() {
                         <td
                           key={cell.id}
                           className={cn(
-                            "px-4",
-                            dense ? "py-2" : "py-3.5",
+                            "px-4 py-3.5",
                             alignRight && "text-right",
                             isCenter && "text-center"
                           )}

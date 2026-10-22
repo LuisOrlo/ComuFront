@@ -62,6 +62,7 @@ export function CursoDetailPage() {
   const [modulos, setModulos] = useState<ModuloData[]>([])
   const [matriculas, setMatriculas] = useState<MatriculaDetallada[]>([])
   const [matriculasMeta, setMatriculasMeta] = useState({ total: 0, per_page: 15, current_page: 1, last_page: 1 })
+  const [matriculasLoaded, setMatriculasLoaded] = useState(false)
   const [matriculasSearch, setMatriculasSearch] = useState("")
   const [loadingMatriculas, setLoadingMatriculas] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -85,17 +86,13 @@ export function CursoDetailPage() {
       ])
       setCurso(c)
       setModulos(mods as unknown as ModuloData[])
+      setMatriculasMeta(prev => ({ ...prev, total: c.estudiantes }))
       setLoadError(false)
     } catch {
       setLoadError(true)
       toast.error("Error al cargar curso")
     } finally { setLoading(false) }
   }
-
-  useEffect(() => {  
-    if (id) cargarTodo()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
 
   const cargarMatriculas = useCallback(async (page = 1, buscar = matriculasSearch) => {
     if (!id) return
@@ -104,14 +101,27 @@ export function CursoDetailPage() {
       const response = await cursosService.getMatriculasCursoPaginadas(id, page, buscar)
       setMatriculas(response.data)
       setMatriculasMeta(response.meta)
+      setMatriculasLoaded(true)
+      if (!buscar) {
+        setCurso(prev => prev ? { ...prev, estudiantes: response.meta.total } : prev)
+      }
     } catch {
       toast.error("Error al cargar estudiantes del curso")
     } finally { setLoadingMatriculas(false) }
   }, [id, matriculasSearch])
 
+  useEffect(() => {  
+    if (id) {
+      cargarTodo()
+      cargarMatriculas(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
   useEffect(() => {
     if (tab !== "estudiantes" && tab !== "pagos") return
-    const timer = window.setTimeout(() => { void cargarMatriculas(1) }, matriculasSearch ? 300 : 0)
+    if (!matriculasSearch) return
+    const timer = window.setTimeout(() => { void cargarMatriculas(1) }, 300)
     return () => window.clearTimeout(timer)
   }, [tab, matriculasSearch, cargarMatriculas])
 
@@ -147,10 +157,12 @@ export function CursoDetailPage() {
   // Calcular progreso
   const progreso = curso.capacidad > 0 ? Math.round((curso.estudiantes / curso.capacidad) * 100) : 0
 
+  const totalEstudiantes = matriculasLoaded ? matriculasMeta.total : curso.estudiantes
+
   const tabs = [
     { key: "info" as Tab, label: "Información", icon: CalendarIcon },
     { key: "modulos" as Tab, label: "Módulos", icon: NoteIcon },
-    { key: "estudiantes" as Tab, label: `Estudiantes (${matriculasMeta.total || curso.estudiantes})`, icon: UserGroupIcon },
+    { key: "estudiantes" as Tab, label: `Estudiantes (${totalEstudiantes})`, icon: UserGroupIcon },
     { key: "asistencia" as Tab, label: "Asistencia", icon: CheckmarkCircle01Icon },
     { key: "pagos" as Tab, label: "Pagos", icon: Money01Icon },
   ]
@@ -463,6 +475,10 @@ export function CursoDetailPage() {
                   matriculas={matriculas}
                   meta={matriculasMeta}
                   onPageChange={(page) => { void cargarMatriculas(page) }}
+                  onMatriculaDeleted={() => {
+                    void cargarMatriculas(matriculasMeta?.current_page || 1)
+                    void cargarTodo()
+                  }}
                 />
               )}
             </div>
