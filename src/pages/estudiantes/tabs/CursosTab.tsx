@@ -21,6 +21,7 @@ import {
 import { cursosService, type Curso } from "@/services/cursos.service"
 import { PaginationControls } from "@/components/table/PaginationControls"
 import { CiudadBadge, ModalidadBadge, EstadoBadge } from "../components/Badges"
+import { MonthFilterPopover } from "@/components/finanzas/MonthFilterPopover"
 
 const MODALIDAD_OPTIONS = [
   { value: "", label: "Todas las modalidades" },
@@ -40,6 +41,10 @@ export function CursosTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [search, setSearch] = useState("")
+  const [ciudadFilter, setCiudadFilter] = useState<string>("")
+  const [filtroMes, setFiltroMes] = useState<string>("")
+  const [filtroAnio, setFiltroAnio] = useState<string>("")
+  const [rangoFechas, setRangoFechas] = useState<{ fecha_desde?: string; fecha_hasta?: string }>({})
   const [modalidadFilter, setModalidadFilter] = useState<string>("")
   const [estadoFilter, setEstadoFilter] = useState<string>("")
   const [sorting, setSorting] = useState<SortingState>([])
@@ -63,15 +68,64 @@ export function CursosTab() {
     loadData()
   }, [loadData])
 
+  // Solo ciudades que están registradas en los cursos activos/cargados
+  const ciudadesDisponibles = useMemo(() => {
+    const set = new Set<string>()
+    cursos.forEach((c) => {
+      if (c.ciudad && c.ciudad.trim()) {
+        set.add(c.ciudad.trim())
+      }
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }))
+  }, [cursos])
+
   const filtered = useMemo(() => {
     return cursos.filter((c) => {
-      const s = search.toLowerCase()
-      const nameMatch = !s || c.nombre.toLowerCase().includes(s)
-      const modMatch = !modalidadFilter || c.modalidad === modalidadFilter
-      const estMatch = !estadoFilter || c.estado === estadoFilter
-      return nameMatch && modMatch && estMatch
+      // 1. Buscador (por nombre o profesor)
+      if (search.trim()) {
+        const s = search.toLowerCase().trim()
+        const nameMatch = c.nombre?.toLowerCase().includes(s)
+        const instMatch = c.instructor?.toLowerCase().includes(s)
+        if (!nameMatch && !instMatch) return false
+      }
+
+      // 2. Filtro Ciudad (solo registradas)
+      if (ciudadFilter) {
+        if (!c.ciudad || c.ciudad.toLowerCase().trim() !== ciudadFilter.toLowerCase().trim()) {
+          return false
+        }
+      }
+
+      // 3. Modalidad
+      if (modalidadFilter && c.modalidad !== modalidadFilter) {
+        return false
+      }
+
+      // 4. Estado
+      if (estadoFilter && c.estado !== estadoFilter) {
+        return false
+      }
+
+      // 5. Filtro por Fecha (mes y año):
+      // Deben aparecer todos los cursos que se encuentren entre esas fechas,
+      // sin importar si empezaron antes, terminan después, o están en progreso.
+      if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+        const inicio = c.fechaInicio ? c.fechaInicio.split("T")[0] : null
+        const fin = c.fechaFin ? c.fechaFin.split("T")[0] : null
+
+        if (!inicio && !fin) return false
+
+        const cursoInicio = inicio || fin!
+        const cursoFin = fin || inicio!
+
+        // Intersección de intervalos
+        const solapa = cursoInicio <= rangoFechas.fecha_hasta && cursoFin >= rangoFechas.fecha_desde
+        if (!solapa) return false
+      }
+
+      return true
     })
-  }, [cursos, search, modalidadFilter, estadoFilter])
+  }, [cursos, search, ciudadFilter, modalidadFilter, estadoFilter, rangoFechas])
 
   const columns = useMemo<ColumnDef<Curso>[]>(
     () => [
@@ -217,9 +271,9 @@ export function CursosTab() {
         </div>
       </div>
 
-      <div className="p-4 rounded-xl bg-white shadow-sm mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-[#c6c6cd]/15">
+      <div className="p-4 rounded-xl bg-white shadow-sm mb-4 flex flex-col gap-3 border border-[#c6c6cd]/15">
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-72">
             <HugeiconsIcon
               icon={Search01Icon}
               size={16}
@@ -227,7 +281,7 @@ export function CursosTab() {
             />
             <input
               type="text"
-              placeholder="Buscar curso..."
+              placeholder="Buscar curso o instructor..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
@@ -236,6 +290,40 @@ export function CursosTab() {
               className="w-full h-10 pl-9 pr-3 text-xs rounded-lg outline-none bg-[#eff4ff] text-[#0b1c30] placeholder:text-[#45464d] focus:bg-white focus:ring-2 focus:ring-[#fd761a] transition-all"
             />
           </div>
+
+          {/* Filtro Ciudad (solo ciudades que tienen cursos registrados) */}
+          <div className="relative">
+            <select
+              value={ciudadFilter}
+              onChange={(e) => {
+                setCiudadFilter(e.target.value)
+                setPagination((p) => ({ ...p, pageIndex: 0 }))
+              }}
+              className="h-10 pl-3 pr-8 text-xs font-semibold rounded-lg outline-none bg-[#eff4ff] text-[#0b1c30] cursor-pointer focus:bg-white focus:ring-2 focus:ring-[#fd761a] appearance-none"
+            >
+              <option value="">Todas las ciudades</option>
+              {ciudadesDisponibles.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#45464d]" />
+          </div>
+
+          {/* Filtro Fecha: Mes y Año */}
+          <MonthFilterPopover
+            mes={filtroMes}
+            anio={filtroAnio}
+            onChange={(m, a, r) => {
+              setFiltroMes(m)
+              setFiltroAnio(a)
+              setRangoFechas(r)
+              setPagination((p) => ({ ...p, pageIndex: 0 }))
+            }}
+          />
+
+          {/* Modalidad */}
           <div className="relative">
             <select
               value={modalidadFilter}
@@ -253,6 +341,8 @@ export function CursosTab() {
             </select>
             <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#45464d]" />
           </div>
+
+          {/* Estado */}
           <div className="relative">
             <select
               value={estadoFilter}
@@ -271,6 +361,94 @@ export function CursosTab() {
             <HugeiconsIcon icon={ArrowDown01Icon} size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#45464d]" />
           </div>
         </div>
+
+        {/* Chips de filtros activos y opción de limpiar */}
+        {(search || ciudadFilter || filtroMes || filtroAnio || modalidadFilter || estadoFilter) && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#c6c6cd]/15 text-xs">
+            <span className="text-[11px] text-[#76777d]">Activos:</span>
+            {search && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#0b1c30] border border-[#c6c6cd]/30 text-xs font-medium">
+                <span>Buscar: "{search}"</span>
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="hover:text-red-600 font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {ciudadFilter && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#0b1c30] border border-[#c6c6cd]/30 text-xs font-medium">
+                <span>Ciudad: {ciudadFilter}</span>
+                <button
+                  type="button"
+                  onClick={() => setCiudadFilter("")}
+                  className="hover:text-red-600 font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {(filtroMes || filtroAnio) && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#0b1c30] border border-[#c6c6cd]/30 text-xs font-medium">
+                <span>
+                  Fecha: {rangoFechas.fecha_desde ? `${rangoFechas.fecha_desde} a ${rangoFechas.fecha_hasta}` : `Año ${filtroAnio}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFiltroMes("")
+                    setFiltroAnio("")
+                    setRangoFechas({})
+                  }}
+                  className="hover:text-red-600 font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {modalidadFilter && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#0b1c30] border border-[#c6c6cd]/30 text-xs font-medium">
+                <span>Modalidad: {modalidadFilter}</span>
+                <button
+                  type="button"
+                  onClick={() => setModalidadFilter("")}
+                  className="hover:text-red-600 font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {estadoFilter && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#eff4ff] text-[#0b1c30] border border-[#c6c6cd]/30 text-xs font-medium">
+                <span>Estado: {estadoFilter}</span>
+                <button
+                  type="button"
+                  onClick={() => setEstadoFilter("")}
+                  className="hover:text-red-600 font-bold ml-0.5"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("")
+                setCiudadFilter("")
+                setFiltroMes("")
+                setFiltroAnio("")
+                setRangoFechas({})
+                setModalidadFilter("")
+                setEstadoFilter("")
+              }}
+              className="text-xs text-[#fd761a] hover:underline font-semibold ml-1 cursor-pointer"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
       </div>
 
       {loading ? (

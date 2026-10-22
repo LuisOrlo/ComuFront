@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router"
 import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useStudentProfile } from "../hooks/useStudentProfile"
 import { ProfileHeader } from "../sections/ProfileHeader"
 import { InfoTabContent } from "../sections/InfoTabContent"
@@ -27,6 +28,7 @@ import {
 export function EstudiantePerfilAcademicoPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [deleteEstudianteOpen, setDeleteEstudianteOpen] = useState(false)
@@ -126,6 +128,9 @@ export function EstudiantePerfilAcademicoPage() {
     setDeletingEstudiante(true)
     try {
       await estudiantesService.deleteStudent(id)
+      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+      queryClient.invalidateQueries({ queryKey: ["cursos"] })
+      queryClient.invalidateQueries({ queryKey: ["talleres"] })
       toast.success("Estudiante y todos sus registros eliminados exitosamente")
       navigate("/estudiantes")
     } catch (err) {

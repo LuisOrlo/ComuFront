@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { SlidersHorizontal, ChevronDown, Calendar, Search, RotateCcw, X, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +32,20 @@ const CATEGORIAS = [
 
 export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) {
   const [open, setOpen] = useState(true)
+  const [localSearch, setLocalSearch] = useState(filtros.search)
+
+  useEffect(() => {
+    setLocalSearch(filtros.search)
+  }, [filtros.search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== filtros.search) {
+        onChange({ ...filtros, search: localSearch })
+      }
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [localSearch, filtros, onChange])
 
   const badges: { label: string; onClear: () => void }[] = []
 
@@ -44,7 +58,7 @@ export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) 
 
   if (filtros.metodo_pago) {
     badges.push({
-      label: `Método: ${filtros.metodo_pago}`,
+      label: `Método: ${filtros.metodo_pago === "transferencia" ? "Transferencia" : filtros.metodo_pago === "efectivo" ? "Efectivo" : filtros.metodo_pago}`,
       onClear: () => onChange({ ...filtros, metodo_pago: "" }),
     })
   }
@@ -52,7 +66,10 @@ export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) 
   if (filtros.search) {
     badges.push({
       label: `Buscar: "${filtros.search}"`,
-      onClear: () => onChange({ ...filtros, search: "" }),
+      onClear: () => {
+        setLocalSearch("")
+        onChange({ ...filtros, search: "" })
+      },
     })
   }
 
@@ -66,6 +83,7 @@ export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) 
   const activeCount = badges.length
 
   const handleReset = () => {
+    setLocalSearch("")
     onChange({
       categoria: "",
       metodo_pago: "",
@@ -206,15 +224,18 @@ export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) 
                 />
                 <input
                   type="text"
-                  value={filtros.search}
-                  onChange={(e) => onChange({ ...filtros, search: e.target.value })}
+                  value={localSearch}
+                  onChange={(e) => setLocalSearch(e.target.value)}
                   placeholder="Buscar estudiante o concepto..."
                   className="w-full h-10 pl-9 pr-9 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fd761a]/20 focus:border-[#fd761a] transition-all"
                 />
-                {filtros.search && (
+                {localSearch && (
                   <button
                     type="button"
-                    onClick={() => onChange({ ...filtros, search: "" })}
+                    onClick={() => {
+                      setLocalSearch("")
+                      onChange({ ...filtros, search: "" })
+                    }}
                     className="absolute right-2.5 text-slate-400 hover:text-slate-600 transition-colors p-1"
                     title="Borrar búsqueda"
                   >

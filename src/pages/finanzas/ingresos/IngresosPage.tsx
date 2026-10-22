@@ -52,9 +52,10 @@ export function IngresosPage() {
     }
   }, [filtros, page])
 
-  useEffect(() => {
+  const handleFiltrosChange = useCallback((newFiltros: any) => {
+    setFiltros(newFiltros)
     setPage(1)
-  }, [filtros])
+  }, [])
 
   useEffect(() => {
     load()
@@ -103,7 +104,7 @@ export function IngresosPage() {
         {/* 3. Panel de Filtros y Búsqueda */}
         <IngresosFiltros
           filtros={filtros}
-          onChange={setFiltros}
+          onChange={handleFiltrosChange}
           analytics={analytics}
         />
 
