@@ -92,8 +92,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   const getPrecioEfectivo = useCallback((modulo: any): number => {
     const a = ajustes[modulo.id]
-    if (a && !a.expandido && parseFloat(a.nuevoPrecio || "0") > 0) {
-      return parseFloat(a.nuevoPrecio) || 0
+    if (a && !a.expandido && a.nuevoPrecio !== "" && !isNaN(parseFloat(a.nuevoPrecio))) {
+      return parseFloat(a.nuevoPrecio)
     }
     return Number(modulo.precio_base ?? modulo.precio ?? 0)
   }, [ajustes])
@@ -146,8 +146,10 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   const totalIngresado = (esPersonalizado && modulos.length === 0 ? (parseFloat(pagoCurso) || 0) : totalARegistrar) + inscripcionCubierta
 
-  const precioPersonalizadoActual = Number(ajustePersonalizado.nuevoPrecio || precioCurso) || 0
-  const montoValido = esPersonalizado && modulos.length === 0
+  const precioPersonalizadoActual = Number(ajustePersonalizado.nuevoPrecio !== "" ? ajustePersonalizado.nuevoPrecio : precioCurso) || 0
+  const montoValido = totalPrecio === 0
+    ? true
+    : esPersonalizado && modulos.length === 0
     ? (parseFloat(pagoCurso) || 0) > 0 && (parseFloat(pagoCurso) || 0) <= precioPersonalizadoActual
     : totalARegistrar > 0 || (incluirInscripcion && precioInscripcionEfectivo > 0 && inscripcionCubierta > 0)
 
@@ -191,9 +193,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   const handleSubmit = useCallback(() => {
     if (esPersonalizado && modulos.length === 0) {
       onSubmit([], metodoPagoInicial || "efectivo", {
-        total: Number(ajustePersonalizado.nuevoPrecio || precioCurso) || 0,
+        total: Number(ajustePersonalizado.nuevoPrecio !== "" ? ajustePersonalizado.nuevoPrecio : precioCurso) || 0,
         cubierto: parseFloat(pagoCurso) || 0,
-        motivo_ajuste: ajustePersonalizado.nuevoPrecio ? ajustePersonalizado.motivo : undefined,
+        motivo_ajuste: ajustePersonalizado.nuevoPrecio !== "" ? ajustePersonalizado.motivo : undefined,
       })
       return
     }
@@ -201,7 +203,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     const pagos = modulos
       .filter((m: any) => {
         const monto = parseFloat(montos[m.id] || "0")
-        return monto > 0
+        const a = ajustes[m.id]
+        const tieneAjuste = a && !a.expandido && a.nuevoPrecio !== "" && parseFloat(a.nuevoPrecio) !== (m.precio_base ?? m.precio ?? 0)
+        return monto > 0 || tieneAjuste
       })
       .map((m: any) => {
         const base: Record<string, unknown> = {
@@ -210,14 +214,15 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         }
         const a = ajustes[m.id]
         const precioOriginal = m.precio_base ?? m.precio ?? 0
-        if (a && !a.expandido && parseFloat(a.nuevoPrecio || "0") !== precioOriginal) {
-          base.monto_ajustado = parseFloat(a.nuevoPrecio || "0")
+        if (a && !a.expandido && a.nuevoPrecio !== "" && parseFloat(a.nuevoPrecio) !== precioOriginal) {
+          base.monto_ajustado = parseFloat(a.nuevoPrecio)
           base.motivo_ajuste = a.motivo
         }
         return base
       })
 
-    if (incluirInscripcion && precioInscripcionEfectivo > 0) {
+    const tieneAjusteInscripcion = ajusteInscripcion.nuevoPrecio !== "" && parseFloat(ajusteInscripcion.nuevoPrecio) !== cursoBaseMatricula
+    if (incluirInscripcion && (precioInscripcionEfectivo > 0 || tieneAjusteInscripcion)) {
       onSubmit(pagos, metodoPagoInicial || "efectivo", {
         total: precioInscripcionEfectivo,
         cubierto: inscripcionCubierta,
@@ -240,6 +245,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     precioCurso,
     pagoCurso,
     ajustePersonalizado,
+    cursoBaseMatricula,
   ])
 
   useImperativeHandle(ref, () => ({
@@ -259,7 +265,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   if (modulos.length === 0) {
     if (esPersonalizado) {
       const precio = Number(precioCurso) || 0
-      const precioEfectivo = Number(ajustePersonalizado.nuevoPrecio || precio)
+      const precioEfectivo = Number(ajustePersonalizado.nuevoPrecio !== "" ? ajustePersonalizado.nuevoPrecio : precio)
       return (
         <div className="pt-4 space-y-3">
           <div className="p-4 rounded-xl border space-y-3 bg-white" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -283,7 +289,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
               Pago inicial a registrar
               <input
                 type="number"
-                min="0.01"
+                min="0"
                 max={precioEfectivo}
                 step="0.01"
                 value={pagoCurso}
@@ -293,7 +299,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
               />
             </label>
             {(parseFloat(pagoCurso) || 0) > precioEfectivo && <p className="text-xs text-red-600">El pago no puede superar el precio total ajustado.</p>}
-            {(parseFloat(pagoCurso) || 0) <= 0 && <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Ingresa un pago mayor que cero para aprobar.</p>}
+            {(parseFloat(pagoCurso) || 0) <= 0 && precioEfectivo > 0 && <p className="text-xs" style={{ color: COLORS.TEXT_MUTED }}>Ingresa un pago mayor que cero para aprobar.</p>}
+            {precioEfectivo === 0 && <p className="text-xs text-emerald-600 font-semibold">Curso con 100% de descuento ($0.00 a cobrar).</p>}
           </div>
         </div>
       )
@@ -315,11 +322,13 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         const precioEfectivo = getPrecioEfectivo(modulo)
         const a = ajustes[modulo.id]
 
-        const pagado = monto > 0 && monto >= precioEfectivo
-        const abonado = monto > 0 && monto < precioEfectivo
+        const pagado = precioEfectivo === 0 || (monto > 0 && monto >= precioEfectivo)
+        const abonado = precioEfectivo > 0 && monto > 0 && monto < precioEfectivo
 
         let lineaEstado = ""
-        if (pagado) {
+        if (precioEfectivo === 0) {
+          lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " cubierto (Descuento 100%)"
+        } else if (pagado) {
           lineaEstado = "Módulo " + (modulo.numero_orden || (idx + 1)) + " pagado completo"
         } else if (abonado) {
           const saldo = Math.max(0, precioEfectivo - monto)
@@ -360,7 +369,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                   }))
                   setMontos(prev => {
                     const montoActual = parseFloat(prev[modulo.id] || "0")
-                    if (montoActual > nuevoPrecio && nuevoPrecio > 0) {
+                    if (montoActual > nuevoPrecio || nuevoPrecio === 0) {
                       return { ...prev, [modulo.id]: String(nuevoPrecio) }
                     }
                     return prev
@@ -602,7 +611,9 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
               Total Ingresado en esta transacción
             </span>
             <span className="text-xs font-medium opacity-80 block mt-0.5" style={{ color: "oklch(0.35 0.14 150)" }}>
-              {incluirInscripcion && inscripcionCubierta > 0
+              {totalPrecio === 0
+                ? "Beca / Descuento del 100% aplicado ($0.00 a cobrar)"
+                : incluirInscripcion && inscripcionCubierta > 0
                 ? `${modulosCubiertos}/${sorted.length} módulos cubiertos + matrícula`
                 : `${modulosCubiertos}/${sorted.length} módulos cubiertos`}
             </span>

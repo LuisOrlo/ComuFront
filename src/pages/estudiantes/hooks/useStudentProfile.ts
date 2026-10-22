@@ -51,20 +51,20 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
   }, [id])
 
   const loadAcademicData = useCallback(async () => {
-    if (!id || academicData || academicLoading) return
+    if (!id || notFound || academicData || academicLoading) return
     setAcademicLoading(true)
     try { setAcademicData(await estudiantesService.getAcademicProfile(id)) }
     catch { setAcademicData(null) }
     finally { setAcademicLoading(false) }
-  }, [id, academicData, academicLoading])
+  }, [id, notFound, academicData, academicLoading])
 
   const loadFinancialData = useCallback(async () => {
-    if (!id || financialData || financialLoading) return
+    if (!id || notFound || financialData || financialLoading) return
     setFinancialLoading(true)
     try { setFinancialData(await estudiantesService.getFinancialProfile(id)) }
     catch { setFinancialData(null) }
     finally { setFinancialLoading(false) }
-  }, [id, financialData, financialLoading])
+  }, [id, notFound, financialData, financialLoading])
 
   useEffect(() => {
     if (activeTab === "informacion" || activeTab === "academico" || activeTab === "resumen") {

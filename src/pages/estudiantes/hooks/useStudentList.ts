@@ -174,6 +174,8 @@ export function useStudentList(options: UseStudentListOptions = {}): UseStudentL
       toast.success(`${ids.length} estudiante(s) eliminado(s)`)
       clearSelection()
       queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+      queryClient.invalidateQueries({ queryKey: ["cursos"] })
+      queryClient.invalidateQueries({ queryKey: ["talleres"] })
     },
     onError: () => {
       toast.error("Error al eliminar estudiantes")

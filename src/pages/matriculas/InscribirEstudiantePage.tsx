@@ -350,7 +350,7 @@ export function InscribirEstudiantePage() {
         curso_abierto_id: selectedCurso.id,
         pagos,
         metodo_pago: metodoPago,
-        precio_inscripcion: !sinRegistroFinanciero && inscripcion && inscripcion.total > 0 ? inscripcion.total : undefined,
+        precio_inscripcion: !sinRegistroFinanciero && inscripcion && (inscripcion.total > 0 || inscripcion.motivo_ajuste) ? inscripcion.total : undefined,
         inscripcion_cubierta: !sinRegistroFinanciero && inscripcion ? inscripcion.cubierto : undefined,
         motivo_ajuste: !sinRegistroFinanciero ? inscripcion?.motivo_ajuste : undefined,
         sin_registro_financiero: sinRegistroFinanciero,

@@ -43,7 +43,7 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
 
   const handleMontoChange = (val: string) => {
     const numVal = parseFloat(val) || 0
-    if (numVal > precioEfectivo && precioEfectivo > 0) {
+    if (numVal > precioEfectivo && precioEfectivo >= 0) {
       setMonto(String(precioEfectivo))
       setTipoPago("completo")
       toast.warning(`El monto no puede exceder el precio del taller ($${precioEfectivo.toFixed(2)}). Se ajustó al máximo.`)
@@ -57,13 +57,14 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
     setSaving(true)
     try {
       const montoNum = parseFloat(monto) || 0
-      const data: { monto_pagado: number; tipo_pago: string; metodo_pago: string; monto_ajustado?: number; motivo_ajuste?: string } = {
+      const data: { monto_pagado: number; tipo_pago: string; metodo_pago: string; monto_ajustado?: number; precio_ajustado?: number; motivo_ajuste?: string } = {
         monto_pagado: montoNum,
         tipo_pago: tipoPago,
         metodo_pago: metodo,
       }
-      if (Math.abs(precioEfectivo - precioBase) > 0.001) {
+      if (precioEfectivo !== precioBase) {
         data.monto_ajustado = precioEfectivo
+        data.precio_ajustado = precioEfectivo
         data.motivo_ajuste = ajuste.motivo
       }
       await tallerService.actualizarInscripcion(inscripcionId, data)
@@ -114,7 +115,7 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
             onConfirmar={(nuevoPrecio, motivo) => {
               setPrecioEfectivo(nuevoPrecio)
               setAjuste({ expandido: false, motivo })
-              if (montoNum > nuevoPrecio) {
+              if (montoNum > nuevoPrecio || nuevoPrecio === 0) {
                 setMonto(String(nuevoPrecio))
               }
             }}

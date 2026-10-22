@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   useReactTable,
   getCoreRowModel,
@@ -22,7 +23,6 @@ import {
 import { COLORS } from "@/lib/constants"
 import { parseLocalDate } from "@/lib/utils"
 import { cursosService, type MatriculaDetallada } from "@/services/cursos.service"
-import { estudiantesService } from "@/services/estudiantes.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 
@@ -63,6 +63,7 @@ function getOcupacion(row: MatriculaDetallada) {
 const PAGE_SIZES = [10, 20, 50]
 
 export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatriculaDeleted }: Props) {
+  const queryClient = useQueryClient()
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [matriculaToDelete, setMatriculaToDelete] = useState<MatriculaDetallada | null>(null)
@@ -184,19 +185,17 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatric
   const handleDeleteStudent = async () => {
     if (!matriculaToDelete) return
     setIsDeleting(true)
-    const studentId = matriculaToDelete.estudiante?.id
     try {
-      if (studentId) {
-        await estudiantesService.deleteStudent(studentId)
-      } else {
-        await cursosService.eliminarMatricula(matriculaToDelete.id)
-      }
-      toast.success("Estudiante y todos sus registros eliminados exitosamente")
+      await cursosService.eliminarMatricula(matriculaToDelete.id)
+      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+      queryClient.invalidateQueries({ queryKey: ["cursos"] })
+      queryClient.invalidateQueries({ queryKey: ["curso"] })
+      toast.success("Estudiante desmatriculado del curso exitosamente")
       setMatriculaToDelete(null)
       onMatriculaDeleted?.()
     } catch (err) {
-      console.error("Error al eliminar estudiante:", err)
-      toast.error("Error al eliminar estudiante. Intenta de nuevo.")
+      console.error("Error al desmatricular estudiante:", err)
+      toast.error("Error al desmatricular estudiante. Intenta de nuevo.")
     } finally {
       setIsDeleting(false)
     }
@@ -342,9 +341,9 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatric
 
       <ConfirmationModal
         isOpen={!!matriculaToDelete}
-        title="¿Eliminar estudiante por completo?"
-        message={`¿Estás seguro de que deseas eliminar definitivamente a ${matriculaToDelete ? getStudentName(matriculaToDelete) : ""}? Esta acción es irreversible y borrará por completo al estudiante de la base de datos, incluyendo todas sus matrículas, calificaciones, asistencias, cuentas por cobrar, líneas de pago y archivos. Se eliminarán todas las deudas o valores pendientes asociados.`}
-        confirmText="Eliminar por completo"
+        title="¿Desmatricular estudiante del curso?"
+        message={`¿Estás seguro de que deseas desmatricular a ${matriculaToDelete ? getStudentName(matriculaToDelete) : ""}? Se eliminará su matrícula, asistencias, calificaciones y líneas de pago asociadas a este curso. El estudiante se conservará en el sistema y sus otros cursos no se verán afectados.`}
+        confirmText="Desmatricular del curso"
         cancelText="Cancelar"
         isDangerous={true}
         isLoading={isDeleting}

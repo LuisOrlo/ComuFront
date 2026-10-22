@@ -40,11 +40,12 @@ export function AjustePrecioPanel({
     onCancelar()
   }
 
-  const nuevoPrecioNum = parseFloat(nuevoPrecio) || 0
-  const tieneCambioPrecio = nuevoPrecioNum > 0 && Math.abs(nuevoPrecioNum - precioOriginal) > 0.001
+  const nuevoPrecioNum = parseFloat(nuevoPrecio)
+  const esNumeroValido = nuevoPrecio.trim() !== "" && !isNaN(nuevoPrecioNum) && nuevoPrecioNum >= 0
+  const tieneCambioPrecio = esNumeroValido && nuevoPrecioNum !== precioOriginal
   const motivoValido = motivo.trim().length >= 3
   const puedeConfirmar = tieneCambioPrecio && motivoValido
-  const tieneAjusteGuardado = Math.abs(precioActual - precioOriginal) > 0.001
+  const tieneAjusteGuardado = precioActual !== precioOriginal
 
   return (
     <>
@@ -121,7 +122,7 @@ export function AjustePrecioPanel({
                     style={{ borderColor: COLORS.BORDER_SUBTLE, MozAppearance: "textfield" }}
                   />
                 </div>
-                {nuevoPrecioNum > 0 && Math.abs(nuevoPrecioNum - precioOriginal) <= 0.001 && (
+                {esNumeroValido && nuevoPrecioNum === precioOriginal && (
                   <p className="text-[11px] text-amber-600 mt-1">El nuevo precio debe ser distinto al original.</p>
                 )}
               </div>

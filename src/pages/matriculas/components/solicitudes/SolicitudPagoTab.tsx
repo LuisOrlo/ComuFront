@@ -646,7 +646,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                             const val = e.target.value.replace(/[^0-9.]/g, "")
                             if ((val.match(/\./g) || []).length <= 1) {
                               const numVal = parseFloat(val) || 0
-                              if (numVal > precioLive && precioLive > 0) {
+                              if (numVal > precioLive && precioLive >= 0) {
                                 onEditMontoChange(lp.id, String(precioLive))
                                 toast.warning(
                                   `El pago abonado no puede exceder el precio ($${precioLive.toLocaleString("es-EC", { minimumFractionDigits: 2 })})`

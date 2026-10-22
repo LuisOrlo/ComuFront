@@ -382,7 +382,7 @@ export function AprobacionSolicitudPage() {
     setActionLoading(true)
     try {
       const payload: Record<string, unknown> = { pagos, metodo_pago: metodoPago }
-      if (inscripcion && inscripcion.total > 0) {
+      if (inscripcion && (inscripcion.total > 0 || inscripcion.motivo_ajuste)) {
         payload.precio_inscripcion = inscripcion.total
         payload.inscripcion_cubierta = inscripcion.cubierto
         if (inscripcion.motivo_ajuste) payload.motivo_ajuste = inscripcion.motivo_ajuste
@@ -453,7 +453,7 @@ export function AprobacionSolicitudPage() {
     // Un descuento no puede reducir retroactivamente un pago ya registrado.
     // Antes se ajustaba silenciosamente el abonado al nuevo precio, lo que
     // podía alterar el historial contable y terminaba provocando un 500.
-    if (precioNum > 0 && precioNum + 0.001 < abonadoActual) {
+    if (precioNum < abonadoActual) {
       toast.error(`El nuevo precio no puede ser menor que lo ya pagado ($${abonadoActual.toFixed(2)}).`)
       return
     }

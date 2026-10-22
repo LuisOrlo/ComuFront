@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react"
 
-export const MESES = [
+const MESES = [
   { value: "1", label: "Ene", full: "Enero" },
   { value: "2", label: "Feb", full: "Febrero" },
   { value: "3", label: "Mar", full: "Marzo" },
@@ -16,7 +16,7 @@ export const MESES = [
   { value: "12", label: "Dic", full: "Diciembre" },
 ]
 
-export function calcularRangoFechas(
+function calcularRangoFechas(
   mesStr: string,
   anioStr: string
 ): { fecha_desde?: string; fecha_hasta?: string } {
