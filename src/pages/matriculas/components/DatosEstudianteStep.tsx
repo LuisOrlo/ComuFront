@@ -35,6 +35,7 @@ interface DatosEstudianteStepProps {
   canProceed: boolean
   onNext: () => void
   validateField: (campo: string, valor: string) => string | null
+  validandoCedula?: boolean
 }
 
 const nivelesEducativos = [
@@ -70,6 +71,7 @@ export function DatosEstudianteStep({
   canProceed,
   onNext,
   validateField,
+  validandoCedula = false,
 }: DatosEstudianteStepProps) {
   const [ciudadOpen, setCiudadOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -330,11 +332,18 @@ export function DatosEstudianteStep({
       <div className="flex justify-end pt-2">
         <button 
           onClick={onNext} 
-          disabled={!canProceed} 
-          className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 transition-opacity" 
+          disabled={!canProceed || validandoCedula} 
+          className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 transition-opacity flex items-center gap-2 cursor-pointer" 
           style={{ backgroundColor: COLORS.ACCENT }}
         >
-          Siguiente
+          {validandoCedula ? (
+            <>
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Verificando cédula...</span>
+            </>
+          ) : (
+            "Siguiente"
+          )}
         </button>
       </div>
     </div>

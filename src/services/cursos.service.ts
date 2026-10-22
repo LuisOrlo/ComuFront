@@ -804,12 +804,50 @@ export const cursosService = {
   },
 
   /**
+   * GET /api/academic/solicitudes-inscripcion/cursos-con-solicitudes
+   * Obtener solo cursos abiertos que tienen estudiantes/solicitudes según contexto
+   */
+  async getCursosConSolicitudes(params?: {
+    categoria?: string
+    estado?: string
+    ciudad_id?: number | string
+    fecha_desde?: string
+    fecha_hasta?: string
+  }): Promise<{ data: { id: string; nombre: string; nombre_simple: string; catalogo_id: string | null; ciudad_id: number | null; ciudad_nombre: string | null; es_personalizado: boolean }[] }> {
+    const response = await api.get('/academic/solicitudes-inscripcion/cursos-con-solicitudes', { params })
+    return response.data
+  },
+
+  /**
+   * GET /api/academic/solicitudes-inscripcion/ciudades-con-solicitudes
+   * Obtener solo ciudades que tienen solicitudes según contexto
+   */
+  async getCiudadesConSolicitudes(params?: {
+    categoria?: string
+    estado?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+  }): Promise<{ data: { id: number; nombre: string }[] }> {
+    const response = await api.get('/academic/solicitudes-inscripcion/ciudades-con-solicitudes', { params })
+    return response.data
+  },
+
+  /**
+   * POST /api/matriculas/validar-cedula
+   * Valida de forma rápida si una cédula ya existe registrada en la base de datos
+   */
+  async validarCedulaExiste(cedula: string): Promise<boolean> {
+    const response = await api.post<{ existe: boolean }>('/matriculas/validar-cedula', { cedula })
+    return Boolean(response.data?.existe)
+  },
+
+  /**
    * GET /api/academic/solicitudes-inscripcion
    * Listar solicitudes
    */
   async getSolicitudesInscripcion(params?: {
     estado?: string; per_page?: number; page?: number; categoria?: string; search?: string
-    curso_abierto_id?: string; fecha_desde?: string; fecha_hasta?: string
+    curso_abierto_id?: string; fecha_desde?: string; fecha_hasta?: string; ciudad_id?: number | string
   }): Promise<Record<string, unknown>> {
     const response = await api.get('/academic/solicitudes-inscripcion', { params })
     return response.data

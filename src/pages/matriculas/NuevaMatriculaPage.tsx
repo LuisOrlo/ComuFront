@@ -62,6 +62,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
   const [paymentTouched, setPaymentTouched] = useState<Record<string, boolean>>({})
   const [cursosPersonalizados, setCursosPersonalizados] = useState<CursoPersonalizado[]>([])
   const [loadingPersonalizados, setLoadingPersonalizados] = useState(false)
+  const [validandoCedula, setValidandoCedula] = useState(false)
 
 
   const metodosPago = [
@@ -195,7 +196,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     })
   }
 
-  const blurEstudiante = (campo: string) => {
+  const blurEstudiante = async (campo: string) => {
     setTouched(prev => ({ ...prev, [campo]: true }))
     const valor = estudiante[campo as keyof EstudianteData]
     const err = validateField(campo, valor)
@@ -205,6 +206,18 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
       else delete n[campo]
       return n
     })
+
+    if (campo === "cedula" && !err && valor.trim()) {
+      try {
+        const existe = await cursosService.validarCedulaExiste(valor.trim())
+        if (existe) {
+          setErrors(prev => ({ ...prev, cedula: "Esta cédula ya se encuentra registrada en el sistema." }))
+          toast.error("La cédula ingresada ya se encuentra registrada en el sistema.")
+        }
+      } catch {
+        // Silencioso en blur si hay fallo de red
+      }
+    }
   }
 
   const validateStep1 = (): boolean => {
@@ -270,8 +283,26 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     return null
   }
 
-  const handleNext = () => {
-    if (paso === 1 && !validateStep1()) return
+  const handleNext = async () => {
+    if (paso === 1) {
+      if (!validateStep1()) return
+      setValidandoCedula(true)
+      try {
+        const existe = await cursosService.validarCedulaExiste(estudiante.cedula.trim())
+        if (existe) {
+          setErrors(prev => ({ ...prev, cedula: "Esta cédula ya se encuentra registrada en el sistema." }))
+          setTouched(prev => ({ ...prev, cedula: true }))
+          toast.error("La cédula ingresada ya se encuentra registrada en el sistema.")
+          return
+        }
+      } catch (err) {
+        console.error("Error al validar cédula:", err)
+        toast.error("No se pudo verificar la cédula. Por favor, intenta de nuevo.")
+        return
+      } finally {
+        setValidandoCedula(false)
+      }
+    }
     if (paso === 2 && !validateStep2()) return
     setPaso(prev => Math.min(prev + 1, 3) as Paso)
   }
@@ -525,6 +556,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
           canProceed={step1CanProceed}
           onNext={handleNext}
           validateField={validateField}
+          validandoCedula={validandoCedula}
         />
       )}
 

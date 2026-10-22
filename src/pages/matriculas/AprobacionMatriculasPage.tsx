@@ -15,8 +15,9 @@ import {
   Alert02Icon,
 } from "@hugeicons/core-free-icons"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
-import { cursosService, type CatalogoCurso } from "@/services/cursos.service"
+import { cursosService } from "@/services/cursos.service"
 import { tallerService } from "@/services/taller.service"
+import type { Ciudad } from "@/services/ciudades.service"
 import { CiudadBadge, ModalidadBadge } from "../estudiantes/components/Badges"
 import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
@@ -93,12 +94,19 @@ export function AprobacionMatriculasPage() {
   })
 
   const [searchTerm, setSearchTerm] = useState("")
+  const [filtroCiudadId, setFiltroCiudadId] = useState<string>(() => searchParams.get("ciudad_id") || "")
   const [filtroProgramaId, setFiltroProgramaId] = useState("")
   const [filtroFechaDesde, setFiltroFechaDesde] = useState("")
   const [filtroFechaHasta, setFiltroFechaHasta] = useState("")
 
-  const [catalogosFiltro, setCatalogosFiltro] = useState<CatalogoCurso[]>([])
-  const [talleresFiltro, setTalleresFiltro] = useState<any[]>([])
+  const [ciudades, setCiudades] = useState<Ciudad[]>([])
+  const [opcionesPrograma, setOpcionesPrograma] = useState<{
+    id: string
+    nombre: string
+    nombre_simple: string
+    ciudad_id?: number | null
+    ciudad_nombre?: string | null
+  }[]>([])
 
   const [ventanaActual, setVentanaActual] = useState(1)
   const [tallerVentanaActual, setTallerVentanaActual] = useState(1)
@@ -122,8 +130,9 @@ export function AprobacionMatriculasPage() {
     const params = new URLSearchParams()
     if (mainTab !== "cursos") params.set("tab", mainTab)
     if (statusFilter !== "pendientes") params.set("status", statusFilter)
+    if (filtroCiudadId) params.set("ciudad_id", filtroCiudadId)
     setSearchParams(params, { replace: true })
-  }, [mainTab, statusFilter, setSearchParams])
+  }, [mainTab, statusFilter, filtroCiudadId, setSearchParams])
 
   // Reset pagination on tab changes
   useEffect(() => {
@@ -132,20 +141,7 @@ export function AprobacionMatriculasPage() {
     setFiltroProgramaId("")
   }, [mainTab])
 
-  // Fetch filter options for courses or workshops
-  useEffect(() => {
-    if (mainTab === "talleres") {
-      tallerService.listar({ per_page: 100 })
-        .then((res: any) => setTalleresFiltro(res.data || res.datos || []))
-        .catch(() => {})
-    } else {
-      cursosService.getCatalogos()
-        .then((res: any) => setCatalogosFiltro(res.data || []))
-        .catch(() => {})
-    }
-  }, [mainTab])
-
-  // Queries for Solicitudes (Cursos / Personalizados)
+  // Contextual params for queries and filters
   const estadoSolicitud = statusFilter === "todos"
     ? undefined
     : statusFilter === "pendientes"
@@ -156,6 +152,65 @@ export function AprobacionMatriculasPage() {
 
   const categoria = mainTab === "cursos" ? "regular" : "personalizado"
 
+  const talleresParams = useMemo(() => {
+    if (statusFilter === "todos") return {}
+    if (statusFilter === "pendientes") return { estado: "activo", pago_verificado: "false" }
+    if (statusFilter === "aprobados") return { pago_verificado: "true" }
+    return { estado: "retirado" }
+  }, [statusFilter])
+
+  // Cargar lista contextual de ciudades (solo ciudades con solicitudes reales para este tab/estado)
+  useEffect(() => {
+    let cancel = false
+    const promise = mainTab === "talleres"
+      ? tallerService.getCiudadesConInscripciones(talleresParams)
+      : cursosService.getCiudadesConSolicitudes({
+          categoria,
+          estado: estadoSolicitud,
+        })
+
+    promise
+      .then((res: any) => {
+        if (cancel) return
+        setCiudades(res?.data || [])
+      })
+      .catch(() => {
+        if (!cancel) setCiudades([])
+      })
+
+    return () => { cancel = true }
+  }, [mainTab, categoria, estadoSolicitud, talleresParams])
+
+  // Cargar lista contextual de programas con solicitudes para este tab/estado
+  useEffect(() => {
+    let cancel = false
+    const promise = mainTab === "talleres"
+      ? tallerService.getTalleresConInscripciones(talleresParams)
+      : cursosService.getCursosConSolicitudes({
+          categoria,
+          estado: estadoSolicitud,
+        })
+
+    promise
+      .then((res: any) => {
+        if (cancel) return
+        setOpcionesPrograma(res?.data || [])
+      })
+      .catch(() => {
+        if (!cancel) setOpcionesPrograma([])
+      })
+
+    return () => { cancel = true }
+  }, [mainTab, categoria, estadoSolicitud, talleresParams])
+
+  // Opciones de programa filtradas por ciudad si hay ciudad seleccionada, preservando la selección actual
+  const opcionesProgramaVisibles = useMemo(() => {
+    if (!filtroCiudadId) return opcionesPrograma
+    return opcionesPrograma.filter(
+      (p) => !p.ciudad_id || String(p.ciudad_id) === String(filtroCiudadId) || p.id === filtroProgramaId
+    )
+  }, [opcionesPrograma, filtroCiudadId, filtroProgramaId])
+
   const solicitudesQuery = useQuery({
     queryKey: [
       "solicitudes-inscripcion",
@@ -163,6 +218,7 @@ export function AprobacionMatriculasPage() {
       estadoSolicitud,
       searchTerm,
       filtroProgramaId,
+      filtroCiudadId,
       filtroFechaDesde,
       filtroFechaHasta,
       ventanaActual,
@@ -174,20 +230,12 @@ export function AprobacionMatriculasPage() {
       categoria,
       search: searchTerm || undefined,
       curso_abierto_id: filtroProgramaId || undefined,
+      ciudad_id: filtroCiudadId || undefined,
       fecha_desde: filtroFechaDesde || undefined,
       fecha_hasta: filtroFechaHasta || undefined,
     } as Record<string, string | number | undefined>),
     enabled: mainTab !== "talleres",
-    placeholderData: previous => previous,
   })
-
-  // Queries for Talleres
-  const talleresParams = useMemo(() => {
-    if (statusFilter === "todos") return {}
-    if (statusFilter === "pendientes") return { estado: "activo", pago_verificado: "false" }
-    if (statusFilter === "aprobados") return { pago_verificado: "true" }
-    return { estado: "retirado" }
-  }, [statusFilter])
 
   const talleresQuery = useQuery({
     queryKey: [
@@ -195,6 +243,7 @@ export function AprobacionMatriculasPage() {
       talleresParams,
       searchTerm,
       filtroProgramaId,
+      filtroCiudadId,
       filtroFechaDesde,
       filtroFechaHasta,
       tallerVentanaActual,
@@ -204,12 +253,12 @@ export function AprobacionMatriculasPage() {
       page: tallerVentanaActual,
       search: searchTerm || undefined,
       taller_id: filtroProgramaId || undefined,
+      ciudad_id: filtroCiudadId || undefined,
       fecha_desde: filtroFechaDesde || undefined,
       fecha_hasta: filtroFechaHasta || undefined,
       ...talleresParams,
     }),
     enabled: mainTab === "talleres",
-    placeholderData: previous => previous,
   })
 
   // Lightweight queries for Category Tab Badges (pending counts)
@@ -247,7 +296,9 @@ export function AprobacionMatriculasPage() {
   const talleresStats = (talleresQuery.data as any)?.stats ?? { todos: 0, pendientes: 0, aprobados: 0, rechazados: 0 }
   const activeStats = mainTab === "talleres" ? talleresStats : solicitudesStats
 
-  const loading = mainTab === "talleres" ? talleresQuery.isLoading : solicitudesQuery.isLoading
+  const isFetching = mainTab === "talleres" ? talleresQuery.isFetching : solicitudesQuery.isFetching
+  const isLoading = mainTab === "talleres" ? talleresQuery.isLoading : solicitudesQuery.isLoading
+  const loading = isLoading || isFetching
   const isError = mainTab === "talleres" ? talleresQuery.isError : solicitudesQuery.isError
 
   const solicitudesMeta = ((solicitudesQuery.data as Record<string, unknown> | undefined)?.meta ?? {}) as { total?: number; last_page?: number }
@@ -422,6 +473,7 @@ interface SolicitudItem {
   // Clear all filters helper
   const handleClearFilters = () => {
     setSearchTerm("")
+    setFiltroCiudadId("")
     setFiltroProgramaId("")
     setFiltroFechaDesde("")
     setFiltroFechaHasta("")
@@ -429,7 +481,7 @@ interface SolicitudItem {
     setTallerVentanaActual(1)
   }
 
-  const hasActiveFilters = Boolean(searchTerm || filtroProgramaId || filtroFechaDesde || filtroFechaHasta)
+  const hasActiveFilters = Boolean(searchTerm || filtroCiudadId || filtroProgramaId || filtroFechaDesde || filtroFechaHasta)
 
   // Navigate to approval detail page
   const handleGoToApprove = (item: typeof unifiedItems[0]) => {
@@ -450,6 +502,7 @@ interface SolicitudItem {
       }
 
       if (searchTerm) params.set("search", searchTerm)
+      if (filtroCiudadId) params.set("ciudad_id", filtroCiudadId)
       if (filtroProgramaId) params.set("taller_id", filtroProgramaId)
       if (filtroFechaDesde) params.set("fecha_desde", filtroFechaDesde)
       if (filtroFechaHasta) params.set("fecha_hasta", filtroFechaHasta)
@@ -470,6 +523,7 @@ interface SolicitudItem {
       }
 
       if (searchTerm) params.set("search", searchTerm)
+      if (filtroCiudadId) params.set("ciudad_id", filtroCiudadId)
       if (filtroProgramaId) params.set("curso_abierto_id", filtroProgramaId)
       if (filtroFechaDesde) params.set("fecha_desde", filtroFechaDesde)
       if (filtroFechaHasta) params.set("fecha_hasta", filtroFechaHasta)
@@ -672,6 +726,26 @@ interface SolicitudItem {
 
             {/* Filter Dropdowns */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* City filter */}
+              <div className="relative">
+                <select
+                  value={filtroCiudadId}
+                  onChange={(e) => {
+                    setFiltroCiudadId(e.target.value)
+                    setVentanaActual(1)
+                    setTallerVentanaActual(1)
+                  }}
+                  className="h-9 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-medium border border-slate-200/80 focus:border-[#fd761a] focus:bg-white focus:outline-none transition-colors cursor-pointer"
+                >
+                  <option value="">Todas las ciudades</option>
+                  {ciudades.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Course or Workshop instance filter */}
               <div className="relative">
                 <select
@@ -681,20 +755,20 @@ interface SolicitudItem {
                     setVentanaActual(1)
                     setTallerVentanaActual(1)
                   }}
-                  className="h-9 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-medium border border-slate-200/80 focus:border-[#fd761a] focus:bg-white focus:outline-none transition-colors cursor-pointer"
+                  className="h-9 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-medium border border-slate-200/80 focus:border-[#fd761a] focus:bg-white focus:outline-none transition-colors cursor-pointer max-w-[260px] truncate"
                 >
-                  <option value="">{mainTab === "talleres" ? "Todos los talleres" : "Todos los cursos"}</option>
-                  {mainTab === "talleres"
-                    ? talleresFiltro.map((t: any) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nombre}
-                        </option>
-                      ))
-                    : catalogosFiltro.map((c: any) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre}
-                        </option>
-                      ))}
+                  <option value="">
+                    {mainTab === "talleres"
+                      ? "Todos los talleres"
+                      : mainTab === "personalizados"
+                        ? "Todos los personalizados"
+                        : "Todos los cursos"}
+                  </option>
+                  {opcionesProgramaVisibles.map((p) => (
+                    <option key={p.id} value={p.id} title={p.nombre}>
+                      {p.nombre}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -746,12 +820,27 @@ interface SolicitudItem {
                 </div>
               )}
 
+              {filtroCiudadId && (
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
+                  <span>
+                    Ciudad: {ciudades.find((c) => String(c.id) === String(filtroCiudadId))?.nombre || "Ciudad seleccionada"}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setFiltroCiudadId("")
+                    }}
+                    className="hover:text-red-500 transition-colors cursor-pointer"
+                    title="Quitar filtro de ciudad"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={11} />
+                  </button>
+                </div>
+              )}
+
               {filtroProgramaId && (
                 <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
                   <span>
-                    {mainTab === "talleres"
-                      ? talleresFiltro.find((t: any) => t.id === filtroProgramaId)?.nombre || "Taller seleccionado"
-                      : catalogosFiltro.find((c: any) => c.id === filtroProgramaId)?.nombre || "Curso seleccionado"}
+                    {opcionesPrograma.find((p) => p.id === filtroProgramaId)?.nombre || "Programa seleccionado"}
                   </span>
                   <button
                     onClick={() => setFiltroProgramaId("")}
@@ -794,9 +883,29 @@ interface SolicitudItem {
 
         {/* 4. BANDEJA DE ENTRADA AGRUPADA POR FECHA */}
         {loading ? (
-          <div className="p-16 text-center bg-white rounded-xl border border-slate-200/80 shadow-xs">
-            <div className="w-8 h-8 rounded-full border-2 border-[#fd761a] border-t-transparent animate-spin mx-auto mb-2.5" />
-            <p className="text-xs text-slate-500 font-medium">Cargando solicitudes de matrícula...</p>
+          <div className="w-full bg-white p-12 sm:p-16 rounded-xl border border-slate-200/80 shadow-xs flex flex-col items-center justify-center text-center animate-in fade-in duration-200">
+            <div className="relative mb-4 flex items-center justify-center">
+              {/* Spinner circular de acento exterior */}
+              <div className="w-16 h-16 rounded-full border-3 border-orange-100 border-t-[#fd761a] animate-spin" />
+              {/* Logo institucional centrado con pulso suave */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <img
+                  src="/Logo.png"
+                  alt="Cargando..."
+                  className="w-8 h-8 object-contain animate-pulse select-none pointer-events-none"
+                />
+              </div>
+            </div>
+            <h3 className="text-sm font-bold text-slate-800 mb-1">
+              {mainTab === "talleres"
+                ? "Cargando inscripciones de talleres..."
+                : mainTab === "personalizados"
+                  ? "Cargando solicitudes de personalizados..."
+                  : "Cargando solicitudes de cursos..."}
+            </h3>
+            <p className="text-xs text-slate-400 font-medium max-w-xs">
+              Sincronizando información con el servidor. Por favor espera un momento...
+            </p>
           </div>
         ) : isError ? (
           <div role="alert" className="p-10 text-center bg-red-50 rounded-xl border border-red-200">

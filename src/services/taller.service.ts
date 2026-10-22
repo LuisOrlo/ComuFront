@@ -142,6 +142,16 @@ export const tallerService = {
     return res.data
   },
 
+  async getTalleresConInscripciones(params?: Record<string, unknown>) {
+    const res = await api.get(`${PREFIX}/inscripciones-talleres/talleres-con-inscripciones`, { params })
+    return res.data as { data: { id: string; nombre: string; nombre_simple: string; ciudad_id: number | null; ciudad_nombre: string | null }[] }
+  },
+
+  async getCiudadesConInscripciones(params?: Record<string, unknown>) {
+    const res = await api.get(`${PREFIX}/inscripciones-talleres/ciudades-con-inscripciones`, { params })
+    return res.data as { data: { id: number; nombre: string }[] }
+  },
+
   async getInscripcionById(id: string) {
     const res = await api.get(`${PREFIX}/inscripciones-talleres/${id}`)
     return res.data
