@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import {
   useReactTable,
   getCoreRowModel,
@@ -22,9 +21,8 @@ import {
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { parseLocalDate } from "@/lib/utils"
-import { cursosService, type MatriculaDetallada } from "@/services/cursos.service"
-import { ConfirmationModal } from "@/components/ConfirmationModal"
-import { toast } from "sonner"
+import { type MatriculaDetallada } from "@/services/cursos.service"
+import { EliminarVinculacionEstudianteModal } from "@/components/estudiantes/EliminarVinculacionEstudianteModal"
 
 interface Props {
   matriculas: MatriculaDetallada[]
@@ -63,11 +61,9 @@ function getOcupacion(row: MatriculaDetallada) {
 const PAGE_SIZES = [10, 20, 50]
 
 export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatriculaDeleted }: Props) {
-  const queryClient = useQueryClient()
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [matriculaToDelete, setMatriculaToDelete] = useState<MatriculaDetallada | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const columns = useMemo<ColumnDef<MatriculaDetallada>[]>(() => [
     {
@@ -149,8 +145,8 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatric
             <button
               type="button"
               onClick={() => setMatriculaToDelete(row.original)}
-              aria-label={`Eliminar a ${studentName}`}
-              title="Eliminar estudiante por completo"
+              aria-label={`Eliminar o desvincular a ${studentName}`}
+              title="Dar de baja o eliminar estudiante"
               className="inline-flex p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
             >
               <Trash2 size={16} />
@@ -181,25 +177,6 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatric
   const totalRows = meta?.total ?? table.getFilteredRowModel().rows.length
   const from = totalRows === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const to = Math.min(currentPage * pageSize, totalRows)
-
-  const handleDeleteStudent = async () => {
-    if (!matriculaToDelete) return
-    setIsDeleting(true)
-    try {
-      await cursosService.eliminarMatricula(matriculaToDelete.id)
-      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
-      queryClient.invalidateQueries({ queryKey: ["cursos"] })
-      queryClient.invalidateQueries({ queryKey: ["curso"] })
-      toast.success("Estudiante desmatriculado del curso exitosamente")
-      setMatriculaToDelete(null)
-      onMatriculaDeleted?.()
-    } catch (err) {
-      console.error("Error al desmatricular estudiante:", err)
-      toast.error("Error al desmatricular estudiante. Intenta de nuevo.")
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   function renderCellContent(cell: Cell<MatriculaDetallada, unknown>) {
     return flexRender(cell.column.columnDef.cell, cell.getContext())
@@ -339,17 +316,20 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatric
       </div>
       </div>
 
-      <ConfirmationModal
+      <EliminarVinculacionEstudianteModal
         isOpen={!!matriculaToDelete}
-        title="¿Desmatricular estudiante del curso?"
-        message={`¿Estás seguro de que deseas desmatricular a ${matriculaToDelete ? getStudentName(matriculaToDelete) : ""}? Se eliminará su matrícula, asistencias, calificaciones y líneas de pago asociadas a este curso. El estudiante se conservará en el sistema y sus otros cursos no se verán afectados.`}
-        confirmText="Desmatricular del curso"
-        cancelText="Cancelar"
-        isDangerous={true}
-        isLoading={isDeleting}
-        icon="trash"
-        onConfirm={handleDeleteStudent}
-        onCancel={() => setMatriculaToDelete(null)}
+        onClose={() => setMatriculaToDelete(null)}
+        estudianteId={matriculaToDelete?.estudiante?.id}
+        nombreEstudiante={matriculaToDelete ? getStudentName(matriculaToDelete) : ""}
+        elementoActual={{
+          tipo: "curso",
+          id: matriculaToDelete?.id || "",
+          nombre: "este curso",
+        }}
+        onSuccess={() => {
+          setMatriculaToDelete(null)
+          onMatriculaDeleted?.()
+        }}
       />
     </div>
   )

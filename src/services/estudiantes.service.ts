@@ -48,6 +48,35 @@ export interface EstudiantesResponse {
   }
 }
 
+export interface VinculacionCurso {
+  matricula_id: string
+  curso_id: string
+  nombre: string
+  modalidad?: string
+}
+
+export interface VinculacionTaller {
+  inscripcion_id: string
+  taller_id: string
+  nombre: string
+}
+
+export interface VinculacionServicio {
+  id: string
+  tipo: string
+  nombre: string
+  fecha?: string
+}
+
+export interface ResumenVinculaciones {
+  estudiante_id: string
+  nombre_completo: string
+  total_vinculaciones: number
+  cursos: VinculacionCurso[]
+  talleres: VinculacionTaller[]
+  servicios: VinculacionServicio[]
+}
+
 export interface AcademicProfile {
   estudiante: {
     id: string
@@ -338,6 +367,11 @@ export const estudiantesService = {
 
   async deleteStudent(id: string) {
     const response = await api.delete(`/personas/estudiantes/${id}`)
+    return response.data
+  },
+
+  async getVinculaciones(estudianteId: string): Promise<ResumenVinculaciones> {
+    const response = await api.get(`/personas/estudiantes/${estudianteId}/vinculaciones`)
     return response.data
   },
 

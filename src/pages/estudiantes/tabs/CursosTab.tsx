@@ -107,20 +107,13 @@ export function CursosTab() {
       }
 
       // 5. Filtro por Fecha (mes y año):
-      // Deben aparecer todos los cursos que se encuentren entre esas fechas,
-      // sin importar si empezaron antes, terminan después, o están en progreso.
-      if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+      // Filtro Rango de Fechas / Mes:
+      // Muestra los cursos cuya fecha de inicio se encuentra en el rango seleccionado
+      if (rangoFechas.fecha_desde || rangoFechas.fecha_hasta) {
         const inicio = c.fechaInicio ? c.fechaInicio.split("T")[0] : null
-        const fin = c.fechaFin ? c.fechaFin.split("T")[0] : null
-
-        if (!inicio && !fin) return false
-
-        const cursoInicio = inicio || fin!
-        const cursoFin = fin || inicio!
-
-        // Intersección de intervalos
-        const solapa = cursoInicio <= rangoFechas.fecha_hasta && cursoFin >= rangoFechas.fecha_desde
-        if (!solapa) return false
+        if (!inicio) return false
+        if (rangoFechas.fecha_desde && inicio < rangoFechas.fecha_desde) return false
+        if (rangoFechas.fecha_hasta && inicio > rangoFechas.fecha_hasta) return false
       }
 
       return true

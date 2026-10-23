@@ -148,7 +148,7 @@ export function StudentTable({
             />
           ),
           enableSorting: false,
-          size: 54,
+          size: 44,
         })
       }
 
@@ -191,6 +191,7 @@ export function StudentTable({
           )
         },
         enableSorting: true,
+        size: 130,
       },
       {
         id: "ciudad",
@@ -198,6 +199,7 @@ export function StudentTable({
         header: "Ciudad / Sede",
         cell: ({ row }) => <CiudadBadge ciudad={row.original.ciudad} />,
         enableSorting: true,
+        size: 120,
       },
       {
         id: "cursos",
@@ -212,6 +214,7 @@ export function StudentTable({
           )
         },
         enableSorting: true,
+        size: 100,
       },
       {
         id: "estado",
@@ -224,6 +227,7 @@ export function StudentTable({
           />
         ),
         enableSorting: true,
+        size: 130,
       },
       {
         id: "acciones",
@@ -247,7 +251,7 @@ export function StudentTable({
           )
         },
         enableSorting: false,
-        size: 100,
+        size: 90,
       }
     )
 

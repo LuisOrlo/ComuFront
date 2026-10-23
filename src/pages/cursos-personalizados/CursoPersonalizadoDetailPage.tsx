@@ -26,14 +26,13 @@ import {
 import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { EliminarVinculacionEstudianteModal } from "@/components/estudiantes/EliminarVinculacionEstudianteModal"
 import {
   cursosPersonalizadosService,
   type CursoPersonalizado,
   type CursoPersonalizadoEstudiante,
   type FinanzasCursoPersonalizado,
 } from "@/services/cursosPersonalizados.service"
-import { estudiantesService } from "@/services/estudiantes.service"
-import { cursosService } from "@/services/cursos.service"
 
 const DIAS_LABEL: Record<number, string> = {
   1: "Lunes",
@@ -660,7 +659,6 @@ function StudentTableSection({
   const [search, setSearch] = useState("")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [studentToDelete, setStudentToDelete] = useState<CursoPersonalizadoEstudiante | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const copyToClipboard = (text: string, id: string) => {
     if (!text || text === "—") return
@@ -668,26 +666,6 @@ function StudentTableSection({
     setCopiedId(id)
     toast.success("Cédula copiada al portapapeles")
     setTimeout(() => setCopiedId(null), 2000)
-  }
-
-  const handleDeleteStudent = async () => {
-    if (!studentToDelete) return
-    setIsDeleting(true)
-    try {
-      if (studentToDelete.estudiante?.id) {
-        await estudiantesService.deleteStudent(studentToDelete.estudiante.id)
-      } else if (studentToDelete.matricula_id) {
-        await cursosService.eliminarMatricula(studentToDelete.matricula_id)
-      }
-      toast.success("Estudiante y todos sus registros eliminados exitosamente")
-      setStudentToDelete(null)
-      onStudentDeleted?.()
-    } catch (err) {
-      console.error("Error al eliminar estudiante:", err)
-      toast.error("Error al eliminar estudiante. Intenta de nuevo.")
-    } finally {
-      setIsDeleting(false)
-    }
   }
 
   const filtered = useMemo(() => {
@@ -868,17 +846,20 @@ function StudentTableSection({
         </span>
       </div>
 
-      <ConfirmationModal
+      <EliminarVinculacionEstudianteModal
         isOpen={!!studentToDelete}
-        title="¿Eliminar estudiante por completo?"
-        message={`¿Estás seguro de que deseas eliminar definitivamente a ${studentToDelete?.estudiante?.nombre || "este estudiante"}? Esta acción es irreversible y borrará por completo al estudiante de la base de datos, incluyendo todas sus matrículas, asistencias, calificaciones, cuentas por cobrar, cuotas y archivos. Se eliminarán todas las deudas o valores pendientes asociados.`}
-        confirmText="Eliminar por completo"
-        cancelText="Cancelar"
-        isDangerous={true}
-        isLoading={isDeleting}
-        icon="trash"
-        onConfirm={handleDeleteStudent}
-        onCancel={() => setStudentToDelete(null)}
+        onClose={() => setStudentToDelete(null)}
+        estudianteId={studentToDelete?.estudiante?.id}
+        nombreEstudiante={studentToDelete?.estudiante?.nombre || "este estudiante"}
+        elementoActual={{
+          tipo: "curso",
+          id: studentToDelete?.matricula_id || "",
+          nombre: "Curso Personalizado",
+        }}
+        onSuccess={() => {
+          setStudentToDelete(null)
+          onStudentDeleted?.()
+        }}
       />
     </div>
   )

@@ -6,8 +6,8 @@ import { StudentTable, type StudentRow } from "../components/StudentTable"
 import { BulkActionsBar } from "../components/BulkActionsBar"
 import { StudentExportDialog } from "../components/StudentExportDialog"
 import { generarListadoEstudiantesPDF, type EstudiantePDF } from "@/lib/generarEstudiantesPDF"
-import { COLORS } from "@/lib/constants"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { EliminarVinculacionEstudianteModal } from "@/components/estudiantes/EliminarVinculacionEstudianteModal"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 
@@ -21,6 +21,7 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
   const segmentId = searchParams.get("segmento")
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteCedulasOpen, setConfirmDeleteCedulasOpen] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState<StudentRow | null>(null)
 
   const {
     estudiantes,
@@ -41,6 +42,7 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
     deleteStudents,
     meta,
     loadPage,
+    refreshData,
   } = useStudentList({ pageSize: 25, segmentId })
   const [deleting, setDeleting] = useState(false)
   const [deletingCedulas, setDeletingCedulas] = useState(false)
@@ -209,25 +211,32 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
         <BulkActionsBar
           selectedCount={selectedArray.length}
           onClear={clearSelection}
-          onDelete={() => setConfirmDeleteOpen(true)}
+          onDelete={() => {
+            if (selectedArray.length === 1) {
+              const target = studentRows.find((s) => s.id === selectedArray[0])
+              if (target) {
+                setStudentToDelete(target)
+                return
+              }
+            }
+            setConfirmDeleteOpen(true)
+          }}
           onExport={() => onExportOpenChange(true)}
           onDeleteCedulas={() => setConfirmDeleteCedulasOpen(true)}
         />
       </div>
 
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-        <StudentTable
-          estudiantes={studentRows}
-          loading={loading}
-          refreshing={refreshing}
-          selectedIds={selectedIds}
-          onToggleSelect={toggleSelect}
-          onToggleSelectAll={toggleSelectAll}
-          onClearSelection={clearSelection}
-          meta={meta}
-          onPageChange={loadPage}
-        />
-      </div>
+      <StudentTable
+        estudiantes={studentRows}
+        loading={loading}
+        refreshing={refreshing}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelect}
+        onToggleSelectAll={toggleSelectAll}
+        onClearSelection={clearSelection}
+        meta={meta}
+        onPageChange={loadPage}
+      />
 
       <StudentExportDialog
         open={exportOpen}
@@ -261,6 +270,23 @@ export function TodosTab({ exportOpen, onExportOpenChange }: TodosTabProps) {
         icon="danger"
         onConfirm={handleBulkDeleteCedulas}
         onCancel={() => setConfirmDeleteCedulasOpen(false)}
+      />
+
+      <EliminarVinculacionEstudianteModal
+        isOpen={!!studentToDelete}
+        onClose={() => setStudentToDelete(null)}
+        estudianteId={studentToDelete?.id}
+        nombreEstudiante={studentToDelete ? `${studentToDelete.nombres} ${studentToDelete.apellidos}` : ""}
+        elementoActual={{
+          tipo: "estudiante",
+          id: studentToDelete?.id,
+          nombre: "Perfil general",
+        }}
+        onSuccess={() => {
+          setStudentToDelete(null)
+          clearSelection()
+          refreshData()
+        }}
       />
     </>
   )

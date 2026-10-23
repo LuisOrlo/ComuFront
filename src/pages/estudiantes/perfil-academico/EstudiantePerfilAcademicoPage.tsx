@@ -1,6 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router"
 import { useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import { useStudentProfile } from "../hooks/useStudentProfile"
 import { ProfileHeader } from "../sections/ProfileHeader"
 import { InfoTabContent } from "../sections/InfoTabContent"
@@ -8,6 +7,7 @@ import { OverviewTabContent } from "../sections/OverviewTabContent"
 import { AcademicTabContent } from "../sections/AcademicTabContent"
 import { FinancialTabContent } from "../sections/FinancialTabContent"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { EliminarVinculacionEstudianteModal } from "@/components/estudiantes/EliminarVinculacionEstudianteModal"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
@@ -28,11 +28,9 @@ import {
 export function EstudiantePerfilAcademicoPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [deleteCedulaOpen, setDeleteCedulaOpen] = useState(false)
   const [deletingCedula, setDeletingCedula] = useState(false)
   const [deleteEstudianteOpen, setDeleteEstudianteOpen] = useState(false)
-  const [deletingEstudiante, setDeletingEstudiante] = useState(false)
   const [cedulaPurgado, setCedulaPurgado] = useState(false)
   const [showCedulaModal, setShowCedulaModal] = useState(false)
   const {
@@ -120,24 +118,6 @@ export function EstudiantePerfilAcademicoPage() {
       toast.error("Error al eliminar foto de cédula")
     } finally {
       setDeletingCedula(false)
-    }
-  }
-
-  const handleDeleteEstudiante = async () => {
-    if (!id) return
-    setDeletingEstudiante(true)
-    try {
-      await estudiantesService.deleteStudent(id)
-      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
-      queryClient.invalidateQueries({ queryKey: ["cursos"] })
-      queryClient.invalidateQueries({ queryKey: ["talleres"] })
-      toast.success("Estudiante y todos sus registros eliminados exitosamente")
-      navigate("/estudiantes")
-    } catch (err) {
-      console.error("Error al eliminar estudiante:", err)
-      toast.error("Error al eliminar estudiante. Intenta de nuevo.")
-    } finally {
-      setDeletingEstudiante(false)
     }
   }
 
@@ -386,18 +366,21 @@ export function EstudiantePerfilAcademicoPage() {
         onCancel={() => setDeleteCedulaOpen(false)}
       />
 
-      {/* Confirmation modal for student deletion */}
-      <ConfirmationModal
+      {/* Modal inteligente de eliminación y desvinculación */}
+      <EliminarVinculacionEstudianteModal
         isOpen={deleteEstudianteOpen}
-        title="¿Eliminar estudiante por completo?"
-        message={`¿Estás seguro de que deseas eliminar definitivamente a ${name}? Esta acción es irreversible y borrará por completo al estudiante de la base de datos, incluyendo todas sus matrículas, calificaciones, asistencias, cuentas por cobrar, líneas de pago y archivos. Se eliminarán todas las deudas o valores pendientes asociados.`}
-        confirmText="Eliminar por completo"
-        cancelText="Cancelar"
-        isDangerous
-        isLoading={deletingEstudiante}
-        icon="trash"
-        onConfirm={handleDeleteEstudiante}
-        onCancel={() => setDeleteEstudianteOpen(false)}
+        onClose={() => setDeleteEstudianteOpen(false)}
+        estudianteId={id}
+        nombreEstudiante={name}
+        elementoActual={{
+          tipo: "estudiante",
+          id: id,
+          nombre: "Perfil académico",
+        }}
+        onSuccess={() => {
+          setDeleteEstudianteOpen(false)
+          navigate("/estudiantes")
+        }}
       />
 
       {/* Full image viewer for cédula */}

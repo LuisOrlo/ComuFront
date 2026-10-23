@@ -422,14 +422,13 @@ export function ServiciosCuentasPage() {
     }
 
     // Filtro Rango de Fechas / Mes:
-    // Aparecen todos los que se encuentren entre esas fechas no importan si acabaron, empezaron o estan por comenzar
-    if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+    // Muestra los servicios cuya fecha se encuentra en el rango seleccionado
+    if (rangoFechas.fecha_desde || rangoFechas.fecha_hasta) {
       list = list.filter((r) => {
-        const inicio = r.fecha ? r.fecha.split("T")[0] : null
-        const fin = r.fechaFin ? r.fechaFin.split("T")[0] : null
-        if (inicio && inicio > rangoFechas.fecha_hasta!) return false
-        if (fin && fin < rangoFechas.fecha_desde!) return false
-        if (!fin && inicio && inicio < rangoFechas.fecha_desde!) return false
+        const fecha = r.fecha ? r.fecha.split("T")[0] : null
+        if (!fecha) return false
+        if (rangoFechas.fecha_desde && fecha < rangoFechas.fecha_desde) return false
+        if (rangoFechas.fecha_hasta && fecha > rangoFechas.fecha_hasta) return false
         return true
       })
     }

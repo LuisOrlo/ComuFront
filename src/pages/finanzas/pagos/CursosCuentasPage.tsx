@@ -216,17 +216,19 @@ export function CursosCuentasPage({ soloPersonalizados = false }: { soloPersonal
       }
 
       // Filtro Rango de Fechas / Mes:
-      // Aparecen todos los que se encuentren entre esas fechas no importan si acabaron, empezaron o estan por comenzar
-      if (rangoFechas.fecha_desde && rangoFechas.fecha_hasta) {
+      // Muestra los cursos cuya fecha de inicio se encuentra en el rango seleccionado
+      if (rangoFechas.fecha_desde || rangoFechas.fecha_hasta) {
         const inicio = g.fechaInicio ? g.fechaInicio.split("T")[0] : null
-        const fin = g.fechaFin ? g.fechaFin.split("T")[0] : null
-
-        if (inicio && inicio > rangoFechas.fecha_hasta) return false
-        if (fin && fin < rangoFechas.fecha_desde) return false
-        if (inicio && !fin && inicio < rangoFechas.fecha_desde) {
+        if (inicio) {
+          if (rangoFechas.fecha_desde && inicio < rangoFechas.fecha_desde) return false
+          if (rangoFechas.fecha_hasta && inicio > rangoFechas.fecha_hasta) return false
+        } else {
           const tieneMovimientoEnRango = g.entries.some((e: any) => {
             const fechaRef = e.created_at ? e.created_at.split("T")[0] : null
-            return fechaRef && fechaRef >= rangoFechas.fecha_desde! && fechaRef <= rangoFechas.fecha_hasta!
+            if (!fechaRef) return false
+            if (rangoFechas.fecha_desde && fechaRef < rangoFechas.fecha_desde) return false
+            if (rangoFechas.fecha_hasta && fechaRef > rangoFechas.fecha_hasta) return false
+            return true
           })
           if (!tieneMovimientoEnRango) return false
         }
