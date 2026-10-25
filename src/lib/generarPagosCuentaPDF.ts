@@ -326,17 +326,21 @@ export function generarCuentaCursoPDF(data: AnyRecord) {
     const inscription = student.inscripcion || {}
 
     const totalEst =
-      studentMods.reduce(
-        (sum, item) =>
-          sum + Number(item.precio ?? item.monto_ajustado ?? item.monto_original ?? 0),
-        0
-      ) + Number(inscription.monto_ajustado || 0)
+      student.total_esperado !== undefined && student.total_esperado !== null
+        ? Number(student.total_esperado)
+        : studentMods.reduce(
+            (sum, item) =>
+              sum + Number(item.precio ?? item.monto_ajustado ?? item.monto_original ?? 0),
+            0
+          ) + Number(inscription.monto_ajustado ?? 0)
 
     const paidEst =
-      studentMods.reduce(
-        (sum, item) => sum + Number(item.abonado ?? item.monto_abonado ?? 0),
-        0
-      ) + Number(inscription.monto_abonado || 0)
+      student.total_pagado !== undefined && student.total_pagado !== null
+        ? Number(student.total_pagado)
+        : studentMods.reduce(
+            (sum, item) => sum + Number(item.abonado ?? item.monto_abonado ?? 0),
+            0
+          ) + Number(inscription.monto_abonado ?? 0)
 
     sumEsperado += totalEst
     sumAbonado += paidEst
@@ -387,18 +391,22 @@ export function generarCuentaCursoPDF(data: AnyRecord) {
       const inscription = student.inscripcion || {}
 
       const totalEst =
-        studentMods.reduce(
-          (sum, item) =>
-            sum + Number(item.precio ?? item.monto_ajustado ?? item.monto_original ?? 0),
-          0
-        ) + Number(inscription.monto_ajustado || 0)
+        student.total_esperado !== undefined && student.total_esperado !== null
+          ? Number(student.total_esperado)
+          : studentMods.reduce(
+              (sum, item) =>
+                sum + Number(item.precio ?? item.monto_ajustado ?? item.monto_original ?? 0),
+              0
+            ) + Number(inscription.monto_ajustado ?? 0)
 
       const paidEst =
-        studentMods.reduce(
-          (sum, item) =>
-            sum + Number(item.abonado ?? item.monto_abonado ?? 0),
-          0
-        ) + Number(inscription.monto_abonado || 0)
+        student.total_pagado !== undefined && student.total_pagado !== null
+          ? Number(student.total_pagado)
+          : studentMods.reduce(
+              (sum, item) =>
+                sum + Number(item.abonado ?? item.monto_abonado ?? 0),
+              0
+            ) + Number(inscription.monto_abonado ?? 0)
 
       const saldoEst = Math.max(0, totalEst - paidEst)
 
@@ -413,8 +421,8 @@ export function generarCuentaCursoPDF(data: AnyRecord) {
         const lm = studentMods.find(
           (x: any) => (x.modulo_id || x.id) == m.id || (x.orden && x.orden === m.orden)
         )
-        const tM = lm ? Number(lm.precio || lm.monto_ajustado || lm.monto_original || 0) : 0
-        const aM = lm ? Number(lm.abonado || lm.monto_abonado || 0) : 0
+        const tM = lm ? Number(lm.precio ?? lm.monto_ajustado ?? lm.monto_original ?? 0) : 0
+        const aM = lm ? Number(lm.abonado ?? lm.monto_abonado ?? 0) : 0
         const sM = lm ? Number(lm.saldo ?? lm.saldo_pendiente ?? Math.max(0, tM - aM)) : 0
 
         modCols.push(money(tM), money(aM), money(sM))
@@ -462,17 +470,21 @@ export function generarCuentaCursoPDF(data: AnyRecord) {
       const inscription = student.inscripcion || {}
 
       const totalEst =
-        studentMods.reduce(
-          (sum, item) =>
-            sum + Number(item.precio ?? item.monto_ajustado ?? item.monto_original ?? 0),
-          0
-        ) + Number(inscription.monto_ajustado || 0)
+        student.total_esperado !== undefined && student.total_esperado !== null
+          ? Number(student.total_esperado)
+          : studentMods.reduce(
+              (sum, item) =>
+                sum + Number(item.precio ?? item.monto_ajustado ?? item.monto_original ?? 0),
+              0
+            ) + Number(inscription.monto_ajustado ?? 0)
 
       const paidEst =
-        studentMods.reduce(
-          (sum, item) => sum + Number(item.abonado ?? item.monto_abonado ?? 0),
-          0
-        ) + Number(inscription.monto_abonado || 0)
+        student.total_pagado !== undefined && student.total_pagado !== null
+          ? Number(student.total_pagado)
+          : studentMods.reduce(
+              (sum, item) => sum + Number(item.abonado ?? item.monto_abonado ?? 0),
+              0
+            ) + Number(inscription.monto_abonado ?? 0)
 
       const saldoEst = Math.max(0, totalEst - paidEst)
 
@@ -942,10 +954,14 @@ export function generarCuentaServicioPDF(data: AnyRecord) {
         ? "RECHAZADO"
         : "PENDIENTE"
 
+    const metodoLabel = t.desglose_metodos && t.desglose_metodos.length > 1
+      ? t.desglose_metodos.map((dm: any) => `${(dm.metodo_pago || '').toUpperCase()} ($${Number(dm.monto || 0).toFixed(2)})`).join(" + ")
+      : (t.metodo_pago ? String(t.metodo_pago).toUpperCase() : "EFECTIVO / TRANSFERENCIA")
+
     return [
       index + 1,
       fecha,
-      t.metodo_pago || "Efectivo / Transferencia",
+      metodoLabel,
       t.referencia || t.numero_comprobante || "—",
       estado,
       money(monto),

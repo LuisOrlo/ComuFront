@@ -50,6 +50,7 @@ interface IngresoRow {
   categoria?: string
   monto: number
   metodo_pago?: string
+  desglose_metodos?: { metodo_pago: string; monto: number }[]
   modulos_count?: number
   modulos_detalle?: { id: string; modulo_nombre: string; monto: number }[]
   es_personalizado?: boolean
@@ -96,32 +97,15 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
     }
   }, [loading])
 
-  // Agrupación contable en un solo movimiento unificado si comparten los mismos metadatos
+  // Se muestran las operaciones contables consolidadas entregadas por la API
   const displayData = useMemo(() => {
-    const groups = new Map<string, IngresoRow>()
-    for (const item of data) {
-      const key = [
-        item.fecha_pago,
-        item.concepto || "",
-        item.estudiante_nombre || "",
-        item.categoria || "",
-        item.metodo_pago || "",
-        item.comprobante_url || "",
-        item.estado_verificacion || "",
-      ].join("|")
-      const current = groups.get(key)
-      if (current) {
-        current.monto = Number(current.monto || 0) + Number(item.monto || 0)
-        current.modulos_count = (current.modulos_count || 0) + (item.modulos_count || 0)
-        current.modulos_detalle = [
-          ...(current.modulos_detalle || []),
-          ...(item.modulos_detalle || []),
-        ]
-      } else {
-        groups.set(key, { ...item })
-      }
-    }
-    return Array.from(groups.values())
+    const seen = new Set<string>()
+    return data.filter((item) => {
+      const key = item.id || `${item.fecha_pago}-${item.estudiante_nombre}-${item.monto}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
   }, [data])
 
   const columns = useMemo<ColumnDef<IngresoRow>[]>(
@@ -223,13 +207,29 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
         id: "metodo",
         accessorFn: (item) => item.metodo_pago,
         header: "Método",
-        cell: ({ getValue }) => {
-          const val = getValue<string>() || "—"
+        cell: ({ row }) => {
+          const item = row.original
+          const val = item.metodo_pago || "—"
+          const desglose = item.desglose_metodos
+          const esMixto = (desglose && desglose.length > 1) || val.toLowerCase() === "mixto"
           const MethodIcon = getMethodIcon(val)
           return (
-            <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap capitalize">
+            <div
+              className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap capitalize"
+              title={
+                desglose && desglose.length > 1
+                  ? desglose.map((dm) => `${dm.metodo_pago}: $${Number(dm.monto).toFixed(2)}`).join(", ")
+                  : undefined
+              }
+            >
               <MethodIcon size={14} className="text-slate-400 shrink-0" />
-              <span>{val}</span>
+              {esMixto ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50">
+                  Mixto {desglose?.length ? `(${desglose.length})` : ""}
+                </span>
+              ) : (
+                <span>{val}</span>
+              )}
             </div>
           )
         },

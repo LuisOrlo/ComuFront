@@ -15,20 +15,40 @@ import { toast } from "sonner"
 import { fixImageUrl } from "../../AprobacionUtils"
 import { PagoPreAprobacionSection, type PagoPreAprobacionRef } from "../../PagoPreAprobacionSection"
 import { AjustePrecioPanel } from "./AjustePrecioPanel"
+import type { MetodoPagoItem } from "@/components/finanzas/MetodosPagoSplitInput"
+import { ModalEditarPagoMatricula } from "./ModalEditarPagoMatricula"
 
 interface ModuloLineaPago {
   id: string
+  modulo_id?: string
   modulo_nombre: string
   monto_ajustado: number
   monto_abonado: number
   monto_original?: number
+  motivo_ajuste?: string
   estado: string
+  es_mixto?: boolean
+  metodos?: Array<{
+    id: string
+    monto: number
+    metodo_pago: string
+    referencia_pago?: string
+    comprobante_url?: string | null
+    fecha_pago?: string
+  }>
 }
 
 interface SolicitudSeleccionada {
+  id?: string
   pago?: {
     tipo_pago?: string
     monto_solicitado?: number
+    es_mixto?: boolean
+    desglose_metodos?: Array<{
+      metodo: string
+      monto: number
+      comprobantes?: string[]
+    }>
     comprobante?: {
       tipo?: string
       url?: string
@@ -39,7 +59,21 @@ interface SolicitudSeleccionada {
   curso?: { id?: string; nombre?: string; es_personalizado?: boolean; precio_base?: number; precio_matricula?: number }
   lineas_pago?: {
     modulos?: ModuloLineaPago[]
-    inscripcion?: { id: string; monto_ajustado: number; monto_abonado: number; estado: string }
+    inscripcion?: {
+      id: string
+      monto_ajustado: number
+      monto_abonado: number
+      estado: string
+      es_mixto?: boolean
+      metodos?: Array<{
+        id: string
+        monto: number
+        metodo_pago: string
+        referencia_pago?: string
+        comprobante_url?: string | null
+        fecha_pago?: string
+      }>
+    }
     total_abonado: number
     total_esperado: number
     modulos_pagados: number
@@ -48,6 +82,8 @@ interface SolicitudSeleccionada {
 }
 
 interface SolicitudPagoTabProps {
+  solicitudId?: string
+  onRefresh?: () => void
   selected: SolicitudSeleccionada
   yaProcesada: boolean
   editPagoField: string | null
@@ -69,7 +105,7 @@ interface SolicitudPagoTabProps {
   getCursoNombre: () => string
   setMontoValido: (val: boolean) => void
   setTotalPrecioModulos: (val: number) => void
-  handleApprove: (pagos: Record<string, unknown>[], metodoPago: string, inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string }) => void
+  handleApprove: (pagos: Record<string, unknown>[], metodoPago: string, inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string }, metodosPago?: MetodoPagoItem[], grupoPagoId?: string) => void
   setSelected: (updater: (prev: SolicitudSeleccionada) => SolicitudSeleccionada) => void
   editandoMontos: boolean
   editMontosValues: Record<string, string>
@@ -85,6 +121,8 @@ interface SolicitudPagoTabProps {
 
 export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
   const {
+    solicitudId,
+    onRefresh,
     selected,
     yaProcesada,
     editPagoField,
@@ -121,6 +159,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
   } = props
 
   const [expandedAjustes, setExpandedAjustes] = useState<Record<string, boolean>>({})
+  const [modalEditarPagoAbierto, setModalEditarPagoAbierto] = useState(false)
   const esPersonalizado = selected?.curso?.es_personalizado === true
 
   // Normalización de tipo de pago (solo dos opciones válidas: 'transferencia' o 'efectivo')
@@ -229,7 +268,12 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
               </div>
             ) : (
               <div>
-                {tipoPagoNormalizado === "efectivo" ? (
+                {selected.pago?.es_mixto ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+                    Pago Mixto ({selected.pago?.desglose_metodos?.length || 2} métodos)
+                  </span>
+                ) : tipoPagoNormalizado === "efectivo" ? (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
                     Efectivo
                   </span>
@@ -316,6 +360,46 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             </div>
           </div>
         </div>
+
+        {/* Desglose de pagos mixtos si aplica */}
+        {selected.pago?.desglose_metodos && selected.pago.desglose_metodos.length > 0 && (
+          <div className="p-3.5 bg-white rounded-xl border border-purple-100 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-purple-900 border-b border-purple-100/60 pb-2">
+              <span className="flex items-center gap-1.5">
+                <HugeiconsIcon icon={PaymentIcon} size={15} className="text-purple-600" />
+                Desglose de métodos de pago registrados
+              </span>
+              <span className="text-[11px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                {selected.pago.desglose_metodos.length} métodos
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+              {selected.pago.desglose_metodos.map((dm, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/60 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    <span className="font-semibold text-slate-800 capitalize">{dm.metodo}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-extrabold text-slate-900">
+                      ${Number(dm.monto).toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                    </span>
+                    {dm.comprobantes && dm.comprobantes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedImageUrl(fixImageUrl(dm.comprobantes![0]))}
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        title="Ver foto de comprobante"
+                      >
+                        Ver foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Comprobante cargado card */}
         <div className="pt-2">
@@ -450,7 +534,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             metodoPagoInicial={tipoPagoNormalizado || "efectivo"}
             onMontoValidoChange={setMontoValido}
             onTotalPrecioChange={setTotalPrecioModulos}
-            onSubmit={(pagos, metodoPago, inscripcion) => handleApprove(pagos, metodoPago, inscripcion)}
+            onSubmit={(pagos, metodoPago, inscripcion, metodosPago, grupoPagoId) => handleApprove(pagos, metodoPago, inscripcion, metodosPago, grupoPagoId)}
           />
         </div>
       )}
@@ -466,6 +550,15 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
           monto_abonado: number
           monto_original?: number
           estado: string
+          es_mixto?: boolean
+          metodos?: Array<{
+            id: string
+            monto: number
+            metodo_pago: string
+            referencia_pago?: string
+            comprobante_url?: string | null
+            fecha_pago?: string
+          }>
         }[] = [
           ...modulos.map((m: ModuloLineaPago) => ({
             id: m.id,
@@ -474,6 +567,8 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             monto_abonado: m.monto_abonado,
             monto_original: m.monto_original,
             estado: m.estado,
+            es_mixto: m.es_mixto,
+            metodos: m.metodos,
           })),
           ...(inscripcion
             ? [
@@ -483,6 +578,8 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                   monto_ajustado: inscripcion.monto_ajustado,
                   monto_abonado: inscripcion.monto_abonado,
                   estado: inscripcion.estado,
+                  es_mixto: inscripcion.es_mixto,
+                  metodos: inscripcion.metodos,
                 },
               ]
             : []),
@@ -542,9 +639,15 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                 <div className="flex items-center gap-3">
                   {yaProcesada && (
                     <button
-                      onClick={onStartEditMontos}
+                      onClick={() => {
+                        if (solicitudId || selected?.id) {
+                          setModalEditarPagoAbierto(true)
+                        } else {
+                          onStartEditMontos()
+                        }
+                      }}
                       type="button"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#fd761a] transition-all shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#fd761a] transition-all shadow-2xs cursor-pointer hover:border-[#fd761a]/40"
                     >
                       <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
                       <span>Editar Pago</span>
@@ -587,7 +690,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
 
               let estadoLive = lp.estado
               if (editandoMontos) {
-                if (abonadoLive >= precioLive && precioLive > 0) {
+                if (precioLive <= 0 || (abonadoLive >= precioLive && precioLive > 0)) {
                   estadoLive = "pagado"
                 } else if (abonadoLive > 0) {
                   estadoLive = "abonado"
@@ -605,7 +708,26 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                     changed && "bg-orange-50/50 -mx-2 px-2 rounded-xl"
                   )}
                 >
-                  <span className="truncate font-semibold text-slate-900 self-center">{lp.nombre}</span>
+                  <div className="flex flex-col min-w-0 self-center">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate font-semibold text-slate-900">{lp.nombre}</span>
+                      {lp.es_mixto && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
+                          Mixto ({lp.metodos?.length || 2})
+                        </span>
+                      )}
+                    </div>
+                    {lp.metodos && lp.metodos.length > 0 && !editandoMontos && (
+                      <div className="text-[11px] text-slate-500 font-normal flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {lp.metodos.map((mt, mi) => (
+                          <span key={mi} className="inline-flex items-center gap-1">
+                            <span className="capitalize font-medium">{mt.metodo_pago}</span>: ${Number(mt.monto).toFixed(2)}
+                            {mi < lp.metodos!.length - 1 && <span className="text-slate-300">•</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   {editandoMontos ? (
                     <div className="flex justify-end self-center">
@@ -704,7 +826,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
                             : "bg-rose-50 text-rose-700 border border-rose-200"
                       )}
                     >
-                      {estadoLive === "pagado" ? "Pagado" : estadoLive === "abonado" ? "Parcial" : "Pendiente"}
+                      {estadoLive === "pagado" ? ((precioLive <= 0 || lp.monto_ajustado <= 0) ? "Exonerado" : "Pagado") : estadoLive === "abonado" ? "Parcial" : "Pendiente"}
                     </span>
                   </div>
                 </div>
@@ -749,6 +871,19 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
           </div>
         )
       })()}
+      {/* Modal avanzado de edición de pago de matrícula */}
+      {modalEditarPagoAbierto && (solicitudId || selected?.id) && (
+        <ModalEditarPagoMatricula
+          open={modalEditarPagoAbierto}
+          onClose={() => setModalEditarPagoAbierto(false)}
+          solicitudId={solicitudId || selected?.id || ""}
+          selected={selected}
+          onSuccess={() => {
+            setModalEditarPagoAbierto(false)
+            onRefresh?.()
+          }}
+        />
+      )}
     </div>
   )
 }

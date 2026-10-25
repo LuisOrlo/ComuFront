@@ -15,12 +15,14 @@ import {
   ViewIcon,
   CustomerService01Icon,
   BookOpen01Icon,
+  PencilEdit01Icon,
 } from "@hugeicons/core-free-icons"
 import { Loader2, AlertCircle } from "lucide-react"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { validarComprobante } from "@/lib/file-validators"
+import { MetodosPagoSplitInput, type MetodoPagoItem } from "@/components/finanzas/MetodosPagoSplitInput"
 
 function getInitials(name?: string) {
   if (!name) return "PA"
@@ -56,7 +58,10 @@ export function TallerParticipantePage() {
 
   // Campos del formulario de cobro
   const [montoPago, setMontoPago] = useState("")
-  const [metodoPago, setMetodoPago] = useState("transferencia")
+  const [grupoPagoId, setGrupoPagoId] = useState(() => crypto.randomUUID())
+  const [metodos, setMetodos] = useState<MetodoPagoItem[]>(() => [
+    { id: "tp-1", metodo_pago: "transferencia", monto: "" },
+  ])
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0])
   const [observaciones, setObservaciones] = useState("")
 
@@ -80,7 +85,9 @@ export function TallerParticipantePage() {
 
         const saldoInicial = Number(d?.saldo_pendiente ?? d?.saldo ?? 0)
         if (saldoInicial > 0) {
-          setMontoPago(saldoInicial.toFixed(2))
+          const s = saldoInicial.toFixed(2)
+          setMontoPago(s)
+          setMetodos([{ id: "tp-1", metodo_pago: "transferencia", monto: s }])
         }
       } catch {
         toast.error("Error al cargar datos financieros del participante")
@@ -114,7 +121,10 @@ export function TallerParticipantePage() {
       const d = res.datos || res.data || res
       setData(d)
       const nuevoSaldo = Number(d?.saldo_pendiente ?? d?.saldo ?? 0)
-      setMontoPago(nuevoSaldo > 0 ? nuevoSaldo.toFixed(2) : "")
+      const s = nuevoSaldo > 0 ? nuevoSaldo.toFixed(2) : ""
+      setMontoPago(s)
+      setMetodos([{ id: "tp-1", metodo_pago: "transferencia", monto: s }])
+      setGrupoPagoId(crypto.randomUUID())
     } catch {
       /* silent */
     }
@@ -136,6 +146,13 @@ export function TallerParticipantePage() {
 
   const montoNum = parseFloat(montoPago) || 0
 
+  const handleMontoPagoChange = (val: string) => {
+    setMontoPago(val)
+    if (metodos.length === 1) {
+      setMetodos([{ ...metodos[0], monto: val }])
+    }
+  }
+
   // Validaciones en tiempo real
   const montoError = useMemo(() => {
     if (!montoPago.trim()) return null
@@ -148,6 +165,12 @@ export function TallerParticipantePage() {
     return null
   }, [montoPago, montoNum, saldoPendiente])
 
+  const metodosSumCentavos = useMemo(() => {
+    return metodos.reduce((sum, m) => sum + Math.round((parseFloat(m.monto) || 0) * 100), 0)
+  }, [metodos])
+
+  const totalEsperadoCentavos = Math.round(montoNum * 100)
+  const metodosCoinciden = montoNum > 0 && metodosSumCentavos === totalEsperadoCentavos
   const comprobanteValido = !!comprobanteFile
 
   const formularioValido = useMemo(() => {
@@ -157,9 +180,10 @@ export function TallerParticipantePage() {
       montoNum > 0 &&
       montoNum <= saldoPendiente + 0.001 &&
       !montoError &&
-      comprobanteValido
+      comprobanteValido &&
+      metodosCoinciden
     )
-  }, [saldoPendiente, montoPago, montoNum, montoError, comprobanteValido])
+  }, [saldoPendiente, montoPago, montoNum, montoError, comprobanteValido, metodosCoinciden])
 
   const disabledReason = useMemo(() => {
     if (saldoPendiente <= 0) return "El taller ya se encuentra pagado en su totalidad."
@@ -169,8 +193,11 @@ export function TallerParticipantePage() {
       return `El monto ingresado ($${montoNum.toFixed(2)}) supera el saldo pendiente ($${saldoPendiente.toFixed(2)}).`
     }
     if (!comprobanteValido) return "Debes adjuntar una imagen del comprobante de pago antes de continuar."
+    if (!metodosCoinciden) {
+      return `La suma de los métodos de pago ($${(metodosSumCentavos / 100).toFixed(2)}) no coincide con el total a pagar ($${montoNum.toFixed(2)}).`
+    }
     return null
-  }, [saldoPendiente, montoPago, montoNum, comprobanteValido])
+  }, [saldoPendiente, montoPago, montoNum, comprobanteValido, metodosCoinciden, metodosSumCentavos])
 
   const saldoRestanteProyectado = Math.max(
     0,
@@ -264,7 +291,14 @@ export function TallerParticipantePage() {
       await financeService.registrarPago({
         cuenta_cobrar_id: data.cuenta_id,
         monto: montoNum,
-        metodo_pago: metodoPago,
+        metodo_pago: metodos[0]?.metodo_pago || "transferencia",
+        metodos_pago: metodos.map((m) => ({
+          metodo_pago: m.metodo_pago,
+          monto: parseFloat(m.monto) || 0,
+          comprobante_url: comprobanteUrl,
+          fecha_pago: fechaPago,
+        })),
+        grupo_pago_id: grupoPagoId,
         fecha_pago: fechaPago,
         comprobante_url: comprobanteUrl,
         observaciones: observaciones.trim() || undefined,
@@ -273,6 +307,7 @@ export function TallerParticipantePage() {
       toast.success("Pago registrado exitosamente")
       handleRemoveComprobante()
       setObservaciones("")
+      setGrupoPagoId(crypto.randomUUID())
       await recargarDatos()
     } catch (err: any) {
       toast.error(err?.response?.data?.mensaje || err?.response?.data?.message || "Error al registrar el pago")
@@ -524,16 +559,29 @@ export function TallerParticipantePage() {
                           </p>
                         </div>
                       </div>
-                      {t.comprobante_url && (
-                        <button
-                          type="button"
-                          onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
-                        >
-                          <HugeiconsIcon icon={ViewIcon} size={13} />
-                          <span>Ver comprobante</span>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {t.id && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+                            title="Ver detalle completo o editar pago"
+                          >
+                            <HugeiconsIcon icon={PencilEdit01Icon} size={13} />
+                            <span>Ver / Editar</span>
+                          </button>
+                        )}
+                        {t.comprobante_url && (
+                          <button
+                            type="button"
+                            onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                          >
+                            <HugeiconsIcon icon={ViewIcon} size={13} />
+                            <span>Comprobante</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -628,14 +676,14 @@ export function TallerParticipantePage() {
                           max={saldoPendiente}
                           step="0.01"
                           value={montoPago}
-                          onChange={(e) => setMontoPago(e.target.value)}
+                          onChange={(e) => handleMontoPagoChange(e.target.value)}
                           onBlur={() => {
                             const v = parseFloat(montoPago || "0")
                             if (!isNaN(v) && v > 0) {
                               if (v > saldoPendiente) {
-                                setMontoPago(saldoPendiente.toFixed(2))
+                                handleMontoPagoChange(saldoPendiente.toFixed(2))
                               } else {
-                                setMontoPago(v.toFixed(2))
+                                handleMontoPagoChange(v.toFixed(2))
                               }
                             }
                           }}
@@ -654,7 +702,7 @@ export function TallerParticipantePage() {
 
                       <button
                         type="button"
-                        onClick={() => setMontoPago(saldoPendiente.toFixed(2))}
+                        onClick={() => handleMontoPagoChange(saldoPendiente.toFixed(2))}
                         disabled={savingPago}
                         className="h-11 px-3.5 rounded-xl bg-orange-50 hover:bg-[#fd761a] hover:text-white text-[#fd761a] border border-orange-200/80 text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0 flex items-center gap-1.5"
                         title="Aplicar el saldo completo pendiente de este taller"
@@ -674,54 +722,38 @@ export function TallerParticipantePage() {
                   </div>
                 </div>
 
-                {/* Date & Payment Method */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  {/* Fecha de Pago */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="fechaPago" className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between">
-                      <span>Fecha de pago <span className="text-red-500">*</span></span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="fechaPago"
-                        type="date"
-                        value={fechaPago}
-                        onChange={(e) => setFechaPago(e.target.value)}
-                        disabled={savingPago}
-                        className="w-full h-11 px-3.5 pl-10 bg-slate-50/80 rounded-xl text-slate-900 text-xs font-semibold outline-none border border-slate-200 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all cursor-pointer"
-                        required
-                      />
-                      <HugeiconsIcon
-                        icon={Calendar01Icon}
-                        size={17}
-                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                      />
-                    </div>
-                    <span className="text-[11px] text-slate-400">Día en que se acreditó la transacción</span>
+                {/* Fecha de Pago */}
+                <div className="space-y-1.5 pt-1">
+                  <label htmlFor="fechaPago" className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between">
+                    <span>Fecha de pago <span className="text-red-500">*</span></span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="fechaPago"
+                      type="date"
+                      value={fechaPago}
+                      onChange={(e) => setFechaPago(e.target.value)}
+                      disabled={savingPago}
+                      className="w-full sm:w-1/2 h-11 px-3.5 pl-10 bg-slate-50/80 rounded-xl text-slate-900 text-xs font-semibold outline-none border border-slate-200 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all cursor-pointer"
+                      required
+                    />
+                    <HugeiconsIcon
+                      icon={Calendar01Icon}
+                      size={17}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    />
                   </div>
+                  <span className="text-[11px] text-slate-400">Día en que se acreditó la transacción</span>
+                </div>
 
-                  {/* Método de Pago */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="metodoPago" className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Método de pago <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="metodoPago"
-                        value={metodoPago}
-                        onChange={(e) => setMetodoPago(e.target.value)}
-                        disabled={savingPago}
-                        className="w-full h-11 px-3.5 bg-slate-50/80 rounded-xl text-slate-900 text-xs font-semibold outline-none border border-slate-200 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all cursor-pointer"
-                        required
-                      >
-                        <option value="transferencia">Transferencia Bancaria Directa</option>
-                        <option value="efectivo">Efectivo en Recepción</option>
-                        <option value="deposito">Depósito Bancario</option>
-                        <option value="tarjeta">Tarjeta Débito / Crédito</option>
-                      </select>
-                    </div>
-                    <span className="text-[11px] text-slate-400">Canal utilizado para la recaudación</span>
-                  </div>
+                {/* Métodos de Pago (Simple o Múltiples) */}
+                <div className="pt-2">
+                  <MetodosPagoSplitInput
+                    totalEsperado={montoNum}
+                    metodos={metodos}
+                    onChange={setMetodos}
+                    disabled={savingPago}
+                  />
                 </div>
 
                 {/* Comprobante de Pago (Requerido) */}
@@ -908,16 +940,29 @@ export function TallerParticipantePage() {
                             </p>
                           </div>
                         </div>
-                        {t.comprobante_url && (
-                          <button
-                            type="button"
-                            onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
-                          >
-                            <HugeiconsIcon icon={ViewIcon} size={13} />
-                            <span>Ver comprobante</span>
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {t.id && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+                              title="Ver detalle completo o editar pago"
+                            >
+                              <HugeiconsIcon icon={PencilEdit01Icon} size={13} />
+                              <span>Ver / Editar</span>
+                            </button>
+                          )}
+                          {t.comprobante_url && (
+                            <button
+                              type="button"
+                              onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                            >
+                              <HugeiconsIcon icon={ViewIcon} size={13} />
+                              <span>Comprobante</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

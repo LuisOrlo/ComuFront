@@ -1,6 +1,14 @@
 import api from "@/services/auth.service"
 import type { EstadisticasResponse, CatalogoDetalleResponse, EstudianteDetalleResponse } from "@/types/estadisticas"
 
+export interface MetodoPagoPayload {
+  metodo_pago: string
+  monto: number
+  referencia_pago?: string
+  comprobante_url?: string | null
+  fecha_pago?: string
+}
+
 interface PagoInicialDto {
   matricula_id?: string
   solicitud_inscripcion_id?: string
@@ -11,6 +19,8 @@ interface PagoInicialDto {
   comprobante_url?: string | null
   fecha_pago?: string
   observaciones?: string
+  metodos_pago?: MetodoPagoPayload[]
+  grupo_pago_id?: string
 }
 
 interface PagosInicialesDto {
@@ -24,6 +34,8 @@ interface PagosInicialesDto {
     fecha_pago?: string
     comprobante_url?: string | null
   }>
+  metodos_pago?: MetodoPagoPayload[]
+  grupo_pago_id?: string
   pago_unificado?: boolean
   observaciones?: string
 }
@@ -107,7 +119,7 @@ export const financeService = {
     return response.data
   },
 
-  async updateTransaccion(id: string, dto: { monto?: number; metodo_pago?: string; observaciones?: string } | FormData) {
+  async updateTransaccion(id: string, dto: Record<string, unknown> | FormData) {
     if (dto instanceof FormData) {
       dto.append("_method", "PATCH")
       const response = await api.post(`/finanzas/transacciones/${id}`, dto, {

@@ -377,11 +377,22 @@ export function AprobacionSolicitudPage() {
     finally { setDeletingCedula(false) }
   }
 
-  const handleApprove = async (pagos: any[], metodoPago: string, inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string }) => {
+  const handleApprove = async (
+    pagos: any[],
+    metodoPago: string,
+    inscripcion?: { total: number; cubierto: number; motivo_ajuste?: string },
+    metodosPago?: any[],
+    grupoPagoId?: string
+  ) => {
     if (!id) return
     setActionLoading(true)
     try {
-      const payload: Record<string, unknown> = { pagos, metodo_pago: metodoPago }
+      const payload: Record<string, unknown> = {
+        pagos,
+        metodo_pago: metodoPago,
+        metodos_pago: metodosPago,
+        grupo_pago_id: grupoPagoId,
+      }
       if (inscripcion && (inscripcion.total > 0 || inscripcion.motivo_ajuste)) {
         payload.precio_inscripcion = inscripcion.total
         payload.inscripcion_cubierta = inscripcion.cubierto
@@ -447,15 +458,13 @@ export function AprobacionSolicitudPage() {
   }
 
   const editPrecioChange = (lineaId: string, nuevoPrecio: string, motivo: string) => {
-    const precioNum = parseFloat(nuevoPrecio) || 0
+    const precioNum = Math.max(0, parseFloat(nuevoPrecio) || 0)
     const abonadoActual = parseFloat(editMontosValues[lineaId] || "0") || 0
 
-    // Un descuento no puede reducir retroactivamente un pago ya registrado.
-    // Antes se ajustaba silenciosamente el abonado al nuevo precio, lo que
-    // podía alterar el historial contable y terminaba provocando un 500.
+    // Si el nuevo precio ajustado es menor que el abonado actual, ajustamos el monto a cobrar
+    // para que coincida con el nuevo precio sin bloquear al usuario
     if (precioNum < abonadoActual) {
-      toast.error(`El nuevo precio no puede ser menor que lo ya pagado ($${abonadoActual.toFixed(2)}).`)
-      return
+      setEditMontosValues(prev => ({ ...prev, [lineaId]: String(precioNum) }))
     }
 
     setEditPreciosValues(prev => ({ ...prev, [lineaId]: nuevoPrecio }))
@@ -723,6 +732,8 @@ export function AprobacionSolicitudPage() {
 
         {activeTab === "pago" && (
           <SolicitudPagoTab
+            solicitudId={id}
+            onRefresh={() => fetchDetail(id)}
             selected={selected}
             yaProcesada={yaProcesada}
             editPagoField={editPagoField}

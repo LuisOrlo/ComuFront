@@ -5,12 +5,15 @@ import { COLORS } from "@/lib/constants"
 import { tallerService } from "@/services/taller.service"
 import { toast } from "sonner"
 import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
+import { MetodosPagoSplitInput, type MetodoPagoItem } from "@/components/finanzas/MetodosPagoSplitInput"
 
 export type PagoTallerPreAprobacionRef = {
   submit: () => Promise<boolean>
   getMonto: () => number
   getTipoPago: () => string
   getMetodoPago: () => string
+  getMetodosPago: () => MetodoPagoItem[]
+  getGrupoPagoId: () => string
 }
 
 interface PagoPreAprobacionTallerSectionProps {
@@ -33,7 +36,14 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
   const [precioEfectivo, setPrecioEfectivo] = useState(precioBase)
   const [monto, setMonto] = useState(String(montoInicial || precioBase || 0))
   const [tipoPago, setTipoPago] = useState(tipoPagoInicial || "abono")
-  const [metodo, setMetodo] = useState(metodoInicial || "efectivo")
+  const [grupoPagoId] = useState(() => crypto.randomUUID())
+  const [metodos, setMetodos] = useState<MetodoPagoItem[]>(() => [
+    {
+      id: "taller-pago-1",
+      metodo_pago: (metodoInicial === "transferencia" || metodoInicial === "deposito" || metodoInicial === "tarjeta") ? metodoInicial : "efectivo",
+      monto: String(montoInicial || precioBase || 0),
+    },
+  ])
   const [saving, setSaving] = useState(false)
 
   const [ajuste, setAjuste] = useState<{ expandido: boolean; motivo: string }>({
@@ -46,21 +56,35 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
     if (numVal > precioEfectivo && precioEfectivo >= 0) {
       setMonto(String(precioEfectivo))
       setTipoPago("completo")
+      if (metodos.length === 1) {
+        setMetodos([{ ...metodos[0], monto: String(precioEfectivo) }])
+      }
       toast.warning(`El monto no puede exceder el precio del taller ($${precioEfectivo.toFixed(2)}). Se ajustó al máximo.`)
       return
     }
     setMonto(val)
     setTipoPago(numVal >= precioEfectivo ? "completo" : "abono")
+    if (metodos.length === 1) {
+      setMetodos([{ ...metodos[0], monto: val }])
+    }
   }
 
   const submit = useCallback(async (): Promise<boolean> => {
+    const montoNum = parseFloat(monto) || 0
+    const metodosSumCentavos = metodos.reduce((sum, m) => sum + Math.round((parseFloat(m.monto) || 0) * 100), 0)
+    const totalEsperadoCentavos = Math.round(montoNum * 100)
+
+    if (montoNum > 0 && metodosSumCentavos !== totalEsperadoCentavos) {
+      toast.error(`La suma de los métodos ($${(metodosSumCentavos / 100).toFixed(2)}) debe coincidir con el monto a cobrar ($${montoNum.toFixed(2)})`)
+      return false
+    }
+
     setSaving(true)
     try {
-      const montoNum = parseFloat(monto) || 0
       const data: { monto_pagado: number; tipo_pago: string; metodo_pago: string; monto_ajustado?: number; precio_ajustado?: number; motivo_ajuste?: string } = {
         monto_pagado: montoNum,
         tipo_pago: tipoPago,
-        metodo_pago: metodo,
+        metodo_pago: metodos[0]?.metodo_pago || "efectivo",
       }
       if (precioEfectivo !== precioBase) {
         data.monto_ajustado = precioEfectivo
@@ -75,14 +99,16 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
     } finally {
       setSaving(false)
     }
-  }, [inscripcionId, monto, tipoPago, metodo, precioEfectivo, precioBase, ajuste, onSaved])
+  }, [inscripcionId, monto, tipoPago, metodos, precioEfectivo, precioBase, ajuste, onSaved])
 
   useImperativeHandle(ref, () => ({
     submit,
     getMonto: () => parseFloat(monto) || 0,
     getTipoPago: () => tipoPago,
-    getMetodoPago: () => metodo,
-  }), [submit, monto, tipoPago, metodo])
+    getMetodoPago: () => metodos[0]?.metodo_pago || "efectivo",
+    getMetodosPago: () => metodos,
+    getGrupoPagoId: () => grupoPagoId,
+  }), [submit, monto, tipoPago, metodos, grupoPagoId])
 
   const montoNum = parseFloat(monto) || 0
   const esCompleto = montoNum >= precioEfectivo
@@ -116,7 +142,11 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
               setPrecioEfectivo(nuevoPrecio)
               setAjuste({ expandido: false, motivo })
               if (montoNum > nuevoPrecio || nuevoPrecio === 0) {
-                setMonto(String(nuevoPrecio))
+                const s = String(nuevoPrecio)
+                setMonto(s)
+                if (metodos.length === 1) {
+                  setMetodos([{ ...metodos[0], monto: s }])
+                }
               }
             }}
             onCancelar={() => {
@@ -160,20 +190,13 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
           </span>
         </div>
 
-        <div>
-          <label className="text-[10px] font-bold uppercase tracking-wider mb-1 block" style={{ color: COLORS.TEXT_MUTED }}>
-            Método de pago
-          </label>
-          <select
-            value={metodo}
-            onChange={e => setMetodo(e.target.value)}
+        <div className="pt-2">
+          <MetodosPagoSplitInput
+            totalEsperado={montoNum}
+            metodos={metodos}
+            onChange={setMetodos}
             disabled={saving}
-            className="w-full px-3 py-2.5 border rounded-xl text-sm outline-none bg-white font-medium"
-            style={{ borderColor: COLORS.BORDER_SUBTLE }}
-          >
-            <option value="efectivo">Efectivo</option>
-            <option value="transferencia">Transferencia / Depósito</option>
-          </select>
+          />
         </div>
       </div>
     </div>

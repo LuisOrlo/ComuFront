@@ -181,6 +181,8 @@ export interface CursoFilters {
 export interface NotificacionItem {
   id: string
   tipo?: "curso" | "taller"
+  subtipo?: "matricula" | "solicitud" | "taller"
+  titulo?: string
   estudiante: string
   curso: string
   color?: string
@@ -900,7 +902,18 @@ export const cursosService = {
 
   async actualizarLineasPago(
     id: string,
-    lineas: { id: string; monto_abonado: number; monto_ajustado?: number; motivo_ajuste?: string }[]
+    lineas: {
+      id: string
+      monto_abonado: number
+      monto_ajustado?: number
+      motivo_ajuste?: string
+      metodos?: Array<{
+        metodo_pago: string
+        monto: number
+        referencia_pago?: string
+        comprobante_url?: string | null
+      }>
+    }[]
   ): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-lineas-pago`, { lineas })
     return response.data

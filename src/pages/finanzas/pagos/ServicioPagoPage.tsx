@@ -14,6 +14,7 @@ import {
   Delete02Icon,
   ViewIcon,
   CustomerService01Icon,
+  PencilEdit01Icon,
 } from "@hugeicons/core-free-icons"
 import { Loader2 } from "lucide-react"
 import { cn, getStorageUrl } from "@/lib/utils"
@@ -518,16 +519,29 @@ export function ServicioPagoPage() {
                           </p>
                         </div>
                       </div>
-                      {t.comprobante_url && (
-                        <button
-                          type="button"
-                          onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
-                        >
-                          <HugeiconsIcon icon={ViewIcon} size={13} />
-                          <span>Ver comprobante</span>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {t.id && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+                            title="Ver detalle completo o editar pago"
+                          >
+                            <HugeiconsIcon icon={PencilEdit01Icon} size={13} />
+                            <span>Ver / Editar</span>
+                          </button>
+                        )}
+                        {t.comprobante_url && (
+                          <button
+                            type="button"
+                            onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                          >
+                            <HugeiconsIcon icon={ViewIcon} size={13} />
+                            <span>Comprobante</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -877,16 +891,29 @@ export function ServicioPagoPage() {
                             </p>
                           </div>
                         </div>
-                        {t.comprobante_url && (
-                          <button
-                            type="button"
-                            onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
-                          >
-                            <HugeiconsIcon icon={ViewIcon} size={13} />
-                            <span>Ver comprobante</span>
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {t.id && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+                              title="Ver detalle completo o editar pago"
+                            >
+                              <HugeiconsIcon icon={PencilEdit01Icon} size={13} />
+                              <span>Ver / Editar</span>
+                            </button>
+                          )}
+                          {t.comprobante_url && (
+                            <button
+                              type="button"
+                              onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                            >
+                              <HugeiconsIcon icon={ViewIcon} size={13} />
+                              <span>Comprobante</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

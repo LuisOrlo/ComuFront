@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, Coins02Icon, UploadIcon } from "@hugeicons/core-free-icons"
@@ -6,6 +6,12 @@ import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
 import { validarComprobante } from "@/lib/file-validators"
 import { financeService } from "@/services/finance.service"
+import {
+  MetodosPagoSplitInput,
+  type MetodoPagoItem,
+  type ConceptoDestino,
+  type ModalidadComprobante,
+} from "@/components/finanzas/MetodosPagoSplitInput"
 
 interface LineaPagoData {
   id: string
@@ -31,13 +37,21 @@ export function RegistrarPagoPage() {
   const backUrl = volverUrl || defaultBackUrl
 
   const [montos, setMontos] = useState<Record<string, string>>({})
-  const [metodoPago, setMetodoPago] = useState("efectivo")
+  const [grupoPagoId] = useState(() => crypto.randomUUID())
+  const [metodos, setMetodos] = useState<MetodoPagoItem[]>(() => [
+    {
+      id: "reg-pago-1",
+      metodo_pago: "efectivo",
+      monto: "",
+    },
+  ])
   const [saving, setSaving] = useState(false)
   const [lineas, setLineas] = useState<LineaPagoData[]>([])
   const [loadingLineas, setLoadingLineas] = useState(true)
 
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
+  const [modalidadComprobante, setModalidadComprobante] = useState<ModalidadComprobante>("unico")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -69,6 +83,16 @@ export function RegistrarPagoPage() {
 
   const sorted = [...lineas].sort((a, b) => a.numero_orden - b.numero_orden)
 
+  const conceptos: ConceptoDestino[] = useMemo(() => {
+    return sorted
+      .filter(l => l.monto_ajustado - l.monto_abonado > 0)
+      .map(l => ({
+        id: l.id,
+        nombre: l.tipo === "inscripcion" ? "Inscripción / Matrícula" : (l.nombre_modulo || `Módulo ${l.numero_orden}`),
+        saldo: Math.max(0, l.monto_ajustado - l.monto_abonado),
+      }))
+  }, [sorted])
+
   const handleRegistrar = async () => {
     const pagos = sorted
       .map(lp => ({ lp, monto: Number.parseFloat(montos[lp.id] || "0") }))
@@ -83,25 +107,61 @@ export function RegistrarPagoPage() {
       toast.error(`El monto de ${invalid.lp.nombre_modulo} excede su saldo pendiente`)
       return
     }
+
+    const sumaMetodosCentavos = metodos.reduce((acc, m) => acc + Math.round((parseFloat(m.monto) || 0) * 100), 0)
+    if (sumaMetodosCentavos !== Math.round(total * 100)) {
+      toast.error(`La suma de los métodos ($${(sumaMetodosCentavos / 100).toFixed(2)}) debe coincidir con el total a pagar ($${total.toFixed(2)})`)
+      return
+    }
+
     setSaving(true)
     try {
-      let comprobanteUrl: string | null = null
-      if (comprobanteFile) {
+      let comprobanteUrlGlobal: string | null = null
+      const isMultiple = metodos.length > 1
+      const porMetodo = isMultiple && modalidadComprobante === "por_metodo"
+
+      if (!porMetodo && comprobanteFile) {
         const form = new FormData()
         form.append("archivo", comprobanteFile)
         const upload = await financeService.uploadComprobantePago(form)
-        comprobanteUrl = upload?.data?.url || upload?.url || null
+        comprobanteUrlGlobal = upload?.data?.url || upload?.url || null
       }
+
+      // Si es por método, subimos los archivos individuales que tenga cada método
+      const metodosConUrls = await Promise.all(
+        metodos.map(async (m) => {
+          let urlMetodo = m.comprobante_url || null
+          if (porMetodo && m.comprobante_file) {
+            const fd = new FormData()
+            fd.append("archivo", m.comprobante_file)
+            const upload = await financeService.uploadComprobantePago(fd)
+            urlMetodo = upload?.data?.url || upload?.url || null
+          }
+          return {
+            ...m,
+            final_comprobante_url: porMetodo ? urlMetodo : comprobanteUrlGlobal,
+          }
+        })
+      )
+
       await financeService.registrarPagosIniciales({
         matricula_id: matriculaId,
         pagos: pagos.map(({ lp, monto }) => ({
           linea_pago_modulo_id: lp.id,
           monto,
-          metodo_pago: metodoPago,
+          metodo_pago: metodos.find(m => m.linea_pago_modulo_id === lp.id)?.metodo_pago || metodos[0]?.metodo_pago || "efectivo",
           fecha_pago: new Date().toISOString(),
-          comprobante_url: comprobanteUrl,
+          comprobante_url: comprobanteUrlGlobal || metodosConUrls[0]?.final_comprobante_url || null,
         })),
-        pago_unificado: pagos.length > 1,
+        metodos_pago: metodosConUrls.map((m) => ({
+          linea_pago_modulo_id: m.linea_pago_modulo_id,
+          metodo_pago: m.metodo_pago,
+          monto: parseFloat(m.monto) || 0,
+          comprobante_url: m.final_comprobante_url,
+          fecha_pago: new Date().toISOString(),
+        })),
+        grupo_pago_id: grupoPagoId,
+        pago_unificado: pagos.length > 1 || metodos.length > 1,
       })
 
       toast.success("Pago registrado exitosamente")
@@ -128,8 +188,39 @@ export function RegistrarPagoPage() {
   const totalAbonado = sorted.reduce((s, l) => s + l.monto_abonado, 0)
   const totalPendiente = totalAdeudado - totalAbonado
   const montoPagoNum = Object.values(montos).reduce((sum, value) => sum + (Number.parseFloat(value) || 0), 0)
+
+  useEffect(() => {
+    setMetodos(prev => {
+      if (prev.length === 1 && montoPagoNum > 0) {
+        const nuevo = montoPagoNum.toFixed(2)
+        if (prev[0].monto !== nuevo) {
+          return [{ ...prev[0], monto: nuevo }]
+        }
+      }
+      return prev
+    })
+  }, [montoPagoNum])
+
+  useEffect(() => {
+    const tieneAsignaciones = metodos.some(m => !!m.linea_pago_modulo_id)
+    if (tieneAsignaciones) {
+      setMontos(prev => {
+        const nuevosMontos: Record<string, string> = { ...prev }
+        sorted.forEach(l => {
+          const metodosDeLinea = metodos.filter(m => m.linea_pago_modulo_id === l.id)
+          if (metodosDeLinea.length > 0) {
+            const sumLinea = metodosDeLinea.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
+            nuevosMontos[l.id] = sumLinea > 0 ? sumLinea.toFixed(2) : ""
+          }
+        })
+        return nuevosMontos
+      })
+    }
+  }, [metodos, sorted])
+
   const cuentaAfectadas = Object.values(montos).filter(value => Number.parseFloat(value) > 0).length
   const hayMontoExcedido = sorted.some(linea => Number.parseFloat(montos[linea.id] || "0") > linea.monto_ajustado - linea.monto_abonado + 0.001)
+  const isMultiple = metodos.length > 1
 
   const handlePagarTodo = () => {
     setMontos(Object.fromEntries(sorted.map(linea => [linea.id, String(Math.max(linea.monto_ajustado - linea.monto_abonado, 0))])))
@@ -282,6 +373,15 @@ export function RegistrarPagoPage() {
                                   aria-invalid={montoExcedido}
                                   className={`w-full pl-5 pr-2 py-1.5 rounded-lg border text-xs font-bold text-right outline-none focus:ring-2 transition-colors ${montoExcedido ? "border-red-500 bg-red-50 text-red-700 focus:border-red-600 focus:ring-red-500/20" : "border-blue-200 focus:border-blue-500 focus:ring-blue-500/10"}`} />
                               </div>
+                              <div className="flex justify-end mt-0.5 w-32 ml-auto">
+                                <button
+                                  type="button"
+                                  onClick={() => setMontos(prev => ({ ...prev, [linea.id]: saldo.toFixed(2) }))}
+                                  className="text-[10px] text-orange-600 hover:text-orange-800 font-semibold hover:underline cursor-pointer"
+                                >
+                                  Llenar (${saldo.toFixed(2)})
+                                </button>
+                              </div>
                               {montoExcedido && <p className="mt-1 max-w-[180px] ml-auto text-[10px] leading-tight text-red-700 font-semibold">El valor ingresado para este módulo supera el saldo pendiente de ${saldo.toLocaleString()}.</p>}
                               <div className="mt-2 w-32 ml-auto h-1.5 rounded-full bg-gray-100 overflow-hidden">
                                 <div className="h-full bg-emerald-500" style={{ width: `${Math.min((linea.monto_abonado / linea.monto_ajustado) * 100, 100)}%` }} />
@@ -306,66 +406,68 @@ export function RegistrarPagoPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
-                    Método de pago
-                  </label>
-                  <select
-                    value={metodoPago}
-                    onChange={e => setMetodoPago(e.target.value)}
-                    className="w-full px-4 py-3 min-h-[44px] border border-gray-200 rounded-xl md:rounded-2xl text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all bg-white"
-                  >
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia">Transferencia</option>
-                  </select>
+                  <MetodosPagoSplitInput
+                    totalEsperado={montoPagoNum}
+                    metodos={metodos}
+                    onChange={setMetodos}
+                    conceptos={conceptos}
+                    disabled={saving}
+                    permitirComprobantePorMetodo={true}
+                    modalidadComprobante={modalidadComprobante}
+                    onModalidadComprobanteChange={setModalidadComprobante}
+                  />
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
-                    Comprobante de pago
-                  </label>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                  {comprobantePreview ? (
-                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                      <img
-                        src={comprobantePreview}
-                        alt="Comprobante"
-                        className="w-full max-h-[280px] object-contain bg-gray-50"
-                      />
-                      <div className="flex items-center justify-between gap-4 px-4 py-2.5 border-t bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                        <span className="text-xs text-gray-600 truncate min-w-0">{comprobanteFile?.name || "Comprobante seleccionado"}</span>
-                        <div className="flex gap-3 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
-                          >
-                            Cambiar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); if (comprobantePreview) URL.revokeObjectURL(comprobantePreview); setComprobanteFile(null); setComprobantePreview(null) }}
-                            className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
-                          >
-                            Quitar
-                          </button>
+                {/* Comprobante general (solo cuando la modalidad es 'unico' o cuando es método único) */}
+                {(!isMultiple || modalidadComprobante === "unico") && (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
+                      Comprobante de pago {isMultiple ? "(Comprobante único para todos los métodos)" : ""}
+                    </label>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                    {comprobantePreview ? (
+                      <div className="rounded-xl border overflow-hidden" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                        <img
+                          src={comprobantePreview}
+                          alt="Comprobante"
+                          className="w-full max-h-[280px] object-contain bg-gray-50"
+                        />
+                        <div className="flex items-center justify-between gap-4 px-4 py-2.5 border-t bg-gray-50/50" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+                          <span className="text-xs text-gray-600 truncate min-w-0">{comprobanteFile?.name || "Comprobante seleccionado"}</span>
+                          <div className="flex gap-3 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                            >
+                              Cambiar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); if (comprobantePreview) URL.revokeObjectURL(comprobantePreview); setComprobanteFile(null); setComprobantePreview(null) }}
+                              className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
+                            >
+                              Quitar
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-3 p-4 min-h-[44px] border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
-                    >
-                      <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                        <HugeiconsIcon icon={UploadIcon} size={20} className="text-gray-400" />
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-3 p-4 min-h-[44px] border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"
+                      >
+                        <div className="size-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                          <HugeiconsIcon icon={UploadIcon} size={20} className="text-gray-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
+                          <p className="text-xs text-gray-400">Máximo 5MB, JPG o PNG</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
-                        <p className="text-xs text-gray-400">Máximo 5MB, JPG o PNG</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

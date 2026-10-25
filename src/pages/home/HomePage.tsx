@@ -232,17 +232,60 @@ export function HomePage() {
                 <button type="button" onClick={() => navigate("/cursos")} className="inline-flex items-center gap-1 self-start text-xs font-semibold hover:underline sm:self-auto" style={{ color: ORANGE }}>Ver todos los cursos <HugeiconsIcon icon={ArrowRight01Icon} size={15} /></button>
               </div>
               {ocupacionCursos.length === 0 ? <div className="rounded-lg px-4 py-10 text-center text-sm" style={{ backgroundColor: SURFACE_LOW, color: ON_SURFACE_VARIANT }}>Sin cursos registrados</div> : (
-                <div className="-mx-5 overflow-x-auto px-5 sm:-mx-6 sm:px-6"><table className="w-full min-w-[560px] border-collapse text-left">
-                  <thead><tr className="text-[10px] uppercase tracking-wider" style={{ backgroundColor: SURFACE_LOW, color: ON_SURFACE_VARIANT }}><th className="rounded-l-lg px-3 py-3 font-semibold">Curso</th><th className="px-3 py-3 font-semibold">Instructor</th><th className="min-w-[160px] px-3 py-3 font-semibold">Inscritos / aforo</th><th className="rounded-r-lg px-3 py-3 text-right font-semibold">Acción</th></tr></thead>
+                <div className="overflow-x-auto"><table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wider" style={{ backgroundColor: SURFACE_LOW, color: ON_SURFACE_VARIANT }}>
+                      <th className="rounded-l-lg px-3 py-3 font-semibold">Curso</th>
+                      <th className="px-3 py-3 font-semibold">Instructor</th>
+                      <th className="w-[140px] px-3 py-3 font-semibold">Inscritos / aforo</th>
+                      <th className="rounded-r-lg px-3 py-3 text-right font-semibold w-[90px]">Acción</th>
+                    </tr>
+                  </thead>
                   <tbody>{ocupacionCursos.map((course) => {
                     const ratio = course.capacity > 0 ? course.enrolled / course.capacity : 0
                     const status = getOccupancyStatus(ratio)
                     const initials = course.instructor.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()
                     return <tr key={course.name} className="border-b transition-colors hover:bg-[#f8f9ff]" style={{ borderColor: "#e5eeff" }}>
-                      <td className="px-3 py-3.5"><div className="flex items-center gap-2.5"><div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e5eeff] text-[#45464d]"><HugeiconsIcon icon={BookOpenIcon} size={17} /></div><span className="max-w-[210px] truncate text-xs font-semibold">{course.name}</span></div></td>
-                      <td className="px-3 py-3.5">{course.instructor && course.instructor !== "—" ? <div className="flex items-center gap-2 text-xs"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#dce9ff] text-[9px] font-bold">{initials}</span><span className="max-w-[130px] truncate">{course.instructor}</span></div> : <span className="text-xs italic text-[#76777d]">Sin asignar</span>}</td>
-                      <td className="px-3 py-3.5"><div className="flex flex-col gap-1.5"><div className="flex justify-between text-[10px]"><span className="font-semibold">{course.enrolled} <span className="font-normal text-[#45464d]">/ {course.capacity}</span></span><span style={{ color: status.color }}>{Math.round(ratio * 100)}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-[#e5eeff]"><div className="h-full rounded-full" style={{ width: `${Math.min(ratio * 100, 100)}%`, backgroundColor: ratio >= 0.7 ? "#4edea3" : ORANGE }} /></div></div></td>
-                      <td className="px-3 py-3.5 text-right"><button type="button" onClick={() => navigate("/cursos")} className="inline-flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold hover:underline" style={{ color: ORANGE }}>Ver detalle <HugeiconsIcon icon={ArrowRight01Icon} size={13} /></button></td>
+                      <td className="px-3 py-3.5 align-top">
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e5eeff] text-[#45464d] mt-0.5">
+                            <HugeiconsIcon icon={BookOpenIcon} size={17} />
+                          </div>
+                          <span className="text-xs font-semibold leading-snug break-words">
+                            {course.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3.5 align-top">
+                        {course.instructor && course.instructor !== "—" ? (
+                          <div className="flex items-start gap-2 text-xs">
+                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#dce9ff] text-[9px] font-bold mt-0.5">
+                              {initials}
+                            </span>
+                            <span className="text-xs leading-snug break-words">
+                              {course.instructor}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs italic text-[#76777d]">Sin asignar</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3.5 align-top">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="font-semibold">{course.enrolled} <span className="font-normal text-[#45464d]">/ {course.capacity}</span></span>
+                            <span style={{ color: status.color }}>{Math.round(ratio * 100)}%</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-[#e5eeff]">
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(ratio * 100, 100)}%`, backgroundColor: ratio >= 0.7 ? "#4edea3" : ORANGE }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3.5 text-right align-top">
+                        <button type="button" onClick={() => navigate("/cursos")} className="inline-flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold hover:underline cursor-pointer" style={{ color: ORANGE }}>
+                          Ver detalle <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
+                        </button>
+                      </td>
                     </tr>
                   })}</tbody>
                 </table></div>
@@ -286,8 +329,43 @@ export function HomePage() {
               {agendaDelDia.length === 0 ? <EmptyState icon={CalendarDaysIcon} title="Sin eventos hoy" description="No hay clases ni sesiones programadas para el día de hoy." actionLabel="Ver agenda" onAction={() => navigate("/agenda")} /> : <ul className="mt-2 divide-y divide-[#e5eeff]">{agendaDelDia.map((event) => <li key={event.id} className="flex items-start justify-between gap-2 py-3"><div className="min-w-0"><p className="truncate text-xs font-semibold">{event.titulo}</p><p className="mt-1 truncate text-[10px]" style={{ color: ON_SURFACE_VARIANT }}>{event.instructor_nombre || event.aula_nombre || "—"}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${event.color || ORANGE} 13%, white)`, color: event.color || ORANGE }}>{event.hora_inicio?.slice(0, 5) || "—"}</span><span className="text-[9px] uppercase tracking-wide" style={{ color: ON_SURFACE_VARIANT }}>{event.tipo_label || "Sesión"}</span></div></li>)}</ul>}
             </article>
 
-            <article className="rounded-xl bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-2 pb-2"><div><h2 className="text-lg font-semibold">Actividad reciente</h2><p className="mt-1 text-xs" style={{ color: ON_SURFACE_VARIANT }}>Últimos registros del sistema</p></div><span title="Actividad recibida del sistema" className="mt-2 size-2 rounded-full bg-[#4edea3]" /></div>
-              {actividadReciente.length === 0 ? <EmptyState icon={Clock5Icon} title="Sin actividad reciente" description="Los registros y solicitudes recientes aparecerán aquí." /> : <ul className="mt-2 divide-y divide-[#e5eeff]">{actividadReciente.flatMap((group) => group.items).slice(0, 5).map((item) => <li key={item.id} className="flex items-start gap-2.5 py-3"><span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ backgroundColor: item.tipo === "curso" ? ORANGE : GREEN }} /><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{item.tipo === "curso" ? "Nueva solicitud de inscripción" : "Inscripción a taller"}</p><p className="mt-1 truncate text-[10px]" style={{ color: ON_SURFACE_VARIANT }}>{item.estudiante} · {item.curso}</p></div><span className="shrink-0 text-[10px]" style={{ color: ON_SURFACE_VARIANT }}>{item.hora}</span></li>)}</ul>}
+            <article className="rounded-xl bg-white p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-2 pb-2">
+                <div>
+                  <h2 className="text-lg font-semibold">Actividad reciente</h2>
+                  <p className="mt-1 text-xs" style={{ color: ON_SURFACE_VARIANT }}>Últimos registros del sistema</p>
+                </div>
+                <span title="Actividad recibida del sistema" className="mt-2 size-2 rounded-full bg-[#4edea3]" />
+              </div>
+              {actividadReciente.length === 0 ? (
+                <EmptyState icon={Clock5Icon} title="Sin actividad reciente" description="Los registros y solicitudes recientes aparecerán aquí." />
+              ) : (
+                <ul className="mt-2 divide-y divide-[#e5eeff]">
+                  {actividadReciente.flatMap((group) => group.items).slice(0, 5).map((item) => {
+                    const isMatricula = item.subtipo === "matricula"
+                    const isTaller = item.tipo === "taller"
+                    const badgeColor = isMatricula ? GREEN : isTaller ? "#7c3aed" : ORANGE
+                    const titulo = item.titulo || (isMatricula ? "Nueva matrícula" : isTaller ? "Inscripción a taller" : "Nueva solicitud de inscripción")
+                    return (
+                      <li
+                        key={item.id}
+                        onClick={() => navigate(isMatricula ? "/estudiantes" : `/matriculas?tab=${isTaller ? "talleres" : "cursos"}&id=${item.id}`)}
+                        className="flex items-start gap-2.5 py-3 transition-colors hover:bg-[#f8f9ff] rounded-lg px-2 -mx-2 cursor-pointer"
+                        title="Ver detalle del registro"
+                      >
+                        <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ backgroundColor: badgeColor }} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold">{titulo}</p>
+                          <p className="mt-1 truncate text-[10px]" style={{ color: ON_SURFACE_VARIANT }}>
+                            {item.estudiante} · {item.curso}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-[10px] font-medium" style={{ color: ON_SURFACE_VARIANT }}>{item.hora}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </article>
 
             <article className="flex items-center gap-3 rounded-xl bg-[#131b2e] p-4 text-white shadow-sm"><div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[#ff9a52]"><HugeiconsIcon icon={Alert01Icon} size={21} /></div><div className="min-w-0"><p className="text-xs font-bold">Sugerencia de cobro</p><p className="mt-1 text-[11px] leading-4 text-[#bec6e0]">{kpis.pagosPendientes > 0 ? `Hay un saldo pendiente de ${formatCurrency(kpis.pagosPendientes)} para revisar.` : "No hay saldo pendiente por cobrar en este momento."}</p></div></article>

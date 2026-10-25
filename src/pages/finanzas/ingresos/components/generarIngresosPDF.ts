@@ -423,7 +423,9 @@ export async function generarIngresosPDF(
         formatConcepto(item),
         item.estudiante_nombre || item.cliente_nombre || "—",
         item.categoria || "Servicio",
-        item.metodo_pago || "Transferencia",
+        item.desglose_metodos && item.desglose_metodos.length > 1
+          ? item.desglose_metodos.map((dm: any) => `${dm.metodo_pago}: $${Number(dm.monto || 0).toFixed(2)}`).join(" / ")
+          : (item.metodo_pago || "Transferencia"),
         money(item.monto),
       ]
     })

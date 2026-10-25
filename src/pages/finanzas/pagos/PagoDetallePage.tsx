@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   ArrowLeft,
@@ -26,7 +26,9 @@ import {
   X,
   Paperclip,
   CheckCircle,
+  Pencil,
 } from "lucide-react"
+import { ModalEditarPagoDetalle } from "./components/ModalEditarPagoDetalle"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
@@ -64,27 +66,50 @@ export function PagoDetallePage() {
   const [data, setData] = useState<any>(null)
   const [modalImage, setModalImage] = useState<string | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
 
   // Lightbox modal zoom and rotation states
   const [zoomScale, setZoomScale] = useState(1)
   const [rotation, setRotation] = useState(0)
+  const [activeComprobanteIdx, setActiveComprobanteIdx] = useState(0)
+
+  const rawComprobantes: string[] = useMemo(() => {
+    if (Array.isArray(data?.comprobantes) && data.comprobantes.length > 0) {
+      return data.comprobantes as string[]
+    }
+    if (Array.isArray(data?.desglose_metodos)) {
+      const urls: string[] = []
+      data.desglose_metodos.forEach((dm: { comprobantes?: string[] }) => {
+        if (Array.isArray(dm.comprobantes)) {
+          dm.comprobantes.forEach((u: string) => {
+            if (u && !urls.includes(u)) urls.push(u)
+          })
+        }
+      })
+      if (urls.length > 0) return urls
+    }
+    return data?.comprobante_url ? [data.comprobante_url as string] : []
+  }, [data])
+
+  const activeComprobanteUrl = rawComprobantes[activeComprobanteIdx] || data?.comprobante_url
+
+  const load = useCallback(async () => {
+    if (!id) return
+    try {
+      const res = await financeService.getTransaccionDetalle(id)
+      setData(res.datos || res.data || res)
+    } catch {
+      toast.error("Error al cargar detalle de transacción")
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
-    const load = async () => {
-      if (!id) return
-      try {
-        const res = await financeService.getTransaccionDetalle(id)
-        setData(res.datos || res.data || res)
-      } catch {
-        toast.error("Error al cargar detalle de transacción")
-      } finally {
-        setLoading(false)
-      }
-    }
     load()
-  }, [id])
+  }, [load])
 
   const handleCopyId = () => {
     if (!id) return
@@ -185,6 +210,20 @@ export function PagoDetallePage() {
     return nombreDesdeCuentaCobrar(cp)
   }
 
+  const getCatalogoNombre = () => {
+    if (data?.catalogo_nombre) return data.catalogo_nombre
+
+    const lp = data?.linea_pago_modulo
+    const ca = lp?.matricula?.curso_abierto
+    if (ca?.catalogo?.nombre) return ca.catalogo.nombre
+
+    const cp = data?.cuenta_por_cobrar
+    const caCp = cp?.matricula?.curso_abierto ?? cp?.solicitud_inscripcion?.curso_abierto
+    if (caCp?.catalogo?.nombre) return caCp.catalogo.nombre
+
+    return null
+  }
+
   function nombreDesdeLineaPago(lp: any): string {
     const ca = lp.matricula?.curso_abierto
     return ca?.nombre_instancia ?? ca?.catalogo?.nombre ?? "—"
@@ -266,6 +305,7 @@ export function PagoDetallePage() {
   const estudianteNombre = getNombreEstudiante()
   const tipoLabel = getTipoLabel()
   const cursoNombre = getCursoNombre()
+  const catalogoNombre = getCatalogoNombre()
   const detalleConceptos = data.detalle_conceptos || data.modulos || []
 
   const estadoConfig = {
@@ -340,6 +380,16 @@ export function PagoDetallePage() {
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span className="hidden sm:inline">Imprimir constancia</span>
           </button>
+
+          {/* Edit payment button */}
+          <button
+            onClick={() => setEditModalOpen(true)}
+            type="button"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:bg-[#e06512] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer active:scale-95"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span>Editar pago</span>
+          </button>
         </div>
       </div>
 
@@ -371,7 +421,7 @@ export function PagoDetallePage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                ${Number(data.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                ${Number(((data.tiene_multiples_modulos || data.es_mixto) && data.monto_grupo) ? data.monto_grupo : data.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
                 <span className="text-lg font-normal text-slate-500">USD</span>
               </span>
               <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase border", estadoConfig.bg)}>
@@ -381,13 +431,21 @@ export function PagoDetallePage() {
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
               <span className="font-semibold text-slate-700">
-                Pago #{id?.slice(0, 8).toUpperCase()}
+                Pago #{data.recibo_codigo || id?.slice(0, 8).toUpperCase()}
               </span>
               <span>•</span>
               <span className="inline-flex items-center gap-1 capitalize font-medium text-slate-700">
                 <CreditCard className="w-3.5 h-3.5 text-[#fd761a]" />
-                {data.metodo_pago}
+                {data.es_mixto ? "Pago Mixto" : data.metodo_pago}
               </span>
+              {data.es_mixto && (
+                <>
+                  <span>•</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-semibold text-[11px] border border-amber-200/50">
+                    {data.desglose_metodos?.length || 2} métodos
+                  </span>
+                </>
+              )}
               {data.tiene_multiples_modulos && (
                 <>
                   <span>•</span>
@@ -473,9 +531,19 @@ export function PagoDetallePage() {
                   Información del pago
                 </h2>
               </div>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                {data.estado_verificacion === "aprobado" ? "Cotejado" : "En auditoría"}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#fd761a] text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" />
+                  <span>Editar</span>
+                </button>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                  {data.estado_verificacion === "aprobado" ? "Cotejado" : "En auditoría"}
+                </span>
+              </div>
             </div>
 
             {/* Key-Value Specifications */}
@@ -491,13 +559,46 @@ export function PagoDetallePage() {
               </div>
 
               <div>
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">
-                  Método de pago
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  {data.es_mixto ? "Métodos de pago (Pago Mixto)" : "Método de pago"}
                 </span>
-                <div className="flex items-center gap-2 text-slate-900 font-medium capitalize">
-                  <CreditCard className="w-4 h-4 text-slate-400" />
-                  <span>{data.metodo_pago}</span>
-                </div>
+                {data.es_mixto && data.desglose_metodos?.length > 0 ? (
+                  <div className="space-y-2 mt-1.5">
+                    {data.desglose_metodos.map((dm: any, i: number) => (
+                      <div
+                        key={dm.id || i}
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-[#fd761a]" />
+                          <div>
+                            <span className="font-bold text-slate-800 capitalize block">
+                              {dm.metodo_pago}
+                            </span>
+                            {dm.referencia_pago && (
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                Ref: {dm.referencia_pago}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-extrabold text-slate-900 font-mono">
+                          ${Number(dm.monto || 0).toFixed(2)} USD
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-slate-900 font-medium capitalize">
+                    <CreditCard className="w-4 h-4 text-slate-400" />
+                    <span>{data.metodo_pago}</span>
+                    {data.referencia_pago && (
+                      <span className="text-xs text-slate-400 font-mono">
+                        (Ref: {data.referencia_pago})
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -530,8 +631,13 @@ export function PagoDetallePage() {
                       {tipoLabel}
                     </span>
                   </div>
+                  {catalogoNombre && catalogoNombre.toLowerCase() !== cursoNombre.toLowerCase() && (
+                    <span className="text-[11px] font-normal text-slate-400 -mt-0.5 truncate block">
+                      {catalogoNombre}
+                    </span>
+                  )}
                   {data.modulo_nombre && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium pt-0.5">
                       <Layers className="w-3.5 h-3.5 text-slate-400" />
                       <span>Módulo: {data.modulo_nombre}</span>
                     </div>
@@ -615,10 +721,10 @@ export function PagoDetallePage() {
               </div>
 
               {/* Header Action CTAs */}
-              {data.comprobante_url && !data.comprobante_purgado && (
+              {activeComprobanteUrl && !data.comprobante_purgado && (
                 <div className="flex items-center gap-2 self-start sm:self-center">
                   <a
-                    href={getStorageUrl(data.comprobante_url)}
+                    href={getStorageUrl(activeComprobanteUrl)}
                     download
                     target="_blank"
                     rel="noopener noreferrer"
@@ -641,6 +747,30 @@ export function PagoDetallePage() {
               )}
             </div>
 
+            {/* Switcher si hay múltiples comprobantes en el grupo */}
+            {rawComprobantes.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                  Archivos ({rawComprobantes.length}):
+                </span>
+                {rawComprobantes.map((url, i) => (
+                  <button
+                    key={url || i}
+                    type="button"
+                    onClick={() => setActiveComprobanteIdx(i)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                      activeComprobanteIdx === i
+                        ? "bg-[#fd761a] text-white shadow-xs"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    <Paperclip className="w-3 h-3" />
+                    <span>Comprobante #{i + 1}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Dedicated Receipt Preview Container */}
             {data.comprobante_purgado ? (
               <div className="w-full bg-rose-50/50 rounded-xl p-8 border border-rose-200/80 flex flex-col items-center justify-center text-center gap-3 min-h-[380px]">
@@ -656,11 +786,11 @@ export function PagoDetallePage() {
                   </p>
                 </div>
               </div>
-            ) : data.comprobante_url ? (
+            ) : activeComprobanteUrl ? (
               <div className="flex flex-col gap-3">
                 <div
                   className="relative group w-full bg-slate-50 rounded-xl p-6 flex flex-col items-center justify-center overflow-hidden min-h-[440px] border border-slate-100 cursor-pointer"
-                  onClick={() => openLightbox(getStorageUrl(data.comprobante_url))}
+                  onClick={() => openLightbox(getStorageUrl(activeComprobanteUrl))}
                 >
                   {/* Subtle decorative dot pattern */}
                   <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
@@ -668,7 +798,7 @@ export function PagoDetallePage() {
                   {/* Receipt Photo Card */}
                   <div className="relative transition-transform duration-200 group-hover:scale-[1.01]">
                     <img
-                      src={getStorageUrl(data.comprobante_url)}
+                      src={getStorageUrl(activeComprobanteUrl)}
                       alt="Comprobante de pago"
                       className="w-auto max-w-[280px] sm:max-w-[340px] max-h-[460px] object-contain rounded-lg shadow-md group-hover:shadow-xl transition-shadow bg-white"
                     />
@@ -846,6 +976,16 @@ export function PagoDetallePage() {
         onConfirm={handleDeleteComprobante}
         onCancel={() => setDeleteModalOpen(false)}
       />
+
+      {/* Modal de Edición de Pago */}
+      {data && (
+        <ModalEditarPagoDetalle
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          data={data}
+          onSuccess={load}
+        />
+      )}
     </div>
   )
 }

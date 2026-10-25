@@ -226,10 +226,18 @@ export function AprobacionTallerPage() {
       const montoPagado = pagoRef.current?.getMonto() || 0
       const tipoPago = pagoRef.current?.getTipoPago() || "abono"
       const metodoPago = pagoRef.current?.getMetodoPago() || "efectivo"
+      const metodosPago = pagoRef.current?.getMetodosPago?.() || []
+      const grupoPagoId = pagoRef.current?.getGrupoPagoId?.()
+
       await tallerService.verificarPago(id, {
         monto_pagado: montoPagado,
         tipo_pago: tipoPago,
         metodo_pago: metodoPago,
+        metodos_pago: metodosPago.map((m) => ({
+          metodo_pago: m.metodo_pago,
+          monto: parseFloat(m.monto) || 0,
+        })),
+        grupo_pago_id: grupoPagoId,
       })
       setSelected((prev: any) => prev ? { ...prev, pago_verificado: true } : prev)
       toast.success("Inscripción aprobada exitosamente")

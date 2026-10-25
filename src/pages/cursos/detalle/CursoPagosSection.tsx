@@ -63,14 +63,18 @@ interface PagoHistorial {
   estado_verificacion?: string
   modulo_nombre?: string
   referencia_pago?: string
+  grupo_pago_id?: string
+  comprobante_url?: string | null
 }
 
 interface PagoHistorialAgrupado {
   id: string
   monto: number
   metodo_pago: string
+  desglose_metodos?: Array<{ metodo: string; monto: number }>
   fecha_pago?: string
   estado_verificacion?: string
+  comprobante_url?: string | null
   asignaciones: Array<{ concepto: string; monto: number }>
   count: number
 }
@@ -78,24 +82,42 @@ interface PagoHistorialAgrupado {
 function agruparHistorialPagos(pagos: PagoHistorial[]): PagoHistorialAgrupado[] {
   const grupos = new Map<string, PagoHistorialAgrupado>()
   pagos.forEach((pago) => {
-    const referenciaBase = pago.referencia_pago?.replace(/-insc$/, "")
-    const key = referenciaBase || `transaccion-${pago.id}`
+    const key = pago.grupo_pago_id || (pago.referencia_pago?.replace(/-insc$/, "")) || `transaccion-${pago.id}`
     const concepto = pago.modulo_nombre || "Pago"
     const monto = Number(pago.monto) || 0
+    const mNombre = pago.metodo_pago || "efectivo"
     const grupo = grupos.get(key)
     if (grupo) {
       grupo.monto = Math.round((grupo.monto + monto) * 100) / 100
       grupo.count += 1
+      if (!grupo.comprobante_url && pago.comprobante_url) {
+        grupo.comprobante_url = pago.comprobante_url
+      }
       const asignacion = grupo.asignaciones.find((item) => item.concepto === concepto)
       if (asignacion) asignacion.monto = Math.round((asignacion.monto + monto) * 100) / 100
       else grupo.asignaciones.push({ concepto, monto })
+
+      const metodoItem = grupo.desglose_metodos?.find((item) => item.metodo.toLowerCase() === mNombre.toLowerCase())
+      if (metodoItem) {
+        metodoItem.monto = Math.round((metodoItem.monto + monto) * 100) / 100
+      } else {
+        grupo.desglose_metodos?.push({ metodo: mNombre, monto })
+      }
+
+      if (grupo.desglose_metodos && grupo.desglose_metodos.length > 1) {
+        grupo.metodo_pago = grupo.desglose_metodos
+          .map((dm) => `${dm.metodo.toUpperCase()}: $${dm.monto.toFixed(2)}`)
+          .join(" · ")
+      }
     } else {
       grupos.set(key, {
         id: key,
         monto,
-        metodo_pago: pago.metodo_pago || "Método no especificado",
+        metodo_pago: mNombre.toUpperCase(),
+        desglose_metodos: [{ metodo: mNombre, monto }],
         fecha_pago: pago.fecha_pago,
         estado_verificacion: pago.estado_verificacion,
+        comprobante_url: pago.comprobante_url,
         asignaciones: [{ concepto, monto }],
         count: 1,
       })
@@ -358,7 +380,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                                           </span>
                                           {saldo > 0 && studentIdMap[est.matricula_id] && (
                                             <Link
-                                              to={`/estudiantes/${studentIdMap[est.matricula_id]}/academico/registrar-pago/${est.matricula_id}?curso=${encodeURIComponent(cursoNombre || "")}&nombre=${encodeURIComponent(est.nombre)}&cedula=${encodeURIComponent(est.cedula)}&volver=${encodeURIComponent(`/cursos/${cursoId}`)}`}
+                                              to={`/estudiantes/${studentIdMap[est.matricula_id]}/academico/registrar-pago/${est.matricula_id}?curso=${encodeURIComponent(cursoNombre || "")}&nombre=${encodeURIComponent(est.nombre)}&cedula=${encodeURIComponent(est.cedula)}&volver=${encodeURIComponent(`/cursos/${cursoId}?tab=pagos`)}`}
                                               className="text-[10px] font-bold px-2 py-0.5 rounded-md transition-all hover:opacity-80"
                                               style={{ color: "white", backgroundColor: ACCENT }}
                                             >

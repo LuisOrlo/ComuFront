@@ -180,6 +180,7 @@ export function HistorialPage() {
       const q = metodoFilter.toLowerCase()
       list = list.filter((t) => {
         const mp = (t.metodo_pago || "").toLowerCase()
+        if (q === "mixto") return mp === "mixto" || (t.desglose_metodos && t.desglose_metodos.length > 1)
         if (q === "transferencia") return mp.includes("transfer") || mp.includes("deposito")
         return mp.includes(q)
       })
@@ -464,6 +465,7 @@ export function HistorialPage() {
                   <option value="transferencia">Transferencia bancaria</option>
                   <option value="efectivo">Efectivo</option>
                   <option value="tarjeta">Tarjeta</option>
+                  <option value="mixto">Pago mixto / múltiple</option>
                 </select>
                 <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
@@ -657,8 +659,13 @@ export function HistorialPage() {
                                       <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-[#fd761a] transition-colors">
                                         {nombreEstudiante}
                                       </span>
-                                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                                        {getCursoNombre(t) || t.metodo_pago || "Movimiento registrado"}
+                                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5 inline-flex items-center gap-1.5">
+                                        <span>{getCursoNombre(t) || t.metodo_pago || "Movimiento registrado"}</span>
+                                        {((t.desglose_metodos && t.desglose_metodos.length > 1) || t.metodo_pago === "mixto") && (
+                                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/50">
+                                            Mixto {t.desglose_metodos?.length ? `(${t.desglose_metodos.length})` : ""}
+                                          </span>
+                                        )}
                                       </span>
                                     </div>
                                   </div>

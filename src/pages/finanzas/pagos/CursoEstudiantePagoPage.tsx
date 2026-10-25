@@ -15,12 +15,17 @@ import {
   ViewIcon,
   CustomerService01Icon,
   Book02Icon,
+  PencilEdit01Icon,
+  Image01Icon,
+  Cancel01Icon,
+  Download01Icon,
 } from "@hugeicons/core-free-icons"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, ZoomIn, ZoomOut } from "lucide-react"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { validarComprobante } from "@/lib/file-validators"
+import { MetodosPagoSplitInput, type MetodoPagoItem, type ConceptoDestino } from "@/components/finanzas/MetodosPagoSplitInput"
 
 function getInitials(name?: string) {
   if (!name) return "ES"
@@ -38,9 +43,13 @@ function formatFileSize(bytes: number) {
 function formatFechaLarga(fechaStr?: string | null) {
   if (!fechaStr) return "—"
   try {
-    const d = new Date(fechaStr.includes("T") ? fechaStr : `${fechaStr}T00:00:00`)
-    if (isNaN(d.getTime())) return fechaStr
-    return d.toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" })
+    const rawDate = fechaStr.includes(" ")
+      ? fechaStr.split(" ")[0]
+      : (fechaStr.includes("T") ? fechaStr.split("T")[0] : fechaStr)
+    const [y, m, d] = rawDate.split("-").map(Number)
+    if (!y || !m || !d) return fechaStr
+    const dateObj = new Date(y, m - 1, d)
+    return dateObj.toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" })
   } catch {
     return fechaStr
   }
@@ -54,12 +63,69 @@ export function CursoEstudiantePagoPage() {
   const [data, setData] = useState<any>(null)
   const [selectedModulos, setSelectedModulos] = useState<Set<string>>(new Set())
   const [montos, setMontos] = useState<Record<string, string>>({})
-  const [metodoPago, setMetodoPago] = useState("transferencia")
+  const [grupoPagoId] = useState(() => crypto.randomUUID())
+  const [metodos, setMetodos] = useState<MetodoPagoItem[]>(() => [
+    {
+      id: "cur-pago-1",
+      metodo_pago: "transferencia",
+      monto: "",
+    },
+  ])
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0])
   const [observaciones, setObservaciones] = useState("")
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
   const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
   const [modalImage, setModalImage] = useState<string | null>(null)
+  const [modalComprobantes, setModalComprobantes] = useState<{
+    open: boolean
+    titulo: string
+    comprobantes: string[]
+    activeIdx: number
+  } | null>(null)
+
+  // Zoom fluido y arrastre Pan/Drag para comprobante
+  const [zoomScale, setZoomScale] = useState(1)
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+
+  const resetTransform = () => {
+    setZoomScale(1)
+    setPanPosition({ x: 0, y: 0 })
+  }
+
+  const handleZoom = (delta: number) => {
+    setZoomScale((prev) => {
+      const next = Math.min(Math.max(0.5, prev + delta), 4)
+      if (next === 1) setPanPosition({ x: 0, y: 0 })
+      return next
+    })
+  }
+
+  const handleWheelZoom = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY < 0 ? 0.2 : -0.2
+    handleZoom(delta)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    setPanPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
   const [dragActive, setDragActive] = useState(false)
   const comprobanteRef = useRef<HTMLInputElement>(null)
 
@@ -103,9 +169,68 @@ export function CursoEstudiantePagoPage() {
   }, [])
 
   const modulos: any[] = useMemo(() => data?.modulos || [], [data?.modulos])
-  const historial: any[] = useMemo(() => data?.historial || [], [data?.historial])
+  const historialRaw: any[] = useMemo(() => data?.historial || [], [data?.historial])
   const estudiante = data?.estudiante || {}
   const curso = data?.curso || {}
+
+  // Agrupación unificada de transacciones que pertenecen a una misma liquidación/operación de pago
+  const historial = useMemo(() => {
+    if (!historialRaw || historialRaw.length === 0) return []
+    const grupos = new Map<string, any>()
+
+    historialRaw.forEach((pago: any) => {
+      const key = pago.grupo_pago_id || (pago.referencia_pago?.replace(/-insc$/, "")) || `transaccion-${pago.id}`
+      const concepto = pago.modulo_nombre || "Módulo"
+      const monto = Number(pago.monto) || 0
+      const mNombre = pago.metodo_pago || "efectivo"
+
+      const grupo = grupos.get(key)
+      if (grupo) {
+        grupo.monto = Math.round((grupo.monto + monto) * 100) / 100
+        grupo.count += 1
+        if (!grupo.comprobante_url && pago.comprobante_url) {
+          grupo.comprobante_url = pago.comprobante_url
+        }
+        if (pago.comprobante_url && !grupo.comprobantes.includes(pago.comprobante_url)) {
+          grupo.comprobantes.push(pago.comprobante_url)
+        }
+        const asignacion = grupo.asignaciones.find((item: any) => item.concepto === concepto)
+        if (asignacion) {
+          asignacion.monto = Math.round((asignacion.monto + monto) * 100) / 100
+        } else {
+          grupo.asignaciones.push({ concepto, monto })
+        }
+
+        const metodoItem = grupo.desglose_metodos?.find((item: any) => item.metodo.toLowerCase() === mNombre.toLowerCase())
+        if (metodoItem) {
+          metodoItem.monto = Math.round((metodoItem.monto + monto) * 100) / 100
+        } else {
+          grupo.desglose_metodos?.push({ metodo: mNombre, monto })
+        }
+
+        if (grupo.desglose_metodos && grupo.desglose_metodos.length > 1) {
+          grupo.metodo_pago = grupo.desglose_metodos
+            .map((dm: any) => `${dm.metodo.toUpperCase()}: $${dm.monto.toFixed(2)}`)
+            .join(" · ")
+        }
+      } else {
+        grupos.set(key, {
+          id: pago.id, // ID representativo para ver/editar
+          monto,
+          metodo_pago: mNombre.toUpperCase(),
+          desglose_metodos: [{ metodo: mNombre, monto }],
+          fecha_pago: pago.fecha_pago,
+          estado_verificacion: pago.estado_verificacion || "Aprobado",
+          comprobante_url: pago.comprobante_url,
+          comprobantes: pago.comprobante_url ? [pago.comprobante_url] : [],
+          asignaciones: [{ concepto, monto }],
+          count: 1,
+        })
+      }
+    })
+
+    return [...grupos.values()]
+  }, [historialRaw])
 
   const modulosConDeuda = useMemo(() => {
     return modulos.filter((m: any) => Number(m.saldo_pendiente || 0) > 0)
@@ -226,12 +351,39 @@ export function CursoEstudiantePagoPage() {
     })
   }, [selectedModulos, modulos, getModuloError])
 
+  const conceptos: ConceptoDestino[] = useMemo(() => {
+    return modulosConDeuda.map((m: any) => ({
+      id: m.linea_pago_modulo_id,
+      nombre: m.nombre_modulo || `Módulo ${m.numero_orden}`,
+      saldo: Number(m.saldo_pendiente || 0),
+    }))
+  }, [modulosConDeuda])
+
   const totalMontoAPagar = useMemo(() => {
     return Array.from(selectedModulos).reduce((sum: number, id: string) => {
       const n = parseFloat(montos[id] || "0")
       return sum + (!isNaN(n) && n > 0 ? n : 0)
     }, 0)
   }, [selectedModulos, montos])
+
+  // Sincronizar monto del método único con el total a pagar si solo hay 1 método
+  useEffect(() => {
+    setMetodos(prev => {
+      if (prev.length === 1 && totalMontoAPagar > 0) {
+        const nuevo = totalMontoAPagar.toFixed(2)
+        if (prev[0].monto !== nuevo) {
+          return [{ ...prev[0], monto: nuevo }]
+        }
+      }
+      return prev
+    })
+  }, [totalMontoAPagar])
+
+  const sumaMetodosCentavos = useMemo(() => {
+    return metodos.reduce((acc, m) => acc + Math.round((parseFloat(m.monto) || 0) * 100), 0)
+  }, [metodos])
+
+  const metodosBalanceados = totalMontoAPagar > 0 && sumaMetodosCentavos === Math.round(totalMontoAPagar * 100)
 
   const comprobanteValido = !!comprobanteFile
   const formularioValido =
@@ -240,16 +392,17 @@ export function CursoEstudiantePagoPage() {
     totalMontoAPagar > 0 &&
     comprobanteValido &&
     !!fechaPago &&
-    !!metodoPago
+    metodosBalanceados
 
   const disabledReason = useMemo(() => {
     if (selectedModulos.size === 0) return "Selecciona al menos un módulo para pagar"
     if (hasAnyModuloError) return "Corrige los montos que superan el saldo del módulo"
     if (totalMontoAPagar <= 0) return "Ingresa un monto válido mayor a $0"
+    if (!metodosBalanceados) return "La suma de los métodos de pago debe coincidir con el total a pagar"
     if (!comprobanteFile) return "Debes adjuntar una imagen del comprobante de pago"
     if (!fechaPago) return "Selecciona la fecha de pago"
     return ""
-  }, [selectedModulos.size, hasAnyModuloError, totalMontoAPagar, comprobanteFile, fechaPago])
+  }, [selectedModulos.size, hasAnyModuloError, totalMontoAPagar, metodosBalanceados, comprobanteFile, fechaPago])
 
   const saldoRestanteCurso = Math.max(0, Math.round((totalSaldoPendiente - totalMontoAPagar) * 100) / 100)
   const pctPagado =
@@ -274,10 +427,15 @@ export function CursoEstudiantePagoPage() {
       return
     }
 
+    if (!metodosBalanceados) {
+      toast.error("La suma de los métodos de pago debe coincidir exactamente con el total a pagar")
+      return
+    }
+
     const pagos = modulosSeleccionados.map((lineaId) => ({
       linea_pago_modulo_id: lineaId,
       monto: parseFloat(montos[lineaId] || "0"),
-      metodo_pago: metodoPago,
+      metodo_pago: metodos[0]?.metodo_pago || "transferencia",
       fecha_pago: fechaPago,
     }))
 
@@ -298,7 +456,15 @@ export function CursoEstudiantePagoPage() {
       await financeService.registrarPagosIniciales({
         matricula_id: matriculaId,
         pagos: pagos.map((p) => ({ ...p, comprobante_url: comprobanteUrl })),
-        pago_unificado: pagos.length > 1,
+        metodos_pago: metodos.map((m) => ({
+          linea_pago_modulo_id: m.linea_pago_modulo_id,
+          metodo_pago: m.metodo_pago,
+          monto: parseFloat(m.monto) || 0,
+          comprobante_url: comprobanteUrl,
+          fecha_pago: fechaPago,
+        })),
+        grupo_pago_id: grupoPagoId,
+        pago_unificado: pagos.length > 1 || metodos.length > 1,
         observaciones: observaciones.trim() || undefined,
       })
 
@@ -480,36 +646,84 @@ export function CursoEstudiantePagoPage() {
                   {historial.map((t: any) => (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between gap-4 p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-50 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition-all shadow-2xs"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                          <HugeiconsIcon icon={Money01Icon} size={18} />
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="size-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                          <HugeiconsIcon icon={Money01Icon} size={20} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-slate-900 tracking-tight">
+                            <span className="text-base font-black text-slate-900 tracking-tight">
                               ${Number(t.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
                               {t.estado_verificacion || "Aprobado"}
                             </span>
+                            <span className="text-xs font-semibold text-slate-400">·</span>
+                            <span className="text-xs font-bold text-slate-700">
+                              {formatFechaLarga(t.fecha_pago)}
+                            </span>
                           </div>
-                          <p className="text-xs text-slate-500 mt-0.5 truncate">
-                            {formatFechaLarga(t.fecha_pago)} · <span className="capitalize">{t.metodo_pago}</span> · {t.modulo_nombre || "Módulo"}
-                          </p>
+
+                          {/* Conceptos cubiertos */}
+                          {t.asignaciones && t.asignaciones.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Conceptos:</span>
+                              {t.asignaciones.map((a: any, aIdx: number) => (
+                                <span
+                                  key={aIdx}
+                                  className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200/60"
+                                >
+                                  {a.concepto}: <strong className="text-slate-900">${Number(a.monto).toFixed(2)}</strong>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Métodos de pago */}
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-xs text-slate-500">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Métodos:</span>
+                            <span className="font-semibold text-slate-700">{t.metodo_pago}</span>
+                          </div>
                         </div>
                       </div>
-                      {t.comprobante_url && (
-                        <button
-                          type="button"
-                          onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
-                        >
-                          <HugeiconsIcon icon={ViewIcon} size={13} />
-                          <span>Ver comprobante</span>
-                        </button>
-                      )}
+
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        {t.id && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+                            title="Ver detalle completo o editar pago"
+                          >
+                            <HugeiconsIcon icon={PencilEdit01Icon} size={13} />
+                            <span>Ver / Editar</span>
+                          </button>
+                        )}
+                        {t.comprobantes && t.comprobantes.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              resetTransform()
+                              setModalComprobantes({
+                                open: true,
+                                titulo: `Comprobante de Pago · $${Number(t.monto).toFixed(2)}`,
+                                comprobantes: t.comprobantes,
+                                activeIdx: 0,
+                              })
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-orange-50 border border-orange-200 text-[#fd761a] hover:bg-orange-100/80 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                          >
+                            <HugeiconsIcon icon={ViewIcon} size={13} />
+                            <span>
+                              {t.comprobantes.length > 1
+                                ? `Comprobantes (${t.comprobantes.length})`
+                                : "Comprobante"}
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -740,27 +954,17 @@ export function CursoEstudiantePagoPage() {
                     <span className="text-[11px] text-slate-400">Día en que se acreditó la transacción</span>
                   </div>
 
-                  {/* Método de Pago */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="metodoPago" className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Método de pago <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        id="metodoPago"
-                        value={metodoPago}
-                        onChange={(e) => setMetodoPago(e.target.value)}
-                        className="w-full h-11 px-3.5 bg-slate-50/80 rounded-xl text-slate-900 text-xs font-semibold outline-none border border-slate-200 focus:bg-white focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 transition-all cursor-pointer"
-                        required
-                      >
-                        <option value="transferencia">Transferencia Bancaria Directa</option>
-                        <option value="efectivo">Efectivo en Recepción</option>
-                        <option value="deposito">Depósito Bancario</option>
-                        <option value="tarjeta">Tarjeta Débito / Crédito</option>
-                      </select>
-                    </div>
-                    <span className="text-[11px] text-slate-400">Canal utilizado para la recaudación</span>
-                  </div>
+                </div>
+
+                {/* Métodos de Pago (Simple o Dividido/Mixto) */}
+                <div className="pt-1">
+                  <MetodosPagoSplitInput
+                    totalEsperado={totalMontoAPagar}
+                    metodos={metodos}
+                    onChange={setMetodos}
+                    conceptos={conceptos}
+                    disabled={saving}
+                  />
                 </div>
 
                 {/* Comprobante de Pago (Requerido) */}
@@ -919,36 +1123,84 @@ export function CursoEstudiantePagoPage() {
                     {historial.map((t: any) => (
                       <div
                         key={t.id}
-                        className="flex items-center justify-between gap-4 p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-50 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 rounded-xl border border-slate-200/90 bg-white hover:border-slate-300 transition-all shadow-2xs"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="size-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                            <HugeiconsIcon icon={Money01Icon} size={16} />
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="size-9 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                            <HugeiconsIcon icon={Money01Icon} size={18} />
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-bold text-slate-900 tracking-tight">
+                              <span className="text-base font-black text-slate-900 tracking-tight">
                                 ${Number(t.monto || 0).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                               <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
                                 {t.estado_verificacion || "Aprobado"}
                               </span>
+                              <span className="text-xs font-semibold text-slate-400">·</span>
+                              <span className="text-xs font-bold text-slate-700">
+                                {formatFechaLarga(t.fecha_pago)}
+                              </span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-0.5 truncate">
-                              {formatFechaLarga(t.fecha_pago)} · <span className="capitalize">{t.metodo_pago}</span> · {t.modulo_nombre || "Módulo"}
-                            </p>
+
+                            {/* Conceptos cubiertos */}
+                            {t.asignaciones && t.asignaciones.length > 0 && (
+                              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Conceptos:</span>
+                                {t.asignaciones.map((a: any, aIdx: number) => (
+                                  <span
+                                    key={aIdx}
+                                    className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200/60"
+                                  >
+                                    {a.concepto}: <strong className="text-slate-900">${Number(a.monto).toFixed(2)}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Métodos de pago */}
+                            <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-xs text-slate-500">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Métodos:</span>
+                              <span className="font-semibold text-slate-700">{t.metodo_pago}</span>
+                            </div>
                           </div>
                         </div>
-                        {t.comprobante_url && (
-                          <button
-                            type="button"
-                            onClick={() => setModalImage(getStorageUrl(t.comprobante_url))}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-2xs shrink-0 cursor-pointer"
-                          >
-                            <HugeiconsIcon icon={ViewIcon} size={13} />
-                            <span>Ver comprobante</span>
-                          </button>
-                        )}
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          {t.id && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/finanzas/movimientos/${t.id}`)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
+                              title="Ver detalle completo o editar pago"
+                            >
+                              <HugeiconsIcon icon={PencilEdit01Icon} size={13} />
+                              <span>Ver / Editar</span>
+                            </button>
+                          )}
+                          {t.comprobantes && t.comprobantes.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                resetTransform()
+                                setModalComprobantes({
+                                  open: true,
+                                  titulo: `Comprobante de Pago · $${Number(t.monto).toFixed(2)}`,
+                                  comprobantes: t.comprobantes,
+                                  activeIdx: 0,
+                                })
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-orange-50 border border-orange-200 text-[#fd761a] hover:bg-orange-100/80 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                            >
+                              <HugeiconsIcon icon={ViewIcon} size={13} />
+                              <span>
+                                {t.comprobantes.length > 1
+                                  ? `Comprobantes (${t.comprobantes.length})`
+                                  : "Comprobante"}
+                              </span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1091,8 +1343,146 @@ export function CursoEstudiantePagoPage() {
         )}
       </div>
 
-      {/* Lightbox Modal de Comprobante */}
-      {modalImage && (
+      {/* Modal Interactivo con Pan & Zoom y Soporte de Múltiples Comprobantes */}
+      {modalComprobantes?.open && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setModalComprobantes(null)}
+        >
+          <div
+            className="relative flex flex-col max-w-3xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera del modal */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-[#fd761a]">
+                  <HugeiconsIcon icon={Image01Icon} size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{modalComprobantes.titulo}</h4>
+                  <p className="text-[11px] text-slate-500">
+                    {modalComprobantes.comprobantes.length > 1
+                      ? `Comprobante ${modalComprobantes.activeIdx + 1} de ${modalComprobantes.comprobantes.length}`
+                      : "Inspección de comprobante de pago"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={getStorageUrl(modalComprobantes.comprobantes[modalComprobantes.activeIdx])}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors inline-flex items-center gap-1"
+                  title="Abrir imagen original"
+                >
+                  <HugeiconsIcon icon={Download01Icon} size={13} />
+                  <span>Descargar</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setModalComprobantes(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                  title="Cerrar modal"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Pestañas si hay más de 1 comprobante */}
+            {modalComprobantes.comprobantes.length > 1 && (
+              <div className="flex items-center gap-2 px-5 py-2 bg-slate-100/70 border-b border-slate-200/80 overflow-x-auto">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">
+                  Comprobantes:
+                </span>
+                {modalComprobantes.comprobantes.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      resetTransform()
+                      setModalComprobantes((prev) => (prev ? { ...prev, activeIdx: idx } : null))
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                      modalComprobantes.activeIdx === idx
+                        ? "bg-[#fd761a] text-white shadow-xs"
+                        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>Comprobante #{idx + 1}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Barra de Controles de Zoom */}
+            <div className="flex items-center justify-between px-5 py-2 bg-slate-50 border-b border-slate-100 text-xs text-slate-600">
+              <span className="text-[11px] text-slate-400">
+                Usa la rueda o los botones para hacer zoom. Arrastra con el cursor para moverte libremente.
+              </span>
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleZoom(0.25)}
+                  title="Acercar (+)"
+                  className="p-1 hover:bg-slate-100 rounded text-slate-700 transition-colors cursor-pointer"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleZoom(-0.25)}
+                  title="Alejar (-)"
+                  className="p-1 hover:bg-slate-100 rounded text-slate-700 transition-colors cursor-pointer"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={resetTransform}
+                  title="Restablecer tamaño y posición"
+                  className="px-2 py-0.5 hover:bg-slate-100 rounded text-[11px] font-bold text-slate-700 transition-colors cursor-pointer"
+                >
+                  {Math.round(zoomScale * 100)}%
+                </button>
+              </div>
+            </div>
+
+            {/* Canvas Interactivo Pan & Drag */}
+            <div
+              className={`p-4 flex items-center justify-center bg-slate-900/90 h-[68vh] overflow-hidden relative select-none ${
+                isDragging ? "cursor-grabbing" : zoomScale > 1 ? "cursor-grab" : "cursor-default"
+              }`}
+              onWheel={handleWheelZoom}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              <div
+                style={{
+                  transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+                  transformOrigin: "center center",
+                  transition: isDragging ? "none" : "transform 0.1s ease-out",
+                }}
+                className="max-w-full max-h-full flex items-center justify-center will-change-transform pointer-events-none"
+              >
+                <img
+                  src={getStorageUrl(modalComprobantes.comprobantes[modalComprobantes.activeIdx])}
+                  alt="Comprobante de pago"
+                  className="max-h-[62vh] w-auto max-w-[85vw] object-contain rounded-lg shadow-2xl bg-white select-none pointer-events-auto"
+                  draggable={false}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal de Comprobante simple (fallback) */}
+      {modalImage && !modalComprobantes?.open && (
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
           onClick={() => setModalImage(null)}

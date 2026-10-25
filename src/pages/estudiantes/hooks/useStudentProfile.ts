@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "react-router"
 import {
   estudiantesService,
   type AcademicProfile,
@@ -8,6 +9,7 @@ import {
 import { toast } from "sonner"
 
 type ProfileTab = "informacion" | "resumen" | "academico" | "financiero"
+const VALID_TABS: ProfileTab[] = ["informacion", "resumen", "academico", "financiero"]
 
 interface UseStudentProfileReturn {
   studentData: Estudiante | null
@@ -25,6 +27,10 @@ interface UseStudentProfileReturn {
 }
 
 export function useStudentProfile(id: string | undefined): UseStudentProfileReturn {
+  const [searchParams] = useSearchParams()
+  const initialTabParam = searchParams.get("tab") as ProfileTab | null
+  const initialTab = initialTabParam && VALID_TABS.includes(initialTabParam) ? initialTabParam : "informacion"
+
   const [studentData, setStudentData] = useState<Estudiante | null>(null)
   const [academicData, setAcademicData] = useState<AcademicProfile | null>(null)
   const [financialData, setFinancialData] = useState<FinancialProfile | null>(null)
@@ -33,7 +39,14 @@ export function useStudentProfile(id: string | undefined): UseStudentProfileRetu
   const [financialLoading, setFinancialLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<ProfileTab>("informacion")
+  const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab)
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as ProfileTab | null
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   const loadData = useCallback(async () => {
     if (!id) return

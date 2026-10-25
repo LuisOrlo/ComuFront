@@ -112,7 +112,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                 </div>
                 <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Sin notificaciones</p>
                 <p className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>
-                  No hay solicitudes de inscripción pendientes de aprobación.
+                  No hay matrículas ni solicitudes recientes registradas.
                 </p>
               </div>
             )}
@@ -127,7 +127,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                 {grupo.items.map((item) => (
                   <Link
                     key={item.id}
-                    to={`/matriculas?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
+                    to={item.subtipo === "matricula" ? "/estudiantes" : `/matriculas?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
                     onClick={onClose}
                     className="flex items-start gap-3 px-4 py-3 border-b transition-colors hover:bg-gray-50/60"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
@@ -137,30 +137,42 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                       {item.estudiante.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>
-                        {item.estudiante}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        {item.tipo === "taller" && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: "oklch(0.92 0.05 80)", color: "oklch(0.55 0.12 70)" }}>Taller</span>
-                        )}
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-sm font-semibold truncate" style={{ color: COLORS.CHARCOAL }}>
+                          {item.estudiante}
+                        </p>
+                        <span className="text-[10px] text-slate-400 shrink-0 font-medium">
+                          {item.hora}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            item.subtipo === "matricula"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : item.tipo === "taller"
+                              ? "bg-purple-50 text-purple-700 border border-purple-200"
+                              : "bg-orange-50 text-orange-700 border border-orange-200"
+                          }`}
+                        >
+                          {item.subtipo === "matricula" ? "Matrícula" : item.tipo === "taller" ? "Taller" : "Solicitud"}
+                        </span>
                         <p className="text-xs truncate" style={{ color: COLORS.TEXT_MUTED }}>
                           {item.curso}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] font-medium" style={{ color: COLORS.TEXT_MUTED }}>
-                          {item.hora}
-                        </span>
                         {item.metodo_pago && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{
-                            backgroundColor: `color-mix(in srgb, ${COLORS.ACCENT} 10%, white)`,
-                            color: COLORS.ACCENT,
-                          }}>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 capitalize">
                             {item.metodo_pago === "transferencia" ? "Transferencia"
                               : item.metodo_pago === "deposito" ? "Depósito"
                               : item.metodo_pago === "efectivo" ? "Efectivo"
                               : item.metodo_pago}
+                          </span>
+                        )}
+                        {item.monto > 0 && (
+                          <span className="text-[10px] font-bold text-emerald-600">
+                            ${Number(item.monto).toFixed(2)}
                           </span>
                         )}
                       </div>

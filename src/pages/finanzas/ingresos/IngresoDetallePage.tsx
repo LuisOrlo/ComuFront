@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -16,6 +16,8 @@ import {
   Clock01Icon,
   Copy01Icon,
   Tick02Icon,
+  Cancel01Icon,
+  Download01Icon,
 } from "@hugeicons/core-free-icons"
 import {
   ExternalLink,
@@ -24,10 +26,13 @@ import {
   Layers,
   FileText,
   AlertCircle,
+  Paperclip,
+  ZoomIn,
+  ZoomOut,
+  CreditCard,
 } from "lucide-react"
 import { getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
-import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { toast } from "sonner"
 
 export function IngresoDetallePage() {
@@ -36,8 +41,118 @@ export function IngresoDetallePage() {
   const [loading, setLoading] = useState(true)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [data, setData] = useState<any>(null)
-  const [zoomImg, setZoomImg] = useState<string | null>(null)
   const [copiedRef, setCopiedRef] = useState(false)
+  const [activeComprobanteIdx, setActiveComprobanteIdx] = useState(0)
+
+  // Modal para comprobantes interactivo (pan, zoom fluido y pestañas múltiples)
+  const [modalComprobantes, setModalComprobantes] = useState<{
+    open: boolean
+    titulo: string
+    activeIdx: number
+  } | null>(null)
+
+  // Zoom fluido y arrastre Pan/Drag del comprobante
+  const [zoomScale, setZoomScale] = useState(1)
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+
+  const resetTransform = () => {
+    setZoomScale(1)
+    setPanPosition({ x: 0, y: 0 })
+  }
+
+  const handleZoom = (delta: number) => {
+    setZoomScale((prev) => {
+      const next = Math.min(Math.max(0.5, prev + delta), 4)
+      if (next === 1) setPanPosition({ x: 0, y: 0 })
+      return next
+    })
+  }
+
+  const handleWheelZoom = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY < 0 ? 0.2 : -0.2
+    handleZoom(delta)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    setPanPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    })
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const rawComprobantes: string[] = useMemo(() => {
+    const list: string[] = []
+    const addUrl = (u: unknown) => {
+      if (typeof u === "string" && u.trim() && !list.includes(u.trim())) {
+        list.push(u.trim())
+      }
+    }
+
+    if (Array.isArray(data?.comprobantes)) {
+      data.comprobantes.forEach(addUrl)
+    }
+
+    if (Array.isArray(data?.desglose_metodos)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data.desglose_metodos.forEach((dm: any) => {
+        if (Array.isArray(dm.comprobantes)) dm.comprobantes.forEach(addUrl)
+        if (dm.comprobante_url) addUrl(dm.comprobante_url)
+      })
+    }
+
+    if (Array.isArray(data?.modulos)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data.modulos.forEach((m: any) => {
+        if (m.comprobante_url) addUrl(m.comprobante_url)
+        if (Array.isArray(m.metodos)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          m.metodos.forEach((subM: any) => {
+            if (subM.comprobante_url) addUrl(subM.comprobante_url)
+          })
+        }
+      })
+    }
+
+    if (Array.isArray(data?.detalle_conceptos)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data.detalle_conceptos.forEach((m: any) => {
+        if (m.comprobante_url) addUrl(m.comprobante_url)
+        if (Array.isArray(m.metodos)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          m.metodos.forEach((subM: any) => {
+            if (subM.comprobante_url) addUrl(subM.comprobante_url)
+          })
+        }
+      })
+    }
+
+    if (data?.comprobante_url) {
+      addUrl(data.comprobante_url)
+    }
+
+    return list
+  }, [data])
+
+  const safeActiveIdx = rawComprobantes.length > 0
+    ? (activeComprobanteIdx < rawComprobantes.length ? activeComprobanteIdx : 0)
+    : 0
+
+  const activeComprobanteRaw = rawComprobantes[safeActiveIdx] || data?.comprobante_url
+  const comprobanteUrl = activeComprobanteRaw ? getStorageUrl(activeComprobanteRaw) : null
 
   useEffect(() => {
     if (!id) return
@@ -103,8 +218,6 @@ export function IngresoDetallePage() {
         day: "numeric",
       })
     : "—"
-
-  const comprobanteUrl = data.comprobante_url ? getStorageUrl(data.comprobante_url) : null
 
   const getTitularNombre = () => {
     if (data?.estudiante_nombre) return data.estudiante_nombre
@@ -232,14 +345,32 @@ export function IngresoDetallePage() {
                   maximumFractionDigits: 2,
                 })}
               </p>
-              <p className="text-xs font-semibold text-slate-500 mt-1 capitalize">
-                Método: {data.metodo_pago || "No especificado"}
-                {data.referencia_pago && (
-                  <span className="normal-case text-slate-400 font-normal ml-2">
-                    · Ref: <span className="font-mono font-medium text-slate-600">{data.referencia_pago}</span>
+              {data.es_mixto && data.desglose_metodos?.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Métodos:
                   </span>
-                )}
-              </p>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {data.desglose_metodos.map((dm: any, i: number) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200"
+                    >
+                      <span className="capitalize">{dm.metodo_pago}</span>:
+                      <span className="text-emerald-700">${Number(dm.monto || 0).toFixed(2)}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs font-semibold text-slate-500 mt-1 capitalize">
+                  Método: {data.metodo_pago || "No especificado"}
+                  {data.referencia_pago && (
+                    <span className="normal-case text-slate-400 font-normal ml-2">
+                      · Ref: <span className="font-mono font-medium text-slate-600">{data.referencia_pago}</span>
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
@@ -337,9 +468,66 @@ export function IngresoDetallePage() {
                     <span>Método de Pago</span>
                   </p>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold capitalize bg-slate-100 text-slate-800">
-                    {data.metodo_pago || "No registrado"}
+                    {data.es_mixto ? "Pago Mixto" : (data.metodo_pago || "No registrado")}
                   </span>
                 </div>
+
+                {/* Desglose de Métodos si es Mixto */}
+                {data.es_mixto && data.desglose_metodos?.length > 0 && (
+                  <div className="sm:col-span-2 space-y-2 pt-2 border-t border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-[#fd761a]" />
+                      <span>Desglose de Métodos de Pago ({data.desglose_metodos.length})</span>
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {data.desglose_metodos.map((dm: any, i: number) => {
+                        const mComp = dm.comprobante_url || (Array.isArray(dm.comprobantes) ? dm.comprobantes[0] : null)
+                        const cIdx = mComp ? rawComprobantes.indexOf(mComp) : -1
+                        return (
+                          <div
+                            key={i}
+                            className="p-3 rounded-xl bg-slate-50/90 border border-slate-200/90 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-900 capitalize block">
+                                {dm.metodo_pago}
+                              </span>
+                              {dm.referencia_pago || (Array.isArray(dm.referencias) && dm.referencias.length > 0) ? (
+                                <span className="text-[10px] text-slate-500 font-mono block truncate">
+                                  Ref: {dm.referencia_pago || dm.referencias?.join(", ")}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-black text-slate-900 text-sm tabular-nums">
+                                ${Number(dm.monto || 0).toFixed(2)}
+                              </span>
+                              {cIdx !== -1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveComprobanteIdx(cIdx)
+                                    resetTransform()
+                                    setModalComprobantes({
+                                      open: true,
+                                      titulo: `Comprobante - ${dm.metodo_pago.toUpperCase()}`,
+                                      activeIdx: cIdx,
+                                    })
+                                  }}
+                                  className="size-7 rounded-lg bg-orange-100 hover:bg-orange-200 text-[#fd761a] flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Ver comprobante de este método"
+                                >
+                                  <Eye size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Referencia de Pago */}
                 {data.referencia_pago && (
@@ -476,10 +664,41 @@ export function IngresoDetallePage() {
                 )}
               </div>
 
+              {/* Selector si hay múltiples comprobantes en el grupo */}
+              {rawComprobantes.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
+                    Comprobantes ({rawComprobantes.length}):
+                  </span>
+                  {rawComprobantes.map((url, i) => (
+                    <button
+                      key={url || i}
+                      type="button"
+                      onClick={() => setActiveComprobanteIdx(i)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                        safeActiveIdx === i
+                          ? "bg-[#fd761a] text-white shadow-xs"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      <Paperclip size={12} />
+                      <span>Comprobante #{i + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {comprobanteUrl ? (
                 <div className="space-y-3">
                   <div
-                    onClick={() => setZoomImg(comprobanteUrl)}
+                    onClick={() => {
+                      resetTransform()
+                      setModalComprobantes({
+                        open: true,
+                        titulo: "Comprobante de Ingreso",
+                        activeIdx: safeActiveIdx,
+                      })
+                    }}
                     className="relative group rounded-xl border border-slate-200/90 overflow-hidden bg-slate-50/60 cursor-pointer flex items-center justify-center min-h-[260px] max-h-[360px] transition-all hover:border-orange-300"
                   >
                     <img
@@ -498,7 +717,14 @@ export function IngresoDetallePage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setZoomImg(comprobanteUrl)}
+                      onClick={() => {
+                        resetTransform()
+                        setModalComprobantes({
+                          open: true,
+                          titulo: "Comprobante de Ingreso",
+                          activeIdx: safeActiveIdx,
+                        })
+                      }}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
                     >
                       <HugeiconsIcon icon={Image01Icon} size={14} />
@@ -542,8 +768,144 @@ export function IngresoDetallePage() {
         </div>
       </main>
 
-      {/* Modal Zoom */}
-      {zoomImg && <ImageZoom url={zoomImg} onClose={() => setZoomImg(null)} />}
+      {/* Modal Interactivo de Comprobantes con Pan & Zoom fluido */}
+      {modalComprobantes?.open && rawComprobantes.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setModalComprobantes(null)}
+        >
+          <div
+            className="relative flex flex-col max-w-3xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera del modal */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-[#fd761a]">
+                  <HugeiconsIcon icon={Image01Icon} size={16} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{modalComprobantes.titulo}</h4>
+                  <p className="text-[11px] text-slate-500">
+                    {rawComprobantes.length > 1
+                      ? `Comprobante ${modalComprobantes.activeIdx + 1} de ${rawComprobantes.length}`
+                      : "Inspección de comprobante de ingreso"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={getStorageUrl(rawComprobantes[modalComprobantes.activeIdx])}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors inline-flex items-center gap-1"
+                  title="Abrir imagen original"
+                >
+                  <HugeiconsIcon icon={Download01Icon} size={13} />
+                  <span>Descargar</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setModalComprobantes(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                  title="Cerrar modal"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Pestañas si hay más de 1 comprobante */}
+            {rawComprobantes.length > 1 && (
+              <div className="flex items-center gap-2 px-5 py-2 bg-slate-100/70 border-b border-slate-200/80 overflow-x-auto">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">
+                  Comprobantes:
+                </span>
+                {rawComprobantes.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      resetTransform()
+                      setActiveComprobanteIdx(idx)
+                      setModalComprobantes((prev) => (prev ? { ...prev, activeIdx: idx } : null))
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                      modalComprobantes.activeIdx === idx
+                        ? "bg-[#fd761a] text-white shadow-xs"
+                        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span>Comprobante #{idx + 1}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Barra de Controles de Zoom Flotante/Superior */}
+            <div className="flex items-center justify-between px-5 py-2 bg-slate-50 border-b border-slate-100 text-xs text-slate-600">
+              <span className="text-[11px] text-slate-400">
+                Usa la rueda del ratón o los botones para hacer zoom. Arrastra con el cursor para moverte libremente.
+              </span>
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleZoom(0.25)}
+                  title="Acercar (+)"
+                  className="p-1 hover:bg-slate-100 rounded text-slate-700 transition-colors cursor-pointer"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleZoom(-0.25)}
+                  title="Alejar (-)"
+                  className="p-1 hover:bg-slate-100 rounded text-slate-700 transition-colors cursor-pointer"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={resetTransform}
+                  title="Restablecer tamaño y posición"
+                  className="px-2 py-0.5 hover:bg-slate-100 rounded text-[11px] font-bold text-slate-700 transition-colors cursor-pointer"
+                >
+                  {Math.round(zoomScale * 100)}%
+                </button>
+              </div>
+            </div>
+
+            {/* Canvas Interactivo con Pan / Drag fluido (Sin scrollbars) */}
+            <div
+              className={`p-4 flex items-center justify-center bg-slate-900/90 h-[68vh] overflow-hidden relative select-none ${
+                isDragging ? "cursor-grabbing" : zoomScale > 1 ? "cursor-grab" : "cursor-default"
+              }`}
+              onWheel={handleWheelZoom}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
+              <div
+                style={{
+                  transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+                  transformOrigin: "center center",
+                  transition: isDragging ? "none" : "transform 0.1s ease-out",
+                }}
+                className="max-w-full max-h-full flex items-center justify-center will-change-transform pointer-events-none"
+              >
+                <img
+                  src={getStorageUrl(rawComprobantes[modalComprobantes.activeIdx])}
+                  alt="Comprobante de ingreso"
+                  className="max-h-[62vh] w-auto max-w-[85vw] object-contain rounded-lg shadow-2xl bg-white select-none pointer-events-auto"
+                  draggable={false}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

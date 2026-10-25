@@ -342,6 +342,7 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
                                 curso: cuenta.concepto,
                                 nombre: data?.estudiante?.nombre_completo || "",
                                 cedula: data?.estudiante?.cedula || "",
+                                volver: `/estudiantes/${estudianteId}/academico?tab=financiero`,
                               })
                               navigate(
                                 `/estudiantes/${estudianteId}/academico/registrar-pago/${cuenta.origen_id}?${params.toString()}`
@@ -409,6 +410,7 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
                               curso: matricula.curso.nombre,
                               nombre: data?.estudiante?.nombre_completo || "",
                               cedula: data?.estudiante?.cedula || "",
+                              volver: `/estudiantes/${estudianteId}/academico?tab=financiero`,
                             })
                             navigate(
                               `/estudiantes/${estudianteId}/academico/registrar-pago/${matricula.id}?${params.toString()}`
@@ -512,6 +514,7 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
                     curso: m.curso.nombre,
                     nombre: data?.estudiante?.nombre_completo || "",
                     cedula: data?.estudiante?.cedula || "",
+                    volver: `/estudiantes/${estudianteId}/academico?tab=financiero`,
                   })
                   navigate(`/estudiantes/${estudianteId}/academico/registrar-pago/${m.id}?${params.toString()}`)
                 } else {
