@@ -180,6 +180,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     if (campo === "correo") return valor
     if (campo === "estado_civil") return valor
     if (campo === "nivel_educativo") return valor
+    if (campo === "ciudad") return valor.replace(/[0-9]/g, "").toUpperCase()
     if (campo === "nombres" || campo === "apellidos") return valor.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, "").toUpperCase()
     return valor.toUpperCase()
   }
@@ -275,6 +276,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
     if (campo === "correo" && valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "Correo inválido"
+    if (campo === "ciudad" && valor && /\d/.test(valor)) return "La ciudad no debe contener números"
     if (campo === "edad" && valor) {
       const edadNum = Number(valor)
       if (isNaN(edadNum) || edadNum < 10) return "Debes tener al menos 10 años para inscribirte"

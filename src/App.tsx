@@ -154,8 +154,8 @@ function AppLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const notificationsQuery = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => cursosService.getNotificaciones(),
+    queryKey: ["notifications", "pendientes"],
+    queryFn: () => cursosService.getNotificaciones({ solo_pendientes: true }),
     staleTime: 0,
   })
   const pendientesCount = notificationsQuery.data?.pendientes ?? 0

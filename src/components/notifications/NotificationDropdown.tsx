@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { LazyMotion, domAnimation, m, AnimatePresence } from "motion/react"
@@ -28,13 +28,29 @@ function formatFecha(fechaStr: string): string {
 
 export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCount }: NotificationDropdownProps) {
   const notificationsQuery = useQuery<NotificacionesResponse>({
-    queryKey: ["notifications"],
-    queryFn: () => cursosService.getNotificaciones(),
+    queryKey: ["notifications", "pendientes"],
+    queryFn: () => cursosService.getNotificaciones({ solo_pendientes: true }),
     staleTime: 0,
   })
   const data = notificationsQuery.data ?? null
   const loading = notificationsQuery.isLoading || notificationsQuery.isFetching
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const gruposPendientes = useMemo(() => {
+    if (!data?.recientes) return []
+    return data.recientes
+      .map((grupo) => ({
+        ...grupo,
+        items: grupo.items.filter(
+          (item) =>
+            item.subtipo !== "matricula" &&
+            !item.aprobado &&
+            item.estado !== "matricula_creada" &&
+            item.estado !== "aprobado"
+        ),
+      }))
+      .filter((grupo) => grupo.items.length > 0)
+  }, [data])
 
   useEffect(() => {
     if (!isOpen) return
@@ -105,19 +121,19 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
               </div>
             )}
 
-            {!loading && data && data.recientes.length === 0 && (
+            {!loading && gruposPendientes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                 <div className="size-12 rounded-2xl bg-black/5 flex items-center justify-center mb-3">
                   <Bell size={22} style={{ color: COLORS.TEXT_MUTED }} />
                 </div>
-                <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Sin notificaciones</p>
+                <p className="text-sm font-semibold" style={{ color: COLORS.CHARCOAL }}>Sin solicitudes pendientes</p>
                 <p className="text-xs mt-1" style={{ color: COLORS.TEXT_MUTED }}>
-                  No hay matrículas ni solicitudes recientes registradas.
+                  No tienes matrículas ni inscripciones pendientes por aprobar.
                 </p>
               </div>
             )}
 
-            {data && data.recientes.map((grupo) => (
+            {gruposPendientes.map((grupo) => (
               <div key={grupo.fecha}>
                 <div className="px-4 py-2.5 bg-gray-50/70 border-b" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.TEXT_MUTED }}>
@@ -127,7 +143,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                 {grupo.items.map((item) => (
                   <Link
                     key={item.id}
-                    to={item.subtipo === "matricula" ? "/estudiantes" : `/matriculas?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
+                    to={`/matriculas?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
                     onClick={onClose}
                     className="flex items-start gap-3 px-4 py-3 border-b transition-colors hover:bg-gray-50/60"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
@@ -183,7 +199,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
             ))}
           </div>
 
-          {data && data.recientes.length > 0 && (
+          {gruposPendientes.length > 0 && (
             <div className="p-3 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
               <Link
                 to="/matriculas"

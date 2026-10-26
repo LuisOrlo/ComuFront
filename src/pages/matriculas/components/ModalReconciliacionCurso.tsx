@@ -23,6 +23,7 @@ interface ModalReconciliacionCursoProps {
   modulosNuevoCurso: ModuloReconciliacion[]
   totalAbonadoActual: number
   oldMontosAbonados?: number[]
+  desgloseMetodos?: { metodo: string; monto: number; comprobantes?: string[] }[]
   onConfirm: (lineas: { modulo_id: string | null; tipo: string; monto_abonado: number; monto_ajustado: number }[]) => void
   onCancel: () => void
   loading?: boolean
@@ -30,7 +31,7 @@ interface ModalReconciliacionCursoProps {
 
 export function ModalReconciliacionCurso({
   isOpen, oldCursoNombre, newCursoNombre, modulosNuevoCurso,
-  totalAbonadoActual, oldMontosAbonados, onConfirm, onCancel, loading,
+  totalAbonadoActual, oldMontosAbonados, desgloseMetodos, onConfirm, onCancel, loading,
 }: ModalReconciliacionCursoProps) {
   const [valores, setValores] = useState<Record<number, string>>({})
 
@@ -117,9 +118,24 @@ export function ModalReconciliacionCurso({
 
           <div className="flex items-start gap-2 p-3 rounded-xl border" style={{ borderColor: "oklch(0.65 0.15 75 / 0.3)", backgroundColor: "oklch(0.65 0.15 75 / 0.06)" }}>
             <HugeiconsIcon icon={UserWarning01Icon} size={16} className="shrink-0 mt-0.5" style={{ color: "oklch(0.65 0.15 75)" }} />
-            <p className="text-xs font-medium" style={{ color: "oklch(0.5 0.1 75)" }}>
-              Puede conservar el valor registrado de cada módulo (<strong>${totalAbonadoActual.toLocaleString()} abonado</strong>) o ajustarlo manualmente antes de confirmar.
-            </p>
+            <div className="text-xs space-y-1" style={{ color: "oklch(0.5 0.1 75)" }}>
+              <p className="font-medium">
+                Se redistribuirá el total abonado por el estudiante (<strong>${totalAbonadoActual.toFixed(2)}</strong>) entre los módulos del nuevo curso.
+              </p>
+              {desgloseMetodos && desgloseMetodos.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="font-bold text-[10px] uppercase text-slate-500">Desglose de pagos / comprobantes:</span>
+                  {desgloseMetodos.map((dm, idx) => (
+                    <span key={idx} className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-bold text-slate-700 shadow-2xs">
+                      <span className="capitalize">{dm.metodo.toLowerCase()}</span>: <strong className="text-emerald-700 font-mono">${Number(dm.monto).toFixed(2)}</strong>
+                      {dm.comprobantes && dm.comprobantes.length > 1 && (
+                        <span className="text-[10px] text-slate-400 font-normal ml-1">({dm.comprobantes.length} comprobantes)</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>

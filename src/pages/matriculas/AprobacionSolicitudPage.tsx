@@ -187,19 +187,39 @@ export function AprobacionSolicitudPage() {
     fetchAdjacent()
   }, [fetchDetail, fetchAdjacent])
 
-  const loadCursosAbiertos = useCallback(async () => {
+  const [searchingCursos, setSearchingCursos] = useState(false)
+
+  const loadCursosAbiertos = useCallback(async (query?: string) => {
+    setSearchingCursos(true)
     try {
-      const res = await cursosService.getCursos({ per_page: 100, dias_desde_inicio: 7 }, 1)
+      const filters: any = { per_page: 30 }
+      if (query && query.trim()) {
+        filters.search = query.trim()
+      }
+      const res = await cursosService.getCursos(filters, 1)
       setCursosAbiertosList((res as any).data || [])
-    } catch { /* silent */ }
+    } catch { /* silent */ } finally {
+      setSearchingCursos(false)
+    }
   }, [])
+
+  useEffect(() => {
+    if (editCursoField !== "curso") return
+    const timer = setTimeout(() => {
+      loadCursosAbiertos(searchCursoQuery)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchCursoQuery, editCursoField, loadCursosAbiertos])
 
   const getCursoNombre = useCallback(() => selected?.curso?.nombre || "—", [selected])
 
   const filteredCursosAbiertos = useMemo(() => {
     if (!searchCursoQuery.trim()) return cursosAbiertosList
     const query = searchCursoQuery.toLowerCase().trim()
-    return cursosAbiertosList.filter((c: any) => (c.nombre || c.id || "").toLowerCase().includes(query))
+    const inMemory = cursosAbiertosList.filter((c: any) =>
+      (c.nombre || c.nombre_instancia || c.catalogo?.nombre || c.id || "").toLowerCase().includes(query)
+    )
+    return inMemory.length > 0 ? inMemory : cursosAbiertosList
   }, [cursosAbiertosList, searchCursoQuery])
 
   const cursoInicio = selected?.curso?.fechas?.inicio?.split("T")[0] || "—"
@@ -249,7 +269,7 @@ export function AprobacionSolicitudPage() {
     }
     setSavingCursoEdit(true)
     try {
-      await cursosService.actualizarCurso(id, { curso_abierto_id: editCursoVal })
+      await cursosService.actualizarCurso(id, { curso_abierto_id: editCursoVal, permitir_sobrecupo: true })
       const selCurso = cursosAbiertosList.find((c: any) => c.id === editCursoVal)
       const cursoNombre = selCurso?.nombre_instancia || selCurso?.catalogo?.nombre || editCursoVal
       setSelected((prev: any) => prev ? { ...prev, curso: { ...prev.curso, nombre: cursoNombre, id: editCursoVal } } : prev)
@@ -265,7 +285,7 @@ export function AprobacionSolicitudPage() {
     if (!id || !cursoIdPropuesto) return
     setReconciliando(true)
     try {
-      await cursosService.reconciliarCurso(id, { curso_abierto_id: cursoIdPropuesto, lineas })
+      await cursosService.reconciliarCurso(id, { curso_abierto_id: cursoIdPropuesto, lineas, permitir_sobrecupo: true })
       toast.success("Curso actualizado y pagos reconciliados correctamente")
       setModalReconciliacionOpen(false)
       setCursoIdPropuesto(null)
@@ -727,6 +747,8 @@ export function AprobacionSolicitudPage() {
             cursoPrecio={cursoPrecio}
             yaProcesada={yaProcesada}
             totalAbonado={selected?.lineas_pago?.total_abonado || 0}
+            searchingCursos={searchingCursos}
+            desgloseMetodos={selected?.pago?.desglose_metodos || []}
           />
         )}
 
@@ -885,6 +907,7 @@ export function AprobacionSolicitudPage() {
           ...(selected?.lineas_pago?.modulos || []).map((m: any) => m.monto_abonado || 0),
           ...(selected?.lineas_pago?.inscripcion ? [selected.lineas_pago.inscripcion.monto_abonado || 0] : []),
         ]}
+        desgloseMetodos={selected?.pago?.desglose_metodos || []}
         onConfirm={handleReconciliarCurso}
         onCancel={() => { setModalReconciliacionOpen(false); setCursoIdPropuesto(null) }}
         loading={reconciliando}

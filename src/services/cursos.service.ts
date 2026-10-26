@@ -189,6 +189,8 @@ export interface NotificacionItem {
   monto: number
   metodo_pago?: string | null
   hora: string
+  estado?: string
+  aprobado?: boolean
 }
 
 export interface NotificacionGrupo {
@@ -922,12 +924,13 @@ export const cursosService = {
   async reconciliarCurso(id: string, datos: {
     curso_abierto_id: string
     lineas: { modulo_id: string | null; tipo: string; monto_abonado: number; monto_ajustado: number }[]
+    permitir_sobrecupo?: boolean
   }): Promise<Record<string, unknown>> {
     const response = await api.post(`/academic/solicitudes-inscripcion/${id}/reconciliar-curso`, datos)
     return response.data
   },
 
-  async actualizarCurso(id: string, datos: { curso_abierto_id: string }): Promise<Record<string, unknown>> {
+  async actualizarCurso(id: string, datos: { curso_abierto_id: string; permitir_sobrecupo?: boolean }): Promise<Record<string, unknown>> {
     const response = await api.patch(`/academic/solicitudes-inscripcion/${id}/actualizar-curso`, datos)
     return response.data
   },
@@ -961,8 +964,8 @@ export const cursosService = {
   // NOTIFICACIONES
   // ========================================================================
 
-  async getNotificaciones(): Promise<NotificacionesResponse> {
-    const response = await api.get<NotificacionesResponse>("/academic/notificaciones")
+  async getNotificaciones(params?: { solo_pendientes?: boolean }): Promise<NotificacionesResponse> {
+    const response = await api.get<NotificacionesResponse>("/academic/notificaciones", { params })
     const data = (response.data ?? {}) as Partial<NotificacionesResponse>
     return {
       pendientes: typeof data.pendientes === "number" ? data.pendientes : 0,

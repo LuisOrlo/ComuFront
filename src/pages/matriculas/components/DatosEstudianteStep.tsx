@@ -102,6 +102,11 @@ export function DatosEstudianteStep({
   }, [focusedIndex])
 
   const handleCiudadKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (/[0-9]/.test(e.key)) {
+      e.preventDefault()
+      return
+    }
+
     if (!ciudadOpen) {
       if (e.key === 'ArrowDown' || e.key === 'Enter') {
         setCiudadOpen(true)
@@ -223,8 +228,9 @@ export function DatosEstudianteStep({
           <label className="block text-xs font-medium mb-1.5">Ciudad</label>
           <input ref={ciudadInputRef} type="text" value={estudiante.ciudad} 
             onChange={e => { 
-              setEstudiante({...estudiante, ciudad: e.target.value.toUpperCase()}); 
-              const err = validateField("ciudad", e.target.value.toUpperCase()); 
+              const sanitized = e.target.value.replace(/[0-9]/g, "").toUpperCase();
+              setEstudiante({...estudiante, ciudad: sanitized}); 
+              const err = validateField("ciudad", sanitized); 
               setErrors(prev => { const n = { ...prev }; if (err) n.ciudad = err; else delete n.ciudad; return n }); 
               setCiudadOpen(true);
               setFocusedIndex(-1);

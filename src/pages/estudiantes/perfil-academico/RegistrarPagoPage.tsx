@@ -221,6 +221,14 @@ export function RegistrarPagoPage() {
   const cuentaAfectadas = Object.values(montos).filter(value => Number.parseFloat(value) > 0).length
   const hayMontoExcedido = sorted.some(linea => Number.parseFloat(montos[linea.id] || "0") > linea.monto_ajustado - linea.monto_abonado + 0.001)
   const isMultiple = metodos.length > 1
+  const porMetodo = isMultiple && modalidadComprobante === "por_metodo"
+
+  const tieneComprobante = porMetodo
+    ? metodos.filter(m => (parseFloat(m.monto) || 0) > 0).length > 0 &&
+      metodos.filter(m => (parseFloat(m.monto) || 0) > 0).every(m => !!m.comprobante_file || !!m.comprobante_url)
+    : !!comprobanteFile
+
+  const puedePagar = !saving && montoPagoNum > 0 && !hayMontoExcedido && tieneComprobante
 
   const handlePagarTodo = () => {
     setMontos(Object.fromEntries(sorted.map(linea => [linea.id, String(Math.max(linea.monto_ajustado - linea.monto_abonado, 0))])))
@@ -471,27 +479,46 @@ export function RegistrarPagoPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <Link
-                to={backUrl}
-                className="flex items-center justify-center px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-              >
-                Cancelar
-              </Link>
-              <button
-                type="button"
-                onClick={handleRegistrar}
-                disabled={saving || montoPagoNum <= 0 || hayMontoExcedido}
-                className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                style={{ backgroundColor: COLORS.ACCENT }}
-              >
-                <HugeiconsIcon icon={Coins02Icon} size={16} />
-                {saving
-                  ? "Registrando..."
-                  : montoPagoNum > 0
-                    ? `Pagar $${montoPagoNum.toLocaleString()}`
-                    : "Registrar pago"}
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <div className="text-xs">
+                {montoPagoNum <= 0 ? (
+                  <span className="text-amber-700 font-medium">Ingresa el monto a pagar en al menos un módulo</span>
+                ) : !tieneComprobante ? (
+                  <span className="text-amber-700 font-medium">Debes adjuntar la foto del comprobante para pagar</span>
+                ) : hayMontoExcedido ? (
+                  <span className="text-rose-600 font-medium">Un monto ingresado excede el saldo pendiente</span>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+                <Link
+                  to={backUrl}
+                  className="flex items-center justify-center px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  Cancelar
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleRegistrar}
+                  disabled={!puedePagar}
+                  className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-xl md:rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                  style={{ backgroundColor: COLORS.ACCENT }}
+                  title={
+                    montoPagoNum <= 0
+                      ? "Ingresa un monto a pagar"
+                      : !tieneComprobante
+                      ? "Adjunta la foto del comprobante"
+                      : undefined
+                  }
+                >
+                  <HugeiconsIcon icon={Coins02Icon} size={16} />
+                  {saving
+                    ? "Registrando..."
+                    : montoPagoNum > 0
+                      ? `Pagar $${montoPagoNum.toLocaleString()}`
+                      : "Registrar pago"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

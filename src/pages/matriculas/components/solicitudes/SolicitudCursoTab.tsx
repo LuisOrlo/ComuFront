@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useMemo } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BookOpenIcon,
@@ -11,6 +12,7 @@ import {
   Exchange01Icon,
   GraduationCapIcon,
 } from "@hugeicons/core-free-icons"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type CursoAbierto } from "@/services/cursos.service"
 import { CiudadBadge, ModalidadBadge } from "../../../estudiantes/components/Badges"
@@ -22,13 +24,14 @@ interface SolicitudCursoTabProps {
   filteredCursosAbiertos: any[]
   searchCursoQuery: string
   setSearchCursoQuery: (val: string) => void
+  searchingCursos?: boolean
   editCursoField: string | null
   editCursoVal: string
   setEditCursoField: (val: string | null) => void
   setEditCursoVal: (val: string) => void
   saveCursoEdit: () => void
   savingCursoEdit: boolean
-  loadCursosAbiertos: () => void
+  loadCursosAbiertos: (q?: string) => void
   cursoCatalogo: string
   cursoModalidad: string
   cursoDocente: string
@@ -39,6 +42,7 @@ interface SolicitudCursoTabProps {
   cursoPrecio: number
   yaProcesada: boolean
   totalAbonado: number
+  desgloseMetodos?: any[]
 }
 
 function highlightText(text: string, query: string) {
@@ -80,6 +84,7 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
     saveCursoEdit,
     savingCursoEdit,
     loadCursosAbiertos,
+    cursosAbiertosList,
     filteredCursosAbiertos,
     cursoCatalogo,
     cursoModalidad,
@@ -91,17 +96,30 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
     cursoPrecio,
     yaProcesada,
     totalAbonado,
+    searchingCursos,
+    desgloseMetodos,
   } = props
 
   const openEdit = () => {
     setEditCursoField("curso")
     setEditCursoVal(selected.curso?.id || "")
     setSearchCursoQuery("")
-    loadCursosAbiertos()
+    loadCursosAbiertos("")
   }
 
+  const selectedCourseObj = useMemo(() => {
+    return (
+      filteredCursosAbiertos.find((c: any) => c.id === editCursoVal) ||
+      cursosAbiertosList.find((c: any) => c.id === editCursoVal) ||
+      null
+    )
+  }, [filteredCursosAbiertos, cursosAbiertosList, editCursoVal])
+
+  const precioNuevo = Number(selectedCourseObj?.precioBase ?? selectedCourseObj?.precio_base ?? 0)
+  const precioDiff = selectedCourseObj ? precioNuevo - cursoPrecio : 0
+
   const formatPrecio = (c: any) => {
-    const raw = c.precioBase
+    const raw = c.precioBase ?? c.precio_base
     if (raw === null || raw === undefined || raw === "" || raw === 0) return "$0"
     return `$${Number(raw).toLocaleString()}`
   }
@@ -134,7 +152,7 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
               <HugeiconsIcon icon={BookOpenIcon} size={18} className="text-[#fd761a]" />
-              <span>Buscar y seleccionar nuevo curso abierto</span>
+              <span>Buscar y seleccionar cualquier curso</span>
             </div>
             <button
               onClick={() => {
@@ -157,18 +175,21 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
             />
             <input
               type="text"
-              placeholder="Buscar por nombre de curso, catálogo..."
+              placeholder="Buscar curso por nombre, catálogo o docente..."
               value={searchCursoQuery}
               onChange={(e) => setSearchCursoQuery(e.target.value)}
               disabled={savingCursoEdit}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#fd761a]/30 focus:border-[#fd761a] transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#fd761a]/30 focus:border-[#fd761a] transition-all"
             />
+            {searchingCursos && (
+              <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#fd761a] animate-spin size-4 pointer-events-none" />
+            )}
           </div>
 
           <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-2xs">
             {filteredCursosAbiertos.length === 0 ? (
               <div className="p-4 text-xs text-center text-slate-400">
-                No se encontraron cursos abiertos que coincidan con la búsqueda.
+                {searchingCursos ? "Buscando cursos disponibles..." : "No se encontraron cursos que coincidan con la búsqueda."}
               </div>
             ) : (
               filteredCursosAbiertos.map((c: any) => {
@@ -182,22 +203,17 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => {
-                      if (!sinCupo) setEditCursoVal(c.id)
-                    }}
-                    disabled={sinCupo}
+                    onClick={() => setEditCursoVal(c.id)}
                     className={cn(
                       "w-full text-left p-3.5 flex flex-col gap-1.5 transition-all cursor-pointer",
-                      sinCupo
-                        ? "opacity-40 cursor-not-allowed bg-slate-50/50"
-                        : isSelected
-                          ? "bg-orange-50/80 border-l-4 border-l-[#fd761a]"
-                          : "hover:bg-slate-50"
+                      isSelected
+                        ? "bg-orange-50/80 border-l-4 border-l-[#fd761a]"
+                        : "hover:bg-slate-50"
                     )}
                   >
                     <div className="flex justify-between items-center gap-3">
                       <span className="text-sm font-bold text-slate-900 truncate">
-                        {highlightText(c.nombre || c.id, searchCursoQuery)}
+                        {highlightText(c.nombre || c.nombre_instancia || c.catalogo?.nombre || c.id, searchCursoQuery)}
                       </span>
                       <span className="text-sm font-black font-mono text-[#fd761a] shrink-0">
                         {formatPrecio(c)}
@@ -218,12 +234,12 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
                           • {modulosText(c)}
                         </span>
                       )}
-                      {sinCupo && (
-                        <span className="text-[10px] font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 ml-auto">
-                          Sin cupo
+                      {sinCupo ? (
+                        <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          Sobrecupo ({c.estudiantes || 0}/{c.capacidad || 0})
                         </span>
-                      )}
-                      {isSelected && !sinCupo && (
+                      ) : null}
+                      {isSelected && (
                         <div className="ml-auto flex items-center gap-1 text-xs font-bold text-[#fd761a]">
                           <HugeiconsIcon icon={CheckmarkCircle02Icon} size={15} />
                           <span>Seleccionado</span>
@@ -236,12 +252,61 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
             )}
           </div>
 
+          {/* Comparativa de precios del curso seleccionado */}
+          {selectedCourseObj && (
+            <div className="p-3.5 rounded-xl border border-slate-200/90 bg-white space-y-2 text-xs shadow-2xs">
+              <div className="flex items-center justify-between font-bold text-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <HugeiconsIcon icon={Exchange01Icon} size={14} className="text-[#fd761a]" />
+                  <span>Comparativa de valores a pagar</span>
+                </span>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[11px] font-extrabold",
+                    precioDiff > 0
+                      ? "bg-amber-50 text-amber-800 border border-amber-200"
+                      : precioDiff < 0
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : "bg-slate-50 text-slate-700 border border-slate-200"
+                  )}
+                >
+                  {precioDiff > 0
+                    ? `+$${precioDiff.toLocaleString()} (Aumenta valor)`
+                    : precioDiff < 0
+                    ? `-$${Math.abs(precioDiff).toLocaleString()} (Disminuye valor)`
+                    : "Mismo valor total"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-slate-600">
+                <div>
+                  <span className="block text-[10px] uppercase font-bold text-slate-400">Curso actual</span>
+                  <strong className="text-slate-800 text-sm font-mono">${cursoPrecio.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span className="block text-[10px] uppercase font-bold text-slate-400">Nuevo curso</span>
+                  <strong className="text-[#ea580c] text-sm font-mono">${precioNuevo.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span className="block text-[10px] uppercase font-bold text-slate-400">Total ya abonado</span>
+                  <strong className="text-emerald-700 text-sm font-mono">${totalAbonado.toLocaleString()}</strong>
+                </div>
+              </div>
+            </div>
+          )}
+
           {yaProcesada && totalAbonado > 0 && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl border border-amber-300/80 bg-amber-50">
               <HugeiconsIcon icon={Alert02Icon} size={18} className="text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-900 font-medium">
-                Esta matrícula ya tiene pagos registrados (<strong>${totalAbonado.toLocaleString()}</strong>). Al confirmar se abrirá un asistente para redistribuir los montos entre los módulos del nuevo curso.
-              </p>
+              <div className="text-xs text-amber-900 font-medium space-y-1">
+                <p>
+                  Esta matrícula ya tiene pagos registrados (<strong>${totalAbonado.toLocaleString()}</strong>). Al confirmar se abrirá el asistente para redistribuir los montos entre los módulos del nuevo curso preservando los comprobantes y pagos mixtos.
+                </p>
+                {desgloseMetodos && desgloseMetodos.length > 0 && (
+                  <p className="text-[11px] text-amber-800">
+                    Métodos registrados: {desgloseMetodos.map((dm: any) => `${dm.metodo}: $${Number(dm.monto).toFixed(2)}`).join(" · ")}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

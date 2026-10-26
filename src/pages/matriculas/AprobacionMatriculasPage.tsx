@@ -321,6 +321,7 @@ interface SolicitudItem {
   motivo_rechazo: string
   origen: "curso" | "taller"
   color?: string
+  fechaInicio?: string | null
 }
 
   const totalVentanas = solicitudesMeta.last_page || 1
@@ -353,6 +354,7 @@ interface SolicitudItem {
           motivo_rechazo: ins.observaciones || "",
           origen: "taller",
           color: undefined,
+          fechaInicio: ins.taller?.fecha || null,
         }
       })
     }
@@ -383,6 +385,7 @@ interface SolicitudItem {
         motivo_rechazo: s.motivo_rechazo || "",
         origen: "curso",
         color: s.curso_abierto?.catalogo?.color,
+        fechaInicio: s.curso_abierto?.fecha_inicio || null,
       }
     })
   }, [mainTab, tallerInscripcionesRaw, solicitudesRaw])
@@ -1050,6 +1053,12 @@ interface SolicitudItem {
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             {item.ciudad && <CiudadBadge ciudad={item.ciudad} />}
                             {item.modalidad && <ModalidadBadge modalidad={item.modalidad} />}
+                            {item.fechaInicio && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-2xs">
+                                <HugeiconsIcon icon={Calendar03Icon} size={12} className="text-indigo-500 shrink-0" />
+                                <span>Inicio: {formatDate(item.fechaInicio)}</span>
+                              </span>
+                            )}
                           </div>
 
                           {(item.isAprobado || item.isRechazado) && (
