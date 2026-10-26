@@ -17,6 +17,7 @@ export const PUBLIC_ROUTES = [
   "/matricula/nueva",
   "/verificar-certificados",
   "/agenda-publica",
+  "/documentos",
 ] as const
 
 export function isPublicRoute(pathname: string): boolean {

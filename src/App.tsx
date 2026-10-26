@@ -135,6 +135,8 @@ const EstudianteSegmentsPage = lazyNamed(() => import("@/pages/estudiantes/Estud
 const ImportarEstudiantesPage = lazyNamed(() => import("@/pages/estudiantes/ImportarEstudiantesPage"), "ImportarEstudiantesPage")
 const AgendaPage = lazyNamed(() => import("@/pages/agenda/AgendaPage"), "AgendaPage")
 const AgendaPublicaPage = lazyNamed(() => import("@/pages/agenda/AgendaPublicaPage"), "AgendaPublicaPage")
+const ArchivosPage = lazyNamed(() => import("@/pages/archivos/ArchivosPage"), "ArchivosPage")
+const DocumentosPublicosPage = lazyNamed(() => import("@/pages/documentos/DocumentosPublicosPage"), "DocumentosPublicosPage")
 import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
@@ -231,6 +233,7 @@ function AppLayout() {
             <Route path="/estudiantes/:id/academico" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EstudiantePerfilAcademicoPage /></RoleGuard>} />
             <Route path="/estudiantes/:id/academico/registrar-pago/:matriculaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><RegistrarPagoPage /></RoleGuard>} />
             <Route path="/tareas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><TareasPage /></RoleGuard>} />
+            <Route path="/archivos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ArchivosPage /></RoleGuard>} />
             <Route path="/cuentas" element={<RoleGuard roles={["Administrador"]}><CuentasPage /></RoleGuard>} />
             <Route path="/matriculas" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionMatriculasPage /></RoleGuard>} />
             <Route path="/matriculas/aprobacion/solicitud/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><AprobacionSolicitudPage /></RoleGuard>} />
@@ -380,6 +383,8 @@ function App() {
             <Route path="/matricula/nueva" element={<NuevaMatriculaPublicaPage />} />
             <Route path="/verificar-certificados" element={<VerificarCertificadosPage />} />
             <Route path="/agenda-publica" element={<AgendaPublicaPage />} />
+            <Route path="/documentos" element={<DocumentosPublicosPage />} />
+            <Route path="/archivos-publicos" element={<DocumentosPublicosPage />} />
             <Route
               path="/*"
               element={

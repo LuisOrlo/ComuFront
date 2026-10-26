@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { FileText } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   EyeIcon,
@@ -333,11 +334,11 @@ export function LoginPage() {
             </div>
           </div>
 
-          {/* Public Services Links (Certificates & Agenda) */}
-          <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm">
+          {/* Public Services Links (Certificates, Agenda & Documents) */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3 sm:gap-5 text-sm">
             <Link
               to="/verificar-certificados"
-              className="inline-flex items-center justify-center gap-2 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
               style={{ color: TEXT_MUTED }}
             >
               <HugeiconsIcon
@@ -352,7 +353,7 @@ export function LoginPage() {
 
             <Link
               to="/agenda-publica"
-              className="inline-flex items-center justify-center gap-2 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
               style={{ color: TEXT_MUTED }}
             >
               <HugeiconsIcon
@@ -361,6 +362,17 @@ export function LoginPage() {
                 className="shrink-0 text-slate-500"
               />
               <span className="leading-none">Consultar agenda</span>
+            </Link>
+
+            <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-slate-300" aria-hidden="true" />
+
+            <Link
+              to="/documentos"
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-medium transition-colors hover:text-slate-900 active:scale-95"
+              style={{ color: TEXT_MUTED }}
+            >
+              <FileText size={15} className="shrink-0 text-slate-500" />
+              <span className="leading-none">Documentos públicos</span>
             </Link>
           </div>
 

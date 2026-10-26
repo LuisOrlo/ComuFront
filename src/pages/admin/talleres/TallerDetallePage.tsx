@@ -14,6 +14,7 @@ import { generarListadoAsistenciaPDF, generarReporteAsistenciaPDF, generarListad
 import { ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { InteresadosSection } from "@/components/interesados/InteresadosSection"
 import { toast } from "sonner"
 
 const ACCENT = COLORS.ACCENT
@@ -28,7 +29,7 @@ const ESTADO_BADGE: Record<string, { bg: string; text: string }> = {
   cancelado: { bg: "oklch(0.93 0.06 20)", text: "oklch(0.55 0.15 20)" },
 }
 
-type Tab = "info" | "participantes" | "pagos" | "asistencia"
+type Tab = "info" | "participantes" | "pagos" | "asistencia" | "interesados"
 
 export function TallerDetallePage() {
   const { id } = useParams<{ id: string }>()
@@ -307,6 +308,7 @@ export function TallerDetallePage() {
     { key: "participantes", label: `Participantes (${totalParticipantes})`, icon: UserGroupIcon },
     { key: "pagos", label: "Pagos", icon: Money01Icon },
     { key: "asistencia", label: "Asistencia", icon: CheckmarkCircle01Icon },
+    { key: "interesados", label: "Interesados", icon: UserGroupIcon },
   ]
 
   const listaInscripciones = inscripciones.length > 0 ? inscripciones : (taller?.inscripciones || [])
@@ -867,6 +869,12 @@ export function TallerDetallePage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {tab === "interesados" && id && (
+          <div className="max-w-[1000px] mx-auto px-6 py-6">
+            <InteresadosSection tipo="taller" entidadId={id} entidadNombre={taller.nombre} />
           </div>
         )}
       </main>

@@ -31,6 +31,7 @@ import {
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
+  FileText,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
@@ -204,6 +205,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
         { icon: CalendarDays, label: "Agenda", path: "/agenda" },
         { icon: ClipboardCheck, label: "Tareas", path: "/tareas" },
         { icon: Users, label: "Clientes", path: "/clientes" },
+        { icon: FileText, label: "Archivos", path: "/archivos" },
       ],
     },
     {
@@ -248,6 +250,7 @@ if (isAdmin) {
         { icon: CalendarDays, label: "Agenda", path: "/agenda" },
         { icon: ClipboardCheck, label: "Tareas", path: "/tareas" },
         { icon: Users, label: "Clientes", path: "/clientes" },
+        { icon: FileText, label: "Archivos", path: "/archivos" },
       ],
     },
     {

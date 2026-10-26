@@ -25,11 +25,12 @@ import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
 import { CursoEstudiantesTable } from "./CursoEstudiantesTable"
 import { CursoPagosSection } from "./CursoPagosSection"
+import { InteresadosSection } from "@/components/interesados/InteresadosSection"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { cursosService, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
 import { toast } from "sonner"
 
-type Tab = "info" | "modulos" | "estudiantes" | "asistencia" | "pagos"
+type Tab = "info" | "modulos" | "estudiantes" | "asistencia" | "pagos" | "interesados"
 
 interface ModuloData {
   id: string
@@ -165,6 +166,7 @@ export function CursoDetailPage() {
     { key: "estudiantes" as Tab, label: `Estudiantes (${totalEstudiantes})`, icon: UserGroupIcon },
     { key: "asistencia" as Tab, label: "Asistencia", icon: CheckmarkCircle01Icon },
     { key: "pagos" as Tab, label: "Pagos", icon: Money01Icon },
+    { key: "interesados" as Tab, label: "Interesados", icon: UserIcon },
   ]
 
   return (
@@ -492,6 +494,13 @@ export function CursoDetailPage() {
               curso={curso}
               matriculas={matriculas}
             /></div>
+          )}
+
+          {/* Tab: Interesados */}
+          {tab === "interesados" && id && (
+            <div id="curso-panel-interesados" role="tabpanel" aria-labelledby="curso-tab-interesados">
+              <InteresadosSection tipo="curso" entidadId={id} entidadNombre={curso.nombre} />
+            </div>
           )}
         </div>
       </main>

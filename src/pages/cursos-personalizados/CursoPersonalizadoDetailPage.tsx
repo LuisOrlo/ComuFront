@@ -27,6 +27,7 @@ import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { EliminarVinculacionEstudianteModal } from "@/components/estudiantes/EliminarVinculacionEstudianteModal"
+import { InteresadosSection } from "@/components/interesados/InteresadosSection"
 import {
   cursosPersonalizadosService,
   type CursoPersonalizado,
@@ -85,7 +86,7 @@ export function CursoPersonalizadoDetailPage() {
   const [course, setCourse] = useState<CursoPersonalizado | null>(null)
   const [students, setStudents] = useState<CursoPersonalizadoEstudiante[]>([])
   const [finance, setFinance] = useState<FinanzasCursoPersonalizado | null>(null)
-  const [tab, setTab] = useState<"resumen" | "estudiantes" | "finanzas">("resumen")
+  const [tab, setTab] = useState<"resumen" | "estudiantes" | "finanzas" | "interesados">("resumen")
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -185,6 +186,7 @@ export function CursoPersonalizadoDetailPage() {
     { key: "resumen" as const, label: "Resumen General", icon: Calendar },
     { key: "estudiantes" as const, label: `Estudiantes (${totalEstudiantes})`, icon: Users },
     { key: "finanzas" as const, label: "Finanzas & Pagos", icon: Receipt },
+    { key: "interesados" as const, label: "Interesados", icon: Users },
   ]
 
   return (
@@ -626,6 +628,11 @@ export function CursoPersonalizadoDetailPage() {
 
         {/* 3. FINANZAS Y FACTURACIÓN */}
         {tab === "finanzas" && <FinanceSection course={course} finance={finance} students={students} />}
+
+        {/* 4. LISTA DE INTERESADOS */}
+        {tab === "interesados" && id && (
+          <InteresadosSection tipo="personalizado" entidadId={id} entidadNombre={course.nombre} />
+        )}
       </div>
 
       {/* Confirmation Modal for Deletion */}
