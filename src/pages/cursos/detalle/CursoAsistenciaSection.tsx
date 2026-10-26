@@ -824,11 +824,9 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl md:text-3xl font-bold text-[#0b1c30] tracking-tight">
-              Gestión de asistencia
+              Asistencia
             </h1>
-            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#dce9ff] text-[#0b1c30] text-[11px] font-semibold">
-              Periodo Activo
-            </span>
+            
           </div>
           <p className="text-sm text-[#45464d] mt-1">
             Selecciona una clase para registrar o revisar la asistencia sin salir de este panel unificado.

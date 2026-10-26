@@ -10,19 +10,15 @@ import {
   AssignmentsIcon,
   ArrowRight01Icon,
   Download04Icon,
-  ArrowDown01Icon,
 } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
-import { ClaseAsistenciaCard } from "./ClaseAsistenciaCard"
-import { ClaseAsistenciaDetalle } from "./ClaseAsistenciaDetalle"
+import { CursoAsistenciaSection } from "@/pages/cursos/detalle/CursoAsistenciaSection"
 import {
   instructorService,
   type InstructorCurso,
   type EstudianteCurso,
   type ModuloResumen,
-  type ClaseItem,
-  type AsistenciaClaseEstudiante,
 } from "@/services/instructor.service"
 import { toast } from "sonner"
 
@@ -33,19 +29,7 @@ export function InstructorCursoDetailPage() {
   const [estudiantes, setEstudiantes] = useState<EstudianteCurso[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "info")
-  const [clasesPorModulo, setClasesPorModulo] = useState<Record<string, ClaseItem[]>>({})
-  const [asistenciasPorClase, setAsistenciasPorClase] = useState<Record<string, AsistenciaClaseEstudiante[]>>({})
-  const [cargandoClases, setCargandoClases] = useState(false)
-  const [selectedClaseId, setSelectedClaseId] = useState<string | null>(null)
-  const [expandedModulos, setExpandedModulos] = useState<Record<string, boolean>>({})
   const [progresoPeriodo, setProgresoPeriodo] = useState<number>(0)
-
-  const toggleModulo = (moduloId: string) => {
-    setExpandedModulos((prev) => ({
-      ...prev,
-      [moduloId]: prev[moduloId] === undefined ? false : !prev[moduloId],
-    }))
-  }
 
   const loadData = async () => {
     try {
@@ -77,50 +61,10 @@ export function InstructorCursoDetailPage() {
 
   useEffect(() => {
     if (id) {
-
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
-
-  useEffect(() => {
-    if (!id || !curso || activeTab !== "attendance") return
-
-    const cargarClasesYAsistencias = async () => {
-      setCargandoClases(true)
-      const modulos = curso.modulos
-
-      // Cargar clases por módulo
-      const clasesMap: Record<string, ClaseItem[]> = {}
-      const resultadosClases = await Promise.all(
-        modulos.map(m => instructorService.getClasesModulo(m.id).then(clases => ({ moduloId: m.id, clases })))
-      )
-      resultadosClases.forEach(({ moduloId, clases }) => {
-        clasesMap[moduloId] = clases
-      })
-      setClasesPorModulo(clasesMap)
-
-      // Cargar asistencias por clase (solo las que tienen asistencia registrada)
-      const todasClases = Object.values(clasesMap).flat()
-      const clasesConAsistencia = todasClases.filter(c => c.asistencia_registrada)
-
-      const asistenciasMap: Record<string, AsistenciaClaseEstudiante[]> = {}
-      await Promise.all(
-        clasesConAsistencia.map(async (clase) => {
-          try {
-            const data = await instructorService.getAsistenciaClase(clase.id)
-            asistenciasMap[clase.id] = data
-          } catch {
-            asistenciasMap[clase.id] = []
-          }
-        })
-      )
-      setAsistenciasPorClase(asistenciasMap)
-      setCargandoClases(false)
-    }
-
-    cargarClasesYAsistencias()
-  }, [id, curso, activeTab])
 
   if (loading)
     return (
@@ -434,106 +378,11 @@ export function InstructorCursoDetailPage() {
           )}
 
           {activeTab === "attendance" && (
-            <div className="max-w-5xl mx-auto space-y-5">
-              {selectedClaseId ? (
-                (() => {
-                  const claseData = Object.values(clasesPorModulo).flat().find(c => c.id === selectedClaseId)
-                  const asistencias = claseData ? asistenciasPorClase[claseData.id] || [] : []
-
-                  return claseData ? (
-                    <ClaseAsistenciaDetalle
-                      clase={claseData}
-                      asistencias={asistencias}
-                      asistentes={asistencias.filter(a => a.asistio).length}
-                      total={asistencias.length}
-                      pct={asistencias.length > 0 ? Math.round((asistencias.filter(a => a.asistio).length / asistencias.length) * 100) : 0}
-                      cursoNombre={curso.nombre_instancia}
-                      onVolver={() => setSelectedClaseId(null)}
-                    />
-                  ) : null
-                })()
-              ) : (
-                <>
-              <h3 className="text-lg font-bold" style={{ color: COLORS.CHARCOAL }}>Registro de Asistencia por Clase</h3>
-
-              {cargandoClases ? (
-                <div className="bg-white rounded-xl border p-12 text-center text-sm" style={{ borderColor: "#f1f3f5", color: COLORS.TEXT_MUTED }}>
-                  Cargando clases y asistencias...
-                </div>
-              ) : Object.keys(clasesPorModulo).length === 0 ? (
-                <div className="bg-white rounded-xl border p-12 text-center" style={{ borderColor: "#f1f3f5" }}>
-                  <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>No se encontraron clases para este curso.</p>
-                </div>
-              ) : (
-                curso.modulos.map(modulo => {
-                  const clases = clasesPorModulo[modulo.id]
-                  if (!clases || clases.length === 0) return null
-                  const isExpanded = expandedModulos[modulo.id] !== false
-
-                  return (
-                    <div key={modulo.id} className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs mb-3 transition-all">
-                      <button
-                        type="button"
-                        onClick={() => toggleModulo(modulo.id)}
-                        className="w-full px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between text-left cursor-pointer select-none"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-100 text-[#fd761a]">
-                            Módulo {modulo.numero_orden}
-                          </span>
-                          <span className="text-sm font-bold text-slate-900 truncate">
-                            {modulo.nombre_modulo}
-                          </span>
-                          <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                            · {clases.filter(c => c.asistencia_registrada).length} de {clases.length} clases con asistencia
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[11px] font-semibold text-slate-400 sm:hidden">
-                            {clases.filter(c => c.asistencia_registrada).length}/{clases.length}
-                          </span>
-                          <HugeiconsIcon
-                            icon={ArrowDown01Icon}
-                            size={16}
-                            className={`text-slate-400 transition-transform duration-200 ${
-                              isExpanded ? "rotate-0" : "-rotate-90"
-                            }`}
-                          />
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="divide-y divide-slate-100">
-                          {clases.map(clase => {
-                            const asistencias = asistenciasPorClase[clase.id] || []
-                            const asistentes = asistencias.filter(a => a.asistio).length
-                            const total = asistencias.length
-                            const pct = total > 0 ? Math.round((asistentes / total) * 100) : 0
-
-                            return (
-                              <ClaseAsistenciaCard
-                                key={clase.id}
-                                clase={clase}
-                                asistencias={asistencias}
-                                asistentes={asistentes}
-                                total={total}
-                                pct={pct}
-                                cursoId={curso.id}
-                                cursoNombre={curso.nombre_instancia}
-                                onClickVerDetalle={setSelectedClaseId}
-                              />
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-              </>
-              )}
-            </div>
+            <CursoAsistenciaSection
+              cursoId={curso.id}
+              cursoNombre={curso.nombre_instancia}
+              modulos={curso.modulos}
+            />
           )}
 
           {activeTab === "grades" && (
