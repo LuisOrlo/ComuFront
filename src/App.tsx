@@ -84,7 +84,6 @@ const RadioTarifasPage = lazyNamed(() => import("@/pages/servicios/radio/Tarifas
 const InstructorDashboardPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorDashboardPage"), "InstructorDashboardPage")
 const InstructorCursosPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorCursosPage"), "InstructorCursosPage")
 const InstructorCursoDetailPage = lazyNamed(() => import("@/pages/instructor-portal/detalle/InstructorCursoDetailPage"), "InstructorCursoDetailPage")
-const AsistenciaRegistroPage = lazyNamed(() => import("@/pages/instructor-portal/AsistenciaRegistroPage"), "AsistenciaRegistroPage")
 const NotasRegistroPage = lazyNamed(() => import("@/pages/instructor-portal/NotasRegistroPage"), "NotasRegistroPage")
 const ClasesModuloPage = lazyNamed(() => import("@/pages/instructor-portal/ClasesModuloPage"), "ClasesModuloPage")
 const InstructorHorarioPage = lazyNamed(() => import("@/pages/instructor-portal/InstructorHorarioPage"), "InstructorHorarioPage")
@@ -330,7 +329,6 @@ function AppLayout() {
             <Route path="/instructor/cursos" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursosPage /></RoleGuard>} />
             <Route path="/instructor/cursos/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorCursoDetailPage /></RoleGuard>} />
             <Route path="/instructor/clases/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Instructor"]}><ClasesModuloPage /></RoleGuard>} />
-            <Route path="/instructor/asistencia/:cursoId/:claseId" element={<RoleGuard roles={["Administrador", "Instructor"]}><AsistenciaRegistroPage /></RoleGuard>} />
             <Route path="/instructor/notas/:cursoId/:moduloId" element={<RoleGuard roles={["Administrador", "Secretaria", "Instructor"]}><NotasRegistroPage /></RoleGuard>} />
             <Route path="/instructor/estudiantes/:id" element={<RoleGuard roles={["Administrador", "Instructor"]}><DetalleEstudiantePage /></RoleGuard>} />
             <Route path="/instructor/horario" element={<RoleGuard roles={["Administrador", "Instructor"]}><InstructorHorarioPage /></RoleGuard>} />

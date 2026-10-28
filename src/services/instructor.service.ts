@@ -35,6 +35,29 @@ export interface ModuloResumen {
   ponderacion: number
 }
 
+export interface InstructorClaseHorario {
+  id: string
+  modulo_id: string
+  modulo_nombre: string
+  modulo_numero: number
+  curso_id: string
+  curso_nombre: string
+  catalogo_nombre: string
+  color: string
+  ciudad: string
+  modalidad: string
+  fecha_clase: string
+  hora_inicio: string
+  hora_fin: string
+  asistencia_registrada: boolean
+  observaciones?: string
+}
+
+export interface InstructorClaseDetalle extends InstructorClaseHorario {
+  total_estudiantes: number
+  asistencias_presentes: number
+}
+
 export interface ClaseItem {
   id: string
   modulo_id?: string
@@ -141,6 +164,15 @@ export const instructorService = {
     return response.data.datos
   },
 
+  async getHorario(params?: {
+    fecha_inicio?: string
+    fecha_fin?: string
+    curso_id?: string
+  }): Promise<InstructorClaseHorario[]> {
+    const response = await api.get("/instructor/horario", { params })
+    return response.data.datos
+  },
+
   async getDetalleCurso(id: string): Promise<InstructorCurso> {
     const response = await api.get(`/instructor/cursos/${id}`)
     return response.data.datos
@@ -156,7 +188,7 @@ export const instructorService = {
     return response.data.datos
   },
 
-  async getDetalleClase(claseId: string): Promise<ClaseItem> {
+  async getDetalleClase(claseId: string): Promise<InstructorClaseDetalle> {
     const response = await api.get(`/instructor/clases/${claseId}`)
     return response.data.datos
   },

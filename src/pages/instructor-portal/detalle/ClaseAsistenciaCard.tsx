@@ -113,7 +113,7 @@ export function ClaseAsistenciaCard({ clase, asistencias, asistentes, total, pct
 
   return (
     <Link
-      to={`/instructor/asistencia/${cursoId}/${clase.id}`}
+      to={`/instructor/cursos/${cursoId}?tab=asistencia`}
       className="flex items-center justify-between gap-4 px-5 py-4 transition-all duration-150 hover:shadow-sm hover:bg-blue-50/30 no-underline"
     >
       {inner}

@@ -1,11 +1,21 @@
 import { useState, useEffect, useMemo } from "react"
 import { Link } from "react-router"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  BookOpen01Icon, Calendar03Icon, ArrowRight01Icon, Time03Icon,
-  GraduationCapIcon, PlayIcon, GlobeIcon, Building01Icon,
-  Search01Icon, Cancel01Icon, CheckmarkCircle01Icon, MapsLocation01Icon,
-} from "@hugeicons/core-free-icons"
+  Building2,
+  Globe,
+  MapPin,
+  Clock,
+  ArrowRight,
+  BookOpen,
+  GraduationCap,
+  Play,
+  Calendar,
+  CheckCircle2,
+  Search,
+  X,
+  SlidersHorizontal,
+  RotateCcw,
+} from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { instructorService, type InstructorCurso } from "@/services/instructor.service"
 import { toast } from "sonner"
@@ -84,7 +94,7 @@ function CursoCard({ curso }: { curso: InstructorCurso }) {
           }}
           title={esVirtual ? "Modalidad Virtual" : "Modalidad Presencial"}
         >
-          <HugeiconsIcon icon={esVirtual ? GlobeIcon : Building01Icon} size={20} />
+          {esVirtual ? <Globe size={20} /> : <Building2 size={20} />}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -129,7 +139,7 @@ function CursoCard({ curso }: { curso: InstructorCurso }) {
       {/* Metadatos del curso */}
       <div className="space-y-2 flex-1 pt-1 border-t border-slate-100">
         <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-          <HugeiconsIcon icon={MapsLocation01Icon} size={15} className="shrink-0 text-slate-400" />
+          <MapPin size={15} className="shrink-0 text-slate-400" />
           <span className="truncate">
             {curso.ciudad?.nombre ? curso.ciudad.nombre : esVirtual ? "Plataforma Virtual" : "Sede no asignada"}
           </span>
@@ -139,7 +149,7 @@ function CursoCard({ curso }: { curso: InstructorCurso }) {
         </div>
 
         <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-          <HugeiconsIcon icon={Time03Icon} size={15} className="shrink-0 text-slate-400" />
+          <Clock size={15} className="shrink-0 text-slate-400" />
           <span className="truncate">
             {new Date(curso.fecha_inicio).toLocaleDateString("es-ES", {
               day: "numeric",
@@ -165,7 +175,7 @@ function CursoCard({ curso }: { curso: InstructorCurso }) {
           style={{ color: COLORS.ACCENT }}
         >
           <span>Gestionar clases y asistencias</span>
-          <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+          <ArrowRight size={14} />
         </span>
       </div>
     </Link>
@@ -181,6 +191,7 @@ export function InstructorCursosPage() {
   const [tabModalidad, setTabModalidad] = useState<TabModalidad>("todos")
   const [subTabEstado, setSubTabEstado] = useState<SubTabEstado>("todos")
   const [ciudadFilter, setCiudadFilter] = useState("todos")
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   const loadCursos = async () => {
     try {
@@ -240,7 +251,7 @@ export function InstructorCursosPage() {
   // Cursos finales que se muestran en el grid
   const cursosVisibles = useMemo(() => {
     return cursos.filter((c) => {
-      // 1. Filtro de Modalidad (Tap principal)
+      // 1. Filtro de Modalidad
       if (tabModalidad !== "todos" && inferModality(c) !== tabModalidad) return false
 
       // 2. Filtro de Sub-tab de Estado
@@ -249,7 +260,7 @@ export function InstructorCursosPage() {
       // 3. Filtro de Ciudad
       if (ciudadFilter !== "todos" && c.ciudad?.nombre !== ciudadFilter) return false
 
-      // 4. Búsqueda por texto (nombre de instancia o catálogo)
+      // 4. Búsqueda por texto (nombre de instancia, catálogo o ciudad)
       if (search.trim()) {
         const q = search.toLowerCase().trim()
         const nameMatch = (c.nombre_instancia || "").toLowerCase().includes(q)
@@ -262,11 +273,14 @@ export function InstructorCursosPage() {
     })
   }, [cursos, tabModalidad, subTabEstado, ciudadFilter, search])
 
+  // Conteo de filtros secundarios activos en móvil
+  const activeFiltersCount = (tabModalidad !== "todos" ? 1 : 0) + (ciudadFilter !== "todos" ? 1 : 0)
+
   if (loading) {
     return (
       <div className="p-16 text-center space-y-3">
         <div className="size-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto animate-spin">
-          <HugeiconsIcon icon={BookOpen01Icon} size={20} />
+          <BookOpen size={20} />
         </div>
         <p className="text-sm font-bold text-slate-500">Cargando tus cursos asignados...</p>
       </div>
@@ -299,7 +313,7 @@ export function InstructorCursosPage() {
             className="size-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{ backgroundColor: "oklch(0.96 0.04 45)" }}
           >
-            <HugeiconsIcon icon={BookOpen01Icon} size={30} style={{ color: COLORS.ACCENT }} />
+            <BookOpen size={30} style={{ color: COLORS.ACCENT }} />
           </div>
           <h3 className="text-lg font-black text-slate-900">No tienes cursos asignados</h3>
           <p className="text-sm mt-1 text-slate-500 max-w-md mx-auto">
@@ -309,9 +323,278 @@ export function InstructorCursosPage() {
       ) : (
         <>
           {/* ═══════════════════════════════════════════════════════════════════
-              TABS PRINCIPALES (MODALIDAD: Todos / Presenciales / Virtuales)
+              VISTA MÓVIL (< md): ULTRA COMPACTA, 2 FILAS Y SIN SCROLL HORIZONTAL
               ═══════════════════════════════════════════════════════════════════ */}
-          <div className="bg-white rounded-2xl p-2 border border-slate-200/90 shadow-xs">
+          <div className="md:hidden space-y-2.5">
+            {/* Fila 1: Buscador + Botón Filtros */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar curso o catálogo..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2 text-xs font-medium border rounded-xl outline-none bg-white text-slate-800 border-slate-200 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 shadow-2xs transition-all"
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Botón Filtros (Abre Drawer con Modalidad y Ciudad) */}
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters(true)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border shadow-2xs transition-all shrink-0 cursor-pointer ${
+                  activeFiltersCount > 0
+                    ? "bg-orange-50 border-orange-300 text-orange-600 font-extrabold"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <SlidersHorizontal size={14} />
+                <span>Filtros</span>
+                {activeFiltersCount > 0 && (
+                  <span className="size-4.5 rounded-full bg-orange-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Fila 2: Grid simétrico de 4 columnas para Estados (sin scroll horizontal) */}
+            <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/80 text-center">
+              <button
+                type="button"
+                onClick={() => setSubTabEstado("todos")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  subTabEstado === "todos"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Todos</span>
+                <span
+                  className={`mt-0.5 px-1.5 py-0.2 rounded text-[10px] ${
+                    subTabEstado === "todos" ? "bg-slate-900 text-white font-mono" : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {countsSubTabs.todos}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTabEstado("en_progreso")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  subTabEstado === "en_progreso"
+                    ? "bg-blue-600 text-white shadow-2xs"
+                    : "text-blue-700 hover:bg-blue-50"
+                }`}
+              >
+                <span>En curso</span>
+                <span
+                  className={`mt-0.5 px-1.5 py-0.2 rounded text-[10px] ${
+                    subTabEstado === "en_progreso" ? "bg-white/20 text-white font-mono" : "bg-blue-100 text-blue-800"
+                  }`}
+                >
+                  {countsSubTabs.en_progreso}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTabEstado("por_iniciar")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  subTabEstado === "por_iniciar"
+                    ? "bg-amber-600 text-white shadow-2xs"
+                    : "text-amber-800 hover:bg-amber-50"
+                }`}
+              >
+                <span>Por iniciar</span>
+                <span
+                  className={`mt-0.5 px-1.5 py-0.2 rounded text-[10px] ${
+                    subTabEstado === "por_iniciar" ? "bg-white/20 text-white font-mono" : "bg-amber-100 text-amber-900"
+                  }`}
+                >
+                  {countsSubTabs.por_iniciar}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTabEstado("completados")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  subTabEstado === "completados"
+                    ? "bg-emerald-600 text-white shadow-2xs"
+                    : "text-emerald-800 hover:bg-emerald-50"
+                }`}
+              >
+                <span>Finalizados</span>
+                <span
+                  className={`mt-0.5 px-1.5 py-0.2 rounded text-[10px] ${
+                    subTabEstado === "completados" ? "bg-white/20 text-white font-mono" : "bg-emerald-100 text-emerald-900"
+                  }`}
+                >
+                  {countsSubTabs.completados}
+                </span>
+              </button>
+            </div>
+
+            {/* Fila 3: Chips de filtros activos eliminables con 1 toque */}
+            {activeFiltersCount > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] text-slate-500 font-medium">Filtros:</span>
+                {tabModalidad !== "todos" && (
+                  <button
+                    type="button"
+                    onClick={() => setTabModalidad("todos")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 text-[11px] font-bold cursor-pointer"
+                  >
+                    <span>{tabModalidad === "presencial" ? "Presencial" : "Virtual"}</span>
+                    <X size={12} />
+                  </button>
+                )}
+                {ciudadFilter !== "todos" && (
+                  <button
+                    type="button"
+                    onClick={() => setCiudadFilter("todos")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold cursor-pointer"
+                  >
+                    <span>{ciudadFilter}</span>
+                    <X size={12} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTabModalidad("todos")
+                    setCiudadFilter("todos")
+                  }}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 underline ml-1 cursor-pointer"
+                >
+                  Limpiar todo
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Modal / Bottom Sheet para Filtros Móviles */}
+          {showMobileFilters && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+              <div
+                className="fixed inset-0"
+                onClick={() => setShowMobileFilters(false)}
+              />
+              <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto z-10 animate-in slide-in-from-bottom duration-200">
+                {/* Header del modal */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal size={16} className="text-orange-600" />
+                    <h3 className="text-sm font-bold text-slate-900">Filtros de Modalidad y Ciudad</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileFilters(false)}
+                    className="size-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Modalidad */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Modalidad
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "todos", label: "Todas", icon: GraduationCap, count: countsModalidad.todos },
+                      { id: "presencial", label: "Presencial", icon: Building2, count: countsModalidad.presencial },
+                      { id: "virtual", label: "Virtual", icon: Globe, count: countsModalidad.virtual },
+                    ].map((item) => {
+                      const Icon = item.icon
+                      const active = tabModalidad === item.id
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setTabModalidad(item.id as TabModalidad)}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                            active
+                              ? "bg-orange-50 border-orange-300 text-orange-700 shadow-2xs"
+                              : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                          }`}
+                        >
+                          <Icon size={18} className={active ? "text-orange-600" : "text-slate-400"} />
+                          <span>{item.label}</span>
+                          <span className={`text-[10px] px-1.5 rounded-full ${active ? "bg-orange-200/60 text-orange-900" : "bg-slate-200 text-slate-600"}`}>
+                            {item.count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Ciudad */}
+                {ciudades.length > 0 && tabModalidad !== "virtual" && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Ciudad o Sede
+                    </label>
+                    <select
+                      value={ciudadFilter}
+                      onChange={(e) => setCiudadFilter(e.target.value)}
+                      className="w-full px-3 py-2.5 text-xs font-bold border rounded-xl bg-slate-50 text-slate-800 border-slate-200 outline-none focus:border-orange-500 cursor-pointer"
+                    >
+                      <option value="todos">Todas las ciudades</option>
+                      {ciudades.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Botones de acción */}
+                <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                  {activeFiltersCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTabModalidad("todos")
+                        setCiudadFilter("todos")
+                      }}
+                      className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw size={14} />
+                      Restablecer
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileFilters(false)}
+                    className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 transition-all shadow-xs cursor-pointer"
+                  >
+                    Aplicar filtros
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              VISTA ESCRITORIO (>= md): BARRA COMPLETA Y ELEGANTE
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="hidden md:block bg-white rounded-2xl p-2.5 border border-slate-200/90 shadow-xs">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <nav className="inline-flex p-1 rounded-xl bg-slate-100/90 gap-1 border border-slate-200/70" aria-label="Modalidad">
                 <button
@@ -323,7 +606,7 @@ export function InstructorCursosPage() {
                       : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                   }`}
                 >
-                  <HugeiconsIcon icon={GraduationCapIcon} size={15} />
+                  <GraduationCap size={15} />
                   <span>Todos los cursos</span>
                   <span
                     className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
@@ -343,7 +626,7 @@ export function InstructorCursosPage() {
                       : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                   }`}
                 >
-                  <HugeiconsIcon icon={Building01Icon} size={15} className="text-[#fd761a]" />
+                  <Building2 size={15} className="text-[#fd761a]" />
                   <span>Presenciales</span>
                   <span
                     className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
@@ -363,7 +646,7 @@ export function InstructorCursosPage() {
                       : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                   }`}
                 >
-                  <HugeiconsIcon icon={GlobeIcon} size={15} className="text-violet-600" />
+                  <Globe size={15} className="text-violet-600" />
                   <span>Virtuales</span>
                   <span
                     className={`ml-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
@@ -375,10 +658,10 @@ export function InstructorCursosPage() {
                 </button>
               </nav>
 
-              {/* Selector de Ciudad (visible si hay ciudades y no es exclusivamente virtual) */}
+              {/* Selector de Ciudad */}
               {ciudades.length > 0 && tabModalidad !== "virtual" && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500 hidden sm:inline">Ciudad:</span>
+                  <span className="text-xs font-bold text-slate-500">Ciudad:</span>
                   <select
                     value={ciudadFilter}
                     onChange={(e) => setCiudadFilter(e.target.value)}
@@ -395,17 +678,13 @@ export function InstructorCursosPage() {
               )}
             </div>
 
-            {/* ═══════════════════════════════════════════════════════════════════
-                SUB-TABS DE ESTADO (Todos / En curso o en progreso / Por iniciar / Completados)
-                + BUSCADOR RÁPIDO
-                ═══════════════════════════════════════════════════════════════════ */}
-            <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-              {/* Sub-tabs segmentados */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0" role="tablist">
+            {/* Sub-tabs segmentados + Buscador en escritorio */}
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5" role="tablist">
                 <button
                   type="button"
                   onClick={() => setSubTabEstado("todos")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     subTabEstado === "todos"
                       ? "bg-slate-900 text-white shadow-2xs"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -424,13 +703,13 @@ export function InstructorCursosPage() {
                 <button
                   type="button"
                   onClick={() => setSubTabEstado("en_progreso")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     subTabEstado === "en_progreso"
                       ? "bg-blue-600 text-white shadow-2xs"
                       : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60"
                   }`}
                 >
-                  <HugeiconsIcon icon={PlayIcon} size={13} />
+                  <Play size={13} />
                   <span>En curso / En progreso</span>
                   <span
                     className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
@@ -444,13 +723,13 @@ export function InstructorCursosPage() {
                 <button
                   type="button"
                   onClick={() => setSubTabEstado("por_iniciar")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     subTabEstado === "por_iniciar"
                       ? "bg-amber-600 text-white shadow-2xs"
                       : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200/60"
                   }`}
                 >
-                  <HugeiconsIcon icon={Calendar03Icon} size={13} />
+                  <Calendar size={13} />
                   <span>Por iniciar</span>
                   <span
                     className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
@@ -464,13 +743,13 @@ export function InstructorCursosPage() {
                 <button
                   type="button"
                   onClick={() => setSubTabEstado("completados")}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     subTabEstado === "completados"
                       ? "bg-emerald-600 text-white shadow-2xs"
                       : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60"
                   }`}
                 >
-                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />
+                  <CheckCircle2 size={13} />
                   <span>Completados</span>
                   <span
                     className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
@@ -482,10 +761,9 @@ export function InstructorCursosPage() {
                 </button>
               </div>
 
-              {/* Buscador de cursos */}
-              <div className="relative w-full md:w-72 shrink-0">
-                <HugeiconsIcon
-                  icon={Search01Icon}
+              {/* Buscador de cursos en escritorio */}
+              <div className="relative w-72 shrink-0">
+                <Search
                   size={15}
                   className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
                 />
@@ -500,9 +778,9 @@ export function InstructorCursosPage() {
                   <button
                     type="button"
                     onClick={() => setSearchInput("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
-                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
+                    <X size={13} />
                   </button>
                 )}
               </div>
@@ -515,7 +793,7 @@ export function InstructorCursosPage() {
           {cursosVisibles.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/90 shadow-xs space-y-3">
               <div className="size-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                <HugeiconsIcon icon={Search01Icon} size={22} />
+                <Search size={22} />
               </div>
               <h3 className="text-base font-bold text-slate-900">
                 No se encontraron cursos
@@ -533,7 +811,7 @@ export function InstructorCursosPage() {
                     setSearchInput("")
                     setSearch("")
                   }}
-                  className="px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#fd761a] text-xs font-bold transition-colors inline-block"
+                  className="px-3.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#fd761a] text-xs font-bold transition-colors inline-block cursor-pointer"
                 >
                   Restablecer todos los filtros
                 </button>

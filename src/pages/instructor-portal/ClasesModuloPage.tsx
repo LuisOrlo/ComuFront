@@ -94,7 +94,7 @@ export function ClasesModuloPage() {
           clases.map((clase) => (
             <Link
               key={clase.id}
-              to={`/instructor/asistencia/${cursoId}/${clase.id}`}
+              to={`/instructor/cursos/${cursoId}?tab=asistencia`}
               className="bg-white rounded-xl p-5 flex items-center justify-between hover:shadow-md transition-all group"
               style={{ borderColor: COLORS.BORDER_SUBTLE, borderWidth: 1 }}
             >
