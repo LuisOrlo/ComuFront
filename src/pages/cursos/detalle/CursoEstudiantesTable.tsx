@@ -43,7 +43,12 @@ function formatDate(d?: string) {
 function getStudentName(row: MatriculaDetallada) {
   const e = row.estudiante || row.solicitud_inscripcion?.estudiante
   const ext = row.solicitud_inscripcion?.participante_externo
-  return [e?.nombres || ext?.nombres || "", e?.apellidos || ext?.apellidos || ""].filter(Boolean).join(" ") || "—"
+  const apellidos = (e?.apellidos || ext?.apellidos || "").trim()
+  const nombres = (e?.nombres || ext?.nombres || "").trim()
+  if (apellidos && nombres) {
+    return `${apellidos} ${nombres}`
+  }
+  return apellidos || nombres || "—"
 }
 
 function getCiudad(row: MatriculaDetallada) {
@@ -61,7 +66,7 @@ function getOcupacion(row: MatriculaDetallada) {
 const PAGE_SIZES = [10, 20, 50]
 
 export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatriculaDeleted }: Props) {
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([{ id: "estudiante", desc: false }])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
   const [matriculaToDelete, setMatriculaToDelete] = useState<MatriculaDetallada | null>(null)
 
@@ -77,6 +82,11 @@ export function CursoEstudiantesTable({ matriculas, meta, onPageChange, onMatric
       id: "estudiante",
       header: "Estudiante",
       accessorFn: getStudentName,
+      sortingFn: (rowA, rowB) => {
+        const nameA = getStudentName(rowA.original)
+        const nameB = getStudentName(rowB.original)
+        return nameA.localeCompare(nameB, "es", { sensitivity: "base" })
+      },
       cell: ({ getValue, row }) => {
         const nombre = getValue<string>()
         const correo = getCorreo(row.original)

@@ -71,6 +71,15 @@ function modulosText(c: any): string {
   return `${count} módulo${count !== 1 ? "s" : ""}`
 }
 
+function formatFechaInicio(f?: string | null): string | null {
+  if (!f) return null
+  const dateStr = String(f).slice(0, 10)
+  const parts = dateStr.split("-").map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return null
+  const date = new Date(parts[0], parts[1] - 1, parts[2])
+  return date.toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" })
+}
+
 export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
   const {
     selected,
@@ -199,6 +208,9 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
                   (c.capacidad || 0) > 0 &&
                   c.id !== selected.curso?.id
 
+                const ciudadNombre = typeof c.ciudad === "string" ? c.ciudad : (c.ciudad?.nombre || c.ciudad_nombre || "")
+                const fechaInicio = formatFechaInicio(c.fechaInicio || c.fecha_inicio)
+
                 return (
                   <button
                     key={c.id}
@@ -223,8 +235,14 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
                       {c.modalidad && (
                         <ModalidadBadge modalidad={c.modalidad} />
                       )}
-                      {c.ciudad?.nombre && (
-                        <CiudadBadge ciudad={c.ciudad.nombre} />
+                      {ciudadNombre && ciudadNombre !== "No especificada" && ciudadNombre !== "—" && (
+                        <CiudadBadge ciudad={ciudadNombre} />
+                      )}
+                      {fechaInicio && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80">
+                          <HugeiconsIcon icon={Calendar03Icon} size={12} className="text-blue-500 shrink-0" />
+                          <span>Inicia: {fechaInicio}</span>
+                        </span>
                       )}
                       <span className="text-[11px] font-medium text-slate-500">
                         {cupoText(c)}

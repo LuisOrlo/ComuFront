@@ -262,9 +262,9 @@ export function InteresadosSection({
     }
   }
 
-  // Filtrado de lista
+  // Filtrado y ordenamiento de lista (por apellidos)
   const filteredInteresados = useMemo(() => {
-    return interesados.filter((item) => {
+    const list = interesados.filter((item) => {
       // Filtro de texto
       const search = searchTerm.toLowerCase().trim()
       const matchText =
@@ -280,6 +280,16 @@ export function InteresadosSection({
         estadoFilter === "todos" || item.estado_embudo === estadoFilter
 
       return matchText && matchEstado
+    })
+
+    return [...list].sort((a, b) => {
+      const apeA = (a.apellidos || "").trim()
+      const apeB = (b.apellidos || "").trim()
+      const compApe = apeA.localeCompare(apeB, "es", { sensitivity: "base" })
+      if (compApe !== 0) return compApe
+      const nomA = (a.nombres || "").trim()
+      const nomB = (b.nombres || "").trim()
+      return nomA.localeCompare(nomB, "es", { sensitivity: "base" })
     })
   }, [interesados, searchTerm, estadoFilter])
 
@@ -475,7 +485,7 @@ export function InteresadosSection({
                       {/* Interesado */}
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-slate-800">
-                          {item.nombres} {item.apellidos}
+                          {[item.apellidos, item.nombres].filter(Boolean).join(" ")}
                         </div>
                         {item.correo ? (
                           <div className="text-[11px] text-slate-500 truncate max-w-[180px]">
@@ -986,7 +996,7 @@ export function InteresadosSection({
       <ConfirmationModal
         isOpen={!!itemToDelete}
         title="Eliminar Interesado"
-        message={`¿Estás seguro de que deseas eliminar a ${itemToDelete?.nombres} ${itemToDelete?.apellidos} de la lista de interesados? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de que deseas eliminar a ${[itemToDelete?.apellidos, itemToDelete?.nombres].filter(Boolean).join(" ")} de la lista de interesados? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         cancelText="Cancelar"
         isDangerous={true}
