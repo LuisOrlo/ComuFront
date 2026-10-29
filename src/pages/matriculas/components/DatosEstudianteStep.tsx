@@ -274,19 +274,13 @@ export function DatosEstudianteStep({
         <br />
         <label className="block text-xs font-medium mb-1.5">Foto de la Cédula</label>
         <p className="text-[11px] text-gray-500 mb-2">
-          Asegúrese de que la imagen esté en formato JPG, JPEG o PNG y no supere los <strong>2 MB</strong> de tamaño.
+          Asegúrese de que el archivo seleccionado sea una imagen (JPG, JPEG o PNG).
         </p>
         <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
           const file = e.target.files?.[0]
           if (!file) return
-          const MAX = 2 * 1024 * 1024
           if (!file.type.startsWith("image/")) {
             setErrors(prev => ({ ...prev, cedulaFile: "Solo se permiten imágenes (JPG, PNG)" }))
-            if (cedulaInputRef.current) cedulaInputRef.current.value = ""
-            return
-          }
-          if (file.size > MAX) {
-            setErrors(prev => ({ ...prev, cedulaFile: "La imagen no debe superar los 2MB" }))
             if (cedulaInputRef.current) cedulaInputRef.current.value = ""
             return
           }
@@ -304,13 +298,8 @@ export function DatosEstudianteStep({
             if (cedulaPreview) return;
             const file = e.dataTransfer.files?.[0];
             if (!file) return;
-            const MAX = 2 * 1024 * 1024;
             if (!file.type.startsWith("image/")) {
               setErrors(prev => ({ ...prev, cedulaFile: "Solo se permiten imágenes (JPG, PNG)" }));
-              return;
-            }
-            if (file.size > MAX) {
-              setErrors(prev => ({ ...prev, cedulaFile: "La imagen no debe superar los 2MB" }));
               return;
             }
             setCedulaFile(file);
