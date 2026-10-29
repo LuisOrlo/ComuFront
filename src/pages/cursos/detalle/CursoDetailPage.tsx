@@ -27,6 +27,7 @@ import { CursoEstudiantesTable } from "./CursoEstudiantesTable"
 import { CursoPagosSection } from "./CursoPagosSection"
 import { InteresadosSection } from "@/components/interesados/InteresadosSection"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { CursoClasesCalendar, type ClaseProgramada } from "../components/CursoClasesCalendar"
 import { cursosService, type Curso, type MatriculaDetallada } from "@/services/cursos.service"
 import { toast } from "sonner"
 
@@ -61,6 +62,7 @@ export function CursoDetailPage() {
   const { isAdmin, isSecretaria } = usePermission()
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<ModuloData[]>([])
+  const [clasesCurso, setClasesCurso] = useState<ClaseProgramada[]>([])
   const [matriculas, setMatriculas] = useState<MatriculaDetallada[]>([])
   const [matriculasMeta, setMatriculasMeta] = useState({ total: 0, per_page: 15, current_page: 1, last_page: 1 })
   const [matriculasLoaded, setMatriculasLoaded] = useState(false)
@@ -81,13 +83,34 @@ export function CursoDetailPage() {
     if (!id) return
     setLoading(true)
     try {
-      const [c, mods] = await Promise.all([
+      const [c, mods, rawCurso] = await Promise.all([
         cursosService.getCursoById(id),
         cursosService.getModulosCurso(id),
+        cursosService.getCursoAbiertoById(id),
       ])
       setCurso(c)
       setModulos(mods as unknown as ModuloData[])
       setMatriculasMeta(prev => ({ ...prev, total: c.estudiantes }))
+
+      const extracted: ClaseProgramada[] = []
+      if (Array.isArray(rawCurso?.modulos)) {
+        rawCurso.modulos.forEach((m: Record<string, unknown>) => {
+          if (Array.isArray(m.clases)) {
+            m.clases.forEach((clase: Record<string, unknown>) => {
+              extracted.push({
+                id: String(clase.id || ""),
+                fecha_clase: String(clase.fecha_clase || "").split("T")[0],
+                hora_inicio: String(clase.hora_inicio || "").substring(0, 5),
+                hora_fin: String(clase.hora_fin || "").substring(0, 5),
+                asistencia_registrada: Number(clase.asistencias_count || 0) > 0,
+                modulo_id: String(m.id || ""),
+                observaciones: String(clase.observaciones || ""),
+              })
+            })
+          }
+        })
+      }
+      setClasesCurso(extracted)
       setLoadError(false)
     } catch {
       setLoadError(true)
@@ -347,6 +370,17 @@ export function CursoDetailPage() {
                   })()}
                 </section>
               </div>
+
+              {/* Calendario de días de clases del curso (ancho completo / dos columnas) */}
+              <CursoClasesCalendar
+                fechaInicioCurso={curso.fechaInicio}
+                fechaFinCurso={curso.fechaFin}
+                horaInicioCurso={curso.horario?.hora_inicio || curso.horaInicio}
+                horaFinCurso={curso.horario?.hora_fin || curso.horaFin}
+                diasSemana={curso.horario?.diasSemana?.map((d: DiaHorario) => d.dia_semana) || []}
+                clases={clasesCurso}
+                readOnly
+              />
 
               {/* Observaciones */}
               {curso.observaciones && (

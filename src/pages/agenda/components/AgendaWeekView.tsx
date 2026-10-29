@@ -193,8 +193,8 @@ export const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({
                     {day.events.map((ev) => {
                       const theme = getCardTheme(ev.tipo_evento)
                       const displayTitle =
-                        ev.tipo_evento === "CLASE_CURSO" && ev.nombre_instancia
-                          ? `Clase: ${ev.nombre_instancia}`
+                        ["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(ev.tipo_evento) && ev.nombre_instancia
+                          ? (ev.tipo_evento === "CLASE_CURSO" ? `Clase: ${ev.nombre_instancia}` : ev.nombre_instancia)
                           : ev.titulo
 
                       const timeStr = ev.hora_fin
@@ -317,8 +317,8 @@ export const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({
                 {activeMobileDay.events.map((ev) => {
                   const theme = getCardTheme(ev.tipo_evento)
                   const displayTitle =
-                    ev.tipo_evento === "CLASE_CURSO" && ev.nombre_instancia
-                      ? `Clase: ${ev.nombre_instancia}`
+                    ["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(ev.tipo_evento) && ev.nombre_instancia
+                      ? (ev.tipo_evento === "CLASE_CURSO" ? `Clase: ${ev.nombre_instancia}` : ev.nombre_instancia)
                       : ev.titulo
 
                   const timeStr = ev.hora_fin
@@ -397,8 +397,8 @@ export const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({
                       {day.events.map((ev) => {
                         const theme = getCardTheme(ev.tipo_evento)
                         const displayTitle =
-                          ev.tipo_evento === "CLASE_CURSO" && ev.nombre_instancia
-                            ? `Clase: ${ev.nombre_instancia}`
+                          ["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(ev.tipo_evento) && ev.nombre_instancia
+                            ? (ev.tipo_evento === "CLASE_CURSO" ? `Clase: ${ev.nombre_instancia}` : ev.nombre_instancia)
                             : ev.titulo
                         const timeStr = ev.hora_fin
                           ? `${ev.hora_inicio?.slice(0, 5)} - ${ev.hora_fin?.slice(0, 5)}`

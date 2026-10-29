@@ -35,6 +35,7 @@ import { instructoresService } from "@/services/instructores.service"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { toast } from "sonner"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { CursoClasesCalendar, type ClaseProgramada } from "./components/CursoClasesCalendar"
 
 const ACCENT = COLORS.ACCENT
 
@@ -129,6 +130,7 @@ export function CursoFormPage() {
   const [ciudadModalSeleccionada, setCiudadModalSeleccionada] = useState<string | null>(null)
   const [savingCiudad, setSavingCiudad] = useState(false)
   const [showRegenerationConfirm, setShowRegenerationConfirm] = useState(false)
+  const [clasesProgramadas, setClasesProgramadas] = useState<ClaseProgramada[]>([])
 
   const [form, setForm] = useState({
     catalogo_curso_id: "",
@@ -255,6 +257,26 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
               : [],
             modulos: modulosEdit,
           })
+
+          const existingClases: ClaseProgramada[] = []
+          if (Array.isArray(raw.modulos)) {
+            raw.modulos.forEach((m: Record<string, unknown>) => {
+              if (Array.isArray(m.clases)) {
+                m.clases.forEach((c: Record<string, unknown>) => {
+                  existingClases.push({
+                    id: String(c.id || ""),
+                    fecha_clase: String(c.fecha_clase || "").split("T")[0],
+                    hora_inicio: String(c.hora_inicio || "").substring(0, 5),
+                    hora_fin: String(c.hora_fin || "").substring(0, 5),
+                    asistencia_registrada: Number(c.asistencias_count || 0) > 0,
+                    modulo_id: String(m.id || ""),
+                    observaciones: String(c.observaciones || ""),
+                  })
+                })
+              }
+            })
+          }
+          setClasesProgramadas(existingClases)
         }
       } catch {
         toast.error("Error al cargar datos del curso")
@@ -448,7 +470,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       return true
     }
     if (step === 3) {
-      return form.dias_semana.length > 0
+      return form.dias_semana.length > 0 || clasesProgramadas.length > 0
     }
     if (step === 4) {
       const maxCap = form.modalidad === "presencial" ? 18 : 99
@@ -682,6 +704,15 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         ciudad_id: form.modalidad === "presencial" && form.ciudad_id ? form.ciudad_id : undefined,
         observaciones: form.observaciones || undefined,
         dias_semana: form.dias_semana.length > 0 ? form.dias_semana : undefined,
+        clases: clasesProgramadas.length > 0
+          ? clasesProgramadas.map((c) => ({
+              id: c.id,
+              fecha_clase: c.fecha_clase,
+              hora_inicio: c.hora_inicio || form.hora_inicio || undefined,
+              hora_fin: c.hora_fin || form.hora_fin || undefined,
+              modulo_id: c.modulo_id,
+            }))
+          : undefined,
       }
 
       const modulosParaEnviar = form.modulos.length > 0
@@ -767,21 +798,110 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
   const selectedDocente = instructores.find((d) => d.id === form.docente_id)
   const currentStepIsValid = isStepValid(currentStep)
 
+  const recalcularClasesPorDias = useCallback((dias: number[]) => {
+    if (!form.fecha_inicio || !form.fecha_fin) return
+    const inicio = parseLocalDate(form.fecha_inicio)
+    const fin = parseLocalDate(form.fecha_fin)
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime()) || inicio > fin) return
+
+    const generadas: ClaseProgramada[] = []
+    const curr = new Date(inicio)
+    while (curr.getTime() <= fin.getTime()) {
+      const isoDay = curr.getDay() === 0 ? 7 : curr.getDay()
+      if (dias.includes(isoDay)) {
+        generadas.push({
+          fecha_clase: toDateInputValue(curr),
+          hora_inicio: form.hora_inicio || "08:00",
+          hora_fin: form.hora_fin || "10:00",
+        })
+      }
+      curr.setDate(curr.getDate() + 1)
+    }
+    const especiales = clasesProgramadas.filter(
+      (c) => c.fecha_clase < form.fecha_inicio || c.fecha_clase > form.fecha_fin
+    )
+    setClasesProgramadas([...generadas, ...especiales])
+  }, [form.fecha_inicio, form.fecha_fin, form.hora_inicio, form.hora_fin, clasesProgramadas])
+
   // Day toggle helpers
   const toggleDia = (diaVal: number) => {
-    if (form.dias_semana.includes(diaVal)) {
-      updateField(
-        "dias_semana",
-        form.dias_semana.filter((d) => d !== diaVal)
-      )
-    } else {
-      updateField("dias_semana", [...form.dias_semana, diaVal].sort())
+    const isCurrentlyActive = form.dias_semana.includes(diaVal)
+    const nextDays = isCurrentlyActive
+      ? form.dias_semana.filter((d) => d !== diaVal)
+      : [...form.dias_semana, diaVal].sort()
+
+    updateField("dias_semana", nextDays)
+
+    if (form.fecha_inicio && form.fecha_fin) {
+      const inicio = parseLocalDate(form.fecha_inicio)
+      const fin = parseLocalDate(form.fecha_fin)
+      if (!isNaN(inicio.getTime()) && !isNaN(fin.getTime()) && inicio <= fin) {
+        if (!isCurrentlyActive) {
+          const paraAgregar: ClaseProgramada[] = []
+          const curr = new Date(inicio)
+          while (curr.getTime() <= fin.getTime()) {
+            const isoDay = curr.getDay() === 0 ? 7 : curr.getDay()
+            if (isoDay === diaVal) {
+              const dStr = toDateInputValue(curr)
+              if (!clasesProgramadas.some((c) => c.fecha_clase === dStr)) {
+                paraAgregar.push({
+                  fecha_clase: dStr,
+                  hora_inicio: form.hora_inicio || "08:00",
+                  hora_fin: form.hora_fin || "10:00",
+                })
+              }
+            }
+            curr.setDate(curr.getDate() + 1)
+          }
+          if (paraAgregar.length > 0) {
+            setClasesProgramadas((prev) => [...prev, ...paraAgregar])
+          }
+        } else {
+          setClasesProgramadas((prev) =>
+            prev.filter((c) => {
+              const d = parseLocalDate(c.fecha_clase)
+              if (isNaN(d.getTime())) return true
+              const isoDay = d.getDay() === 0 ? 7 : d.getDay()
+              if (
+                isoDay === diaVal &&
+                !c.asistencia_registrada &&
+                c.fecha_clase >= form.fecha_inicio &&
+                c.fecha_clase <= form.fecha_fin
+              ) {
+                return false
+              }
+              return true
+            })
+          )
+        }
+      }
     }
   }
 
-  const selectWeekdays = () => updateField("dias_semana", [1, 2, 3, 4, 5])
-  const selectWeekend = () => updateField("dias_semana", [6, 7])
-  const resetDays = () => updateField("dias_semana", [])
+  const selectWeekdays = () => {
+    updateField("dias_semana", [1, 2, 3, 4, 5])
+    recalcularClasesPorDias([1, 2, 3, 4, 5])
+  }
+  const selectWeekend = () => {
+    updateField("dias_semana", [6, 7])
+    recalcularClasesPorDias([6, 7])
+  }
+  const resetDays = () => {
+    updateField("dias_semana", [])
+    setClasesProgramadas([])
+  }
+
+  useEffect(() => {
+    if (
+      !isEdit &&
+      form.fecha_inicio &&
+      form.fecha_fin &&
+      form.dias_semana.length > 0 &&
+      clasesProgramadas.length === 0
+    ) {
+      recalcularClasesPorDias(form.dias_semana)
+    }
+  }, [isEdit, form.fecha_inicio, form.fecha_fin, form.dias_semana, clasesProgramadas.length, recalcularClasesPorDias])
 
   if (loadingData) {
     return (
@@ -1338,6 +1458,18 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                     </div>
                   )}
                 </div>
+
+                {/* ================= CALENDARIO INTERACTIVO DE CLASES ================= */}
+                <CursoClasesCalendar
+                  fechaInicioCurso={form.fecha_inicio}
+                  fechaFinCurso={form.fecha_fin}
+                  horaInicioCurso={form.hora_inicio}
+                  horaFinCurso={form.hora_fin}
+                  diasSemana={form.dias_semana}
+                  clases={clasesProgramadas}
+                  onChangeClases={setClasesProgramadas}
+                  isEdit={isEdit}
+                />
               </div>
             </section>
           )}
@@ -1738,7 +1870,13 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                         )
                       : null
 
-                  const clasesModulo = calcularClasesModulo(mod.fecha_inicio, mod.fecha_fin, form.dias_semana)
+                  const clasesModulo = clasesProgramadas.length > 0
+                    ? clasesProgramadas.filter((c) => {
+                        if (mod.id && c.modulo_id === mod.id) return true
+                        if (!mod.fecha_inicio || !mod.fecha_fin) return false
+                        return c.fecha_clase >= mod.fecha_inicio && c.fecha_clase <= mod.fecha_fin
+                      }).length
+                    : calcularClasesModulo(mod.fecha_inicio, mod.fecha_fin, form.dias_semana)
 
                   return (
                     <div
@@ -1935,13 +2073,14 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                   <span className="text-xs sm:text-sm font-bold text-slate-900 block">
                     {form.modulos.length} {form.modulos.length === 1 ? "Módulo" : "Módulos"} configurados
                   </span>
-                  {form.dias_semana.length > 0 && (
+                  {(clasesProgramadas.length > 0 || form.dias_semana.length > 0) && (
                     <span className="text-[11px] font-semibold text-blue-700 block">
-                      {form.modulos.reduce(
-                        (acc, m) => acc + calcularClasesModulo(m.fecha_inicio, m.fecha_fin, form.dias_semana),
-                        0
-                      )}{" "}
-                      clases en total
+                      {clasesProgramadas.length > 0
+                        ? `${clasesProgramadas.length} clases en total`
+                        : `${form.modulos.reduce(
+                            (acc, m) => acc + calcularClasesModulo(m.fecha_inicio, m.fecha_fin, form.dias_semana),
+                            0
+                          )} clases en total`}
                     </span>
                   )}
                 </div>

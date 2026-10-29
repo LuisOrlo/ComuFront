@@ -48,8 +48,8 @@ export const AgendaListView: React.FC<AgendaListViewProps> = ({
               const monthShort = (MONTHS[day.date.getMonth()] || "").slice(0, 3)
               const timeStr = ev.hora_inicio?.slice(0, 5)
               const displayTitle =
-                ev.tipo_evento === "CLASE_CURSO" && ev.nombre_instancia
-                  ? ev.nombre_instancia
+                ["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(ev.tipo_evento) && ev.nombre_instancia
+                  ? (ev.tipo_evento === "CLASE_CURSO" ? `Clase: ${ev.nombre_instancia}` : ev.nombre_instancia)
                   : ev.titulo
 
               return (

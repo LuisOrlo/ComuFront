@@ -637,6 +637,7 @@ export const cursosService = {
     precio_matricula?: number
     dias_semana?: number[]
     modulos?: { nombre?: string; fecha_inicio?: string; fecha_fin?: string }[]
+    clases?: { id?: string; fecha_clase: string; hora_inicio?: string; hora_fin?: string; modulo_id?: string }[]
   }): Promise<CursoAbierto> {
     const response = await api.post<{ data: CursoAbierto; message: string }>(
       "/academic/cursos-abiertos",

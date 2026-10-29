@@ -214,8 +214,8 @@ export function AgendaDrawer({
                 {/* Título Principal */}
                 <div className="mt-4 space-y-2">
                   <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-snug tracking-tight">
-                    {data.tipo_evento === "CLASE_CURSO" && data.nombre_instancia
-                      ? `Clase: ${data.nombre_instancia}`
+                    {["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(data.tipo_evento) && data.nombre_instancia
+                      ? (data.tipo_evento === "CLASE_CURSO" ? `Clase: ${data.nombre_instancia}` : data.nombre_instancia)
                       : data.titulo}
                   </h2>
 
@@ -492,22 +492,24 @@ export function AgendaDrawer({
                   </div>
                 )}
 
-                {/* Módulo si está presente en detalle */}
-                {Boolean(data.detalle?.modulo) && (
+                {/* Módulo o Catálogo si está presente */}
+                {(Boolean(data.detalle?.modulo) || data.catalogo_nombre) && (
                   <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3.5">
                     <div className="size-11 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 flex items-center justify-center shrink-0">
                       <HugeiconsIcon icon={Book02Icon} size={20} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Módulo Académico
+                        {data.detalle?.modulo ? "Módulo Académico" : "Catálogo del Curso"}
                       </span>
-                      <span className="text-sm font-bold text-slate-900 block">
-                        {String(data.detalle?.modulo)}
-                      </span>
+                      {Boolean(data.detalle?.modulo) && (
+                        <span className="text-sm font-bold text-slate-900 block">
+                          {String(data.detalle?.modulo)}
+                        </span>
+                      )}
                       {data.catalogo_nombre && (
-                        <span className="text-[11px] text-slate-500 font-medium block truncate">
-                          Curso: {data.catalogo_nombre}
+                        <span className="text-xs text-slate-600 font-semibold block truncate">
+                          Curso Base: {data.catalogo_nombre}
                         </span>
                       )}
                     </div>
@@ -614,8 +616,8 @@ export function AgendaDrawer({
                         </div>
 
                         <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors line-clamp-1">
-                          {ev.tipo_evento === "CLASE_CURSO" && ev.nombre_instancia
-                            ? `Clase: ${ev.nombre_instancia}`
+                          {["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(ev.tipo_evento) && ev.nombre_instancia
+                            ? (ev.tipo_evento === "CLASE_CURSO" ? `Clase: ${ev.nombre_instancia}` : ev.nombre_instancia)
                             : ev.titulo}
                         </h4>
 

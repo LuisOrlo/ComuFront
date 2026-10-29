@@ -55,8 +55,8 @@ export const AgendaDayView: React.FC<AgendaDayViewProps> = ({
           {activeDayEvents.map((event) => {
             const styles = getEventStyles(event.tipo_evento)
             const displayTitle =
-              event.tipo_evento === "CLASE_CURSO" && event.nombre_instancia
-                ? `Clase: ${event.nombre_instancia}`
+              ["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(event.tipo_evento) && event.nombre_instancia
+                ? (event.tipo_evento === "CLASE_CURSO" ? `Clase: ${event.nombre_instancia}` : event.nombre_instancia)
                 : event.titulo
 
             const subInfo =
