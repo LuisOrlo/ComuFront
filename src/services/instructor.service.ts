@@ -229,6 +229,7 @@ export const instructorService = {
       direccion?: string
       estado_civil?: string
       edad?: number
+      nivel_educativo?: string
     } | null
   }> {
     const response = await api.get(`/instructor/estudiantes/${id}`)

@@ -13,12 +13,11 @@ import {
   BanknoteArrowDownIcon,
   ArrowDown01Icon,
   ImageIcon,
-  Calendar03Icon,
-  Calendar01Icon,
   Search01Icon,
   CheckListIcon,
   ViewIcon,
 } from "@hugeicons/core-free-icons"
+import { MonthFilterPopover } from "@/components/finanzas/MonthFilterPopover"
 import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
@@ -62,6 +61,8 @@ export function HistorialPage() {
   // Filters
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
+  const [mes, setMes] = useState("")
+  const [anio, setAnio] = useState("")
   const [fechaDesde, setFechaDesde] = useState("")
   const [fechaHasta, setFechaHasta] = useState("")
   const [metodoFilter, setMetodoFilter] = useState("todos")
@@ -219,7 +220,7 @@ export function HistorialPage() {
   }, [groupedForDisplay])
 
   const hasActiveFilters = Boolean(
-    fechaDesde || fechaHasta || search || searchInput || metodoFilter !== "todos" || tipoFilter !== "todos"
+    mes || anio || fechaDesde || fechaHasta || search || searchInput || metodoFilter !== "todos" || tipoFilter !== "todos"
   )
 
   // Auto-expand groups: when filtering, expand all matching groups; otherwise expand the first group
@@ -271,6 +272,8 @@ export function HistorialPage() {
   const hasResults = groupedForDisplay.length > 0
 
   const handleClearFilters = () => {
+    setMes("")
+    setAnio("")
     setFechaDesde("")
     setFechaHasta("")
     setSearch("")
@@ -364,148 +367,110 @@ export function HistorialPage() {
         </div>
 
         {/* 2. FILTER TOOLBAR CARD */}
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs flex flex-col gap-3.5">
-          {/* ROW 1: Dates & Free Search */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-            {/* Date: Desde */}
-            <div className="md:col-span-3 flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="fecha-desde">
-                Desde
-              </label>
-              <div className="relative flex items-center">
-                <HugeiconsIcon icon={Calendar03Icon} size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
-                <input
-                  id="fecha-desde"
-                  type="date"
-                  value={fechaDesde}
-                  onChange={e => setFechaDesde(e.target.value)}
-                  className="w-full h-10 pl-9 pr-8 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
-                />
-                {fechaDesde && (
-                  <button
-                    onClick={() => setFechaDesde("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
-                    type="button"
-                    title="Limpiar fecha desde"
-                  >
-                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Date: Hasta */}
-            <div className="md:col-span-3 flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="fecha-hasta">
-                Hasta
-              </label>
-              <div className="relative flex items-center">
-                <HugeiconsIcon icon={Calendar01Icon} size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
-                <input
-                  id="fecha-hasta"
-                  type="date"
-                  value={fechaHasta}
-                  onChange={e => setFechaHasta(e.target.value)}
-                  className="w-full h-10 pl-9 pr-8 text-xs font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
-                />
-                {fechaHasta && (
-                  <button
-                    onClick={() => setFechaHasta("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
-                    type="button"
-                    title="Limpiar fecha hasta"
-                  >
-                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Free Search */}
-            <div className="md:col-span-6 flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider" htmlFor="search-input">
-                Búsqueda rápida
-              </label>
-              <div className="relative flex items-center">
-                <HugeiconsIcon icon={Search01Icon} size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
-                <input
-                  id="search-input"
-                  type="text"
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  placeholder="Buscar por cédula o nombre del cliente..."
-                  className="w-full h-10 pl-9 pr-9 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => { setSearchInput(""); setSearch("") }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5"
-                    type="button"
-                    title="Limpiar búsqueda"
-                  >
-                    <HugeiconsIcon icon={Cancel01Icon} size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ROW 2: Categorical Dropdowns, Clear Filters & Multi-select Action */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-              {/* Método Dropdown */}
-              <div className="relative w-full sm:w-52">
-                <select
-                  value={metodoFilter}
-                  onChange={(e) => setMetodoFilter(e.target.value)}
-                  aria-label="Filtrar por método de pago"
-                  className="w-full h-10 pl-3.5 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
-                >
-                  <option value="todos">Todos los métodos</option>
-                  <option value="transferencia">Transferencia bancaria</option>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="tarjeta">Tarjeta</option>
-                  <option value="mixto">Pago mixto / múltiple</option>
-                </select>
-                <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-
-              {/* Tipo Dropdown */}
-              <div className="relative w-full sm:w-52">
-                <select
-                  value={tipoFilter}
-                  onChange={(e) => setTipoFilter(e.target.value)}
-                  aria-label="Filtrar por tipo"
-                  className="w-full h-10 pl-3.5 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
-                >
-                  <option value="todos">Todos los tipos</option>
-                  <option value="ingreso">Ingresos</option>
-                  <option value="egreso">Egresos</option>
-                </select>
-                <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-
-              {/* Botón Limpiar Filtros */}
-              {hasActiveFilters && (
+        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* 1. Input de Búsqueda rápida */}
+            <div className="relative flex-1 min-w-[240px] sm:min-w-[280px]">
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+              <input
+                id="search-input"
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Buscar por cédula o nombre del cliente..."
+                className="w-full h-10 pl-9 pr-9 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
+              />
+              {searchInput && (
                 <button
-                  onClick={handleClearFilters}
+                  onClick={() => {
+                    setSearchInput("")
+                    setSearch("")
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 cursor-pointer"
                   type="button"
-                  className="h-10 px-3.5 inline-flex items-center gap-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 transition-colors shadow-2xs"
-                  title="Restablecer todos los filtros"
+                  title="Limpiar búsqueda"
                 >
                   <HugeiconsIcon icon={Cancel01Icon} size={14} />
-                  <span>Limpiar filtros</span>
                 </button>
               )}
             </div>
 
-            {/* Multi-select Action Buttons */}
-            <div className="flex items-center justify-start sm:justify-end gap-2 shrink-0">
+            {/* 2. Mes y Año Popover */}
+            <MonthFilterPopover
+              mes={mes}
+              anio={anio}
+              onChange={(m, a, rango) => {
+                setMes(m)
+                setAnio(a)
+                setFechaDesde(rango.fecha_desde || "")
+                setFechaHasta(rango.fecha_hasta || "")
+              }}
+            />
+
+            {/* 3. Método de pago Dropdown */}
+            <div className="relative w-full sm:w-48">
+              <select
+                value={metodoFilter}
+                onChange={(e) => setMetodoFilter(e.target.value)}
+                aria-label="Filtrar por método de pago"
+                className="w-full h-10 pl-3 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
+              >
+                <option value="todos">Todos los métodos</option>
+                <option value="transferencia">Transferencia bancaria</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="mixto">Pago mixto / múltiple</option>
+              </select>
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={15}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
+
+            {/* 4. Tipo de movimiento Dropdown */}
+            <div className="relative w-full sm:w-40">
+              <select
+                value={tipoFilter}
+                onChange={(e) => setTipoFilter(e.target.value)}
+                aria-label="Filtrar por tipo"
+                className="w-full h-10 pl-3 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
+              >
+                <option value="todos">Todos los tipos</option>
+                <option value="ingreso">Ingresos</option>
+                <option value="egreso">Egresos</option>
+              </select>
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={15}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+              />
+            </div>
+
+            {/* 5. Botón Limpiar Filtros */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                type="button"
+                className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 transition-colors shadow-2xs cursor-pointer shrink-0"
+                title="Restablecer todos los filtros"
+              >
+                <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                <span className="hidden sm:inline">Limpiar filtros</span>
+              </button>
+            )}
+
+            {/* 6. Botones de Selección Múltiple */}
+            <div className="flex items-center gap-2 ml-auto shrink-0">
               {multiSelectMode && selectedIds.size > 0 && (
                 <button
                   onClick={handleBulkDelete}
                   disabled={bulkDeleting}
-                  className="h-10 px-3.5 inline-flex items-center gap-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors shadow-xs"
+                  className="h-10 px-3.5 inline-flex items-center gap-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors shadow-xs cursor-pointer"
                 >
                   <HugeiconsIcon icon={Delete02Icon} size={15} />
                   <span>{bulkDeleting ? "Eliminando..." : `Eliminar (${selectedIds.size})`}</span>
@@ -516,13 +481,17 @@ export function HistorialPage() {
                 onClick={() => setMultiSelectMode(!multiSelectMode)}
                 type="button"
                 className={cn(
-                  "h-10 px-4 inline-flex items-center gap-2 rounded-xl text-xs font-bold transition-all border",
+                  "h-10 px-3.5 inline-flex items-center gap-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
                   multiSelectMode
                     ? "bg-[#fd761a]/10 text-[#fd761a] border-[#fd761a]/30 shadow-xs"
                     : "bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                 )}
               >
-                <HugeiconsIcon icon={CheckListIcon} size={16} className={multiSelectMode ? "text-[#fd761a]" : "text-slate-500"} />
+                <HugeiconsIcon
+                  icon={CheckListIcon}
+                  size={16}
+                  className={multiSelectMode ? "text-[#fd761a]" : "text-slate-500"}
+                />
                 <span>Seleccionar varios</span>
               </button>
             </div>

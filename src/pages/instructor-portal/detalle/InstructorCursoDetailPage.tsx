@@ -68,6 +68,7 @@ export function InstructorCursoDetailPage() {
       direccion?: string
       estado_civil?: string
       edad?: number
+      nivel_educativo?: string
     } | null
   } | null>(null)
   const [loadingDetalle, setLoadingDetalle] = useState(false)
@@ -697,6 +698,22 @@ export function InstructorCursoDetailPage() {
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ocupación</span>
                     <span className="font-semibold text-slate-800">
                       {detallePersonal?.perfil_estudiante?.ocupacion || "No especificada"}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nivel de Estudio</span>
+                    <span className="font-semibold text-slate-800 capitalize">
+                      {detallePersonal?.perfil_estudiante?.nivel_educativo || "No especificado"}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Edad</span>
+                    <span className="font-semibold text-slate-800">
+                      {detallePersonal?.perfil_estudiante?.edad != null
+                        ? `${detallePersonal.perfil_estudiante.edad} años`
+                        : "No registrada"}
                     </span>
                   </div>
                 </div>

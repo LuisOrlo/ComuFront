@@ -385,7 +385,11 @@ export function EstudiantePerfilAcademicoPage() {
 
       {/* Full image viewer for cédula */}
       {showCedulaModal && cedulaUrl && (
-        <ImageZoom url={getStorageUrl(cedulaUrl)} onClose={() => setShowCedulaModal(false)} />
+        <ImageZoom
+          url={getStorageUrl(cedulaUrl)}
+          title={`Cédula de Identidad - ${name || "Estudiante"}`}
+          onClose={() => setShowCedulaModal(false)}
+        />
       )}
     </div>
   )
