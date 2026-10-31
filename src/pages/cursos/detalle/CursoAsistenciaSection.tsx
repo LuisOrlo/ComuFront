@@ -301,6 +301,20 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
     toast.info("Cambios descartados")
   }
 
+  // ¿Hay cambios sin guardar respecto a la última versión guardada?
+  const hayCambiosPendientes = useMemo(() => {
+    if (claseObservaciones !== originalObservaciones) return true
+
+    const ids = Object.keys(asistenciasLocal)
+    if (ids.length !== Object.keys(originalAsistencias).length) return true
+
+    return ids.some((id) => {
+      const actual = asistenciasLocal[id]
+      const original = originalAsistencias[id]
+      return !original || actual.estado !== original.estado || actual.asistio !== original.asistio
+    })
+  }, [asistenciasLocal, originalAsistencias, claseObservaciones, originalObservaciones])
+
   // Guardar asistencia
   const handleGuardar = async (continuarSiguiente: boolean = false) => {
     if (!selectedClase) return
@@ -750,6 +764,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       claseObservaciones={claseObservaciones}
       setClaseObservaciones={setClaseObservaciones}
       saving={saving}
+      hayCambiosPendientes={hayCambiosPendientes}
       handleToggleEstado={handleToggleEstado}
       handleMarcarTodos={handleMarcarTodos}
       handleDescartarCambios={handleDescartarCambios}

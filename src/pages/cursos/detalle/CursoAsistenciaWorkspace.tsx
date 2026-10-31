@@ -125,6 +125,7 @@ interface CursoAsistenciaWorkspaceProps {
   claseObservaciones: string
   setClaseObservaciones: React.Dispatch<React.SetStateAction<string>>
   saving: boolean
+  hayCambiosPendientes: boolean
   handleToggleEstado: (matriculaId: string, nuevoEstado: "presente" | "ausente") => void
   handleMarcarTodos: (estado: "presente" | "ausente") => void
   handleDescartarCambios: () => void
@@ -157,6 +158,7 @@ export function CursoAsistenciaWorkspace({
   claseObservaciones,
   setClaseObservaciones,
   saving,
+  hayCambiosPendientes = true,
   handleToggleEstado,
   handleMarcarTodos,
   handleDescartarCambios,
@@ -618,28 +620,43 @@ export function CursoAsistenciaWorkspace({
           </div>
 
           {/* ─── FOOTER DE ACCIONES ─── */}
-          <div className="p-3.5 sm:p-4 bg-[#f8faff] border-t border-[#e5eeff] flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={handleDescartarCambios}
-              disabled={saving}
-              className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-white hover:bg-[#eff4ff] text-[#0b1c30] text-xs font-semibold transition-all border border-[#e5eeff] shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-[#76777d]" />
-              <span>Descartar cambios</span>
-            </button>
+          <div className="p-3.5 sm:p-4 bg-[#f8faff] border-t border-[#e5eeff] space-y-1.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={handleDescartarCambios}
+                disabled={saving}
+                className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-white hover:bg-[#eff4ff] text-[#0b1c30] text-xs font-semibold transition-all border border-[#e5eeff] shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-[#76777d]" />
+                <span>Descartar cambios</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleGuardar(false)}
-              disabled={saving}
-              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#0b1c30] text-white hover:bg-[#131b2e] text-xs font-bold transition-all shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-              <span>{selectedClase.asistencia_registrada ? "Guardar cambios" : "Solo guardar"}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => handleGuardar(false)}
+                disabled={saving || (selectedClase.asistencia_registrada && !hayCambiosPendientes)}
+                title={
+                  selectedClase.asistencia_registrada && !hayCambiosPendientes
+                    ? "No hay cambios pendientes por guardar"
+                    : undefined
+                }
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#0b1c30] text-white hover:bg-[#131b2e] text-xs font-bold transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                {saving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : selectedClase.asistencia_registrada && !hayCambiosPendientes ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : null}
+                <span>
+                  {selectedClase.asistencia_registrada
+                    ? hayCambiosPendientes
+                      ? "Guardar cambios"
+                      : "Sin cambios"
+                    : "Solo guardar"}
+                </span>
+              </button>
 
-            <div className="flex flex-col items-stretch sm:items-end w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => handleGuardar(true)}
@@ -661,13 +678,13 @@ export function CursoAsistenciaWorkspace({
                   </>
                 )}
               </button>
-
-              {siguienteClasePendiente && (
-                <span className="text-[10px] text-[#76777d] mt-0.5 text-center sm:text-right">
-                  Abre clase del {getFechaLarga(siguienteClasePendiente.clase.fecha_clase)}
-                </span>
-              )}
             </div>
+
+            {siguienteClasePendiente && (
+              <p className="text-[10px] leading-tight text-[#76777d] text-center sm:text-right">
+                Abre clase del {getFechaLarga(siguienteClasePendiente.clase.fecha_clase)}
+              </p>
+            )}
           </div>
         </div>
       )}
