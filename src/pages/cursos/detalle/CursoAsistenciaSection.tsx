@@ -15,6 +15,8 @@ import {
 } from "@/services/instructor.service"
 import { cursosService } from "@/services/cursos.service"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { PdfViewerModal } from "@/components/archivos/PdfViewerModal"
+import { usePdfPreview } from "@/hooks/usePdfPreview"
 import { usePermission } from "@/hooks/usePermission"
 import { toast } from "sonner"
 import {
@@ -51,6 +53,7 @@ function compararEstudiantesPorApellido(a: EstudianteCurso, b: EstudianteCurso):
 
 export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props) {
   const { isAdmin } = usePermission()
+  const { preview, abrirPreview, cerrarPreview } = usePdfPreview()
 
   // Modo de vista: "overview" (tabla inicial) o "workspace" (diseño unificado de registro)
   const [viewMode, setViewMode] = useState<ViewMode>("overview")
@@ -382,8 +385,11 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
     setExporting(true)
     try {
       const data = await instructorService.getAsistenciaPDFData(cursoId)
-      await generarListadoAsistenciaPDF(data)
-      toast.success("Reporte generado exitosamente")
+      const resultado = await generarListadoAsistenciaPDF(data, { preview: true })
+      if (resultado) {
+        abrirPreview(resultado, `Reporte de Asistencia — ${cursoNombre}`)
+      }
+      toast.success("Vista previa del reporte generada")
     } catch {
       toast.error("Error al exportar el reporte de asistencia")
     } finally {
@@ -422,6 +428,16 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
         })
     return [...list].sort(compararEstudiantesPorApellido)
   }, [estudiantes, overviewSearch])
+
+  const pdfPreviewModal = (
+    <PdfViewerModal
+      isOpen={preview.isOpen}
+      onClose={cerrarPreview}
+      titulo={preview.titulo}
+      url={preview.url}
+      nombreArchivo={preview.nombreArchivo}
+    />
+  )
 
   // ══════════════════════════════════════════════════════════════════════════
   // VISTA INICIAL: OVERVIEW (TABLA DE ASISTENCIA Y RESUMEN)
@@ -709,6 +725,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             )}
           </div>
         </div>
+        {pdfPreviewModal}
       </div>
     )
   }
@@ -717,7 +734,8 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   // VISTA WORKSPACE: GESTIÓN Y PASE DE LISTA (SEPARADA EN COMPONENTE)
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <CursoAsistenciaWorkspace
+    <>
+      <CursoAsistenciaWorkspace
       cursoNombre={cursoNombre}
       isAdmin={isAdmin}
       estudiantes={estudiantes}
@@ -748,5 +766,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       progresoGeneralPct={progresoGeneralPct}
       onVolver={() => setViewMode("overview")}
     />
+      {pdfPreviewModal}
+    </>
   )
 }

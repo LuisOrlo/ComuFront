@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import {
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
   Search,
   Plus,
   Trash2,
@@ -124,6 +125,7 @@ export function CursoFormPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [catalogoSearch, setCatalogoSearch] = useState("")
   const [docenteSearch, setDocenteSearch] = useState("")
+  const [mostrarPrecioMatricula, setMostrarPrecioMatricula] = useState(false)
 
   const [showCiudadModal, setShowCiudadModal] = useState(false)
   const [ciudadModalRegion, setCiudadModalRegion] = useState<Region | null>(null)
@@ -257,6 +259,8 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
               : [],
             modulos: modulosEdit,
           })
+
+          setMostrarPrecioMatricula(Number(raw.precio_matricula) > 0)
 
           const existingClases: ClaseProgramada[] = []
           if (Array.isArray(raw.modulos)) {
@@ -1572,43 +1576,80 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                   </div>
 
                   {/* Registration Fee */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                      <span>
-                        Precio de inscripción ($ USD)
+                  {!(mostrarPrecioMatricula || !!getError("precio_matricula")) ? (
+                    <button
+                      type="button"
+                      onClick={() => setMostrarPrecioMatricula(true)}
+                      aria-expanded={false}
+                      aria-controls="precio-matricula-panel"
+                      className="group flex h-full min-h-[110px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-center transition-colors hover:border-[#fd761a] hover:bg-orange-50/40 focus:outline-none focus:ring-2 focus:ring-[#fd761a] focus:ring-offset-1"
+                    >
+                      <span className="flex size-8 items-center justify-center rounded-full bg-white text-slate-400 ring-1 ring-slate-200 transition-colors group-hover:text-[#fd761a] group-hover:ring-[#fd761a]/40">
+                        <Plus className="size-4" />
                       </span>
-                      <span className="text-xs font-semibold text-blue-600">Por estudiante</span>
-                    </label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
-                      <input
-                        className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
-                          getError("precio_matricula") ? "border-red-400 bg-red-50/20" : "border-slate-200"
-                        }`}
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="0.00"
-                        value={form.precio_matricula}
-                        onChange={(e) => updateField("precio_matricula", e.target.value)}
-                      />
-                    </div>
-
-                    {/* Registration Fee Summary */}
-                    <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between text-xs">
-                      <span className="text-slate-700">Matrícula por alumno:</span>
-                      <span className="font-bold text-blue-700">
-                        ${Number(form.precio_matricula) > 0 ? Number(form.precio_matricula).toFixed(2) : "0.00"} USD
+                      <span className="text-xs font-semibold text-slate-700 group-hover:text-[#fd761a]">
+                        {Number(form.precio_matricula) > 0
+                          ? `Cuota de inscripción: $${Number(form.precio_matricula).toFixed(2)} USD · Editar`
+                          : "Agregar precio de inscripción"}
                       </span>
-                    </div>
+                      <span className="text-[11px] text-slate-500">
+                        {Number(form.precio_matricula) > 0 ? "Por estudiante" : "Opcional · por estudiante"}
+                      </span>
+                    </button>
+                  ) : (
+                    <div
+                      id="precio-matricula-panel"
+                      className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200"
+                    >
+                      <label className="text-xs font-semibold text-slate-700 flex items-center justify-between gap-2">
+                        <span>
+                          Precio de inscripción ($ USD)
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-blue-600">Por estudiante</span>
+                          <button
+                            type="button"
+                            onClick={() => setMostrarPrecioMatricula(false)}
+                            aria-expanded={true}
+                            aria-controls="precio-matricula-panel"
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <ChevronUp className="size-3" />
+                            Ocultar
+                          </button>
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                        <input
+                          className={`w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all ${
+                            getError("precio_matricula") ? "border-red-400 bg-red-50/20" : "border-slate-200"
+                          }`}
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="0.00"
+                          value={form.precio_matricula}
+                          onChange={(e) => updateField("precio_matricula", e.target.value)}
+                        />
+                      </div>
 
-                    {getError("precio_matricula") && (
-                      <p className="text-xs text-red-500 mt-0.5">{getError("precio_matricula")}</p>
-                    )}
-                    <p className="text-[11px] text-slate-500">
-                      Cuota inicial de inscripción asignada por defecto a cada estudiante que se matricule (opcional).
-                    </p>
-                  </div>
+                      {/* Registration Fee Summary */}
+                      <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between text-xs">
+                        <span className="text-slate-700">Matrícula por alumno:</span>
+                        <span className="font-bold text-blue-700">
+                          ${Number(form.precio_matricula) > 0 ? Number(form.precio_matricula).toFixed(2) : "0.00"} USD
+                        </span>
+                      </div>
+
+                      {getError("precio_matricula") && (
+                        <p className="text-xs text-red-500 mt-0.5">{getError("precio_matricula")}</p>
+                      )}
+                      <p className="text-[11px] text-slate-500">
+                        Cuota inicial de inscripción asignada por defecto a cada estudiante que se matricule (opcional).
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Banner de alerta y gestión cuando los módulos tienen precios diferenciados */}

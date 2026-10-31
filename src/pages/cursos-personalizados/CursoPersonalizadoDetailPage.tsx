@@ -631,7 +631,12 @@ export function CursoPersonalizadoDetailPage() {
 
         {/* 4. LISTA DE INTERESADOS */}
         {tab === "interesados" && id && (
-          <InteresadosSection tipo="personalizado" entidadId={id} entidadNombre={course.nombre} />
+          <InteresadosSection
+            tipo="personalizado"
+            entidadId={id}
+            entidadNombre={course.nombre}
+            precioBase={Number(course.precio_total || 0)}
+          />
         )}
       </div>
 

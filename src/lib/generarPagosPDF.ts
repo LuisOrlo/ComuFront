@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf"
 import { applyPlugin } from "jspdf-autotable"
+import { finalizarPDF, type PdfGeneracionOpciones, type PdfPreviewResult } from "@/lib/pdfPreview"
 applyPlugin(jsPDF)
 
 const ACCENT_RGB: [number, number, number] = [232, 148, 0]
@@ -65,7 +66,10 @@ function formatDateShort(dateStr?: string): string {
   }
 }
 
-export async function generarReportePagosCursoPDF(data: DatosPagosCursoPDF) {
+export async function generarReportePagosCursoPDF(
+  data: DatosPagosCursoPDF,
+  opciones?: PdfGeneracionOpciones,
+): Promise<PdfPreviewResult | void> {
   const _doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const doc = _doc as any
@@ -219,5 +223,5 @@ export async function generarReportePagosCursoPDF(data: DatosPagosCursoPDF) {
   })
 
   const safeName = (data.info.nombre || "curso").replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
-  doc.save(`reporte-pagos-${safeName}.pdf`)
+  return finalizarPDF(doc, `reporte-pagos-${safeName}.pdf`, opciones)
 }

@@ -8,6 +8,8 @@ import { financeService } from "@/services/finance.service"
 import type { MatriculaDetallada, Curso } from "@/services/cursos.service"
 import { toast } from "sonner"
 import { generarReportePagosCursoPDF } from "@/lib/generarPagosPDF"
+import { PdfViewerModal } from "@/components/archivos/PdfViewerModal"
+import { usePdfPreview } from "@/hooks/usePdfPreview"
 
 const ACCENT = COLORS.ACCENT
 const CHARCOAL = COLORS.CHARCOAL
@@ -135,6 +137,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [historiales, setHistoriales] = useState<Record<string, PagoHistorial[]>>({})
   const [historialLoading, setHistorialLoading] = useState<string | null>(null)
+  const { preview, abrirPreview, cerrarPreview } = usePdfPreview()
 
   const studentIdMap = useMemo(() => {
     const map: Record<string, string> = {}
@@ -199,7 +202,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
         ? `${curso.horaInicio} - ${curso.horaFin}` 
         : "—"
 
-      await generarReportePagosCursoPDF({
+      const resultado = await generarReportePagosCursoPDF({
         info: {
           nombre: cursoNombre || curso?.nombre || "Curso",
           ciudad: curso?.ciudad || pdfEstudiantes[0]?.ciudad || "—",
@@ -209,8 +212,11 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
           fecha_fin: curso?.fechaFin || undefined,
         },
         estudiantes: pdfEstudiantes,
-      })
-      toast.success("Reporte de pagos descargado correctamente")
+      }, { preview: true })
+      if (resultado) {
+        abrirPreview(resultado, `Reporte de Pagos — ${cursoNombre || curso?.nombre || "Curso"}`)
+      }
+      toast.success("Vista previa del reporte de pagos generada")
     } catch (err) {
       console.error(err)
       toast.error("Error al generar el PDF de pagos")
@@ -443,6 +449,14 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
           )}
         </div>
       </div>
+
+      <PdfViewerModal
+        isOpen={preview.isOpen}
+        onClose={cerrarPreview}
+        titulo={preview.titulo}
+        url={preview.url}
+        nombreArchivo={preview.nombreArchivo}
+      />
 
     </div>
   )

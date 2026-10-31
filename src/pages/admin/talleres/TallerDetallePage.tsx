@@ -874,7 +874,12 @@ export function TallerDetallePage() {
 
         {tab === "interesados" && id && (
           <div className="max-w-[1000px] mx-auto px-6 py-6">
-            <InteresadosSection tipo="taller" entidadId={id} entidadNombre={taller.nombre} />
+            <InteresadosSection
+              tipo="taller"
+              entidadId={id}
+              entidadNombre={taller.nombre}
+              precioBase={Number(taller.precio || 0)}
+            />
           </div>
         )}
       </main>

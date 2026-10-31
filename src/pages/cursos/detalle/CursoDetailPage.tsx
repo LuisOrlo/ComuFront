@@ -22,6 +22,8 @@ import { Trash2 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { parseLocalDate } from "@/lib/utils"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { PdfViewerModal } from "@/components/archivos/PdfViewerModal"
+import { usePdfPreview } from "@/hooks/usePdfPreview"
 import { CursoAsistenciaSection } from "./CursoAsistenciaSection"
 import { CursoEstudiantesTable } from "./CursoEstudiantesTable"
 import { CursoPagosSection } from "./CursoPagosSection"
@@ -78,6 +80,8 @@ export function CursoDetailPage() {
   })
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [previewingListado, setPreviewingListado] = useState(false)
+  const { preview, abrirPreview, cerrarPreview } = usePdfPreview()
 
   const cargarTodo = async () => {
     if (!id) return
@@ -484,19 +488,27 @@ export function CursoDetailPage() {
                       <input value={matriculasSearch} onChange={(event) => setMatriculasSearch(event.target.value)} placeholder="Buscar por nombre..." className="w-full bg-[#eff4ff] rounded-lg pl-9 pr-3 py-2.5 text-xs text-[#0b1c30] placeholder:text-[#45464d] outline-none" />
                     </div>
                     <button
-  onClick={async () => {
-    if (!curso) return;
-    try {
-      const data = await cursosService.getAsistenciaPDFData(id!)
-      await generarListadoAsistenciaPDF(data)
-      toast.success("Listado de asistencia descargado");
-    } catch { toast.error("Error al generar PDF") }
-  }}
-  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#e5eeff] text-[#0b1c30] shadow-sm hover:bg-[#dce9ff] transition-colors"
->
-  <HugeiconsIcon icon={Download01Icon} size={14} />
-  Listado Asistencia
-</button>
+                      onClick={async () => {
+                        if (!curso) return
+                        setPreviewingListado(true)
+                        try {
+                          const data = await cursosService.getAsistenciaPDFData(id!)
+                          const resultado = await generarListadoAsistenciaPDF(data, { preview: true })
+                          if (resultado) {
+                            abrirPreview(resultado, `Listado de Asistencia — ${curso.nombre}`)
+                          }
+                        } catch {
+                          toast.error("Error al generar PDF")
+                        } finally {
+                          setPreviewingListado(false)
+                        }
+                      }}
+                      disabled={previewingListado}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#e5eeff] text-[#0b1c30] shadow-sm hover:bg-[#dce9ff] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <HugeiconsIcon icon={Download01Icon} size={14} />
+                      {previewingListado ? "Generando..." : "Listado Asistencia"}
+                    </button>
                   </div>
                 </div>
               {loadingMatriculas ? (
@@ -533,11 +545,24 @@ export function CursoDetailPage() {
           {/* Tab: Interesados */}
           {tab === "interesados" && id && (
             <div id="curso-panel-interesados" role="tabpanel" aria-labelledby="curso-tab-interesados">
-              <InteresadosSection tipo="curso" entidadId={id} entidadNombre={curso.nombre} />
+              <InteresadosSection
+                tipo="curso"
+                entidadId={id}
+                entidadNombre={curso.nombre}
+                precioBase={Number(curso.precioBase || 0)}
+              />
             </div>
           )}
         </div>
       </main>
+
+      <PdfViewerModal
+        isOpen={preview.isOpen}
+        onClose={cerrarPreview}
+        titulo={preview.titulo}
+        url={preview.url}
+        nombreArchivo={preview.nombreArchivo}
+      />
 
       <ConfirmationModal
         isOpen={showDeleteConfirm}

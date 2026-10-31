@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf"
 import { applyPlugin } from "jspdf-autotable"
+import { finalizarPDF, type PdfGeneracionOpciones, type PdfPreviewResult } from "@/lib/pdfPreview"
 applyPlugin(jsPDF)
 
 const ACCENT_RGB: [number, number, number] = [232, 148, 0]
@@ -95,7 +96,8 @@ function formatDateShort(dateStr: string): string {
 
 export async function generarListadoAsistenciaPDF(
   data: DatosAsistenciaPDF,
-) {
+  opciones?: PdfGeneracionOpciones,
+): Promise<PdfPreviewResult | void> {
   try {
   const _doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -366,7 +368,7 @@ export async function generarListadoAsistenciaPDF(
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9\s-]/g, "")
     .trim()
-  doc.save(`lista-asistencia-${safeName}.pdf`)
+  return finalizarPDF(doc, `lista-asistencia-${safeName}.pdf`, opciones)
   } catch (e) {
     console.error("PDF generation error:", e)
     throw e

@@ -336,6 +336,10 @@ interface SolicitudItem {
         const isPendiente = !isAprobado && !isRechazado
         const estadoFinal = isRechazado ? "rechazado" : (isAprobado ? "matricula_creada" : "pendiente_validacion")
 
+        const fechaEfectiva = isAprobado && (ins.fecha_verificacion || ins.fecha_pago || ins.updated_at)
+          ? (ins.fecha_verificacion || ins.fecha_pago || ins.updated_at)
+          : (ins.fecha_inscripcion || ins.created_at)
+
         return {
           id: ins.id,
           nombres: ins.nombres || "—",
@@ -349,7 +353,7 @@ interface SolicitudItem {
           isPendiente,
           isAprobado,
           isRechazado,
-          fecha: ins.fecha_inscripcion || ins.created_at,
+          fecha: fechaEfectiva,
           validador: "",
           motivo_rechazo: ins.observaciones || "",
           origen: "taller",
@@ -367,6 +371,11 @@ interface SolicitudItem {
       const mod = s.curso_abierto?.modalidad ? (s.curso_abierto.modalidad.charAt(0).toUpperCase() + s.curso_abierto.modalidad.slice(1)) : "Presencial"
       const ciudad = s.curso_abierto?.ciudad?.nombre || s.participante_externo?.ciudad || ""
 
+      // Para aprobadas, priorizar la fecha de validación/aprobación para agrupar por el día en que se aprobó
+      const fechaEfectiva = isAprobado && s.fecha_validacion
+        ? s.fecha_validacion
+        : (s.created_at || s.fecha_creacion)
+
       return {
         id: s.id,
         nombres: s.estudiante?.nombres || s.participante_externo?.nombres || "—",
@@ -380,7 +389,7 @@ interface SolicitudItem {
         isPendiente,
         isAprobado,
         isRechazado,
-        fecha: s.created_at || s.fecha_creacion,
+        fecha: fechaEfectiva,
         validador: s.validador ? `${s.validador.nombres} ${s.validador.apellidos}` : "",
         motivo_rechazo: s.motivo_rechazo || "",
         origen: "curso",
@@ -1066,7 +1075,7 @@ interface SolicitudItem {
                               <HugeiconsIcon icon={Clock01Icon} size={12} className="text-slate-400 shrink-0" />
                               {item.isAprobado ? (
                                 <span>
-                                  Procesada el {item.fecha ? formatDate(item.fecha) : ""}
+                                  Aprobada el {item.fecha ? formatDate(item.fecha) : ""}
                                   {item.validador && ` por ${item.validador}`}
                                 </span>
                               ) : (

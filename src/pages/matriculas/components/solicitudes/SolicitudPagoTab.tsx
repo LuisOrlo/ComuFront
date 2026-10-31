@@ -532,6 +532,7 @@ export function SolicitudPagoTab(props: SolicitudPagoTabProps) {
             precioCurso={Number(selected.curso.precio_base || 0)}
             precioMatricula={selected.curso.precio_matricula != null ? Number(selected.curso.precio_matricula) : undefined}
             metodoPagoInicial={tipoPagoNormalizado || "efectivo"}
+            comprobanteInicialUrl={selected.pago?.comprobante?.url}
             onMontoValidoChange={setMontoValido}
             onTotalPrecioChange={setTotalPrecioModulos}
             onSubmit={(pagos, metodoPago, inscripcion, metodosPago, grupoPagoId) => handleApprove(pagos, metodoPago, inscripcion, metodosPago, grupoPagoId)}

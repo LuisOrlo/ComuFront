@@ -6,10 +6,15 @@ import {
   Coins02Icon,
   CheckmarkCircle02Icon,
   Delete02Icon,
+  Upload05Icon,
+  Image01Icon,
+  File01Icon,
 } from "@hugeicons/core-free-icons"
 import { cursosService } from "@/services/cursos.service"
 import { COLORS } from "@/lib/constants"
 import { toast } from "sonner"
+import { getStorageUrl } from "@/lib/utils"
+import { ImageZoom } from "@/pages/matriculas/ImageZoom"
 import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
 import { type MetodoPagoItem, type ConceptoDestino } from "@/components/finanzas/MetodosPagoSplitInput"
 import { ModuloPagoMixtoModal } from "@/components/finanzas/ModuloPagoMixtoModal"
@@ -21,6 +26,7 @@ interface PagoPreAprobacionSectionProps {
   precioCurso?: number
   precioMatricula?: number
   metodoPagoInicial?: string
+  comprobanteInicialUrl?: string | null
   onMontoValidoChange?: (valido: boolean) => void
   onTotalPrecioChange?: (total: number) => void
   onSubmit: (
@@ -44,6 +50,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   precioCurso = 0,
   precioMatricula,
   metodoPagoInicial,
+  comprobanteInicialUrl,
   onMontoValidoChange,
   onTotalPrecioChange,
   onSubmit,
@@ -52,6 +59,13 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
   const [modulos, setModulos] = useState<any[]>([])
   const [modulosCargados, setModulosCargados] = useState(false)
   const [ajustes, setAjustes] = useState<Record<string, { expandido: boolean; nuevoPrecio: string; motivo: string }>>({})
+
+  // Modo de comprobantes: 'global' (un solo comprobante para todo) o 'individual' (por cada módulo)
+  const [modoComprobante, setModoComprobante] = useState<"global" | "individual">("global")
+  const [comprobantesPorConcepto, setComprobantesPorConcepto] = useState<
+    Record<string, { file?: File | null; url?: string | null; preview?: string | null; usarGlobal?: boolean }>
+  >({})
+  const [zoomImg, setZoomImg] = useState<string | null>(null)
 
   // Estado de matrícula / inscripción asignada a nivel de curso
   const [cursoBaseMatricula, setCursoBaseMatricula] = useState<number>(precioMatricula ?? 0)
@@ -289,11 +303,18 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       const monto = parseFloat(montos[m.id] || "0")
       if (monto > 0) {
         const desglose = desglosesPorConcepto[m.id]
+        const compInd = modoComprobante === "individual" ? comprobantesPorConcepto[m.id] : null
+        const compUrlInd = compInd?.url || null
+        const compFileInd = compInd?.file || null
+
         if (desglose && desglose.length >= 2) {
           desglose.forEach((d) => {
             list.push({
               ...d,
               modulo_id: m.id,
+              // Si no tiene comprobante específico de método y se asignó uno individual para el módulo:
+              comprobante_url: d.comprobante_url || compUrlInd,
+              comprobante_file: d.comprobante_file || (d.comprobante_url ? undefined : compFileInd),
             })
           })
         } else {
@@ -302,6 +323,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
             metodo_pago: metodoPrincipal,
             monto: monto.toFixed(2),
             modulo_id: m.id,
+            comprobante_url: compUrlInd,
+            comprobante_file: compFileInd,
           })
         }
       }
@@ -310,11 +333,17 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     // 2. Inscripción
     if (incluirInscripcion && inscripcionCubierta > 0) {
       const desgloseIns = desglosesPorConcepto["inscripcion"]
+      const compIndIns = modoComprobante === "individual" ? comprobantesPorConcepto["inscripcion"] : null
+      const compUrlIns = compIndIns?.url || null
+      const compFileIns = compIndIns?.file || null
+
       if (desgloseIns && desgloseIns.length >= 2) {
         desgloseIns.forEach((d) => {
           list.push({
             ...d,
             modulo_id: "inscripcion",
+            comprobante_url: d.comprobante_url || compUrlIns,
+            comprobante_file: d.comprobante_file || (d.comprobante_url ? undefined : compFileIns),
           })
         })
       } else {
@@ -323,6 +352,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           metodo_pago: metodoPrincipal,
           monto: inscripcionCubierta.toFixed(2),
           modulo_id: "inscripcion",
+          comprobante_url: compUrlIns,
+          comprobante_file: compFileIns,
         })
       }
     }
@@ -332,13 +363,25 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
       const pagoPersonalizado = parseFloat(pagoCurso) || 0
       if (pagoPersonalizado > 0) {
         const desglosePers = desglosesPorConcepto["personalizado"]
+        const compIndPers = modoComprobante === "individual" ? comprobantesPorConcepto["personalizado"] : null
+        const compUrlPers = compIndPers?.url || null
+        const compFilePers = compIndPers?.file || null
+
         if (desglosePers && desglosePers.length >= 2) {
-          desglosePers.forEach((d) => list.push(d))
+          desglosePers.forEach((d) =>
+            list.push({
+              ...d,
+              comprobante_url: d.comprobante_url || compUrlPers,
+              comprobante_file: d.comprobante_file || (d.comprobante_url ? undefined : compFilePers),
+            })
+          )
         } else {
           list.push({
             id: "curso-personalizado",
             metodo_pago: metodoPrincipal,
             monto: pagoPersonalizado.toFixed(2),
+            comprobante_url: compUrlPers,
+            comprobante_file: compFilePers,
           })
         }
       }
@@ -355,6 +398,8 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
     esPersonalizado,
     modulos.length,
     pagoCurso,
+    modoComprobante,
+    comprobantesPorConcepto,
   ])
 
   // Resumen agrupado por medio físico/bancario (ej. Transferencia: $110, Efectivo: $20)
@@ -711,6 +756,48 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
   return (
     <div className="pt-4 space-y-4">
+      {/* Selector de Modo de Comprobante (Global vs Individual) */}
+      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="size-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+            <HugeiconsIcon icon={Image01Icon} size={16} />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-slate-900 block">
+              Comprobantes de Pago para Módulos
+            </span>
+            <span className="text-[11px] text-slate-500 block">
+              Elige si usarás un único comprobante general o fotos individuales por módulo
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shrink-0 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setModoComprobante("global")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              modoComprobante === "global"
+                ? "bg-[#fd761a] text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Comprobante único
+          </button>
+          <button
+            type="button"
+            onClick={() => setModoComprobante("individual")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              modoComprobante === "individual"
+                ? "bg-[#fd761a] text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Individual por módulo
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {sorted.map((modulo: any, idx: number) => {
         if (!modulo) return null
@@ -822,7 +909,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
 
             {/* Control y Resumen de Pago Mixto del Módulo */}
             {monto > 0 && (
-              <div className="pt-2 border-t border-slate-100">
+              <div className="pt-2 border-t border-slate-100 space-y-2">
                 {(() => {
                   const desglose = desglosesPorConcepto[modulo.id]
                   const esMixto = desglose && desglose.length >= 2
@@ -908,6 +995,97 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                     </button>
                   )
                 })()}
+
+                {/* Comprobante Individual de este Módulo */}
+                {modoComprobante === "individual" && (
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                        <HugeiconsIcon icon={File01Icon} size={14} className="text-[#fd761a]" />
+                        <span>Comprobante de este módulo:</span>
+                      </span>
+
+                      {comprobanteInicialUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setComprobantesPorConcepto((prev) => ({
+                              ...prev,
+                              [modulo.id]: { url: comprobanteInicialUrl, preview: null, file: null, usarGlobal: true },
+                            }))
+                          }}
+                          className="text-[11px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                        >
+                          Usar el inicial
+                        </button>
+                      )}
+                    </div>
+
+                    {(() => {
+                      const comp = comprobantesPorConcepto[modulo.id]
+                      const preview = comp?.preview || (comp?.url ? getStorageUrl(comp.url) : null)
+
+                      if (preview) {
+                        return (
+                          <div className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-slate-200">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={preview}
+                                alt="Comprobante módulo"
+                                onClick={() => setZoomImg(preview)}
+                                className="size-9 rounded-md object-cover border border-slate-200 shrink-0 cursor-pointer hover:opacity-85"
+                                title="Clic para ampliar"
+                              />
+                              <div className="min-w-0">
+                                <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                  {comp?.file ? comp.file.name : comp?.usarGlobal ? "Comprobante general" : "Comprobante adjunto"}
+                                </span>
+                                <span className="text-[10px] text-emerald-600 font-semibold block">
+                                  Listo para asociar a este módulo
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setComprobantesPorConcepto((prev) => {
+                                  const copy = { ...prev }
+                                  delete copy[modulo.id]
+                                  return copy
+                                })
+                              }}
+                              className="text-[11px] font-bold text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-md cursor-pointer shrink-0"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <label className="flex items-center justify-center gap-1.5 py-2 px-3 border border-dashed border-slate-300 hover:border-[#fd761a] rounded-lg text-xs font-semibold text-slate-600 hover:text-[#fd761a] bg-white hover:bg-orange-50/40 cursor-pointer transition-all">
+                          <HugeiconsIcon icon={Upload05Icon} size={14} />
+                          <span>Subir comprobante exclusivo para este módulo</span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                const previewUrl = URL.createObjectURL(file)
+                                setComprobantesPorConcepto((prev) => ({
+                                  ...prev,
+                                  [modulo.id]: { file, preview: previewUrl, url: null, usarGlobal: false },
+                                }))
+                              }
+                            }}
+                          />
+                        </label>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1192,6 +1370,97 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
                       </button>
                     )
                   })()}
+
+                  {/* Comprobante Individual de Matrícula */}
+                  {modoComprobante === "individual" && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col gap-2 mt-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                          <HugeiconsIcon icon={File01Icon} size={14} className="text-[#fd761a]" />
+                          <span>Comprobante de matrícula:</span>
+                        </span>
+
+                        {comprobanteInicialUrl && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setComprobantesPorConcepto((prev) => ({
+                                ...prev,
+                                inscripcion: { url: comprobanteInicialUrl, preview: null, file: null, usarGlobal: true },
+                              }))
+                            }}
+                            className="text-[11px] text-blue-600 hover:underline font-semibold cursor-pointer"
+                          >
+                            Usar el inicial
+                          </button>
+                        )}
+                      </div>
+
+                      {(() => {
+                        const comp = comprobantesPorConcepto["inscripcion"]
+                        const preview = comp?.preview || (comp?.url ? getStorageUrl(comp.url) : null)
+
+                        if (preview) {
+                          return (
+                            <div className="flex items-center justify-between gap-2 p-1.5 bg-white rounded-lg border border-slate-200">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <img
+                                  src={preview}
+                                  alt="Comprobante matrícula"
+                                  onClick={() => setZoomImg(preview)}
+                                  className="size-9 rounded-md object-cover border border-slate-200 shrink-0 cursor-pointer hover:opacity-85"
+                                  title="Clic para ampliar"
+                                />
+                                <div className="min-w-0">
+                                  <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                    {comp?.file ? comp.file.name : comp?.usarGlobal ? "Comprobante general" : "Comprobante adjunto"}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-600 font-semibold block">
+                                    Listo para asociar a matrícula
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setComprobantesPorConcepto((prev) => {
+                                    const copy = { ...prev }
+                                    delete copy["inscripcion"]
+                                    return copy
+                                  })
+                                }}
+                                className="text-[11px] font-bold text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-md cursor-pointer shrink-0"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          )
+                        }
+
+                        return (
+                          <label className="flex items-center justify-center gap-1.5 py-2 px-3 border border-dashed border-slate-300 hover:border-[#fd761a] rounded-lg text-xs font-semibold text-slate-600 hover:text-[#fd761a] bg-white hover:bg-orange-50/40 cursor-pointer transition-all">
+                            <HugeiconsIcon icon={Upload05Icon} size={14} />
+                            <span>Subir comprobante exclusivo para matrícula</span>
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  const previewUrl = URL.createObjectURL(file)
+                                  setComprobantesPorConcepto((prev) => ({
+                                    ...prev,
+                                    inscripcion: { file, preview: previewUrl, url: null, usarGlobal: false },
+                                  }))
+                                }
+                              }}
+                            />
+                          </label>
+                        )
+                      })()}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1371,6 +1640,11 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
           onRemove={() => handleQuitarDesglose(modalDesglose.conceptoId)}
           permitirComprobantePorMetodo={true}
         />
+      )}
+
+      {/* Modal de Zoom para comprobantes */}
+      {zoomImg && (
+        <ImageZoom url={zoomImg} onClose={() => setZoomImg(null)} />
       )}
     </div>
   )

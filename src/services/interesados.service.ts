@@ -1,5 +1,13 @@
 import api, { apiMultipart } from "./auth.service"
 
+export interface InteresadoPagoItem {
+  id: string
+  monto: number | string
+  metodo_pago?: string
+  fecha_pago?: string
+  comprobantes?: string[]
+}
+
 export interface Interesado {
   id: string
   curso_abierto_id?: string | null
@@ -11,6 +19,10 @@ export interface Interesado {
   correo?: string | null
   monto_pago_anticipo?: number | null
   comprobante_url?: string | null
+  descuento?: number | null
+  motivo_descuento?: string | null
+  precio_final?: number | null
+  pagos?: InteresadoPagoItem[]
   observaciones?: string | null
   estado_embudo: "solo_interesado" | "solicitud_pendiente" | "matriculado"
   es_mismo_curso?: boolean
@@ -51,6 +63,10 @@ export interface GuardarInteresadoPayload {
   correo?: string
   monto_pago_anticipo?: number | string | null
   comprobante_url?: string | null
+  descuento?: number | string | null
+  motivo_descuento?: string | null
+  precio_final?: number | string | null
+  pagos?: InteresadoPagoItem[]
   observaciones?: string | null
 }
 
@@ -91,6 +107,10 @@ function parseInteresadosResponse(raw: unknown): InteresadosResponse {
     correo: (item.correo as string) ?? null,
     monto_pago_anticipo: Number(item.monto_pago_anticipo) || 0,
     comprobante_url: (item.comprobante_url as string) ?? null,
+    descuento: Number(item.descuento) || 0,
+    motivo_descuento: (item.motivo_descuento as string) ?? null,
+    precio_final: item.precio_final != null ? Number(item.precio_final) : null,
+    pagos: Array.isArray(item.pagos) ? (item.pagos as InteresadoPagoItem[]) : [],
     observaciones: (item.observaciones as string) ?? null,
     estado_embudo: ((item.estado_embudo || item.estado_seguimiento || "solo_interesado") as Interesado["estado_embudo"]),
     es_mismo_curso: item.es_mismo_curso !== undefined ? Boolean(item.es_mismo_curso) : true,
@@ -131,6 +151,10 @@ function parseSingleInteresado(raw: unknown): Interesado {
     correo: (item.correo as string) ?? null,
     monto_pago_anticipo: Number(item.monto_pago_anticipo) || 0,
     comprobante_url: (item.comprobante_url as string) ?? null,
+    descuento: Number(item.descuento) || 0,
+    motivo_descuento: (item.motivo_descuento as string) ?? null,
+    precio_final: item.precio_final != null ? Number(item.precio_final) : null,
+    pagos: Array.isArray(item.pagos) ? (item.pagos as InteresadoPagoItem[]) : [],
     observaciones: (item.observaciones as string) ?? null,
     estado_embudo: ((item.estado_embudo || item.estado_seguimiento || "solo_interesado") as Interesado["estado_embudo"]),
     es_mismo_curso: item.es_mismo_curso !== undefined ? Boolean(item.es_mismo_curso) : true,
