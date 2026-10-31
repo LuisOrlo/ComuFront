@@ -16,6 +16,12 @@ export function fixImageUrl(url: string): string {
   return getStorageUrl(url)
 }
 
+export function isPdfUrl(url?: string | null): boolean {
+  if (!url) return false
+  const cleanUrl = url.toLowerCase().split("?")[0]
+  return cleanUrl.endsWith(".pdf") || cleanUrl.includes(".pdf")
+}
+
 export function validarTelefono(valor: string): string | null {
   if (!valor || !valor.trim()) return "Ingrese el teléfono o celular"
   if (!DIGITS_ONLY.test(valor)) return "Solo se permiten números"

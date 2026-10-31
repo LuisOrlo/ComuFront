@@ -348,8 +348,16 @@ export function AprobacionSolicitudPage() {
   const handleUploadCedula = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !id) return
-    const error = validarImagen(file, 2)
-    if (error) { toast.error(error); return }
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    if (isPdf) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("El documento PDF no debe superar los 5 MB")
+        return
+      }
+    } else {
+      const error = validarImagen(file, 5)
+      if (error) { toast.error(error); return }
+    }
     setUploadingCedula(true)
     try {
       const res = await cursosService.uploadSolicitudArchivo(id, "cedula", file)

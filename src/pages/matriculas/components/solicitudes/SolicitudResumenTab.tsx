@@ -8,7 +8,7 @@ import {
   ArrowRight01Icon,
   CheckmarkCircle04Icon,
 } from "@hugeicons/core-free-icons"
-import { fixImageUrl } from "../../AprobacionUtils"
+import { fixImageUrl, isPdfUrl } from "../../AprobacionUtils"
 import { CiudadBadge, ModalidadBadge } from "../../../estudiantes/components/Badges"
 
 interface SolicitudResumenTabProps {
@@ -37,6 +37,7 @@ export function SolicitudResumenTab({
   const cedulaImg = selected.pago?.comprobante?.cedula_url && !selected.pago?.comprobante?.cedula_purgado
     ? fixImageUrl(selected.pago.comprobante.cedula_url)
     : null
+  const isCedulaPdf = isPdfUrl(cedulaImg)
 
   const compImg = selected.pago?.comprobante?.url && !selected.pago?.comprobante?.comprobante_purgado
     ? fixImageUrl(selected.pago.comprobante.url)
@@ -241,18 +242,22 @@ export function SolicitudResumenTab({
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-800">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isCedulaPdf ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-800"}`}>
                   <HugeiconsIcon icon={Image01Icon} size={20} />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Cédula de Identidad</h3>
-                  <span className="text-xs text-slate-500">Documento fotográfico</span>
+                  <span className="text-xs text-slate-500">
+                    {cedulaImg ? (isCedulaPdf ? "Documento digital PDF" : "Documento fotográfico") : "Documento de identidad"}
+                  </span>
                 </div>
               </div>
               {cedulaImg ? (
-                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border flex items-center gap-1 ${
+                  isCedulaPdf ? "bg-red-50 text-red-700 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                }`}>
                   <HugeiconsIcon icon={CheckmarkCircle04Icon} size={13} />
-                  Adjunta
+                  {isCedulaPdf ? "PDF Adjunto" : "Adjunta"}
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600">
@@ -264,19 +269,29 @@ export function SolicitudResumenTab({
             {/* Photo preview container */}
             <div className="my-3 p-2.5 bg-slate-950 rounded-xl flex items-center gap-3.5 text-white overflow-hidden shadow-inner">
               {cedulaImg ? (
-                <div
-                  onClick={() => setExpandedImageUrl(cedulaImg)}
-                  className="w-24 h-16 rounded-lg bg-slate-900 border border-slate-700 overflow-hidden shrink-0 cursor-pointer relative group"
-                >
-                  <img
-                    src={cedulaImg}
-                    alt="Cédula de identidad"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-white transition-opacity">
-                    Ampliar
+                isCedulaPdf ? (
+                  <div
+                    onClick={() => onSelectTab?.("documento")}
+                    className="w-24 h-16 rounded-lg bg-red-950/60 border border-red-800/80 overflow-hidden shrink-0 cursor-pointer flex flex-col items-center justify-center relative group hover:bg-red-900/60 transition-colors"
+                  >
+                    <span className="font-extrabold text-xs text-red-400">PDF</span>
+                    <span className="text-[9px] text-red-300 mt-0.5">Ver documento</span>
                   </div>
-                </div>
+                ) : (
+                  <div
+                    onClick={() => setExpandedImageUrl(cedulaImg)}
+                    className="w-24 h-16 rounded-lg bg-slate-900 border border-slate-700 overflow-hidden shrink-0 cursor-pointer relative group"
+                  >
+                    <img
+                      src={cedulaImg}
+                      alt="Cédula de identidad"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-white transition-opacity">
+                      Ampliar
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="w-24 h-16 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
                   <HugeiconsIcon icon={Image01Icon} size={24} />
@@ -285,14 +300,14 @@ export function SolicitudResumenTab({
 
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-slate-100 truncate">
-                  {cedulaImg ? "cedula_identidad.jpg" : "Sin documento cargado"}
+                  {cedulaImg ? (isCedulaPdf ? "cedula_identidad.pdf" : "cedula_identidad.jpg") : "Sin documento cargado"}
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  {cedulaImg ? "Documento fotográfico JPG / PNG" : "Pendiente de adjuntar por el postulante"}
+                  {cedulaImg ? (isCedulaPdf ? "Documento digital PDF oficial" : "Documento fotográfico JPG / PNG") : "Pendiente de adjuntar por el postulante"}
                 </p>
                 {cedulaImg && (
-                  <span className="inline-block mt-1 text-[10px] text-emerald-400 font-medium">
-                    ✓ Imagen lista para verificación
+                  <span className={`inline-block mt-1 text-[10px] font-medium ${isCedulaPdf ? "text-red-400" : "text-emerald-400"}`}>
+                    ✓ {isCedulaPdf ? "Documento PDF listo para verificación" : "Imagen lista para verificación"}
                   </span>
                 )}
               </div>
@@ -306,13 +321,17 @@ export function SolicitudResumenTab({
           <div className="pt-2 border-t border-slate-100">
             <button
               onClick={() => {
-                if (cedulaImg) setExpandedImageUrl(cedulaImg)
-                else onSelectTab?.("documento")
+                if (cedulaImg) {
+                  if (isCedulaPdf) onSelectTab?.("documento")
+                  else setExpandedImageUrl(cedulaImg)
+                } else {
+                  onSelectTab?.("documento")
+                }
               }}
               type="button"
               className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-bold border border-slate-200 transition-colors cursor-pointer"
             >
-              <span>{cedulaImg ? "Ver imagen en visor" : "Gestionar documento"}</span>
+              <span>{cedulaImg ? (isCedulaPdf ? "Ver PDF en visor" : "Ver imagen en visor") : "Gestionar documento"}</span>
               <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
             </button>
           </div>

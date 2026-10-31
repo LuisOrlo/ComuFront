@@ -64,7 +64,7 @@ export function DatosEstudianteStep({
   setEstudiante,
   setErrors,
   setTouched,
-
+  cedulaFile,
   setCedulaFile,
   cedulaPreview,
   setCedulaPreview,
@@ -138,6 +138,44 @@ export function DatosEstudianteStep({
     setErrors(prev => {
       const n = { ...prev }
       delete n.ciudad
+      return n
+    })
+  }
+
+  const [cedulaTab, setCedulaTab] = useState<"imagen" | "pdf">("imagen")
+  const isPdfSelected = Boolean(cedulaFile && (cedulaFile.type === "application/pdf" || cedulaFile.name.toLowerCase().endsWith(".pdf")))
+  const MAX_PDF_BYTES = 5 * 1024 * 1024 // 5 MB
+
+  const handleFileProcess = (file: File) => {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    const isImage = file.type.startsWith("image/")
+
+    if (!isPdf && !isImage) {
+      setErrors(prev => ({ ...prev, cedulaFile: "Formato no válido. Debe ser una imagen (JPG, PNG) o un archivo PDF." }))
+      if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+      return
+    }
+
+    if (isPdf) {
+      setCedulaTab("pdf")
+      // Validación de peso exclusivamente para PDF
+      if (file.size > MAX_PDF_BYTES) {
+        setErrors(prev => ({
+          ...prev,
+          cedulaFile: `El documento PDF supera el tamaño máximo permitido de 5 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB). Por favor comprímalo o elija otro archivo.`
+        }))
+        if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+        return
+      }
+    } else {
+      setCedulaTab("imagen")
+    }
+
+    setCedulaFile(file)
+    setCedulaPreview(URL.createObjectURL(file))
+    setErrors(prev => {
+      const n = { ...prev }
+      delete n.cedulaFile
       return n
     })
   }
@@ -270,59 +308,170 @@ export function DatosEstudianteStep({
           {touched.direccion && errors.direccion && <p className="text-[11px] mt-1 text-red-500">{errors.direccion}</p>}
         </div>
       </div>
-      <div>
-        <br />
-        <label className="block text-xs font-medium mb-1.5">Foto de la Cédula</label>
-        <p className="text-[11px] text-gray-500 mb-2">
-          Asegúrese de que el archivo seleccionado sea una imagen (JPG, JPEG o PNG).
-        </p>
-        <input ref={cedulaInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
-          const file = e.target.files?.[0]
-          if (!file) return
-          if (!file.type.startsWith("image/")) {
-            setErrors(prev => ({ ...prev, cedulaFile: "Solo se permiten imágenes (JPG, PNG)" }))
-            if (cedulaInputRef.current) cedulaInputRef.current.value = ""
-            return
-          }
-          setCedulaFile(file)
-          setCedulaPreview(URL.createObjectURL(file))
-          setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n })
-        }} />
-        
+      <div className="pt-2">
+        {/* Selector de Pestaña: Imagen vs PDF */}
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div>
+            <label className="block text-xs font-semibold" style={{ color: COLORS.CHARCOAL }}>
+              Cédula de Identidad <span className="text-gray-400 font-normal">({cedulaTab === "imagen" ? "Fotografía" : "Documento PDF"})</span>
+            </label>
+            <p className="text-[11px] text-gray-500">
+              {cedulaTab === "imagen"
+                ? "Suba una foto clara o escaneo de la cédula (JPG, PNG o WEBP)."
+                : "Suba el documento digital de la cédula en PDF (máximo 5 MB)."}
+            </p>
+          </div>
+          <div className="flex p-0.5 rounded-lg bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+            <button
+              key="tab-img"
+              type="button"
+              onClick={() => {
+                setCedulaTab("imagen")
+                if (isPdfSelected) {
+                  setCedulaFile(null)
+                  setCedulaPreview(null)
+                  if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+                  setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n })
+                }
+              }}
+              className="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              style={{
+                backgroundColor: cedulaTab === "imagen" ? "white" : "transparent",
+                color: cedulaTab === "imagen" ? COLORS.ACCENT : COLORS.TEXT_MUTED,
+                boxShadow: cedulaTab === "imagen" ? "0 1px 2px rgba(0,0,0,0.06)" : "none"
+              }}
+            >
+              <HugeiconsIcon icon={ImageAdd02Icon} size={14} />
+              <span>Imagen</span>
+            </button>
+            <button
+              key="tab-pdf"
+              type="button"
+              onClick={() => {
+                setCedulaTab("pdf")
+                if (cedulaFile && !isPdfSelected) {
+                  setCedulaFile(null)
+                  setCedulaPreview(null)
+                  if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+                  setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n })
+                }
+              }}
+              className="px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              style={{
+                backgroundColor: cedulaTab === "pdf" ? "white" : "transparent",
+                color: cedulaTab === "pdf" ? COLORS.ACCENT : COLORS.TEXT_MUTED,
+                boxShadow: cedulaTab === "pdf" ? "0 1px 2px rgba(0,0,0,0.06)" : "none"
+              }}
+            >
+              <span className="font-extrabold text-[9px] px-1 py-0.5 bg-red-100 text-red-600 rounded leading-none">PDF</span>
+              <span>Documento PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <input
+          ref={cedulaInputRef}
+          type="file"
+          accept={cedulaTab === "pdf" ? "application/pdf,.pdf" : "image/*"}
+          className="hidden"
+          onChange={e => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            handleFileProcess(file)
+          }}
+        />
+
         {/* DRAG AND DROP ZONE */}
-        <div 
-          onClick={() => !cedulaPreview && cedulaInputRef.current?.click()} 
+        <div
+          onClick={() => !cedulaPreview && cedulaInputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
-            e.preventDefault();
-            if (cedulaPreview) return;
-            const file = e.dataTransfer.files?.[0];
-            if (!file) return;
-            if (!file.type.startsWith("image/")) {
-              setErrors(prev => ({ ...prev, cedulaFile: "Solo se permiten imágenes (JPG, PNG)" }));
-              return;
-            }
-            setCedulaFile(file);
-            setCedulaPreview(URL.createObjectURL(file));
-            setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n });
+            e.preventDefault()
+            if (cedulaPreview) return
+            const file = e.dataTransfer.files?.[0]
+            if (!file) return
+            handleFileProcess(file)
           }}
-          className="relative rounded-lg border-2 border-dashed p-4 sm:p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors" 
+          className="relative rounded-xl border-2 border-dashed p-4 sm:p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50/70 transition-colors bg-gray-50/30"
           style={{ borderColor: errors.cedulaFile ? "#ef4444" : COLORS.BORDER_SUBTLE }}
         >
-          {cedulaPreview ? 
-            <img src={cedulaPreview} className="max-h-64 rounded" alt="Cédula" /> : 
-            <div className="flex flex-col items-center gap-2 text-xs text-gray-400">
-              <HugeiconsIcon icon={ImageAdd02Icon} size={32} />
-              <span>Haz clic o arrastra la foto aquí</span>
+          {cedulaPreview ? (
+            isPdfSelected ? (
+              <div className="flex flex-col items-center justify-center py-2 px-4 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mb-2 shadow-xs">
+                  <span className="font-extrabold text-sm tracking-wide">PDF</span>
+                </div>
+                <p className="text-xs font-bold text-slate-800 max-w-xs truncate" title={cedulaFile?.name}>
+                  {cedulaFile?.name || "documento_cedula.pdf"}
+                </p>
+                <span className="text-[11px] text-slate-500 font-mono mt-0.5">
+                  {cedulaFile ? `${(cedulaFile.size / 1024).toFixed(0)} KB` : "Documento PDF"}
+                </span>
+                <div className="flex items-center gap-2 mt-3">
+                  <a
+                    href={cedulaPreview}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-3 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <span>Ver documento</span>
+                    <span className="text-[10px]">↗</span>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <img src={cedulaPreview} className="max-h-60 rounded-lg shadow-xs border border-gray-100 object-contain" alt="Cédula" />
+            )
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-xs text-gray-400 py-3">
+              {cedulaTab === "pdf" ? (
+                <>
+                  <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center font-bold text-xs shadow-xs">
+                    PDF
+                  </div>
+                  <span className="font-medium text-slate-600">Haz clic o arrastra el PDF aquí</span>
+                  <span className="text-[10px] text-gray-400">Tamaño máximo permitido: 5 MB</span>
+                </>
+              ) : (
+                <>
+                  <HugeiconsIcon icon={ImageAdd02Icon} size={32} />
+                  <span className="font-medium text-slate-600">Haz clic o arrastra la foto aquí</span>
+                  <span className="text-[10px] text-gray-400">Formatos admitidos: JPG, PNG, WEBP</span>
+                </>
+              )}
             </div>
-          }
+          )}
         </div>
-        
+
         {cedulaPreview && (
-          <button type="button" onClick={() => { setCedulaFile(null); setCedulaPreview(null); if (cedulaInputRef.current) cedulaInputRef.current.value = ""; setErrors(prev => { const n = { ...prev }; delete n.cedulaFile; return n }) }}
-            className="text-[11px] mt-1 font-medium hover:underline" style={{ color: "#ef4444" }}>Quitar foto</button>
+          <div className="flex items-center justify-between mt-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setCedulaFile(null)
+                setCedulaPreview(null)
+                if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+                setErrors(prev => {
+                  const n = { ...prev }
+                  delete n.cedulaFile
+                  return n
+                })
+              }}
+              className="text-[11px] font-semibold hover:underline cursor-pointer flex items-center gap-1 text-red-500"
+            >
+              Quitar {isPdfSelected ? "documento PDF" : "foto"}
+            </button>
+            <button
+              type="button"
+              onClick={() => cedulaInputRef.current?.click()}
+              className="text-[11px] font-medium text-slate-500 hover:text-slate-800 cursor-pointer"
+            >
+              Cambiar archivo
+            </button>
+          </div>
         )}
-        {errors.cedulaFile && <p className="text-[11px] mt-1 text-red-500">{errors.cedulaFile}</p>}
+        {errors.cedulaFile && <p className="text-[11px] mt-1 text-red-500 font-medium">{errors.cedulaFile}</p>}
       </div>
       <div className="flex justify-end pt-2">
         <button 

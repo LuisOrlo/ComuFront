@@ -230,7 +230,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
       if (err) { newErrors[f] = err; valid = false }
     })
     if (!cedulaFile) {
-      newErrors.cedulaFile = "Debes subir una foto de la cédula"
+      newErrors.cedulaFile = "Debes adjuntar la cédula (imagen o PDF)"
       valid = false
     }
     setErrors(newErrors)

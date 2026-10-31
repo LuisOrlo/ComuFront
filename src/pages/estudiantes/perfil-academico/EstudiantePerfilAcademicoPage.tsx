@@ -9,6 +9,7 @@ import { FinancialTabContent } from "../sections/FinancialTabContent"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { EliminarVinculacionEstudianteModal } from "@/components/estudiantes/EliminarVinculacionEstudianteModal"
 import { ImageZoom } from "@/pages/matriculas/ImageZoom"
+import { PdfViewerModal } from "@/components/archivos/PdfViewerModal"
 import { estudiantesService } from "@/services/estudiantes.service"
 import { toast } from "sonner"
 import { getStorageUrl } from "@/lib/utils"
@@ -48,6 +49,7 @@ export function EstudiantePerfilAcademicoPage() {
   } = useStudentProfile(id)
 
   const cedulaUrl = studentData?.cedula_photo_url
+  const isCedulaPdf = Boolean(cedulaUrl && (cedulaUrl.toLowerCase().split("?")[0].endsWith(".pdf") || cedulaUrl.toLowerCase().includes(".pdf")))
   const isCedulaPurgado = cedulaPurgado || studentData?.cedula_purgado === true
 
   if (loading) {
@@ -165,19 +167,30 @@ export function EstudiantePerfilAcademicoPage() {
                 <FileText className="size-5 text-rose-500" />
               </div>
             ) : cedulaUrl ? (
-              <div
-                className="relative shrink-0 group cursor-pointer"
-                onClick={() => setShowCedulaModal(true)}
-              >
-                <img
-                  alt={`Cédula de ${name}`}
-                  className="w-16 h-11 object-cover rounded-lg shadow-xs border border-slate-200"
-                  src={getStorageUrl(cedulaUrl)}
-                />
-                <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ZoomIn className="text-white size-4" />
+              isCedulaPdf ? (
+                <div
+                  className="w-16 h-11 rounded-lg bg-red-50 border border-red-200 flex flex-col items-center justify-center shrink-0 cursor-pointer relative group hover:bg-red-100/70 transition-colors"
+                  onClick={() => setShowCedulaModal(true)}
+                  title="Ver documento PDF"
+                >
+                  <span className="text-[10px] font-extrabold text-red-600">PDF</span>
+                  <div className="absolute inset-0 bg-black/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="relative shrink-0 group cursor-pointer"
+                  onClick={() => setShowCedulaModal(true)}
+                >
+                  <img
+                    alt={`Cédula de ${name}`}
+                    className="w-16 h-11 object-cover rounded-lg shadow-xs border border-slate-200"
+                    src={getStorageUrl(cedulaUrl)}
+                  />
+                  <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn className="text-white size-4" />
+                  </div>
+                </div>
+              )
             ) : (
               <div className="w-16 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
                 <FileText className="size-5 text-slate-400" />
@@ -193,9 +206,11 @@ export function EstudiantePerfilAcademicoPage() {
                     Documento purgado del almacenamiento
                   </span>
                 ) : cedulaUrl ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-semibold">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                    isCedulaPdf ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"
+                  }`}>
                     <CheckCircle2 className="size-3" />
-                    Documento cargado
+                    {isCedulaPdf ? "Documento PDF cargado" : "Documento cargado"}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold">
@@ -220,7 +235,7 @@ export function EstudiantePerfilAcademicoPage() {
                   className="h-8 px-3 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Eye className="size-3.5" />
-                  <span>Ver imagen</span>
+                  <span>{isCedulaPdf ? "Ver PDF" : "Ver imagen"}</span>
                 </button>
                 <button
                   type="button"
@@ -383,13 +398,23 @@ export function EstudiantePerfilAcademicoPage() {
         }}
       />
 
-      {/* Full image viewer for cédula */}
+      {/* Visor de cédula (PDF o Imagen) */}
       {showCedulaModal && cedulaUrl && (
-        <ImageZoom
-          url={getStorageUrl(cedulaUrl)}
-          title={`Cédula de Identidad - ${name || "Estudiante"}`}
-          onClose={() => setShowCedulaModal(false)}
-        />
+        isCedulaPdf ? (
+          <PdfViewerModal
+            isOpen={showCedulaModal}
+            onClose={() => setShowCedulaModal(false)}
+            titulo={`Cédula de Identidad - ${name || "Estudiante"}`}
+            url={getStorageUrl(cedulaUrl)}
+            nombreArchivo={`cedula_${studentData?.cedula || "estudiante"}.pdf`}
+          />
+        ) : (
+          <ImageZoom
+            url={getStorageUrl(cedulaUrl)}
+            title={`Cédula de Identidad - ${name || "Estudiante"}`}
+            onClose={() => setShowCedulaModal(false)}
+          />
+        )
       )}
     </div>
   )
