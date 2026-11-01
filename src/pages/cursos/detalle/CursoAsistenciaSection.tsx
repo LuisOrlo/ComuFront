@@ -7,7 +7,12 @@ import {
   Download,
   Loader2,
   ClipboardCheck,
+  BookOpen,
+  MessageSquare,
+  Clock,
+  ArrowRight,
 } from "lucide-react"
+import { parseLocalDate } from "@/lib/utils"
 import {
   instructorService,
   type EstudianteCurso,
@@ -41,6 +46,18 @@ function getEstudianteName(e: EstudianteCurso): string {
   return ape || nom || "Estudiante"
 }
 
+function getFechaCompletaConAnio(fechaStr: string): string {
+  const d = parseLocalDate(fechaStr)
+  if (!d) return fechaStr
+  const texto = d.toLocaleDateString("es", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
 function compararEstudiantesPorApellido(a: EstudianteCurso, b: EstudianteCurso): number {
   const apeA = (a.estudiante?.apellidos || a.participante_externo?.apellidos || "").trim()
   const apeB = (b.estudiante?.apellidos || b.participante_externo?.apellidos || "").trim()
@@ -71,11 +88,16 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   const [originalAsistencias, setOriginalAsistencias] = useState<Record<string, AsistenciaRegistro>>({})
   const [claseObservaciones, setClaseObservaciones] = useState("")
   const [originalObservaciones, setOriginalObservaciones] = useState("")
+  const [claseTema, setClaseTema] = useState("")
+  const [originalTema, setOriginalTema] = useState("")
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
 
   // Filtro de búsqueda para la vista inicial
   const [overviewSearch, setOverviewSearch] = useState("")
+  const [overviewTab, setOverviewTab] = useState<"estudiantes" | "clases">("estudiantes")
+  const [clasesSearch, setClasesSearch] = useState("")
+  const [clasesFiltroEstado, setClasesFiltroEstado] = useState<"todas" | "registradas" | "pendientes">("todas")
 
   // 1. Cargar módulos, clases y estudiantes al inicio
   useEffect(() => {
@@ -216,6 +238,8 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       setSelectedModulo(modulo)
       setClaseObservaciones(clase.observaciones || "")
       setOriginalObservaciones(clase.observaciones || "")
+      setClaseTema(clase.tema || "")
+      setOriginalTema(clase.tema || "")
       setLoadingEstudiantes(true)
 
       try {
@@ -298,12 +322,14 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   const handleDescartarCambios = () => {
     setAsistenciasLocal(JSON.parse(JSON.stringify(originalAsistencias)))
     setClaseObservaciones(originalObservaciones)
+    setClaseTema(originalTema)
     toast.info("Cambios descartados")
   }
 
   // ¿Hay cambios sin guardar respecto a la última versión guardada?
   const hayCambiosPendientes = useMemo(() => {
     if (claseObservaciones !== originalObservaciones) return true
+    if (claseTema !== originalTema) return true
 
     const ids = Object.keys(asistenciasLocal)
     if (ids.length !== Object.keys(originalAsistencias).length) return true
@@ -313,7 +339,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       const original = originalAsistencias[id]
       return !original || actual.estado !== original.estado || actual.asistio !== original.asistio
     })
-  }, [asistenciasLocal, originalAsistencias, claseObservaciones, originalObservaciones])
+  }, [asistenciasLocal, originalAsistencias, claseObservaciones, originalObservaciones, claseTema, originalTema])
 
   // Guardar asistencia
   const handleGuardar = async (continuarSiguiente: boolean = false) => {
@@ -331,7 +357,8 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       await instructorService.registrarAsistencia(
         selectedClase.id,
         payload,
-        claseObservaciones
+        claseObservaciones,
+        claseTema
       )
 
       const presentes = payload.filter((p) => p.asistio).length
@@ -348,6 +375,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                   asistencias_presentes: presentes,
                   asistencias_total: total,
                   observaciones: claseObservaciones,
+                  tema: claseTema,
                 }
               : c
           ),
@@ -365,12 +393,14 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               asistencias_presentes: presentes,
               asistencias_total: total,
               observaciones: claseObservaciones,
+              tema: claseTema,
             }
           : null
       )
 
       setOriginalAsistencias(JSON.parse(JSON.stringify(asistenciasLocal)))
       setOriginalObservaciones(claseObservaciones)
+      setOriginalTema(claseTema)
 
       // Actualizar datos del estudiante
       instructorService
@@ -442,6 +472,23 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
         })
     return [...list].sort(compararEstudiantesPorApellido)
   }, [estudiantes, overviewSearch])
+
+  // Filtrado de clases para la pestaña de Historial por Clase
+  const overviewClasesFiltradas = useMemo(() => {
+    return todasClasesPlanas.filter(({ clase, modulo }) => {
+      if (clasesFiltroEstado === "registradas" && !clase.asistencia_registrada) return false
+      if (clasesFiltroEstado === "pendientes" && clase.asistencia_registrada) return false
+
+      if (!clasesSearch.trim()) return true
+      const q = clasesSearch.toLowerCase().trim()
+      const tema = (clase.tema || "").toLowerCase()
+      const obs = (clase.observaciones || "").toLowerCase()
+      const fecha = (clase.fecha_clase || "").toLowerCase()
+      const modNombre = (modulo.nombre_modulo || "").toLowerCase()
+
+      return tema.includes(q) || obs.includes(q) || fecha.includes(q) || modNombre.includes(q)
+    })
+  }, [todasClasesPlanas, clasesSearch, clasesFiltroEstado])
 
   const pdfPreviewModal = (
     <PdfViewerModal
@@ -533,45 +580,362 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
           </div>
         </div>
 
-        {/* Tabla inicial de Asistencia por Participante */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#e5eeff] overflow-hidden">
-          {/* Header de la tabla con acciones */}
-          <div className="p-5 md:p-6 border-b border-[#e5eeff] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-[#0b1c30]">
-                Resumen de asistencia por participante
-              </h2>
-              <p className="text-xs text-[#76777d] mt-0.5">
-                {estudiantes.length} estudiante{estudiantes.length !== 1 ? "s" : ""} matriculado
-                {estudiantes.length !== 1 ? "s" : ""}
-              </p>
+        {/* Selector de sub-pestaña: Por Estudiante vs Historial por Clase */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center p-1 rounded-xl bg-white border border-[#e5eeff] shadow-xs">
+            <button
+              type="button"
+              onClick={() => setOverviewTab("estudiantes")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                overviewTab === "estudiantes"
+                  ? "bg-[#fd761a] text-white shadow-xs"
+                  : "text-[#76777d] hover:text-[#0b1c30] hover:bg-slate-50"
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Por Estudiante ({estudiantes.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOverviewTab("clases")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                overviewTab === "clases"
+                  ? "bg-[#fd761a] text-white shadow-xs"
+                  : "text-[#76777d] hover:text-[#0b1c30] hover:bg-slate-50"
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Historial por Clase ({totalClasesGeneral})</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+            <button
+              onClick={handleExportarReporte}
+              disabled={exporting}
+              className="px-3.5 py-2 rounded-xl bg-white border border-[#e5eeff] hover:bg-[#eff4ff] text-[#0b1c30] text-xs font-semibold flex items-center gap-2 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 animate-spin text-[#76777d]" />
+              ) : (
+                <Download className="w-4 h-4 text-[#76777d]" />
+              )}
+              Exportar reporte
+            </button>
+
+            {((modulos && modulos.length > 0) || modulosData.length > 0) && (
+              <button
+                onClick={handleAbrirRegistroAsistencia}
+                className="px-4 py-2 rounded-xl bg-[#fd761a] hover:bg-[#9d4300] text-white text-xs font-bold flex items-center gap-2 shadow-sm shadow-[#fd761a]/25 transition-all active:scale-[0.98] cursor-pointer"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                Registrar Asistencia
+              </button>
+            )}
+          </div>
+        </div>
+
+        {overviewTab === "clases" ? (
+          /* ─── VISTA 1: HISTORIAL Y BITÁCORA POR CLASE ─── */
+          <div className="bg-white rounded-2xl shadow-sm border border-[#e5eeff] overflow-hidden">
+            {/* Header del historial de clases */}
+            <div className="p-5 md:p-6 border-b border-[#e5eeff] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[#0b1c30]">
+                  Historial y bitácora de clases
+                </h2>
+                <p className="text-xs text-[#76777d] mt-0.5">
+                  Consulta de temas vistos, observaciones y asistencia por sesión
+                </p>
+              </div>
+
+              {/* Filtros rápidos: Todas, Registradas, Pendientes */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#eff4ff]/60 border border-[#e5eeff] self-start sm:self-auto text-xs">
+                {(["todas", "registradas", "pendientes"] as const).map((filtro) => {
+                  const count =
+                    filtro === "todas"
+                      ? totalClasesGeneral
+                      : filtro === "registradas"
+                      ? totalClasesRegistradas
+                      : totalClasesPendientes
+                  const label =
+                    filtro === "todas"
+                      ? "Todas"
+                      : filtro === "registradas"
+                      ? "Registradas"
+                      : "Pendientes"
+                  return (
+                    <button
+                      key={filtro}
+                      type="button"
+                      onClick={() => setClasesFiltroEstado(filtro)}
+                      className={`px-2.5 py-1 rounded-lg font-semibold text-xs transition-all cursor-pointer ${
+                        clasesFiltroEstado === filtro
+                          ? "bg-white text-[#0b1c30] shadow-xs"
+                          : "text-[#76777d] hover:text-[#0b1c30]"
+                      }`}
+                    >
+                      {label} ({count})
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                onClick={handleExportarReporte}
-                disabled={exporting}
-                className="px-3.5 py-2 rounded-xl bg-white border border-[#e5eeff] hover:bg-[#eff4ff] text-[#0b1c30] text-xs font-semibold flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
-              >
-                {exporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-[#76777d]" />
-                ) : (
-                  <Download className="w-4 h-4 text-[#76777d]" />
-                )}
-                Exportar reporte
-              </button>
+            {/* Buscador de clases por tema, fecha u observación */}
+            {todasClasesPlanas.length > 0 && (
+              <div className="p-4 bg-[#eff4ff]/30 border-b border-[#e5eeff]">
+                <div className="relative max-w-md">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d]" />
+                  <input
+                    type="text"
+                    value={clasesSearch}
+                    onChange={(e) => setClasesSearch(e.target.value)}
+                    placeholder="Buscar por tema visto, módulo, fecha u observación..."
+                    className="w-full pl-9 pr-3 py-1.5 bg-white rounded-xl text-xs text-[#0b1c30] border border-[#e5eeff] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#fd761a] transition-all shadow-sm"
+                  />
+                </div>
+              </div>
+            )}
 
-              {((modulos && modulos.length > 0) || modulosData.length > 0) && (
-                <button
-                  onClick={handleAbrirRegistroAsistencia}
-                  className="px-4 py-2 rounded-xl bg-[#fd761a] hover:bg-[#9d4300] text-white text-xs font-bold flex items-center gap-2 shadow-sm shadow-[#fd761a]/25 transition-all active:scale-[0.98]"
-                >
-                  <ClipboardCheck className="w-4 h-4" />
-                  Registrar Asistencia
-                </button>
+            {/* Contenido: Tabla de Clases */}
+            <div className="overflow-x-auto">
+              {loadingInitial ? (
+                <div className="p-12 text-center text-xs text-[#76777d]">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-[#fd761a]" />
+                  Cargando clases y cronograma...
+                </div>
+              ) : todasClasesPlanas.length === 0 ? (
+                <div className="p-12 text-center text-xs text-[#76777d]">
+                  No hay clases programadas para este curso.
+                </div>
+              ) : overviewClasesFiltradas.length === 0 ? (
+                <div className="p-10 text-center text-xs text-[#76777d]">
+                  No se encontraron clases que coincidan con el filtro o búsqueda.
+                </div>
+              ) : (
+                <>
+                  {/* Vista móvil (< md): Tarjetas compactas */}
+                  <div className="block md:hidden divide-y divide-[#e5eeff]">
+                    {overviewClasesFiltradas.map(({ clase, modulo }, idx) => {
+                      const totalAlumnos = clase.asistencias_total ?? estudiantes.length
+                      const presentes = clase.asistencias_presentes ?? 0
+                      const pct = totalAlumnos > 0 ? Math.round((presentes / totalAlumnos) * 100) : 0
+                      return (
+                        <div key={clase.id || idx} className="p-4 space-y-3 bg-white">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-1.5 text-xs text-[#76777d] mb-0.5">
+                                <span className="font-mono font-bold text-[#fd761a]">Sesión #{idx + 1}</span>
+                                <span>·</span>
+                                <span>Módulo {modulo.numero_orden || "1"}</span>
+                              </div>
+                              <h4 className="font-bold text-sm text-[#0b1c30]">
+                                {getFechaCompletaConAnio(clase.fecha_clase)}
+                              </h4>
+                              <p className="text-xs text-[#76777d]">
+                                {clase.hora_inicio} – {clase.hora_fin}
+                              </p>
+                            </div>
+                            {clase.asistencia_registrada ? (
+                              <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#d3e4fe] text-[#005236]">
+                                {presentes}/{totalAlumnos} ({pct}%)
+                              </span>
+                            ) : (
+                              <span className="shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ffdbca] text-[#5c2400]">
+                                Por registrar
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Tema visto */}
+                          <div className="p-2.5 rounded-lg bg-[#eff4ff]/50 border border-[#e5eeff] space-y-1">
+                            <span className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#fd761a]">
+                              <BookOpen className="w-3 h-3" />
+                              Tema visto
+                            </span>
+                            <p className="text-xs font-semibold text-[#0b1c30]">
+                              {clase.tema ? (
+                                clase.tema
+                              ) : (
+                                <span className="text-[#76777d] font-normal italic">Sin tema registrado</span>
+                              )}
+                            </p>
+                          </div>
+
+                          {/* Observación si existe */}
+                          {clase.observaciones && (
+                            <div className="text-xs text-[#45464d] flex items-start gap-1.5">
+                              <MessageSquare className="w-3.5 h-3.5 text-[#76777d] shrink-0 mt-0.5" />
+                              <span className="italic">"{clase.observaciones}"</span>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              cargarAsistenciaDeClase(clase, modulo)
+                              setViewMode("workspace")
+                            }}
+                            className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-[#eff4ff] text-xs font-bold text-[#0b1c30] border border-[#e5eeff] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <span>{clase.asistencia_registrada ? "Ver / Editar asistencia" : "Tomar asistencia"}</span>
+                            <ArrowRight className="w-3.5 h-3.5 text-[#fd761a]" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Vista Desktop (>= md): Tabla completa */}
+                  <table className="hidden md:table w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#e5eeff] bg-[#f8faff] text-[#76777d] font-semibold">
+                        <th className="py-3 px-4 font-mono w-14">#</th>
+                        <th className="py-3 px-4 min-w-[170px]">Sesión y Fecha</th>
+                        <th className="py-3 px-4 min-w-[140px]">Módulo</th>
+                        <th className="py-3 px-4 min-w-[220px]">Tema Visto en Clase</th>
+                        <th className="py-3 px-4 min-w-[160px]">Asistencia</th>
+                        <th className="py-3 px-4 min-w-[180px]">Observaciones</th>
+                        <th className="py-3 px-4 text-right w-28">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#e5eeff]">
+                      {overviewClasesFiltradas.map(({ clase, modulo }, idx) => {
+                        const totalAlumnos = clase.asistencias_total ?? estudiantes.length
+                        const presentes = clase.asistencias_presentes ?? 0
+                        const pct = totalAlumnos > 0 ? Math.round((presentes / totalAlumnos) * 100) : 0
+                        return (
+                          <tr
+                            key={clase.id || idx}
+                            className="hover:bg-[#eff4ff]/40 transition-colors cursor-pointer"
+                            onClick={() => {
+                              cargarAsistenciaDeClase(clase, modulo)
+                              setViewMode("workspace")
+                            }}
+                          >
+                            <td className="py-3.5 px-4 font-mono text-[#76777d] font-bold">
+                              #{idx + 1}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="font-bold text-[#0b1c30] text-xs">
+                                {getFechaCompletaConAnio(clase.fecha_clase)}
+                              </div>
+                              <span className="text-[11px] text-[#76777d] flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3" />
+                                {clase.hora_inicio} – {clase.hora_fin}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span
+                                className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[11px] font-semibold max-w-[150px] truncate"
+                                title={modulo.nombre_modulo}
+                              >
+                                Mód. {modulo.numero_orden || "1"}: {modulo.nombre_modulo}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {clase.tema ? (
+                                <div className="flex items-start gap-1.5 max-w-sm">
+                                  <BookOpen className="w-3.5 h-3.5 text-[#fd761a] shrink-0 mt-0.5" />
+                                  <span className="font-semibold text-xs text-[#0b1c30] line-clamp-2">
+                                    {clase.tema}
+                                  </span>
+                                </div>
+                              ) : clase.asistencia_registrada ? (
+                                <span className="text-xs text-[#76777d] italic">Sin tema registrado</span>
+                              ) : (
+                                <span className="text-xs text-[#76777d]">Pendiente</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              {clase.asistencia_registrada ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-[#0b1c30] text-xs">
+                                      {presentes} / {totalAlumnos}
+                                    </span>
+                                    <span
+                                      className="px-1.5 py-0.2 rounded text-[10px] font-bold"
+                                      style={{
+                                        backgroundColor:
+                                          pct >= 70 ? "#d3e4fe" : pct >= 50 ? "#ffdbca" : "#ffdad6",
+                                        color:
+                                          pct >= 70 ? "#005236" : pct >= 50 ? "#5c2400" : "#93000a",
+                                      }}
+                                    >
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                  <div className="w-24 h-1.5 bg-[#e5eeff] rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all duration-500"
+                                      style={{
+                                        width: `${Math.min(pct, 100)}%`,
+                                        backgroundColor:
+                                          pct >= 70 ? "#009668" : pct >= 50 ? "#fd761a" : "#ba1a1a",
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ffdbca] text-[#5c2400]">
+                                  <Clock className="w-3 h-3" />
+                                  Por registrar
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {clase.observaciones ? (
+                                <div
+                                  className="flex items-start gap-1 max-w-xs text-xs text-[#45464d]"
+                                  title={clase.observaciones}
+                                >
+                                  <MessageSquare className="w-3 h-3 text-[#76777d] shrink-0 mt-0.5" />
+                                  <span className="line-clamp-2">{clase.observaciones}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[#76777d]">—</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  cargarAsistenciaDeClase(clase, modulo)
+                                  setViewMode("workspace")
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-[#fd761a] hover:bg-[#ffdbca]/40 transition-colors cursor-pointer"
+                              >
+                                <span>{clase.asistencia_registrada ? "Ver" : "Tomar"}</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </>
               )}
             </div>
           </div>
+        ) : (
+          /* ─── VISTA 2: RESUMEN POR ESTUDIANTE (EXISTENTE) ─── */
+          <div className="bg-white rounded-2xl shadow-sm border border-[#e5eeff] overflow-hidden">
+            {/* Header de la tabla con acciones */}
+            <div className="p-5 md:p-6 border-b border-[#e5eeff] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[#0b1c30]">
+                  Resumen de asistencia por participante
+                </h2>
+                <p className="text-xs text-[#76777d] mt-0.5">
+                  {estudiantes.length} estudiante{estudiantes.length !== 1 ? "s" : ""} matriculado
+                  {estudiantes.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
 
           {/* Barra de búsqueda de la tabla */}
           {estudiantes.length > 0 && (
@@ -739,6 +1103,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
             )}
           </div>
         </div>
+        )}
         {pdfPreviewModal}
       </div>
     )
@@ -763,6 +1128,8 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       asistenciasLocal={asistenciasLocal}
       claseObservaciones={claseObservaciones}
       setClaseObservaciones={setClaseObservaciones}
+      claseTema={claseTema}
+      setClaseTema={setClaseTema}
       saving={saving}
       hayCambiosPendientes={hayCambiosPendientes}
       handleToggleEstado={handleToggleEstado}

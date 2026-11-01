@@ -25,6 +25,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   MessageSquare,
+  BookOpen,
 } from "lucide-react"
 import { parseLocalDate } from "@/lib/utils"
 import type { EstudianteCurso, ClaseItem } from "@/services/instructor.service"
@@ -124,6 +125,8 @@ interface CursoAsistenciaWorkspaceProps {
   asistenciasLocal: Record<string, AsistenciaRegistro>
   claseObservaciones: string
   setClaseObservaciones: React.Dispatch<React.SetStateAction<string>>
+  claseTema: string
+  setClaseTema: React.Dispatch<React.SetStateAction<string>>
   saving: boolean
   hayCambiosPendientes: boolean
   handleToggleEstado: (matriculaId: string, nuevoEstado: "presente" | "ausente") => void
@@ -157,6 +160,8 @@ export function CursoAsistenciaWorkspace({
   asistenciasLocal,
   claseObservaciones,
   setClaseObservaciones,
+  claseTema,
+  setClaseTema,
   saving,
   hayCambiosPendientes = true,
   handleToggleEstado,
@@ -180,15 +185,18 @@ export function CursoAsistenciaWorkspace({
   const [claseFiltro, setClaseFiltro] = useState<FiltroEstado>("todas")
   const [expandedModulos, setExpandedModulos] = useState<Record<string, boolean>>({})
 
+  // Control para mostrar/ocultar observaciones de la clase
+  const [showObservaciones, setShowObservaciones] = useState(() => Boolean(claseObservaciones.trim()))
+
   // Búsqueda de estudiantes en el listado
   const [estudianteSearch, setEstudianteSearch] = useState("")
 
   useEffect(() => {
     setEstudianteSearch("")
-  }, [selectedClase?.id])
-
-  // Control para mostrar/ocultar observaciones de la clase
-  const [showObservaciones, setShowObservaciones] = useState(() => Boolean(claseObservaciones.trim()))
+    if (claseObservaciones.trim()) {
+      setShowObservaciones(true)
+    }
+  }, [selectedClase?.id, claseObservaciones])
 
   // Modal para editar fecha/hora (solo admin)
   const [editClase, setEditClase] = useState<ClaseItem | null>(null)
@@ -456,10 +464,14 @@ export function CursoAsistenciaWorkspace({
                 <button
                   type="button"
                   onClick={() => setShowObservaciones((prev) => !prev)}
-                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 shrink-0 transition-colors"
+                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
                 >
                   <MessageSquare className="w-3 h-3" />
-                  {showObservaciones ? "Ocultar notas" : "Observaciones"}
+                  {showObservaciones
+                    ? "Ocultar notas"
+                    : claseObservaciones.trim()
+                    ? "Ver notas"
+                    : "+ Observación"}
                 </button>
               </div>
             ) : (
@@ -470,34 +482,60 @@ export function CursoAsistenciaWorkspace({
                 <button
                   type="button"
                   onClick={() => setShowObservaciones((prev) => !prev)}
-                  className="text-[11px] font-semibold text-[#fd761a] hover:text-[#9d4300] flex items-center gap-1 shrink-0 transition-colors"
+                  className="text-[11px] font-semibold text-[#fd761a] hover:text-[#9d4300] flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
                 >
                   <MessageSquare className="w-3 h-3" />
-                  {showObservaciones ? "Ocultar notas" : "+ Observación"}
+                  {showObservaciones
+                    ? "Ocultar notas"
+                    : claseObservaciones.trim()
+                    ? "Ver notas"
+                    : "+ Observación"}
                 </button>
               </div>
             )}
 
-            {/* Observaciones colapsables */}
-            {showObservaciones && (
-              <div className="space-y-1 pt-1">
+            {/* Tema visto en clase y Observaciones */}
+            <div className="space-y-2 pt-1">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs text-[#0b1c30] font-semibold">
-                  <span className="flex items-center gap-1 text-[11px] text-[#76777d]">
-                    <Edit3 className="w-3 h-3" />
-                    Observaciones de la clase (opcional)
+                  <span className="flex items-center gap-1.5 text-[11px] text-[#45464d]">
+                    <BookOpen className="w-3.5 h-3.5 text-[#fd761a]" />
+                    <span>Tema visto en clase</span>
+                    <span className="text-[10px] text-[#76777d] font-normal hidden sm:inline">(contenido o unidad abordada)</span>
                   </span>
-                  <span className="text-[10px] text-[#76777d]">{claseObservaciones.length}/250</span>
+                  <span className="text-[10px] text-[#76777d]">{claseTema.length}/200</span>
                 </div>
-                <textarea
-                  value={claseObservaciones}
-                  onChange={(e) => setClaseObservaciones(e.target.value)}
-                  maxLength={250}
-                  rows={2}
-                  placeholder="Escribe comentarios u observaciones relevantes sobre esta sesión..."
-                  className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#fd761a] transition-all resize-none shadow-xs"
+                <input
+                  type="text"
+                  value={claseTema}
+                  onChange={(e) => setClaseTema(e.target.value)}
+                  maxLength={200}
+                  placeholder="Ej: Unidad 2: Introducción a verbos irregulares y pronunciación..."
+                  className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#fd761a] transition-all shadow-xs"
                 />
               </div>
-            )}
+
+              {/* Observaciones colapsables */}
+              {showObservaciones && (
+                <div className="space-y-1 pt-0.5">
+                  <div className="flex items-center justify-between text-xs text-[#0b1c30] font-semibold">
+                    <span className="flex items-center gap-1 text-[11px] text-[#76777d]">
+                      <Edit3 className="w-3 h-3" />
+                      Observaciones o notas de la sesión (opcional)
+                    </span>
+                    <span className="text-[10px] text-[#76777d]">{claseObservaciones.length}/250</span>
+                  </div>
+                  <textarea
+                    value={claseObservaciones}
+                    onChange={(e) => setClaseObservaciones(e.target.value)}
+                    maxLength={250}
+                    rows={2}
+                    placeholder="Escribe comentarios u observaciones relevantes sobre esta sesión..."
+                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#fd761a] transition-all resize-none shadow-xs"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ─── TOOLBAR DE ESTUDIANTES: BUSCADOR Y ACCIONES RÁPIDAS ─── */}
@@ -945,6 +983,12 @@ export function CursoAsistenciaWorkspace({
                                                 </>
                                               )}
                                             </span>
+                                            {clase.tema && (
+                                              <span className="inline-flex items-center gap-1 text-[10px] text-[#fd761a] font-medium truncate mt-0.5 max-w-xs">
+                                                <BookOpen className="w-2.5 h-2.5 shrink-0" />
+                                                <span className="truncate">{clase.tema}</span>
+                                              </span>
+                                            )}
                                           </div>
                                         </div>
 

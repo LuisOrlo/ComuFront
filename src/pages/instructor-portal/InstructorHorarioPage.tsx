@@ -994,6 +994,19 @@ export function InstructorHorarioPage() {
                       </div>
                     </div>
 
+                    {/* Tema visto en la clase si existe */}
+                    {claseDetalle.tema ? (
+                      <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200/80 space-y-1">
+                        <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-[#fd761a]">
+                          <BookOpen className="w-3.5 h-3.5 text-[#fd761a]" />
+                          Tema visto en clase
+                        </span>
+                        <p className="text-xs font-semibold text-slate-800">
+                          {claseDetalle.tema}
+                        </p>
+                      </div>
+                    ) : null}
+
                     {/* Observaciones de la clase si existen */}
                     {claseDetalle.observaciones ? (
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">

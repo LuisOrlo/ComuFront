@@ -51,6 +51,7 @@ export interface InstructorClaseHorario {
   hora_fin: string
   asistencia_registrada: boolean
   observaciones?: string
+  tema?: string
 }
 
 export interface InstructorClaseDetalle extends InstructorClaseHorario {
@@ -68,6 +69,7 @@ export interface ClaseItem {
   asistencias_presentes?: number
   asistencias_total?: number
   observaciones?: string
+  tema?: string
 }
 
 export interface EstudianteCurso {
@@ -198,10 +200,13 @@ export const instructorService = {
     asistio: boolean
     estado: string
     observaciones: string
-  }>, claseObservaciones?: string) {
+  }>, claseObservaciones?: string, claseTema?: string) {
     const body: Record<string, unknown> = { asistencias }
     if (claseObservaciones !== undefined) {
       body.clase_observaciones = claseObservaciones
+    }
+    if (claseTema !== undefined) {
+      body.tema = claseTema
     }
     const response = await api.post(`/instructor/clases/${claseId}/asistencia`, body)
     return response.data
