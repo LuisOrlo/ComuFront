@@ -7,17 +7,13 @@ import {
   Pencil,
   Power,
   GraduationCap,
-  Mail,
   Phone,
-  LayoutGrid,
-  List,
   CheckCircle2,
   Users,
   RefreshCw,
   X,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
 } from "lucide-react"
 import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
@@ -29,7 +25,6 @@ import { PersonaFormModal } from "@/pages/personas/PersonaFormModal"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 
 type StatusFilter = "all" | "active" | "inactive"
-type ViewMode = "table" | "grid"
 
 export function InstructoresPage() {
   const navigate = useNavigate()
@@ -43,7 +38,6 @@ export function InstructoresPage() {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<StatusFilter>("active")
   const [ciudadId, setCiudadId] = useState<number | "all">("all")
-  const [viewMode, setViewMode] = useState<ViewMode>("table")
 
   // Pagination states
   const [page, setPage] = useState(1)
@@ -162,7 +156,7 @@ export function InstructoresPage() {
                   Instructores
                 </h1>
                 <p className="text-xs text-gray-500">
-                  Gestión del equipo docente, especialidades y carga académica
+                  Gestión del equipo docente y especialidades
                 </p>
               </div>
             </div>
@@ -256,7 +250,7 @@ export function InstructoresPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar instructor por nombre, apellido o cédula..."
+              placeholder="Buscar instructor por nombre o apellido..."
               className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-9 text-xs transition focus:border-[#fd761a] focus:ring-1 focus:ring-[#fd761a] focus:outline-none"
             />
             {search && (
@@ -309,36 +303,10 @@ export function InstructoresPage() {
                 </button>
               ))}
             </div>
-
-            {/* View Mode Toggle */}
-            <div className="hidden items-center rounded-xl border border-gray-200 bg-gray-50/70 p-1 sm:inline-flex">
-              <button
-                onClick={() => setViewMode("table")}
-                className={`rounded-lg p-1.5 transition ${
-                  viewMode === "table"
-                    ? "bg-white text-gray-900 shadow-2xs"
-                    : "text-gray-400 hover:text-gray-700"
-                }`}
-                title="Vista en tabla"
-              >
-                <List size={15} />
-              </button>
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`rounded-lg p-1.5 transition ${
-                  viewMode === "grid"
-                    ? "bg-white text-gray-900 shadow-2xs"
-                    : "text-gray-400 hover:text-gray-700"
-                }`}
-                title="Vista en cuadrícula"
-              >
-                <LayoutGrid size={15} />
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Content Section (Table or Grid) */}
+        {/* Content Section (Table) */}
         {loading ? (
           <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border bg-white p-12 text-center" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
             <div className="size-9 animate-spin rounded-full border-3 border-gray-200 border-t-[#fd761a]" />
@@ -377,145 +345,6 @@ export function InstructoresPage() {
               </button>
             </div>
           </div>
-        ) : viewMode === "grid" ? (
-          /* ==================== GRID / CARD VIEW ==================== */
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((p) => {
-              const initials = `${p.nombres?.[0] || ""}${p.apellidos?.[0] || ""}`.toUpperCase()
-              const ciudadNombre = getCiudadNombre(p.ciudad)
-              const cursosAct = p.cursos_actuales_count || 0
-              const cursosProx = p.cursos_proximos_count || 0
-              const talleresAct = p.talleres_actuales_count || 0
-              const talleresProx = p.talleres_proximos_count || 0
-
-              return (
-                <div
-                  key={p.id}
-                  className="flex flex-col justify-between rounded-2xl border bg-white p-5 shadow-xs transition hover:shadow-md"
-                  style={{ borderColor: COLORS.BORDER_SUBTLE }}
-                >
-                  {/* Card Header */}
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-base font-bold text-white shadow-xs"
-                          style={{ background: "linear-gradient(135deg, #fd761a 0%, #e05e07 100%)" }}
-                        >
-                          {initials}
-                        </div>
-                        <div className="min-w-0">
-                          <h3
-                            onClick={() => navigate(`/instructores/${p.id}`)}
-                            className="cursor-pointer truncate font-bold text-gray-900 text-sm hover:text-[#fd761a] transition-colors"
-                          >
-                            {p.nombres} {p.apellidos}
-                          </h3>
-                          <span className="text-[11px] font-mono text-gray-400 block">
-                            {p.cedula ? `CI: ${p.cedula}` : "Sin cédula"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          p.es_activo
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        <span className={`size-1.5 rounded-full ${p.es_activo ? "bg-emerald-500" : "bg-gray-400"}`} />
-                        {p.es_activo ? "Activo" : "Inactivo"}
-                      </span>
-                    </div>
-
-                    {/* Specialty Pill */}
-                    <div className="mt-3.5">
-                      <span className="inline-block rounded-lg bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-800 border border-orange-200 max-w-full truncate">
-                        {p.perfilInstructor?.especialidad || "Especialidad no especificada"}
-                      </span>
-                    </div>
-
-                    {/* Contact items */}
-                    <div className="mt-3.5 space-y-1.5 text-xs text-gray-500">
-                      {p.correo && (
-                        <div className="flex items-center gap-1.5 truncate">
-                          <Mail size={13} className="text-gray-400 shrink-0" />
-                          <span className="truncate">{p.correo}</span>
-                        </div>
-                      )}
-                      {p.celular && (
-                        <div className="flex items-center gap-1.5">
-                          <Phone size={13} className="text-gray-400 shrink-0" />
-                          <span>{p.celular}</span>
-                        </div>
-                      )}
-                      {ciudadNombre && (
-                        <div className="pt-1">
-                          <CiudadBadge ciudad={ciudadNombre} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Bottom / Stats & Actions */}
-                  <div className="mt-5 pt-3.5 border-t" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <div className="mb-3.5 flex items-center justify-between text-xs">
-                      <span className="text-gray-500">Carga académica:</span>
-                      <span className="font-semibold text-gray-800 flex items-center gap-1.5">
-                        <span>
-                          {cursosAct > 0
-                            ? `${cursosAct} en curso${cursosProx > 0 ? ` (+${cursosProx} próx.)` : ""}`
-                            : cursosProx > 0
-                            ? `${cursosProx} próx.`
-                            : "0 cursos"}
-                        </span>
-                        <span className="text-gray-300">·</span>
-                        <span>
-                          {talleresAct > 0
-                            ? `${talleresAct} en curso${talleresProx > 0 ? ` (+${talleresProx} próx.)` : ""}`
-                            : talleresProx > 0
-                            ? `${talleresProx} próx.`
-                            : "0 talleres"}
-                        </span>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => navigate(`/instructores/${p.id}`)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-100 hover:text-gray-900 active:scale-[0.98]"
-                      >
-                        <Eye size={13} />
-                        Ver Detalle
-                        <ArrowRight size={12} className="text-gray-400" />
-                      </button>
-
-                      <button
-                        onClick={() => setModal(p.id)}
-                        title="Editar instructor"
-                        className="inline-flex items-center justify-center size-8.5 rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
-                      >
-                        <Pencil size={14} />
-                      </button>
-
-                      <button
-                        onClick={() => setConfirmToggle(p)}
-                        title={p.es_activo ? "Desactivar instructor" : "Reactivar instructor"}
-                        className={`inline-flex items-center justify-center size-8.5 rounded-xl border transition ${
-                          p.es_activo
-                            ? "border-amber-200 text-amber-700 hover:bg-amber-50"
-                            : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                        }`}
-                      >
-                        <Power size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
         ) : (
           /* ==================== TABLE VIEW ==================== */
           <div
@@ -530,11 +359,9 @@ export function InstructoresPage() {
                 >
                   <tr>
                     <th className="p-4">Instructor</th>
-                    <th className="p-4">Cédula</th>
                     <th className="p-4">Contacto</th>
                     <th className="p-4">Ciudad</th>
                     <th className="p-4">Especialidad</th>
-                    <th className="p-4">Carga Académica</th>
                     <th className="p-4 text-center">Estado</th>
                     <th className="p-4 text-right">Acciones</th>
                   </tr>
@@ -546,12 +373,6 @@ export function InstructoresPage() {
                   {rows.map((p) => {
                     const initials = `${p.nombres?.[0] || ""}${p.apellidos?.[0] || ""}`.toUpperCase()
                     const ciudadNombre = getCiudadNombre(p.ciudad)
-                    const cursosAct = p.cursos_actuales_count || 0
-                    const cursosProx = p.cursos_proximos_count || 0
-                    const totalCursos = cursosAct + cursosProx
-                    const talleresAct = p.talleres_actuales_count || 0
-                    const talleresProx = p.talleres_proximos_count || 0
-                    const totalTalleres = talleresAct + talleresProx
 
                     return (
                       <tr
@@ -583,11 +404,6 @@ export function InstructoresPage() {
                           </div>
                         </td>
 
-                        {/* Cédula */}
-                        <td className="p-4 font-mono font-medium text-gray-700">
-                          {p.cedula || "—"}
-                        </td>
-
                         {/* Contacto */}
                         <td className="p-4">
                           <div className="space-y-0.5">
@@ -615,65 +431,6 @@ export function InstructoresPage() {
                           <span className="inline-block rounded-md bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-800 border border-orange-200 max-w-[200px] truncate">
                             {p.perfilInstructor?.especialidad || "Sin especificar"}
                           </span>
-                        </td>
-
-                        {/* Carga Académica */}
-                        <td className="p-4">
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            {/* Cursos */}
-                            {totalCursos > 0 ? (
-                              <span
-                                className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200"
-                                title={`${cursosAct} en curso · ${cursosProx} próximos`}
-                              >
-                                {cursosAct > 0 ? (
-                                  <>
-                                    <span>{cursosAct} en curso</span>
-                                    {cursosProx > 0 && (
-                                      <span className="text-blue-500 font-normal">
-                                        (+{cursosProx} próx.)
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span>
-                                    {cursosProx} {cursosProx === 1 ? "curso próx." : "cursos próx."}
-                                  </span>
-                                )}
-                              </span>
-                            ) : (
-                              <span className="rounded-md bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-400 border border-gray-200">
-                                0 cursos
-                              </span>
-                            )}
-
-                            {/* Talleres */}
-                            {totalTalleres > 0 ? (
-                              <span
-                                className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700 border border-purple-200"
-                                title={`${talleresAct} en curso · ${talleresProx} próximos`}
-                              >
-                                {talleresAct > 0 ? (
-                                  <>
-                                    <span>{talleresAct} en curso</span>
-                                    {talleresProx > 0 && (
-                                      <span className="text-purple-500 font-normal">
-                                        (+{talleresProx} próx.)
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span>
-                                    {talleresProx} {talleresProx === 1 ? "taller próx." : "talleres próx."}
-                                  </span>
-                                )}
-                              </span>
-                            ) : (
-                              <span className="rounded-md bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-400 border border-gray-200">
-                                0 talleres
-                              </span>
-                            )}
-                          </div>
                         </td>
 
                         {/* Estado */}

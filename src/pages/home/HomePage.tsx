@@ -368,7 +368,7 @@ export function HomePage() {
               )}
             </article>
 
-            <article className="flex items-center gap-3 rounded-xl bg-[#131b2e] p-4 text-white shadow-sm"><div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-[#ff9a52]"><HugeiconsIcon icon={Alert01Icon} size={21} /></div><div className="min-w-0"><p className="text-xs font-bold">Sugerencia de cobro</p><p className="mt-1 text-[11px] leading-4 text-[#bec6e0]">{kpis.pagosPendientes > 0 ? `Hay un saldo pendiente de ${formatCurrency(kpis.pagosPendientes)} para revisar.` : "No hay saldo pendiente por cobrar en este momento."}</p></div></article>
+            
           </aside>
         </section>
       </div>

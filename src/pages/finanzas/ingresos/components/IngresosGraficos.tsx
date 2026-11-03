@@ -126,8 +126,8 @@ export function IngresosGraficos({
           <div className="w-full flex flex-col gap-4">
             {grafico.length > 0 ? (
               <>
-                <div className="w-full h-64">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full h-64 min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart
                       data={grafico.map((g: any) => ({
                         ...g,
@@ -239,8 +239,8 @@ export function IngresosGraficos({
                 </div>
 
                 {/* Gráfico de dona complementario */}
-                <div className="h-56 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-56 w-full min-w-0 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <PieChart>
                       <Pie
                         data={graficoMetodo}
@@ -318,8 +318,8 @@ export function IngresosGraficos({
                 </div>
 
                 {/* Horizontal bar chart representation */}
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart
                       data={graficoCategorias}
                       layout="vertical"

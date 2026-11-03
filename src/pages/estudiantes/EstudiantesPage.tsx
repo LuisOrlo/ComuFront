@@ -12,6 +12,7 @@ import {
   Clock04Icon,
   FileUploadIcon,
   RefreshIcon,
+  NoteAddIcon,
 } from "@hugeicons/core-free-icons"
 import type { IconSvgElement } from "@hugeicons/react"
 import { TodosTab } from "./tabs/TodosTab"
@@ -97,63 +98,88 @@ export function EstudiantesPage() {
              
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Herramientas de datos */}
               {activeTab === "todos" && (
+                <div
+                  role="group"
+                  aria-label="Herramientas de datos"
+                  className="inline-flex w-full sm:w-auto items-center rounded-xl bg-white border border-[#c6c6cd]/30 shadow-sm p-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSoftReloading(true)
+                      queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
+                      queryClient.refetchQueries({ queryKey: ["estudiantes"] })
+                      setTimeout(() => setSoftReloading(false), 1200)
+                    }}
+                    disabled={softReloading}
+                    className="flex-1 sm:flex-none h-8 px-2.5 rounded-lg text-[#0b1c30] text-xs font-semibold hover:bg-[#eff4ff] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-60 cursor-pointer"
+                    title="Actualizar listado suavemente"
+                    aria-label="Actualizar listado"
+                  >
+                    <HugeiconsIcon
+                      icon={RefreshIcon}
+                      size={16}
+                      className={softReloading ? "text-[#fd761a] animate-spin" : "text-[#76777d]"}
+                    />
+                    <span>Actualizar</span>
+                  </button>
+
+                  <span className="mx-0.5 h-5 w-px bg-[#c6c6cd]/40" aria-hidden="true" />
+
+                  <Link
+                    to="/estudiantes/importar"
+                    title="Importar estudiantes"
+                    className="flex-1 sm:flex-none h-8 px-2.5 rounded-lg text-[#0b1c30] text-xs font-semibold hover:bg-[#eff4ff] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap select-none cursor-pointer"
+                  >
+                    <HugeiconsIcon icon={FileUploadIcon} size={16} className="text-[#76777d]" />
+                    <span>Importar</span>
+                  </Link>
+
+                  <span className="mx-0.5 h-5 w-px bg-[#c6c6cd]/40" aria-hidden="true" />
+
+                  <button
+                    type="button"
+                    onClick={() => setExportOpen(true)}
+                    title="Exportar datos"
+                    className="flex-1 sm:flex-none h-8 px-2.5 rounded-lg text-[#0b1c30] text-xs font-semibold hover:bg-[#eff4ff] transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                  >
+                    <HugeiconsIcon icon={Download04Icon} size={16} className="text-[#76777d]" />
+                    <span>Exportar</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Separador entre grupos (solo escritorio) */}
+              {activeTab === "todos" && (
+                <span className="hidden lg:block h-8 w-px bg-[#c6c6cd]/40" aria-hidden="true" />
+              )}
+
+              {/* Acciones de creación */}
+              <div
+                role="group"
+                aria-label="Acciones de creación"
+                className="flex w-full sm:w-auto items-center gap-2"
+              >
                 <Link
-                  to="/estudiantes/importar"
-                  className="h-10 px-4 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 select-none"
+                  to="/estudiantes/nuevo/inscribir"
+                  title="Registrar estudiante y continuar con curso, oferta y pago"
+                  className="flex-1 sm:flex-none h-10 px-4 sm:px-5 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center justify-center gap-2 border border-[#c6c6cd]/30 whitespace-nowrap select-none"
                 >
-                  <HugeiconsIcon icon={FileUploadIcon} size={16} className="text-[#fd761a]" />
-                  <span>Importar estudiantes</span>
+                  <HugeiconsIcon icon={NoteAddIcon} size={18} className="text-[#76777d]" />
+                  <span>Nueva matrícula</span>
                 </Link>
-              )}
-              {activeTab === "todos" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSoftReloading(true)
-                    queryClient.invalidateQueries({ queryKey: ["estudiantes"] })
-                    queryClient.refetchQueries({ queryKey: ["estudiantes"] })
-                    setTimeout(() => setSoftReloading(false), 1200)
-                  }}
-                  disabled={softReloading}
-                  className="h-10 px-3.5 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 disabled:opacity-60"
-                  title="Actualizar listado suavemente"
+                <Link
+                  to="/estudiantes/nuevo"
+                  title="Solo registrar estudiante, sin curso, matrícula ni pago"
+                  className="flex-1 sm:flex-none h-10 px-4 sm:px-5 rounded-lg bg-[#fd761a] text-white text-xs font-semibold hover:opacity-95 transition-all flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(253,118,26,0.25)] whitespace-nowrap select-none"
                 >
-                  <HugeiconsIcon
-                    icon={RefreshIcon}
-                    size={16}
-                    className={softReloading ? "text-[#fd761a] animate-spin" : "text-[#76777d]"}
-                  />
-                  <span className="hidden sm:inline">Actualizar</span>
-                </button>
-              )}
-              {activeTab === "todos" && (
-                <button
-                  type="button"
-                  onClick={() => setExportOpen(true)}
-                  className="h-10 px-4 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30"
-                >
-                  <HugeiconsIcon icon={Download04Icon} size={18} />
-                  <span>Exportar datos</span>
-                </button>
-              )}
-              <Link
-                to="/estudiantes/nuevo"
-                title="Solo registrar estudiante, sin curso, matrícula ni pago"
-                className="h-10 px-4 sm:px-5 rounded-lg bg-[#fd761a] text-white text-xs font-semibold shadow-sm hover:opacity-95 transition-all flex items-center gap-2 cursor-pointer shadow-[0_2px_8px_rgba(253,118,26,0.25)] select-none"
-              >
-                <HugeiconsIcon icon={AddCircleIcon} size={18} />
-                <span>Nuevo estudiante</span>
-              </Link>
-              <Link
-                to="/estudiantes/nuevo/inscribir"
-                title="Registrar estudiante y continuar con curso, oferta y pago"
-                className="h-10 px-4 sm:px-5 rounded-lg bg-white text-[#0b1c30] text-xs font-semibold shadow-sm hover:bg-[#e5eeff] transition-all flex items-center gap-2 cursor-pointer border border-[#c6c6cd]/30 select-none"
-              >
-                
-                <span>Nueva matrícula</span>
-              </Link>
+                  <HugeiconsIcon icon={AddCircleIcon} size={18} />
+                  <span>Nuevo estudiante</span>
+                </Link>
+              </div>
             </div>
           </header>
 

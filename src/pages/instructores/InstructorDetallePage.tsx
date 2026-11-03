@@ -13,8 +13,6 @@ import {
   Pencil,
   Power,
   ExternalLink,
-  Mail,
-  Phone,
   ShieldCheck,
   Calendar,
   CheckCircle2,
@@ -23,6 +21,7 @@ import {
   Eye,
   Banknote,
   Plus,
+  EllipsisVertical,
 } from "lucide-react"
 import { toast } from "sonner"
 import { COLORS } from "@/lib/constants"
@@ -89,6 +88,8 @@ export function InstructorDetallePage() {
   const [showPagoModal, setShowPagoModal] = useState(false)
   const [selectedPago, setSelectedPago] = useState<PagoDetalleItem | null>(null)
   const [togglingState, setTogglingState] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [showToggleModal, setShowToggleModal] = useState(false)
 
   // PDF Preview State
   const [cvBlobUrl, setCvBlobUrl] = useState<string | null>(null)
@@ -223,13 +224,12 @@ export function InstructorDetallePage() {
 
   const handleToggleActivo = async () => {
     if (!data) return
-    const p = data.persona
-    const nextState = !p.es_activo
-    if (!confirm(`¿${nextState ? "Reactivar" : "Desactivar"} a ${p.nombres} ${p.apellidos}?`)) return
+    const nextState = !data.persona.es_activo
     setTogglingState(true)
     try {
       await instructoresService.setActivo(id, nextState)
       toast.success(nextState ? "Instructor reactivado" : "Instructor desactivado")
+      setShowToggleModal(false)
       void load()
     } catch {
       toast.error("No se pudo cambiar el estado del instructor")
@@ -326,100 +326,197 @@ export function InstructorDetallePage() {
 
       {/* Header Banner */}
       <header
-        className="sticky top-0 z-20 shrink-0 border-b bg-white/95 px-4 py-4 shadow-[0_1px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8"
+        className="relative z-20 shrink-0 border-b bg-white px-4 py-4 shadow-[0_1px_8px_rgba(0,0,0,0.04)] sm:px-6 lg:px-8"
         style={{ borderColor: COLORS.BORDER_SUBTLE }}
       >
-        <div className="mx-auto flex max-w-7xl flex-col gap-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* Left: Back button + Avatar + Name + Subtitle */}
-            <div className="flex items-center gap-3.5">
+        <div className="mx-auto max-w-7xl">
+          {/* Fila 1: identidad + acciones */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
               <button
                 onClick={() => navigate("/instructores")}
-                className="flex size-9 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fd761a] focus-visible:ring-offset-2"
                 title="Volver a instructores"
               >
                 <ArrowLeft size={18} />
               </button>
 
-              <div
-                className="flex size-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-sm"
-                style={{ background: "linear-gradient(135deg, #fd761a 0%, #e05e07 100%)" }}
-              >
-                {initials}
+              <div className="relative shrink-0">
+                <div
+                  className="flex size-14 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-sm ring-2 ring-white sm:size-16 sm:text-xl"
+                  style={{ background: "linear-gradient(135deg, #fd761a 0%, #e05e07 100%)" }}
+                >
+                  {initials}
+                </div>
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 size-4 rounded-full border-2 border-white ${
+                    p.es_activo ? "bg-emerald-500" : "bg-gray-400"
+                  }`}
+                  title={p.es_activo ? "Activo" : "Inactivo"}
+                />
               </div>
 
-              <div>
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                  <h1 className="break-words text-xl font-bold tracking-tight text-gray-900 sm:text-2xl lg:text-[28px]">
                     {p.nombres} {p.apellidos}
                   </h1>
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      p.es_activo ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-600"
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
+                      p.es_activo
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-gray-200 bg-gray-100 text-gray-600"
                     }`}
                   >
                     <span className={`size-1.5 rounded-full ${p.es_activo ? "bg-emerald-500" : "bg-gray-400"}`} />
                     {p.es_activo ? "Activo" : "Inactivo"}
                   </span>
-                  {data.perfil?.especialidad && (
-                    <span className="hidden rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-700 border border-orange-200 sm:inline-block">
-                      {data.perfil.especialidad}
-                    </span>
-                  )}
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                  {p.cedula && <span>CI: <b>{p.cedula}</b></span>}
-                  {p.celular && (
-                    <span className="flex items-center gap-1">
-                      <Phone size={12} className="text-gray-400" />
-                      {p.celular}
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {data.perfil?.especialidad ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-800">
+                      <GraduationCap size={12} />
+                      {data.perfil.especialidad}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                      <GraduationCap size={12} />
+                      Sin especialidad definida
                     </span>
                   )}
-                  {p.correo && (
-                    <span className="flex items-center gap-1">
-                      <Mail size={12} className="text-gray-400" />
-                      {p.correo}
+
+                  {data.cuenta?.username && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600">
+                      <ShieldCheck size={12} className="text-emerald-600" />
+                      @{data.cuenta.username}
                     </span>
-                  )}
-                  {Boolean(getCiudadNombre(p.ciudad)) && (
-                    <CiudadBadge ciudad={getCiudadNombre(p.ciudad)} />
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Right: Actions */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setShowPagoModal(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 transition-all hover:bg-emerald-100 hover:border-emerald-400 active:scale-[0.98] shadow-2xs"
-              >
-                <Banknote size={15} className="text-emerald-600" />
-                Registrar Pago
-              </button>
-
-              <button
-                disabled={togglingState}
-                onClick={() => void handleToggleActivo()}
-                className={`inline-flex items-center gap-2 rounded-xl border bg-white px-3.5 py-2 text-xs font-bold transition-all hover:bg-gray-50 active:scale-[0.98] ${
-                  p.es_activo ? "text-amber-700 hover:border-amber-200" : "text-emerald-700 hover:border-emerald-200"
-                }`}
-                style={{ borderColor: COLORS.BORDER_SUBTLE }}
-              >
-                <Power size={14} />
-                {p.es_activo ? "Desactivar" : "Reactivar"}
-              </button>
-
+            {/* Acciones principales */}
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:shadow active:scale-[0.98]"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:shadow active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fd761a] focus-visible:ring-offset-2 sm:flex-none"
                 style={{ backgroundColor: COLORS.ACCENT }}
               >
                 <Pencil size={14} />
-                Editar Perfil
+                <span className="hidden sm:inline">Editar Perfil</span>
+                <span className="sm:hidden">Editar</span>
               </button>
+
+              <button
+                onClick={() => setShowPagoModal(true)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-xs font-bold text-emerald-700 shadow-2xs transition-all hover:border-emerald-300 hover:bg-emerald-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 sm:flex-none"
+              >
+                <Banknote size={15} className="text-emerald-600" />
+                <span className="hidden sm:inline">Registrar Pago</span>
+                <span className="sm:hidden">Pago</span>
+              </button>
+
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowActionsMenu((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={showActionsMenu}
+                  title="Más acciones"
+                  className="inline-flex size-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fd761a] focus-visible:ring-offset-2"
+                >
+                  <EllipsisVertical size={17} />
+                </button>
+
+                {showActionsMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
+                    <div
+                      role="menu"
+                      className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-gray-200 bg-white p-1 shadow-lg"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={togglingState}
+                        onClick={() => {
+                          setShowActionsMenu(false)
+                          setShowToggleModal(true)
+                        }}
+                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                          p.es_activo
+                            ? "text-amber-700 hover:bg-amber-50"
+                            : "text-emerald-700 hover:bg-emerald-50"
+                        }`}
+                      >
+                        <Power size={14} />
+                        {p.es_activo ? "Desactivar instructor" : "Reactivar instructor"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Fila 2: métricas rápidas */}
+          <div
+            className="mt-3.5 grid grid-cols-3 gap-2 border-t pt-3"
+            style={{ borderColor: COLORS.BORDER_SUBTLE }}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveTab("cursos")}
+              aria-label={`Ver ${totalCursos} cursos asignados`}
+              className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[#e5eeff] bg-[#f8f9ff]/70 px-2.5 py-2 text-left transition-all hover:border-orange-200 hover:bg-orange-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fd761a] focus-visible:ring-offset-2"
+            >
+              <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[#e5eeff] bg-white text-[#fd761a] transition-colors group-hover:border-orange-200 sm:flex">
+                <GraduationCap size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold leading-none text-gray-900">{totalCursos}</span>
+                <span className="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                  Cursos
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("talleres")}
+              aria-label={`Ver ${totalTalleres} talleres asignados`}
+              className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[#e5eeff] bg-[#f8f9ff]/70 px-2.5 py-2 text-left transition-all hover:border-orange-200 hover:bg-orange-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fd761a] focus-visible:ring-offset-2"
+            >
+              <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[#e5eeff] bg-white text-[#fd761a] transition-colors group-hover:border-orange-200 sm:flex">
+                <BookOpen size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold leading-none text-gray-900">{totalTalleres}</span>
+                <span className="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                  Talleres
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("pagos")}
+              title={`Total pagado: ${fmtMoney(pagosSummary.total)}`}
+              aria-label={`Ver ${pagosSummary.count} pagos registrados`}
+              className="group flex min-w-0 items-center gap-2.5 rounded-xl border border-[#e5eeff] bg-[#f8f9ff]/70 px-2.5 py-2 text-left transition-all hover:border-emerald-200 hover:bg-emerald-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+            >
+              <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg border border-[#e5eeff] bg-white text-emerald-600 transition-colors group-hover:border-emerald-200 sm:flex">
+                <CreditCard size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold leading-none text-gray-900">{pagosSummary.count}</span>
+                <span className="mt-0.5 flex min-w-0 items-baseline gap-1 text-[10px]">
+                  <span className="font-semibold uppercase tracking-wider text-gray-500">Pagos</span>
+                  <span className="truncate font-semibold text-emerald-600">{fmtMoney(pagosSummary.total)}</span>
+                </span>
+              </span>
+            </button>
           </div>
         </div>
       </header>
@@ -563,7 +660,7 @@ export function InstructorDetallePage() {
                   </div>
                 </div>
 
-                {/* Right 1 Col: Quick Card Hoja de Vida + Actividad General */}
+                {/* Right 1 Col: Quick Card Hoja de Vida */}
                 <div className="space-y-6">
                   {/* Quick Card Hoja de Vida */}
                   <div className="rounded-2xl border bg-white p-5 shadow-xs" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -619,28 +716,6 @@ export function InstructorDetallePage() {
                     )}
                   </div>
 
-                  {/* Resumen Académico Rápido */}
-                  <div className="rounded-2xl border bg-white p-5 shadow-xs" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Actividad General</h4>
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600">Cursos asignados</span>
-                        <span className="font-bold text-gray-900">{totalCursos}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600">Talleres asignados</span>
-                        <span className="font-bold text-gray-900">{totalTalleres}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600">Pagos registrados</span>
-                        <span className="font-bold text-gray-900">{pagosSummary.count}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600">Total pagado</span>
-                        <span className="font-bold text-emerald-600">{fmtMoney(pagosSummary.total)}</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -1083,6 +1158,23 @@ export function InstructorDetallePage() {
           </div>
         </div>
       </main>
+
+      {/* Confirmation Modal for activating/deactivating instructor */}
+      <ConfirmationModal
+        isOpen={showToggleModal}
+        title={p.es_activo ? "Desactivar Instructor" : "Reactivar Instructor"}
+        message={
+          p.es_activo
+            ? `¿Estás seguro de desactivar a ${p.nombres} ${p.apellidos}? El instructor no podrá ser asignado a nuevos cursos mientras esté inactivo.`
+            : `¿Deseas reactivar a ${p.nombres} ${p.apellidos}? Podrá volver a ser asignado a cursos y talleres.`
+        }
+        confirmText={p.es_activo ? "Desactivar" : "Reactivar"}
+        cancelText="Cancelar"
+        isDangerous={p.es_activo}
+        isLoading={togglingState}
+        onConfirm={handleToggleActivo}
+        onCancel={() => setShowToggleModal(false)}
+      />
 
       {/* Confirmation Modal for deleting CV */}
       <ConfirmationModal

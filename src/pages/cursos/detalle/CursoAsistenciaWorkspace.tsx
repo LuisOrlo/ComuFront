@@ -11,7 +11,6 @@ import {
   Users,
   Search,
   Zap,
-  Download,
   Folder,
   FolderOpen,
   ChevronDown,
@@ -133,8 +132,6 @@ interface CursoAsistenciaWorkspaceProps {
   handleMarcarTodos: (estado: "presente" | "ausente") => void
   handleDescartarCambios: () => void
   handleGuardar: (avanzarSiguiente?: boolean) => Promise<void>
-  handleExportarReporte: () => Promise<void>
-  exporting: boolean
   handleRegistrarProximaClase: () => void
   proximaClasePendiente: { clase: ClaseItem; modulo: ModuloItem } | null
   siguienteClasePendiente: { clase: ClaseItem; modulo: ModuloItem } | null
@@ -168,8 +165,6 @@ export function CursoAsistenciaWorkspace({
   handleMarcarTodos,
   handleDescartarCambios,
   handleGuardar,
-  handleExportarReporte,
-  exporting,
   handleRegistrarProximaClase,
   proximaClasePendiente,
   siguienteClasePendiente,
@@ -230,8 +225,7 @@ export function CursoAsistenciaWorkspace({
       : estudiantes.filter((e) => {
           const q = estudianteSearch.toLowerCase().trim()
           const nombre = getEstudianteName(e).toLowerCase()
-          const cedula = (e.estudiante?.cedula || e.participante_externo?.cedula || "").toLowerCase()
-          return nombre.includes(q) || cedula.includes(q)
+          return nombre.includes(q)
         })
     return [...list].sort(compararEstudiantesPorApellido)
   }, [estudiantes, estudianteSearch])
@@ -299,21 +293,6 @@ export function CursoAsistenciaWorkspace({
             ) : (
               <PanelRightOpen className="w-3.5 h-3.5 text-[#76777d]" />
             )}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportarReporte}
-            disabled={exporting}
-            className="px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] hover:bg-[#eff4ff] text-[#0b1c30] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
-          >
-            {exporting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#45464d]" />
-            ) : (
-              <Download className="w-3.5 h-3.5 text-[#45464d]" />
-            )}
-            <span className="hidden sm:inline">Exportar reporte</span>
-            <span className="sm:hidden">Reporte</span>
           </button>
 
           {proximaClasePendiente ? (
@@ -546,7 +525,7 @@ export function CursoAsistenciaWorkspace({
                 type="text"
                 value={estudianteSearch}
                 onChange={(e) => setEstudianteSearch(e.target.value)}
-                placeholder="Buscar por apellido, nombre o cédula..."
+                placeholder="Buscar por nombre o apellido..."
                 className="w-full pl-8 pr-3 py-1.5 bg-white rounded-lg text-xs text-[#0b1c30] border border-[#e5eeff] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#fd761a] transition-all shadow-xs"
               />
             </div>

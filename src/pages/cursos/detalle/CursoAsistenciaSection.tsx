@@ -96,7 +96,6 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   // Filtro de búsqueda para la vista inicial
   const [overviewSearch, setOverviewSearch] = useState("")
   const [overviewTab, setOverviewTab] = useState<"estudiantes" | "clases">("estudiantes")
-  const [clasesSearch, setClasesSearch] = useState("")
   const [clasesFiltroEstado, setClasesFiltroEstado] = useState<"todas" | "registradas" | "pendientes">("todas")
 
   // 1. Cargar módulos, clases y estudiantes al inicio
@@ -475,20 +474,12 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
 
   // Filtrado de clases para la pestaña de Historial por Clase
   const overviewClasesFiltradas = useMemo(() => {
-    return todasClasesPlanas.filter(({ clase, modulo }) => {
+    return todasClasesPlanas.filter(({ clase }) => {
       if (clasesFiltroEstado === "registradas" && !clase.asistencia_registrada) return false
       if (clasesFiltroEstado === "pendientes" && clase.asistencia_registrada) return false
-
-      if (!clasesSearch.trim()) return true
-      const q = clasesSearch.toLowerCase().trim()
-      const tema = (clase.tema || "").toLowerCase()
-      const obs = (clase.observaciones || "").toLowerCase()
-      const fecha = (clase.fecha_clase || "").toLowerCase()
-      const modNombre = (modulo.nombre_modulo || "").toLowerCase()
-
-      return tema.includes(q) || obs.includes(q) || fecha.includes(q) || modNombre.includes(q)
+      return true
     })
-  }, [todasClasesPlanas, clasesSearch, clasesFiltroEstado])
+  }, [todasClasesPlanas, clasesFiltroEstado])
 
   const pdfPreviewModal = (
     <PdfViewerModal
@@ -682,22 +673,6 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
               </div>
             </div>
 
-            {/* Buscador de clases por tema, fecha u observación */}
-            {todasClasesPlanas.length > 0 && (
-              <div className="p-4 bg-[#eff4ff]/30 border-b border-[#e5eeff]">
-                <div className="relative max-w-md">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d]" />
-                  <input
-                    type="text"
-                    value={clasesSearch}
-                    onChange={(e) => setClasesSearch(e.target.value)}
-                    placeholder="Buscar por tema visto, módulo, fecha u observación..."
-                    className="w-full pl-9 pr-3 py-1.5 bg-white rounded-xl text-xs text-[#0b1c30] border border-[#e5eeff] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#fd761a] transition-all shadow-sm"
-                  />
-                </div>
-              </div>
-            )}
-
             {/* Contenido: Tabla de Clases */}
             <div className="overflow-x-auto">
               {loadingInitial ? (
@@ -711,7 +686,7 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                 </div>
               ) : overviewClasesFiltradas.length === 0 ? (
                 <div className="p-10 text-center text-xs text-[#76777d]">
-                  No se encontraron clases que coincidan con el filtro o búsqueda.
+                  No se encontraron clases que coincidan con el filtro seleccionado.
                 </div>
               ) : (
                 <>
@@ -794,9 +769,8 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                         <th className="py-3 px-4 font-mono w-14">#</th>
                         <th className="py-3 px-4 min-w-[170px]">Sesión y Fecha</th>
                         <th className="py-3 px-4 min-w-[140px]">Módulo</th>
-                        <th className="py-3 px-4 min-w-[220px]">Tema Visto en Clase</th>
                         <th className="py-3 px-4 min-w-[160px]">Asistencia</th>
-                        <th className="py-3 px-4 min-w-[180px]">Observaciones</th>
+                        <th className="py-3 px-4 min-w-[280px]">Tema y Observaciones</th>
                         <th className="py-3 px-4 text-right w-28">Acción</th>
                       </tr>
                     </thead>
@@ -833,20 +807,6 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                               >
                                 Mód. {modulo.numero_orden || "1"}: {modulo.nombre_modulo}
                               </span>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              {clase.tema ? (
-                                <div className="flex items-start gap-1.5 max-w-sm">
-                                  <BookOpen className="w-3.5 h-3.5 text-[#fd761a] shrink-0 mt-0.5" />
-                                  <span className="font-semibold text-xs text-[#0b1c30] line-clamp-2">
-                                    {clase.tema}
-                                  </span>
-                                </div>
-                              ) : clase.asistencia_registrada ? (
-                                <span className="text-xs text-[#76777d] italic">Sin tema registrado</span>
-                              ) : (
-                                <span className="text-xs text-[#76777d]">Pendiente</span>
-                              )}
                             </td>
                             <td className="py-3.5 px-4 whitespace-nowrap">
                               {clase.asistencia_registrada ? (
@@ -886,17 +846,43 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                               )}
                             </td>
                             <td className="py-3.5 px-4">
-                              {clase.observaciones ? (
-                                <div
-                                  className="flex items-start gap-1 max-w-xs text-xs text-[#45464d]"
-                                  title={clase.observaciones}
-                                >
-                                  <MessageSquare className="w-3 h-3 text-[#76777d] shrink-0 mt-0.5" />
-                                  <span className="line-clamp-2">{clase.observaciones}</span>
+                              <div className="max-w-sm space-y-1.5">
+                                {/* Tema visto */}
+                                <div className="flex items-start gap-1.5">
+                                  <BookOpen
+                                    className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                                      clase.tema ? "text-[#fd761a]" : "text-[#76777d]"
+                                    }`}
+                                  />
+                                  {clase.tema ? (
+                                    <span
+                                      className="font-semibold text-xs text-[#0b1c30] line-clamp-2"
+                                      title={clase.tema}
+                                    >
+                                      {clase.tema}
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={`text-xs text-[#76777d] ${
+                                        clase.asistencia_registrada ? "italic" : ""
+                                      }`}
+                                    >
+                                      {clase.asistencia_registrada ? "Sin tema registrado" : "Pendiente"}
+                                    </span>
+                                  )}
                                 </div>
-                              ) : (
-                                <span className="text-[#76777d]">—</span>
-                              )}
+
+                                {/* Observación */}
+                                {clase.observaciones && (
+                                  <div
+                                    className="flex items-start gap-1.5 text-xs text-[#45464d]"
+                                    title={clase.observaciones}
+                                  >
+                                    <MessageSquare className="w-3 h-3 text-[#76777d] shrink-0 mt-0.5" />
+                                    <span className="line-clamp-2">{clase.observaciones}</span>
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="py-3.5 px-4 text-right whitespace-nowrap">
                               <button
@@ -1136,8 +1122,6 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
       handleMarcarTodos={handleMarcarTodos}
       handleDescartarCambios={handleDescartarCambios}
       handleGuardar={handleGuardar}
-      handleExportarReporte={handleExportarReporte}
-      exporting={exporting}
       handleRegistrarProximaClase={handleRegistrarProximaClase}
       proximaClasePendiente={proximaClasePendiente}
       siguienteClasePendiente={siguienteClasePendiente}

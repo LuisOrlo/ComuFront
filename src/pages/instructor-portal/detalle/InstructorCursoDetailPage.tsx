@@ -15,6 +15,8 @@ import {
 } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { generarListadoAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
+import { PdfViewerModal } from "@/components/archivos/PdfViewerModal"
+import { usePdfPreview } from "@/hooks/usePdfPreview"
 import { CursoAsistenciaSection } from "@/pages/cursos/detalle/CursoAsistenciaSection"
 import {
   instructorService,
@@ -52,6 +54,8 @@ export function InstructorCursoDetailPage() {
   const resolveTab = (t?: string | null) => (t === "asistencia" ? "attendance" : t || "info")
   const [activeTab, setActiveTab] = useState(resolveTab(tabParam))
   const [progresoPeriodo, setProgresoPeriodo] = useState<number>(0)
+  const [exportando, setExportando] = useState(false)
+  const { preview, abrirPreview, cerrarPreview } = usePdfPreview()
 
   // Estado para el modal de perfil de estudiante
   const [estudianteModal, setEstudianteModal] = useState<EstudianteCurso | null>(null)
@@ -170,13 +174,19 @@ export function InstructorCursoDetailPage() {
     e.estudiante?.cedula ?? e.participante_externo?.cedula ?? "—"
 
   const handleDescargarAsistencia = async () => {
-    if (!curso) return
+    if (!curso || exportando) return
+    setExportando(true)
     try {
       const data = await instructorService.getAsistenciaPDFData(curso.id)
-      await generarListadoAsistenciaPDF(data)
-      toast.success("Listado de asistencia descargado")
+      const resultado = await generarListadoAsistenciaPDF(data, { preview: true })
+      if (resultado) {
+        abrirPreview(resultado, `Listado de Asistencia — ${curso.nombre_instancia}`)
+      }
+      toast.success("Vista previa del listado generada")
     } catch {
       toast.error("Error al generar el PDF")
+    } finally {
+      setExportando(false)
     }
   }
 
@@ -238,10 +248,15 @@ export function InstructorCursoDetailPage() {
             <div className="w-full sm:w-auto flex items-center justify-end shrink-0">
               <button
                 onClick={handleDescargarAsistencia}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+                disabled={exportando}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Download size={15} />
-                <span>Descargar Listado</span>
+                {exportando ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Download size={15} />
+                )}
+                <span>{exportando ? "Generando..." : "Descargar Listado"}</span>
               </button>
             </div>
           </div>
@@ -794,6 +809,15 @@ export function InstructorCursoDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Visor de PDF: vista previa antes de descargar */}
+      <PdfViewerModal
+        isOpen={preview.isOpen}
+        onClose={cerrarPreview}
+        titulo={preview.titulo}
+        url={preview.url}
+        nombreArchivo={preview.nombreArchivo}
+      />
     </div>
   )
 }

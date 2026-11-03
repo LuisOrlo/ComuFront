@@ -80,15 +80,21 @@ export function RegistrarPagoInstructorModal({
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo se permiten imágenes (JPG, PNG o WEBP) como comprobante de pago")
+      e.target.value = ""
+      return
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error("El archivo supera el límite de 5 MB")
+      e.target.value = ""
       return
     }
 
     pendingFileRef.current = file
-    const isImg = file.type.startsWith("image/")
     setPreviewFile({
-      url: isImg ? URL.createObjectURL(file) : "",
+      url: URL.createObjectURL(file),
       name: file.name,
       size: file.size,
     })
@@ -131,8 +137,23 @@ export function RegistrarPagoInstructorModal({
       onSuccess()
       onClose()
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string; error?: string } } }
-      const msg = e?.response?.data?.message || e?.response?.data?.error || "Error al registrar el pago"
+      const e = err as {
+        response?: {
+          data?: {
+            message?: string
+            error?: string
+            errors?: Record<string, string[]>
+          }
+        }
+      }
+      const validationErrors = e?.response?.data?.errors
+      let msg = e?.response?.data?.message || e?.response?.data?.error || "Error al registrar el pago"
+      if (validationErrors && typeof validationErrors === "object") {
+        const firstErrorKey = Object.keys(validationErrors)[0]
+        if (firstErrorKey && validationErrors[firstErrorKey]?.[0]) {
+          msg = validationErrors[firstErrorKey][0]
+        }
+      }
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -380,11 +401,11 @@ export function RegistrarPagoInstructorModal({
             ) : (
               <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-4 transition hover:bg-gray-50 cursor-pointer">
                 <Upload size={18} className="text-gray-400 mb-1" />
-                <span className="text-xs font-bold text-gray-700">Subir imagen o documento PDF</span>
-                <span className="text-[10px] text-gray-400 mt-0.5">PNG, JPG, PDF hasta 5MB</span>
+                <span className="text-xs font-bold text-gray-700">Subir imagen del comprobante</span>
+                <span className="text-[10px] text-gray-400 mt-0.5">Formatos: JPG, PNG o WEBP (máx. 5MB)</span>
                 <input
                   type="file"
-                  accept="image/*,application/pdf"
+                  accept="image/png,image/jpeg,image/webp"
                   onChange={handleFileChange}
                   className="hidden"
                 />
