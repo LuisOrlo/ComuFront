@@ -23,6 +23,8 @@ export function ClientePagoPage() {
 
   const saldoActual = state?.montoSaldo ?? 0
   const montoNum = parseFloat(monto || "0")
+  const montoValido = montoNum > 0 && montoNum <= saldoActual
+  const puedePagar = montoValido && Boolean(comprobanteFile)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -33,8 +35,9 @@ export function ClientePagoPage() {
   }
 
   const handlePagar = async () => {
-    if (!montoNum || montoNum <= 0) { toast.error("Ingresa un monto vlido"); return }
+    if (!montoNum || montoNum <= 0) { toast.error("Ingresa un monto válido"); return }
     if (montoNum > saldoActual) { toast.error("El monto supera el saldo pendiente"); return }
+    if (!comprobanteFile) { toast.error("Adjunta el comprobante del pago"); return }
     setSaving(true)
     try {
       let comprobanteUrl = ""
@@ -131,12 +134,23 @@ export function ClientePagoPage() {
               </div>
             </div>
 
-            <div className="mt-7 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
-              <Link to={`/clientes/${clienteId}?tab=pagos`} className="flex min-h-[46px] items-center justify-center rounded-xl px-6 text-sm font-bold text-[#73747b] transition-colors hover:bg-[#eff4ff] hover:text-[#0b1c30]">Cancelar</Link>
-              <button type="button" onClick={handlePagar} disabled={saving || montoNum <= 0} className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-lg px-6 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" style={{ backgroundColor: COLORS.ACCENT }}>
-                <HugeiconsIcon icon={Coins02Icon} size={17} />
-                {saving ? "Registrando..." : montoNum > 0 ? `Pagar $${montoNum.toLocaleString()}` : "Registrar pago"}
-              </button>
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
+              <p className="text-xs font-medium text-[#73747b]">
+                {!comprobanteFile
+                  ? "Adjunta el comprobante para habilitar el pago."
+                  : montoNum <= 0
+                    ? "Ingresa el monto a pagar."
+                    : montoNum > saldoActual
+                      ? "El monto excede el saldo pendiente."
+                      : "Listo para registrar el pago."}
+              </p>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+                <Link to={`/clientes/${clienteId}?tab=pagos`} className="flex min-h-[46px] items-center justify-center rounded-xl px-6 text-sm font-bold text-[#73747b] transition-colors hover:bg-[#eff4ff] hover:text-[#0b1c30]">Cancelar</Link>
+                <button type="button" onClick={handlePagar} disabled={saving || !puedePagar} title={!comprobanteFile ? "Adjunta el comprobante para continuar" : undefined} className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-lg px-6 text-sm font-bold text-white shadow-sm transition-all hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" style={{ backgroundColor: COLORS.ACCENT }}>
+                  <HugeiconsIcon icon={Coins02Icon} size={17} />
+                  {saving ? "Registrando..." : montoNum > 0 ? `Pagar $${montoNum.toLocaleString()}` : "Registrar pago"}
+                </button>
+              </div>
             </div>
           </section>
 

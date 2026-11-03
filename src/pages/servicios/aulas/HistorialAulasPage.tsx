@@ -88,6 +88,30 @@ export function HistorialAulasPage() {
   const [detalleModalOpen, setDetalleModalOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<ReservaAula | null>(null)
   const [deletingItem, setDeletingItem] = useState(false)
+  const [updatingEstadoId, setUpdatingEstadoId] = useState<string | null>(null)
+
+  const handleCambiarEstado = async (id: string, nuevoEstado: ReservaAula["estado"]) => {
+    const reservaActual = reservas.find((r) => r.id === id)
+    if (!reservaActual || reservaActual.estado === nuevoEstado) return
+
+    setUpdatingEstadoId(id)
+    try {
+      const updated = await aulasService.updateReservaEstado(id, nuevoEstado)
+      setReservas((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, ...updated, estado: nuevoEstado } : r))
+      )
+      if (selectedReserva && selectedReserva.id === id) {
+        setSelectedReserva((prev) => (prev ? { ...prev, ...updated, estado: nuevoEstado } : null))
+      }
+      clearAvailabilityCache()
+      toast.success(`Estado actualizado a ${ESTADO_CONFIG[nuevoEstado]?.label || nuevoEstado}`)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      toast.error(e?.response?.data?.message || "Error al actualizar el estado de la reserva")
+    } finally {
+      setUpdatingEstadoId(null)
+    }
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -580,16 +604,31 @@ export function HistorialAulasPage() {
                                   {/* Middle Column: Status Badge & Financial Amount */}
                                   <div className="flex items-center gap-6 self-start lg:self-center shrink-0">
                                     <div className="flex flex-col items-start lg:items-end gap-1">
-                                      <span
-                                        className={cn(
-                                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border",
-                                          estado.bg,
-                                          estado.text,
+                                      <div className="relative">
+                                        <select
+                                          value={r.estado}
+                                          onChange={(e) => handleCambiarEstado(r.id, e.target.value as ReservaAula["estado"])}
+                                          disabled={updatingEstadoId === r.id}
+                                          className={cn(
+                                            "appearance-none inline-flex items-center pl-2.5 pr-6 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border cursor-pointer transition-all shadow-2xs outline-none",
+                                            estado.bg,
+                                            estado.text,
+                                            updatingEstadoId === r.id && "opacity-50 pointer-events-none"
+                                          )}
+                                          title="Cambiar estado de la reserva"
+                                        >
+                                          <option value="reservado">Reservado</option>
+                                          <option value="confirmado">Confirmado</option>
+                                          <option value="en_progreso">En progreso</option>
+                                          <option value="completado">Completado</option>
+                                          <option value="cancelado">Cancelado</option>
+                                        </select>
+                                        {updatingEstadoId === r.id ? (
+                                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                        ) : (
+                                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-[9px]">▼</span>
                                         )}
-                                      >
-                                        <span className={cn("size-2 rounded-full", estado.dot)} />
-                                        {estado.label}
-                                      </span>
+                                      </div>
                                       <span
                                         className={cn(
                                           "text-[11px] font-medium",
@@ -737,6 +776,7 @@ export function HistorialAulasPage() {
         }
         onPago={selectedReserva ? () => handlePago(selectedReserva) : undefined}
         onDelete={selectedReserva ? () => setDeleteConfirm(selectedReserva) : undefined}
+        onEstadoChange={handleCambiarEstado}
       />
 
       <ConfirmationModal

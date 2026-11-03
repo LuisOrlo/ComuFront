@@ -93,6 +93,25 @@ export function AulasPage() {
   const [detalleOpen, setDetalleOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<ReservaAula | null>(null)
   const [deletingItem, setDeletingItem] = useState(false)
+  const [updatingEstado, setUpdatingEstado] = useState(false)
+
+  const handleCambiarEstado = async (id: string, nuevoEstado: ReservaAula["estado"]) => {
+    if (!detalleReserva || detalleReserva.estado === nuevoEstado) return
+    setUpdatingEstado(true)
+    try {
+      const updated = await aulasService.updateReservaEstado(id, nuevoEstado)
+      setDetalleReserva((prev) => (prev ? { ...prev, ...updated, estado: nuevoEstado } : null))
+      setReservas((prev) => prev.map((r) => (r.id === id ? { ...r, ...updated, estado: nuevoEstado } : r)))
+      setReservasGenerales((prev) => prev.map((r) => (r.id === id ? { ...r, ...updated, estado: nuevoEstado } : r)))
+      clearAvailabilityCache()
+      toast.success(`Estado actualizado a ${ESTADO_LABELS[nuevoEstado]?.label || nuevoEstado}`)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      toast.error(e?.response?.data?.message || "Error al actualizar el estado de la reserva")
+    } finally {
+      setUpdatingEstado(false)
+    }
+  }
 
   const [aulaSearch, setAulaSearch] = useState("")
   const [showMoreAulas, setShowMoreAulas] = useState(false)
@@ -649,14 +668,59 @@ export function AulasPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Estado</p>
-                  <span className={cn(
-                    "inline-block px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider",
-                    ESTADO_LABELS[detalleReserva.estado]?.color || "bg-slate-100 text-slate-700"
-                  )}>
-                    {ESTADO_LABELS[detalleReserva.estado]?.label || detalleReserva.estado}
-                  </span>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Estado de la Reserva</p>
+                    {updatingEstado && (
+                      <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1.5">
+                        <span className="size-2.5 animate-spin rounded-full border-2 border-[#fd761a] border-t-transparent" />
+                        Guardando...
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative inline-block">
+                      <select
+                        value={detalleReserva.estado}
+                        onChange={(e) => handleCambiarEstado(detalleReserva.id, e.target.value as ReservaAula["estado"])}
+                        disabled={updatingEstado}
+                        className={cn(
+                          "appearance-none pl-3 pr-7 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border outline-none cursor-pointer transition-all shadow-2xs",
+                          ESTADO_LABELS[detalleReserva.estado]?.color || "bg-slate-100 text-slate-700",
+                          updatingEstado && "opacity-50 pointer-events-none"
+                        )}
+                        title="Cambiar estado"
+                      >
+                        <option value="reservado">Reservado</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="en_progreso">En progreso</option>
+                        <option value="completado">Completado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-[10px]">▼</span>
+                    </div>
+
+                    {detalleReserva.estado !== "completado" && detalleReserva.estado !== "cancelado" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState =
+                            detalleReserva.estado === "reservado"
+                              ? "confirmado"
+                              : detalleReserva.estado === "confirmado"
+                              ? "en_progreso"
+                              : "completado"
+                          handleCambiarEstado(detalleReserva.id, nextState)
+                        }}
+                        disabled={updatingEstado}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition shadow-2xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      >
+                        {detalleReserva.estado === "reservado" && "Confirmar →"}
+                        {detalleReserva.estado === "confirmado" && "Iniciar (En progreso) →"}
+                        {detalleReserva.estado === "en_progreso" && "Marcar Completado ✓"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">

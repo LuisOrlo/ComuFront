@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -18,7 +19,7 @@ const ESTADO_STYLES: Record<string, { bg: string; color: string; label: string }
   cancelado: { bg: "bg-red-50 border-red-200", color: "text-red-600", label: "Cancelado" },
 }
 
-export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPago, onDelete }: {
+export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPago, onDelete, onEstadoChange }: {
   isOpen: boolean
   onClose: () => void
   reserva: ReservaAula | null
@@ -26,13 +27,26 @@ export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPag
   onEdit?: () => void
   onPago?: () => void
   onDelete?: () => void
+  onEstadoChange?: (id: string, nuevoEstado: ReservaAula["estado"]) => Promise<void> | void
 }) {
+  const [isUpdating, setIsUpdating] = useState(false)
+
   if (!reserva) return null
 
   const estado = ESTADO_STYLES[reserva.estado] || ESTADO_STYLES.reservado
   const isPersona = !!reserva.persona_id
   const cliente = reserva.persona || reserva.cliente_externo
   const clienteNombre = cliente ? `${cliente.nombres || ""} ${cliente.apellidos || ""}`.trim() : "—"
+
+  const handleEstadoSelect = async (nuevoEstado: ReservaAula["estado"]) => {
+    if (!reserva || !onEstadoChange || reserva.estado === nuevoEstado) return
+    setIsUpdating(true)
+    try {
+      await onEstadoChange(reserva.id, nuevoEstado)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -74,9 +88,37 @@ export function DetalleAulaModal({ isOpen, onClose, reserva, aula, onEdit, onPag
                     <p className="text-[11px] font-semibold opacity-50">Capacidad: {aula.capacidad} personas</p>
                   )}
                 </div>
-                <span className={cn("px-3 py-1 rounded-xl text-xs font-extrabold uppercase border shrink-0", estado.bg, estado.color)}>
-                  {estado.label}
-                </span>
+                {onEstadoChange ? (
+                  <div className="relative shrink-0">
+                    <select
+                      value={reserva.estado}
+                      onChange={(e) => handleEstadoSelect(e.target.value as ReservaAula["estado"])}
+                      disabled={isUpdating}
+                      className={cn(
+                        "appearance-none pl-3 pr-7 py-1.5 rounded-xl text-xs font-extrabold uppercase border outline-none cursor-pointer transition-all shadow-2xs",
+                        estado.bg,
+                        estado.color,
+                        isUpdating && "opacity-50 pointer-events-none"
+                      )}
+                      title="Cambiar estado de la reserva"
+                    >
+                      <option value="reservado">Reservado</option>
+                      <option value="confirmado">Confirmado</option>
+                      <option value="en_progreso">En progreso</option>
+                      <option value="completado">Completado</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                    {isUpdating ? (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 size-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-[10px]">▼</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className={cn("px-3 py-1 rounded-xl text-xs font-extrabold uppercase border shrink-0", estado.bg, estado.color)}>
+                    {estado.label}
+                  </span>
+                )}
               </div>
 
               {/* Grid Fecha y Hora */}

@@ -76,6 +76,7 @@ export function useDashboardData() {
   }))
 
   const ocupacionCursos = cursos.map((c) => ({
+    id: c.id,
     name: c.nombre,
     instructor: c.instructor,
     enrolled: c.estudiantes,

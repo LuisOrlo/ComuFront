@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MusicNote01Icon, Building04Icon, AiPhone01Icon, Camera01Icon, VideoIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
+import { formatCurrency } from "@/lib/utils"
 import { clientesService } from "@/services/clientes.service"
 import { toast } from "sonner"
 import { formatReservaTitle, formatReservaDate } from "./servicioFormat"
@@ -120,7 +121,7 @@ export function ServiciosContratados({ clienteId }: ServiciosContratadosProps) {
                   <div className="flex items-center gap-3">
                     {item.precio_total != null && (
                       <span className="text-xs font-bold">
-                        ${Number(item.precio_total).toFixed(2)}
+                        {formatCurrency(Number(item.precio_total))}
                       </span>
                     )}
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${

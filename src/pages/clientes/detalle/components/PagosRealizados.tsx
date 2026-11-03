@@ -3,7 +3,7 @@ import { useNavigate } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { CreditCardIcon, CheckmarkCircle01Icon, Cancel01Icon, TimeHalfPassIcon, PaymentIcon, FileAttachmentIcon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
-import { getStorageUrl } from "@/lib/utils"
+import { formatCurrency, getStorageUrl } from "@/lib/utils"
 import { clientesService } from "@/services/clientes.service"
 import { toast } from "sonner"
 import { formatReservaTitle, formatReservaDate } from "./servicioFormat"
@@ -107,9 +107,9 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total cuentas", value: String(cuentas.length), detail: "Contratos registrados", color: COLORS.CHARCOAL },
-          { label: "Total facturado", value: `$${totalFacturado.toFixed(2)}`, detail: "Valor total de servicios", color: COLORS.CHARCOAL },
-          { label: "Total abonado", value: `$${totalAbonado.toFixed(2)}`, detail: `${porcentajePagado.toFixed(1)}% cancelado`, color: "#047857" },
-          { label: "Saldo pendiente", value: `$${totalPendiente.toFixed(2)}`, detail: `${cuentasPendientes} ${cuentasPendientes === 1 ? "cuenta abierta" : "cuentas abiertas"}`, color: totalPendiente > 0 ? COLORS.ACCENT : "#047857" },
+          { label: "Total facturado", value: formatCurrency(totalFacturado), detail: "Valor total de servicios", color: COLORS.CHARCOAL },
+          { label: "Total abonado", value: formatCurrency(totalAbonado), detail: `${porcentajePagado.toFixed(1)}% cancelado`, color: "#047857" },
+          { label: "Saldo pendiente", value: formatCurrency(totalPendiente), detail: `${cuentasPendientes} ${cuentasPendientes === 1 ? "cuenta abierta" : "cuentas abiertas"}`, color: totalPendiente > 0 ? COLORS.ACCENT : "#047857" },
         ].map(card => (
           <div key={card.label} className="rounded-2xl bg-white p-4 shadow-sm" style={{ border: `1px solid ${COLORS.BORDER_SUBTLE}` }}>
             <div className="text-[10px] font-bold uppercase tracking-wider text-[#73747b]">{card.label}</div>
@@ -188,9 +188,9 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
               </div>
 
               <div className="grid grid-cols-3 gap-2 rounded-xl bg-[#f8f9ff] p-3 text-xs">
-                <span>Total: <strong>${total.toFixed(2)}</strong></span>
-                {abonado > 0 && <span>Abonado: <strong>${abonado.toFixed(2)}</strong></span>}
-                {saldo > 0 && <span style={{ color: "oklch(0.55 0.18 30)" }}>Saldo: <strong>${saldo.toFixed(2)}</strong></span>}
+                <span>Total: <strong>{formatCurrency(total)}</strong></span>
+                {abonado > 0 && <span>Abonado: <strong>{formatCurrency(abonado)}</strong></span>}
+                {saldo > 0 && <span style={{ color: "oklch(0.55 0.18 30)" }}>Saldo: <strong>{formatCurrency(saldo)}</strong></span>}
               </div>
 
               {transacciones.length > 0 && (
@@ -201,19 +201,8 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
                       <div className="flex items-center gap-2">
                         <span className="opacity-50">{tx.created_at ? new Date(String(tx.created_at)).toLocaleDateString("es-ES") : ""}</span>
                         <span className="font-medium">{String(tx.metodo_pago || tx.tipo_pago || "")}</span>
-      {imagenExpandida && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImagenExpandida(null)}>
-          <button onClick={(e) => { e.stopPropagation(); setImagenExpandida(null) }}
-            className="absolute top-4 right-4 text-white/60 hover:text-white text-sm font-bold transition-colors">
-            Cerrar [X]
-          </button>
-          <img src={imagenExpandida} alt="Comprobante"
-            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
-            onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
-    </div>
-                      <span className="font-bold">${Number(tx.monto || 0).toFixed(2)}</span>
+                      </div>
+                      <span className="font-bold">{formatCurrency(Number(tx.monto || 0))}</span>
                     </div>
                   ))}
                 </div>
@@ -274,7 +263,7 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
                   <tr className="border-b bg-[#eff4ff]" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Fecha</th>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase">Concepto</th>
-                    <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Mtodo</th>
+                    <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-28">Método</th>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase text-right w-24">Monto</th>
                     <th className="px-5 py-3 text-[10px] font-black text-gray-400 uppercase w-14">Comp.</th>
                   </tr>
@@ -287,7 +276,7 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
                       </td>
                       <td className="px-5 py-3 text-xs text-gray-700 truncate max-w-48">{String(tx["cuentaConcepto"] ?? "—")}</td>
                       <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap capitalize">{String(tx.metodo_pago || tx.tipo_pago || "—")}</td>
-                      <td className="px-5 py-3 text-right font-mono font-bold text-emerald-600 text-xs whitespace-nowrap">${Number(tx.monto || 0).toFixed(2)}</td>
+                      <td className="px-5 py-3 text-right font-mono font-bold text-emerald-600 text-xs whitespace-nowrap">{formatCurrency(Number(tx.monto || 0))}</td>
                       <td className="px-5 py-3 whitespace-nowrap">
                         {tx.comprobante_url ? (
                           <button onClick={() => setImagenExpandida(getStorageUrl(String(tx.comprobante_url)))}
@@ -305,6 +294,18 @@ export function PagosRealizados({ clienteId }: PagosRealizadosProps) {
           </div>
         )
       })()}
+
+      {imagenExpandida && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setImagenExpandida(null)}>
+          <button onClick={(e) => { e.stopPropagation(); setImagenExpandida(null) }}
+            className="absolute top-4 right-4 text-white/60 hover:text-white text-sm font-bold transition-colors">
+            Cerrar [X]
+          </button>
+          <img src={imagenExpandida} alt="Comprobante"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   )
 }

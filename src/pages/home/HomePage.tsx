@@ -245,7 +245,7 @@ export function HomePage() {
                     const ratio = course.capacity > 0 ? course.enrolled / course.capacity : 0
                     const status = getOccupancyStatus(ratio)
                     const initials = course.instructor.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase()
-                    return <tr key={course.name} className="border-b transition-colors hover:bg-[#f8f9ff]" style={{ borderColor: "#e5eeff" }}>
+                    return <tr key={course.id} className="border-b transition-colors hover:bg-[#f8f9ff]" style={{ borderColor: "#e5eeff" }}>
                       <td className="px-3 py-3.5 align-top">
                         <div className="flex items-start gap-2.5">
                           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e5eeff] text-[#45464d] mt-0.5">
@@ -282,7 +282,7 @@ export function HomePage() {
                         </div>
                       </td>
                       <td className="px-3 py-3.5 text-right align-top">
-                        <button type="button" onClick={() => navigate("/cursos")} className="inline-flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold hover:underline cursor-pointer" style={{ color: ORANGE }}>
+                        <button type="button" onClick={() => navigate(`/cursos/${course.id}`)} className="inline-flex items-center gap-0.5 whitespace-nowrap text-[11px] font-semibold hover:underline cursor-pointer" style={{ color: ORANGE }}>
                           Ver detalle <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
                         </button>
                       </td>

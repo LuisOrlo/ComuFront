@@ -13,7 +13,6 @@ import {
   Invoice01Icon,
   Delete02Icon,
   ViewIcon,
-  CustomerService01Icon,
   Book02Icon,
   PencilEdit01Icon,
   Image01Icon,
@@ -1328,16 +1327,7 @@ export function CursoEstudiantePagoPage() {
                 </div>
               </div>
 
-              {/* Quick Help Card */}
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3 text-slate-600">
-                <div className="size-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                  <HugeiconsIcon icon={CustomerService01Icon} size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800">¿Dudas con la conciliación?</p>
-                  <p className="text-[11px] text-slate-500 truncate">Consulte con secretaría o el departamento contable.</p>
-                </div>
-              </div>
+             
             </aside>
           </div>
         )}

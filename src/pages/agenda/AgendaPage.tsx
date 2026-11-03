@@ -364,69 +364,107 @@ export function AgendaPage() {
     )
   }, [])
 
+  // Texto del período visible según la vista activa
+  const periodLabel =
+    currentView === "timeGridDay"
+      ? new Intl.DateTimeFormat("es-EC", {
+          weekday: "short",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(activeDate)
+      : currentView === "timeGridWeek" || currentView === "listWeek"
+        ? `Semana ${getWeekNumber(activeDate)} · ${weekDays[0]?.dayNumber || ""} al ${weekDays[6]?.dayNumber || ""} de ${MONTHS[activeDate.getMonth()]?.toLowerCase()} de ${activeDate.getFullYear()}`
+        : currentTitle || "Calendario"
+
   return (
     <div className="min-h-[100dvh] flex flex-col overflow-hidden bg-slate-50/50">
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-6 space-y-5">
 
           {/* HEADER & TOOLBAR PRINCIPAL */}
-          <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <header className="space-y-3">
+            {/* Nivel 1: título + acción global */}
+            <div className="flex items-start justify-between gap-3 sm:items-center">
+              <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                   Agenda General
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold">
+                <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
                   Vista Unificada
                 </span>
-                {loading && (
-                  <div className="size-4 rounded-full border-2 border-orange-200 border-t-[#fd761a] animate-spin ml-1" />
-                )}
-              </div>
-              
-            </div>
-
-            {/* CONTROLES DE FECHA, VISTAS Y EXPORTACIÓN */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Navegación temporal: < Hoy > */}
-              <div className="flex items-center bg-white border border-slate-200/80 rounded-xl p-1 shadow-2xs gap-0.5">
-                <button
-                  onClick={() => handleNavigate("prev")}
-                  aria-label="Período anterior"
-                  className="size-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
-                >
-                  <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
-                </button>
-                <button
-                  onClick={() => handleNavigate("today")}
-                  aria-label="Ir a hoy"
-                  className="px-3 h-8 flex items-center justify-center text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Hoy
-                </button>
-                <button
-                  onClick={() => handleNavigate("next")}
-                  aria-label="Período siguiente"
-                  className="size-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
-                >
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-                </button>
-              </div>
-
-              {/* Título de Mes/Período Actual con icono de calendario */}
-              <div className="flex items-center gap-2 px-3.5 h-10 rounded-xl bg-white border border-slate-200/80 shadow-2xs text-slate-800">
-                <HugeiconsIcon icon={Calendar03Icon} size={18} className="text-[#fd761a]" />
-                <span className="text-sm font-bold capitalize">
-                  {currentView === "timeGridDay"
-                    ? new Intl.DateTimeFormat("es-EC", { weekday: "short", day: "numeric", month: "long", year: "numeric" }).format(activeDate)
-                    : currentView === "timeGridWeek" || currentView === "listWeek"
-                      ? `Semana ${getWeekNumber(activeDate)} · ${weekDays[0]?.dayNumber || ""} al ${weekDays[6]?.dayNumber || ""} de ${MONTHS[activeDate.getMonth()]?.toLowerCase()} de ${activeDate.getFullYear()}`
-                      : currentTitle || "Calendario"}
+                <span className="flex size-4 shrink-0 items-center justify-center" aria-live="polite">
+                  {loading && (
+                    <span className="size-4 animate-spin rounded-full border-2 border-orange-200 border-t-[#fd761a]" />
+                  )}
                 </span>
               </div>
 
-              {/* Selector de Vistas: Mes | Semana | Día | Lista */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs gap-0.5">
+              <button
+                onClick={handleExportPDF}
+                disabled={exporting}
+                aria-busy={exporting}
+                aria-label="Exportar PDF"
+                title="Exportar PDF"
+                className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:scale-[1.02] hover:bg-slate-50 active:scale-95 disabled:opacity-50 sm:px-3.5"
+              >
+                <HugeiconsIcon icon={Download04Icon} size={16} className="text-slate-500" />
+                <span className="hidden sm:inline">{exporting ? "Exportando..." : "Exportar PDF"}</span>
+              </button>
+            </div>
+
+            {/* Nivel 2: controles del calendario */}
+            <div className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-2xs sm:flex-row sm:items-center">
+              {/* Navegación temporal + período actual */}
+              <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+                <div
+                  role="group"
+                  aria-label="Navegación por período"
+                  className="flex shrink-0 items-center gap-0.5 rounded-lg bg-slate-50 p-0.5"
+                >
+                  <button
+                    onClick={() => handleNavigate("prev")}
+                    aria-label="Período anterior"
+                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white hover:text-slate-800 hover:shadow-2xs"
+                  >
+                    <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleNavigate("today")}
+                    aria-label="Ir a hoy"
+                    className="flex h-8 cursor-pointer items-center justify-center rounded-md px-3 text-xs font-bold text-slate-700 transition-colors hover:bg-white hover:text-slate-900 hover:shadow-2xs"
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    onClick={() => handleNavigate("next")}
+                    aria-label="Período siguiente"
+                    className="flex size-8 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white hover:text-slate-800 hover:shadow-2xs"
+                  >
+                    <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+                  </button>
+                </div>
+
+                <div className="flex min-w-0 flex-1 items-center gap-1.5 px-1">
+                  <HugeiconsIcon icon={Calendar03Icon} size={16} className="shrink-0 text-[#fd761a]" />
+                  <span
+                    className="truncate text-sm font-bold text-slate-800 first-letter:uppercase"
+                    aria-live="polite"
+                    title={periodLabel}
+                  >
+                    {periodLabel}
+                  </span>
+                </div>
+              </div>
+
+              <span className="hidden h-5 w-px shrink-0 bg-slate-200 sm:block" aria-hidden="true" />
+
+              {/* Selector de vistas */}
+              <div
+                role="group"
+                aria-label="Vista del calendario"
+                className="flex w-full items-center gap-0.5 rounded-lg bg-slate-50 p-0.5 sm:w-auto sm:shrink-0"
+              >
                 {VIEWS.map((view) => (
                   <button
                     key={view.key}
@@ -440,27 +478,16 @@ export function AgendaPage() {
                     }}
                     aria-label={`Vista de ${view.label.toLowerCase()}`}
                     aria-pressed={currentView === view.key}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`h-8 flex-1 cursor-pointer rounded-md px-3 text-xs font-bold transition-all sm:flex-none sm:px-3.5 ${
                       currentView === view.key
                         ? "bg-slate-900 text-white shadow-xs"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                        : "text-slate-600 hover:bg-white hover:text-slate-900"
                     }`}
                   >
                     {view.label}
                   </button>
                 ))}
               </div>
-
-              {/* Botón Exportar PDF */}
-              <button
-                onClick={handleExportPDF}
-                disabled={exporting}
-                aria-busy={exporting}
-                className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-white hover:bg-slate-50 border border-slate-200/80 text-slate-700 shadow-2xs text-xs font-bold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                <HugeiconsIcon icon={Download04Icon} size={16} className="text-slate-500" />
-                <span>{exporting ? "Exportando..." : "Exportar PDF"}</span>
-              </button>
             </div>
           </header>
 
