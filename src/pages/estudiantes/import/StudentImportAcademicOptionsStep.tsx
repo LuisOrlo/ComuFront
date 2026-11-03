@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   GraduationCapIcon,
@@ -11,6 +11,8 @@ import {
   Coins01Icon,
   ArrowLeft01Icon,
   ArrowDown01Icon,
+  Search01Icon,
+  Cancel01Icon,
 } from "@hugeicons/core-free-icons"
 import { studentImportService, type ImportCourse } from "@/services/student-import.service"
 import { formatDate, parseLocalDate } from "@/lib/utils"
@@ -30,9 +32,32 @@ export function StudentImportAcademicOptionsStep({ loading, onBack, onSubmit }: 
   const [loadingCourses, setLoadingCourses] = useState(false)
   const [error, setError] = useState("")
 
+  // Estado del Combobox de búsqueda en vivo
+  const [comboboxOpen, setComboboxOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [cityFilter, setCityFilter] = useState("todas")
+  const comboboxRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   const enabled = mode === "enroll"
   const selectedCourse = courses.find((item) => item.id === courseId)
   const customCourseSelected = Boolean(selectedCourse?.es_personalizado)
+
+  // Cerrar combobox al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
+        setComboboxOpen(false)
+      }
+    }
+    if (comboboxOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+      setTimeout(() => searchInputRef.current?.focus(), 50)
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [comboboxOpen])
 
   const isHistoricalCourse = (course: ImportCourse) => {
     if (!course.fecha_inicio) return false
@@ -42,15 +67,39 @@ export function StudentImportAcademicOptionsStep({ loading, onBack, onSubmit }: 
     return parseLocalDate(course.fecha_inicio) < cutoff
   }
 
-  const courseLabel = (course: ImportCourse) => {
-    const name = course.nombre_instancia || course.catalogo?.nombre || "Curso"
-    const dates = course.fecha_inicio
-      ? `${formatDate(course.fecha_inicio)}${course.fecha_fin ? ` → ${formatDate(course.fecha_fin)}` : ""}`
-      : "sin fecha"
-    const city = course.ciudad?.nombre ? ` · ${course.ciudad.nombre}` : ""
-    const historicalLabel = isHistoricalCourse(course) ? " · Histórico" : ""
-    return `${name} · ${dates}${city}${historicalLabel}`
-  }
+  // Ciudades disponibles para filtro rápido
+  const availableCities = useMemo(() => {
+    const set = new Set<string>()
+    courses.forEach((c) => {
+      if (c.ciudad?.nombre) set.add(c.ciudad.nombre)
+    })
+    return Array.from(set).sort()
+  }, [courses])
+
+  // Cursos filtrados por texto y ciudad
+  const filteredCourses = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return courses.filter((c) => {
+      if (cityFilter !== "todas" && c.ciudad?.nombre !== cityFilter) {
+        return false
+      }
+      if (!q) return true
+
+      const name = (c.nombre_instancia || c.catalogo?.nombre || "").toLowerCase()
+      const city = (c.ciudad?.nombre || "").toLowerCase()
+      const dates = `${c.fecha_inicio || ""} ${c.fecha_fin || ""}`.toLowerCase()
+      const modality = (c.modalidad || "").toLowerCase()
+      const id = String(c.id).toLowerCase()
+
+      return (
+        name.includes(q) ||
+        city.includes(q) ||
+        dates.includes(q) ||
+        modality.includes(q) ||
+        id.includes(q)
+      )
+    })
+  }, [courses, searchQuery, cityFilter])
 
   useEffect(() => {
     if (!enabled) return
@@ -218,30 +267,281 @@ export function StudentImportAcademicOptionsStep({ loading, onBack, onSubmit }: 
               </label>
             </div>
 
-            {/* Input / Selector de Curso */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#45464d] block">
-                Curso abierto o cohorte académica:
-              </label>
+            {/* Input / Selector de Curso (Combobox con Búsqueda en Vivo) */}
+            <div className="space-y-2" ref={comboboxRef}>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#45464d] block">
+                  Curso abierto o cohorte académica: *
+                </label>
+                {courses.length > 0 && (
+                  <span className="text-[11px] font-semibold text-[#76777d]">
+                    {courses.length} curso{courses.length !== 1 ? "s" : ""} disponible{courses.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+
               <div className="relative">
-                <select
-                  value={courseId}
-                  onChange={(e) => setCourseId(e.target.value)}
+                {/* Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => !loadingCourses && setComboboxOpen((prev) => !prev)}
                   disabled={loadingCourses}
-                  className="w-full appearance-none rounded-xl border border-[#c6c6cd]/40 pl-4 pr-10 py-3.5 text-xs sm:text-sm font-semibold bg-white text-[#0b1c30] focus:outline-none focus:ring-2 focus:ring-[#fd761a]/20 disabled:bg-gray-50 transition-all cursor-pointer shadow-xs"
+                  className={`w-full flex items-center justify-between gap-3 rounded-xl border pl-4 pr-3.5 py-3 text-left transition-all cursor-pointer shadow-xs ${
+                    comboboxOpen
+                      ? "border-[#fd761a] ring-2 ring-[#fd761a]/20 bg-white"
+                      : "border-[#c6c6cd]/40 bg-white hover:border-[#c6c6cd] hover:bg-slate-50/50"
+                  } ${loadingCourses ? "opacity-60 cursor-not-allowed bg-gray-50" : ""}`}
                 >
-                  <option value="">
-                    {loadingCourses ? "Cargando cursos disponibles..." : "Seleccionar un curso abierto del catálogo..."}
-                  </option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {courseLabel(course)}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#76777d]">
-                  <HugeiconsIcon icon={ArrowDown01Icon} size={16} />
-                </div>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-lg bg-[#eff4ff] text-[#fd761a] flex items-center justify-center shrink-0">
+                      <HugeiconsIcon icon={GraduationCapIcon} size={18} />
+                    </div>
+                    {selectedCourse ? (
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-[#0b1c30] truncate">
+                            {selectedCourse.nombre_instancia || selectedCourse.catalogo?.nombre}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-[#dce9ff] text-[#0b1c30] text-[10px] font-bold shrink-0">
+                            {isHistoricalCourse(selectedCourse) ? "Histórico" : "Cohorte Vigente"}
+                          </span>
+                          {selectedCourse.ciudad?.nombre && (
+                            <span className="text-xs text-[#76777d] truncate">
+                              · {selectedCourse.ciudad.nombre}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#76777d] truncate mt-0.5">
+                          {selectedCourse.fecha_inicio ? formatDate(selectedCourse.fecha_inicio) : "Sin fecha"}
+                          {selectedCourse.fecha_fin ? ` → ${formatDate(selectedCourse.fecha_fin)}` : ""}
+                          {selectedCourse.modalidad ? ` · ${selectedCourse.modalidad}` : ""}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs sm:text-sm font-medium text-[#76777d]">
+                        {loadingCourses
+                          ? "Cargando cursos disponibles..."
+                          : "Escribe o selecciona un curso del catálogo..."}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 text-[#76777d]">
+                    {selectedCourse && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCourseId("")
+                        }}
+                        className="p-1 rounded-lg hover:bg-slate-100 text-[#76777d] hover:text-red-600 transition"
+                        title="Quitar selección"
+                      >
+                        <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                      </span>
+                    )}
+                    <div className={`transition-transform duration-200 ${comboboxOpen ? "rotate-180" : ""}`}>
+                      <HugeiconsIcon icon={ArrowDown01Icon} size={16} />
+                    </div>
+                  </div>
+                </button>
+
+                {/* Popover Desplegable con Buscador */}
+                {comboboxOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl border border-[#c6c6cd]/30 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+                    {/* Header: Barra de búsqueda */}
+                    <div className="p-3 border-b border-[#c6c6cd]/15 bg-slate-50/70 space-y-2.5">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#76777d]">
+                          <HugeiconsIcon icon={Search01Icon} size={16} />
+                        </div>
+                        <input
+                          ref={searchInputRef}
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Buscar por curso, sede, fecha o modalidad..."
+                          className="w-full rounded-xl border border-[#c6c6cd]/30 bg-white pl-9 pr-8 py-2 text-xs sm:text-sm font-semibold text-[#0b1c30] placeholder:text-[#76777d] placeholder:font-normal focus:outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/20 shadow-2xs"
+                        />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery("")}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#76777d] hover:text-[#0b1c30]"
+                          >
+                            <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Chips de filtro rápido por ciudad (si hay más de 1 ciudad) */}
+                      {availableCities.length > 1 && (
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-[11px] no-scrollbar">
+                          <span className="text-[10px] font-bold text-[#76777d] uppercase tracking-wider shrink-0 mr-1">
+                            Sede:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCityFilter("todas")}
+                            className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition-colors ${
+                              cityFilter === "todas"
+                                ? "bg-[#fd761a] text-white shadow-2xs"
+                                : "bg-white text-[#45464d] border border-[#c6c6cd]/25 hover:bg-slate-100"
+                            }`}
+                          >
+                            Todas ({courses.length})
+                          </button>
+                          {availableCities.map((city) => {
+                            const count = courses.filter((c) => c.ciudad?.nombre === city).length
+                            return (
+                              <button
+                                key={city}
+                                type="button"
+                                onClick={() => setCityFilter(cityFilter === city ? "todas" : city)}
+                                className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition-colors ${
+                                  cityFilter === city
+                                    ? "bg-[#fd761a] text-white shadow-2xs"
+                                    : "bg-white text-[#45464d] border border-[#c6c6cd]/25 hover:bg-slate-100"
+                                }`}
+                              >
+                                {city} ({count})
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Lista scrollable de Cursos */}
+                    <div className="max-h-72 overflow-y-auto divide-y divide-[#c6c6cd]/10 p-1.5">
+                      {loadingCourses ? (
+                        <div className="py-8 text-center text-xs text-[#76777d]">
+                          <span className="inline-block size-4 border-2 border-[#fd761a] border-t-transparent rounded-full animate-spin mb-2" />
+                          <p>Cargando cursos...</p>
+                        </div>
+                      ) : filteredCourses.length === 0 ? (
+                        <div className="py-8 text-center px-4">
+                          <HugeiconsIcon icon={AlertCircleIcon} size={24} className="mx-auto text-[#76777d] mb-1.5" />
+                          <p className="text-xs font-bold text-[#0b1c30]">
+                            No se encontraron cursos
+                          </p>
+                          <p className="text-[11px] text-[#76777d] mt-0.5">
+                            {searchQuery
+                              ? `No hay coincidencias para "${searchQuery}"`
+                              : "No hay cursos disponibles para los filtros seleccionados."}
+                          </p>
+                          {(searchQuery || cityFilter !== "todas") && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery("")
+                                setCityFilter("todas")
+                              }}
+                              className="mt-2 text-xs font-bold text-[#fd761a] hover:underline cursor-pointer"
+                            >
+                              Limpiar filtros de búsqueda
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        filteredCourses.map((course) => {
+                          const isSelected = course.id === courseId
+                          const isHist = isHistoricalCourse(course)
+                          const capMax = course.capacidad_maxima ?? 0
+                          const enrolled = course.total_matriculas ?? 0
+
+                          return (
+                            <div
+                              key={course.id}
+                              onClick={() => {
+                                setCourseId(course.id)
+                                setComboboxOpen(false)
+                              }}
+                              className={`p-3 rounded-xl transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                                isSelected
+                                  ? "bg-[#eff4ff] border border-[#dce9ff]"
+                                  : "hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs sm:text-sm font-bold text-[#0b1c30]">
+                                    {course.nombre_instancia || course.catalogo?.nombre}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                      isHist
+                                        ? "bg-slate-100 text-slate-700"
+                                        : "bg-[#dce9ff] text-[#0b1c30]"
+                                    }`}
+                                  >
+                                    {isHist ? "Histórico" : "Cohorte Vigente"}
+                                  </span>
+                                  {course.es_personalizado && (
+                                    <span className="px-2 py-0.5 rounded-md bg-[#ffdbca] text-[#783200] text-[10px] font-bold">
+                                      Personalizado
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#76777d]">
+                                  {course.ciudad?.nombre && (
+                                    <span className="flex items-center gap-1 font-medium">
+                                      <HugeiconsIcon icon={MapPinIcon} size={13} className="text-[#fd761a]" />
+                                      {course.ciudad.nombre}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-1 font-medium">
+                                    <HugeiconsIcon icon={Calendar03Icon} size={13} className="text-[#76777d]" />
+                                    {course.fecha_inicio ? formatDate(course.fecha_inicio) : "Sin fecha"}
+                                    {course.fecha_fin ? ` → ${formatDate(course.fecha_fin)}` : ""}
+                                  </span>
+                                  {course.modalidad && (
+                                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                                      {course.modalidad}
+                                    </span>
+                                  )}
+                                  {capMax > 0 && (
+                                    <span className="flex items-center gap-1 text-[11px] font-medium text-[#45464d]">
+                                      <HugeiconsIcon icon={UserGroupIcon} size={12} />
+                                      {enrolled}/{capMax} inscritos
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 pt-0.5">
+                                {isSelected ? (
+                                  <div className="w-5 h-5 rounded-full bg-[#fd761a] text-white flex items-center justify-center">
+                                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
+                                  </div>
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full border border-[#c6c6cd]/50 bg-white" />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Footer del Popover */}
+                    <div className="px-4 py-2.5 bg-slate-50 border-t border-[#c6c6cd]/15 flex items-center justify-between text-[11px] text-[#76777d]">
+                      <span>
+                        Mostrando <strong className="text-[#0b1c30]">{filteredCourses.length}</strong> de{" "}
+                        <strong>{courses.length}</strong> cursos
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setComboboxOpen(false)}
+                        className="font-bold text-[#fd761a] hover:underline cursor-pointer"
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

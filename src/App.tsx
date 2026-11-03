@@ -140,7 +140,8 @@ import { Sidebar, TopBar } from "@/components/layout/Navigation"
 import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
 
-import { ScrollToTop } from "@/components/ScrollToTop"
+import { BackToTopButton } from "@/components/BackToTopButton"
+import { RouteScrollReset } from "@/components/RouteScrollReset"
 
 function DashboardRouter() {
   const { user } = useAuth()
@@ -193,7 +194,7 @@ function AppLayout() {
           bellRef={bellRef}
         />
         <main className="flex-1 overflow-y-auto">
-          <ScrollToTop />
+          <BackToTopButton />
           <Routes>
             <Route path="/" element={<DashboardRouter />} />
 
@@ -374,6 +375,7 @@ function RoleGuard({ roles, children }: { roles: string[]; children: React.React
 function App() {
   return (
     <BrowserRouter>
+      <RouteScrollReset />
       <AuthProvider>
         <Toaster position="top-right" richColors closeButton />
         <Suspense fallback={<PageLoader />}>

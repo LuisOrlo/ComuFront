@@ -6,7 +6,7 @@ import { COLORS } from "@/lib/constants"
 const SCROLL_PERCENT_THRESHOLD = 0.3
 const MIN_CONTAINER_RATIO = 0.4
 
-export function ScrollToTop() {
+export function BackToTopButton() {
   const [isVisible, setIsVisible] = useState(false)
   const scrollTarget = useRef<Element | null>(null)
 
