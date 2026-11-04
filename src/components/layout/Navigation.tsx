@@ -67,9 +67,7 @@ function NavItem({
   onClose?: () => void
 }) {
   const location = useLocation()
-  const isActive = path === "/"
-    ? location.pathname === path
-    : location.pathname === path || location.pathname.startsWith(`${path}/`)
+  const isActive = isNavPathActive(location.pathname, path)
 
   return (
     <li>
@@ -124,14 +122,19 @@ function NavItem({
   )
 }
 
+/**
+ * "/" y "/instructor" (Inicio del portal Instructor) solo coinciden de forma exacta.
+ * Sin esto, "Inicio" quedaría marcado como activo en todas las subpáginas del portal.
+ */
+function isNavPathActive(pathname: string, path: string): boolean {
+  if (path === "/" || path === "/instructor") return pathname === path
+  return pathname === path || pathname.startsWith(`${path}/`)
+}
+
 function findActiveGroupKey(pathname: string, groups: { label: string; items: NavItemData[] }[]): string | null {
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i]
-    const hasActive = group.items.some((item) =>
-      item.path === "/"
-        ? pathname === item.path
-        : pathname === item.path || pathname.startsWith(`${item.path}/`)
-    )
+    const hasActive = group.items.some((item) => isNavPathActive(pathname, item.path))
     if (hasActive) return `${group.label}-${i}`
   }
   return null
@@ -145,6 +148,9 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
   const isAdmin = roles.includes("Administrador")
   const isInstructor = roles.includes("Instructor")
   const isSecretaria = roles.includes("Secretaria")
+  // Solo para el rol Instructor: su menú se muestra siempre desplegado.
+  // Si además tiene otro rol con menú propio, se respeta el comportamiento de ese rol.
+  const isInstructorOnly = isInstructor && !isAdmin && !isSecretaria
 
   const menuGroups = useMemo(() => {
     const groups: { label: string; items: NavItemData[] }[] = []
@@ -359,33 +365,40 @@ if (isAdmin) {
       <div className="flex-1 px-3 py-5 overflow-y-auto overflow-x-hidden scrollbar-thin">
         {menuGroups.map((group, index) => {
           const groupKey = `${group.label}-${index}`
-          const isExpanded = collapsed || Boolean(expandedGroups[groupKey])
-          const isGroupActive = group.items.some((item) => item.path === "/"
-            ? location.pathname === item.path
-            : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
+          const isExpanded = collapsed || isInstructorOnly || Boolean(expandedGroups[groupKey])
+          const isGroupActive = group.items.some((item) => isNavPathActive(location.pathname, item.path))
 
           return (
             <div key={groupKey} className="mb-5 last:mb-0">
               {!collapsed ? (
-                <button
-                  type="button"
-                  aria-expanded={isExpanded}
-                  aria-current={isGroupActive ? "location" : undefined}
-                  onClick={() => setExpandedGroups((current) => ({ ...current, [groupKey]: !isExpanded }))}
-                  className="w-full flex items-center justify-between px-3 py-1 mb-1 rounded-md text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors"
-                  style={{
-                    color: isGroupActive ? ACCENT : "rgba(255,255,255,0.45)",
-                  }}
-                  onMouseEnter={(event) => {
-                    event.currentTarget.style.color = ACCENT
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.color = isGroupActive ? ACCENT : "rgba(255,255,255,0.45)"
-                  }}
-                >
-                  <span>{group.label}</span>
-                  <span aria-hidden="true" className="text-sm leading-none transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
-                </button>
+                isInstructorOnly ? (
+                  <div
+                    className="w-full flex items-center px-3 py-1 mb-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                    style={{ color: isGroupActive ? ACCENT : "rgba(255,255,255,0.45)" }}
+                  >
+                    <span>{group.label}</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    aria-expanded={isExpanded}
+                    aria-current={isGroupActive ? "location" : undefined}
+                    onClick={() => setExpandedGroups((current) => ({ ...current, [groupKey]: !isExpanded }))}
+                    className="w-full flex items-center justify-between px-3 py-1 mb-1 rounded-md text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors"
+                    style={{
+                      color: isGroupActive ? ACCENT : "rgba(255,255,255,0.45)",
+                    }}
+                    onMouseEnter={(event) => {
+                      event.currentTarget.style.color = ACCENT
+                    }}
+                    onMouseLeave={(event) => {
+                      event.currentTarget.style.color = isGroupActive ? ACCENT : "rgba(255,255,255,0.45)"
+                    }}
+                  >
+                    <span>{group.label}</span>
+                    <span aria-hidden="true" className="text-sm leading-none transition-transform duration-200" style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>⌄</span>
+                  </button>
+                )
               ) : (
                 <div
                   className="w-8 h-px mx-auto mb-2.5"
