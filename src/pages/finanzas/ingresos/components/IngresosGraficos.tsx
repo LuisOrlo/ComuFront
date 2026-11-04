@@ -13,6 +13,8 @@ const CAT_COLORS: Record<string, string> = {
   "Cursos personalizados": "#a855f7",
   "Aulas": "#6366f1",
   "Alquiler de Aulas": "#6366f1",
+  "Sets": "#f97316",
+  "Alquiler de Sets": "#f97316",
   "Radio": "#d946ef",
   "Edición": "#f59e0b",
   "Edición de Video": "#f59e0b",

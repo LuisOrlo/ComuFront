@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate, useParams } from "react-router-dom"
 import {
@@ -30,6 +30,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { MapPinIcon, Cancel01Icon, Loading02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { parseLocalDate } from "@/lib/utils"
+import { scrollPageToTop } from "@/lib/scroll"
 import { cursosService, type CatalogoCurso, type CursoAbierto } from "@/services/cursos.service"
 import { iconMap } from "@/pages/catalogos/components/catalog-icons"
 import { instructoresService } from "@/services/instructores.service"
@@ -133,6 +134,11 @@ export function CursoFormPage() {
   const [savingCiudad, setSavingCiudad] = useState(false)
   const [showRegenerationConfirm, setShowRegenerationConfirm] = useState(false)
   const [clasesProgramadas, setClasesProgramadas] = useState<ClaseProgramada[]>([])
+
+  // Al cambiar de paso, volver al inicio de la página.
+  useLayoutEffect(() => {
+    scrollPageToTop()
+  }, [currentStep])
 
   const [form, setForm] = useState({
     catalogo_curso_id: "",
@@ -642,19 +648,16 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         sincronizarPreciosPaso4a5()
       }
       setCurrentStep((prev) => Math.min(prev + 1, 5))
-      window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }
 
   const handlePrevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handleGoToStep = (targetStep: number) => {
     if (targetStep < currentStep) {
       setCurrentStep(targetStep)
-      window.scrollTo({ top: 0, behavior: "smooth" })
       return
     }
     // To jump forward, all steps in between must be valid
@@ -668,7 +671,6 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       sincronizarPreciosPaso4a5()
     }
     setCurrentStep(targetStep)
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handleSubmit = async (confirmarRegeneracion = false) => {
@@ -1230,7 +1232,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
               <div className="flex flex-col gap-1">
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">Información general del curso</h2>
                 <p className="text-xs text-slate-500">
-                  Define el identificador institucional, periodicidad del ciclo y rango de fechas global.
+                  Define el nombre del curso, periodicidad del ciclo y rango de fechas global.
                 </p>
               </div>
 
@@ -1239,7 +1241,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                     <span>
-                      Nombre identificativo de la instancia de curso <span className="text-[#fd761a]">*</span>
+                      Nombre identificativo del curso <span className="text-[#fd761a]">*</span>
                     </span>
                   </label>
                   <input

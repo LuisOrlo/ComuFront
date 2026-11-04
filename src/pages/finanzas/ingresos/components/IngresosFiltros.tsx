@@ -22,6 +22,7 @@ const CATEGORIAS = [
   { key: "talleres", label: "Talleres" },
   { key: "podcast", label: "Podcast" },
   { key: "aulas", label: "Alquiler de Aulas" },
+  { key: "sets", label: "Alquiler de Sets" },
   { key: "equipos", label: "Alquiler de Equipos" },
   { key: "radio", label: "Radio" },
   { key: "edicion", label: "Edición de Video" },

@@ -49,6 +49,7 @@ const FK_A_TIPO: Record<string, string> = {
   alquiler_equipo_id: "Equipo",
   edicion_video_id: "Edición de Video",
   reserva_radio_id: "Radio",
+  reserva_set_id: "Set",
   servicio_streaming_id: "Streaming",
   servicio_produccion_id: "Producción",
   clase_extra_id: "Clase Extra",
@@ -63,6 +64,7 @@ const TIPO_LABEL: Record<string, string> = {
   equipo: "Equipo",
   edicion: "Edición de Video",
   radio: "Radio",
+  set: "Set",
   streaming: "Streaming",
   produccion: "Producción",
   clase_extra: "Clase Extra",
@@ -117,6 +119,12 @@ const SERVICIO_CONFIG: Record<
     iconBg: "bg-pink-100/80 text-pink-600",
     iconColor: "text-pink-600",
     icon: Radio,
+  },
+  Set: {
+    bg: "bg-indigo-50 text-indigo-700 border-indigo-200/60",
+    iconBg: "bg-indigo-100/80 text-indigo-600",
+    iconColor: "text-indigo-600",
+    icon: Clapperboard,
   },
   Streaming: {
     bg: "bg-teal-50 text-teal-700 border-teal-200/60",
@@ -196,6 +204,9 @@ function extractServicioFecha(c: any): { fecha?: string | null; fechaFin?: strin
   if (c.reserva_aula?.fecha_reserva) {
     return { fecha: c.reserva_aula.fecha_reserva }
   }
+  if (c.reserva_set?.fecha_reserva) {
+    return { fecha: c.reserva_set.fecha_reserva }
+  }
   if (c.alquiler_equipo) {
     return {
       fecha: c.alquiler_equipo.fecha_entrega || c.alquiler_equipo.fecha_inicio,
@@ -245,6 +256,7 @@ function getServicioInfo(c: any): { tipo: string; nombre: string } {
   const tipo = getServicioTipo(c)
   const nombre = c.reserva_podcast?.titulo
     || c.reserva_aula?.aula?.nombre
+    || c.reserva_set?.set?.nombre
     || c.alquiler_equipo?.equipo?.nombre
     || c.edicion_video?.titulo
     || c.reserva_radio?.tarifa?.nombre
@@ -265,6 +277,8 @@ function getNombreCliente(c: any): string {
     || extractNombre(c.reserva_podcast?.cliente_externo)
     || extractNombre(c.reserva_aula?.persona)
     || extractNombre(c.reserva_aula?.cliente_externo)
+    || extractNombre(c.reserva_set?.persona)
+    || extractNombre(c.reserva_set?.cliente_externo)
     || extractNombre(c.alquiler_equipo?.persona)
     || extractNombre(c.alquiler_equipo?.cliente_externo)
     || extractNombre(c.reserva_radio?.persona)

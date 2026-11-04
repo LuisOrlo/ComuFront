@@ -32,6 +32,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FileText,
+  Clapperboard,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { COLORS } from "@/lib/constants"
@@ -192,6 +193,7 @@ export function Sidebar({ collapsed, onClose, onToggleClick, pendientesCount }: 
       label: "Servicios",
       items: [
         { icon: School, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: Clapperboard, label: "Alquiler de Sets", path: "/servicios/sets" },
         { icon: Folder, label: "Alquiler de Equipos", path: "/servicios/equipos" },
         { icon: Mic, label: "Podcast", path: "/servicios/podcast" },
         { icon: Film, label: "Edición de Video", path: "/servicios/edicion-video" },
@@ -237,6 +239,7 @@ if (isAdmin) {
       label: "Servicios",
       items: [
         { icon: School, label: "Alquiler de Aulas", path: "/servicios/aulas" },
+        { icon: Clapperboard, label: "Alquiler de Sets", path: "/servicios/sets" },
         { icon: Folder, label: "Alquiler de Equipos", path: "/servicios/equipos" },
         { icon: Mic, label: "Reservas de Podcast", path: "/servicios/podcast" },
         { icon: Film, label: "Edición de Video", path: "/servicios/edicion-video" },

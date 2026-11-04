@@ -497,6 +497,37 @@ export const cursosService = {
   },
 
   /**
+   * Sincronizar clases y horarios de un curso abierto
+   */
+  async sincronizarClasesCurso(
+    id: string,
+    clases: Array<{
+      id?: string
+      fecha_clase: string
+      hora_inicio: string
+      hora_fin: string
+      modulo_id?: string
+    }>
+  ): Promise<{ message: string; data: Array<Record<string, unknown>> }> {
+    const response = await api.put<{ message: string; data: Array<Record<string, unknown>> }>(
+      `/academic/cursos-abiertos/${id}/clases`,
+      { clases }
+    )
+    return response.data
+  },
+
+  /**
+   * Obtener detalles públicos de un curso abierto para matrícula directa (sin autenticación)
+   */
+  async getCursoPublico(id: string): Promise<CursoAbierto> {
+    const response = await api.get<{ data: CursoAbierto }>(
+      `/cursos-abiertos/${id}/publico`
+    )
+
+    return response.data.data
+  },
+
+  /**
    * Obtener notas para calcular módulo actual
    */
   async getNotasCurso(cursoId: string): Promise<Nota[]> {

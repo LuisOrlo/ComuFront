@@ -164,6 +164,16 @@ export function PagoDetallePage() {
     const ra = cp.reserva_aula
     if (ra?.persona) return `${ra.persona.nombres || ""} ${ra.persona.apellidos || ""}`.trim()
     if (ra?.cliente_externo) return `${ra.cliente_externo.nombres || ""} ${ra.cliente_externo.apellidos || ""}`.trim()
+    const rset = cp.reserva_set
+    if (rset?.persona) return `${rset.persona.nombres || ""} ${rset.persona.apellidos || ""}`.trim()
+    if (rset?.cliente_externo) {
+      return (
+        rset.cliente_externo.nombre_mostrado ||
+        (rset.cliente_externo.tipo_cliente === "empresa" && rset.cliente_externo.nombre_empresa
+          ? rset.cliente_externo.nombre_empresa
+          : `${rset.cliente_externo.nombres || ""} ${rset.cliente_externo.apellidos || ""}`.trim())
+      )
+    }
     const ae = cp.alquiler_equipo
     if (ae?.persona) return `${ae.persona.nombres || ""} ${ae.persona.apellidos || ""}`.trim()
     if (ae?.cliente_externo) return `${ae.cliente_externo.nombres || ""} ${ae.cliente_externo.apellidos || ""}`.trim()
@@ -191,6 +201,7 @@ export function PagoDetallePage() {
     if (lp || cp?.matricula || cp?.solicitud_inscripcion) return "Curso"
     if (cp?.inscripcion_taller) return "Taller"
     if (cp?.reserva_aula_id) return "Aula"
+    if (cp?.reserva_set_id) return "Set"
     if (cp?.reserva_podcast_id) return "Podcast"
     if (cp?.alquiler_equipo_id) return "Equipo"
     if (cp?.reserva_radio_id) return "Radio"
@@ -231,6 +242,7 @@ export function PagoDetallePage() {
 
   function nombreServicio(cp: any): string {
     const servicio = [
+      ["reserva_set_id", cp.reserva_set?.set?.nombre ? `Alquiler de Set: ${cp.reserva_set.set.nombre}` : (cp.reserva_set?.nombre_servicio || "Alquiler de Set")],
       ["reserva_podcast_id", cp.reserva_podcast?.titulo ?? cp.reserva_podcast?.paquete?.nombre ?? "Podcast"],
       ["reserva_aula_id", cp.reserva_aula?.aula?.nombre ?? "Aula"],
       ["alquiler_equipo_id", cp.alquiler_equipo?.equipo?.nombre ?? "Equipo"],
@@ -603,7 +615,7 @@ export function PagoDetallePage() {
 
               <div>
                 <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Estudiante / Titular
+                  {tipoLabel === "Curso" || tipoLabel === "Taller" ? "Estudiante / Titular" : "Cliente / Responsable"}
                 </span>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-100">
                   <div className="w-9 h-9 rounded-full bg-orange-100 text-[#fd761a] font-bold flex items-center justify-center text-xs shrink-0">
@@ -700,7 +712,7 @@ export function PagoDetallePage() {
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-start gap-3 text-slate-600">
             <Info className="w-5 h-5 text-[#fd761a] shrink-0 mt-0.5" />
             <p className="text-xs leading-relaxed">
-              La transacción fue procesada a través del módulo de finanzas y asociada al expediente contable del estudiante.
+              La transacción fue procesada a través del módulo de finanzas y asociada al expediente contable {tipoLabel === "Curso" || tipoLabel === "Taller" ? "del estudiante" : "del cliente"}.
             </p>
           </div>
         </div>

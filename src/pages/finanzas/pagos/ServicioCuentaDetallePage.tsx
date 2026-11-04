@@ -32,6 +32,7 @@ const SERVICIO_FKS = [
   "alquiler_equipo_id",
   "edicion_video_id",
   "reserva_radio_id",
+  "reserva_set_id",
 ]
 
 const FK_TO_TIPO: Record<string, string> = {
@@ -40,6 +41,7 @@ const FK_TO_TIPO: Record<string, string> = {
   alquiler_equipo_id: "equipo",
   edicion_video_id: "edicion",
   reserva_radio_id: "radio",
+  reserva_set_id: "set",
 }
 
 const TIPO_TO_BACKEND: Record<string, string> = {
@@ -48,6 +50,7 @@ const TIPO_TO_BACKEND: Record<string, string> = {
   equipo: "equipo",
   edicion: "edicion",
   radio: "radio",
+  set: "set",
 }
 
 const TIPO_BADGE: Record<string, string> = {
@@ -56,6 +59,7 @@ const TIPO_BADGE: Record<string, string> = {
   "Equipo": "bg-amber-50 text-amber-700 border-amber-200/60",
   "Edición de Video": "bg-orange-50 text-orange-700 border-orange-200/60",
   "Radio": "bg-pink-50 text-pink-700 border-pink-200/60",
+  "Set": "bg-indigo-50 text-indigo-700 border-indigo-200/60",
   "Streaming": "bg-teal-50 text-teal-700 border-teal-200/60",
   "Producción": "bg-lime-50 text-lime-700 border-lime-200/60",
   "Clase Extra": "bg-cyan-50 text-cyan-700 border-cyan-200/60",
@@ -75,7 +79,7 @@ function getInfoServicio(entry: any): { tipo: string; servicioId: string } | nul
 
 function getEntidadCliente(entry: any): { persona?: any; clienteExterno?: any } | null {
   if (!entry) return null
-  for (const k of ["reserva_podcast", "reserva_aula", "alquiler_equipo", "reserva_radio"]) {
+  for (const k of ["reserva_podcast", "reserva_aula", "reserva_set", "alquiler_equipo", "reserva_radio"]) {
     const rel = entry[k]
     if (rel?.persona || rel?.cliente_externo) {
       return { persona: rel.persona, clienteExterno: rel.cliente_externo }

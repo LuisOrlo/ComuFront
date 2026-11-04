@@ -140,12 +140,16 @@ export function HistorialPage() {
       cp.solicitud_inscripcion?.participante_externo, cp.inscripcion_taller,
       cp.reserva_podcast?.persona, cp.reserva_podcast?.cliente_externo,
       cp.reserva_aula?.persona, cp.reserva_aula?.cliente_externo,
+      cp.reserva_set?.persona, cp.reserva_set?.cliente_externo,
       cp.alquiler_equipo?.persona, cp.alquiler_equipo?.cliente_externo,
       cp.reserva_radio?.persona, cp.reserva_radio?.cliente_externo,
       cp.edicion_video?.cliente, cp.edicion_video?.cliente_externo,
     ]
     for (const c of candidates) {
+      if (c?.nombre_mostrado) return c.nombre_mostrado
+      if (c?.tipo_cliente === "empresa" && c?.nombre_empresa) return c.nombre_empresa
       if (c?.nombres || c?.apellidos) return `${c.nombres || ""} ${c.apellidos || ""}`.trim()
+      if (c?.nombre_empresa) return c.nombre_empresa
     }
     return t.estudiante_nombre || "—"
   }, [])
@@ -823,6 +827,7 @@ function getTipoPago(t: any): { tipo: string; color: string } {
   if (cp.matricula || cp.solicitud_inscripcion) return { tipo: "Curso", color: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60" }
 
   if (cp.reserva_aula_id) return { tipo: "Aula", color: "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60" }
+  if (cp.reserva_set_id) return { tipo: "Set", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60" }
   if (cp.reserva_podcast_id) return { tipo: "Podcast", color: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 border border-fuchsia-200/60" }
   if (cp.alquiler_equipo_id) return { tipo: "Equipo", color: "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60" }
   if (cp.reserva_radio_id) return { tipo: "Radio", color: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200/60" }
@@ -833,6 +838,7 @@ function getTipoPago(t: any): { tipo: string; color: string } {
 
 function nombreServicio(cp: any): string {
   const servicio: Array<[string, string]> = [
+    ["reserva_set_id", cp.reserva_set?.set?.nombre ? `Alquiler de Set: ${cp.reserva_set.set.nombre}` : (cp.reserva_set?.nombre_servicio || "Alquiler de Set")],
     ["reserva_podcast_id", cp.reserva_podcast?.titulo || cp.reserva_podcast?.paquete?.nombre || "Podcast"],
     ["reserva_aula_id", cp.reserva_aula?.aula?.nombre || "Aula"],
     ["alquiler_equipo_id", cp.alquiler_equipo?.equipo?.nombre || "Equipo"],

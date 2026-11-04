@@ -64,6 +64,14 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
   const [loadingPersonalizados, setLoadingPersonalizados] = useState(false)
   const [validandoCedula, setValidandoCedula] = useState(false)
 
+  useEffect(() => {
+    const main = document.querySelector("main")
+    if (main instanceof HTMLElement) {
+      main.scrollTo({ top: 0, left: 0, behavior: "smooth" })
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" })
+  }, [paso, subStep])
+
 
   const metodosPago = [
     { key: "efectivo", label: "Efectivo" },
@@ -362,7 +370,6 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
         formData.append("apellidos", estudiante.apellidos)
         formData.append("cedula", estudiante.cedula)
         formData.append("correo", estudiante.correo)
-        formData.append("email", estudiante.correo)
         formData.append("telefono", estudiante.telefono)
         formData.append("ocupacion", estudiante.ocupacion)
         formData.append("direccion", estudiante.direccion)
@@ -396,7 +403,6 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
         formData.append("cedula", estudiante.cedula)
         formData.append("tipo_id", estudiante.tipo_id)
         formData.append("correo", estudiante.correo)
-        formData.append("email", estudiante.correo)
         formData.append("celular", estudiante.telefono)
         formData.append("ocupacion", estudiante.ocupacion)
         formData.append("direccion", estudiante.direccion)

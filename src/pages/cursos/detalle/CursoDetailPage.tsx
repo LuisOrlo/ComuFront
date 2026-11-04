@@ -65,6 +65,9 @@ export function CursoDetailPage() {
   const [curso, setCurso] = useState<Curso | null>(null)
   const [modulos, setModulos] = useState<ModuloData[]>([])
   const [clasesCurso, setClasesCurso] = useState<ClaseProgramada[]>([])
+  const [modoEdicionClases, setModoEdicionClases] = useState(false)
+  const [clasesDraft, setClasesDraft] = useState<ClaseProgramada[]>([])
+  const [guardandoClases, setGuardandoClases] = useState(false)
   const [matriculas, setMatriculas] = useState<MatriculaDetallada[]>([])
   const [matriculasMeta, setMatriculasMeta] = useState({ total: 0, per_page: 15, current_page: 1, last_page: 1 })
   const [matriculasLoaded, setMatriculasLoaded] = useState(false)
@@ -106,9 +109,13 @@ export function CursoDetailPage() {
                 fecha_clase: String(clase.fecha_clase || "").split("T")[0],
                 hora_inicio: String(clase.hora_inicio || "").substring(0, 5),
                 hora_fin: String(clase.hora_fin || "").substring(0, 5),
-                asistencia_registrada: Number(clase.asistencias_count || 0) > 0,
+                asistencia_registrada: Number(clase.asistencias_total || clase.asistencias_count || 0) > 0,
+                asistencias_count: Number(clase.asistencias_total || clase.asistencias_count || 0),
+                asistencias_total: Number(clase.asistencias_total || clase.asistencias_count || 0),
+                asistencias_presentes: Number(clase.asistencias_presentes || 0),
                 modulo_id: String(m.id || ""),
                 observaciones: String(clase.observaciones || ""),
+                tema: String(clase.tema || ""),
               })
             })
           }
@@ -186,6 +193,33 @@ export function CursoDetailPage() {
   const progreso = curso.capacidad > 0 ? Math.round((curso.estudiantes / curso.capacidad) * 100) : 0
 
   const totalEstudiantes = matriculasLoaded ? matriculasMeta.total : curso.estudiantes
+
+  const handleGuardarClases = async () => {
+    if (!id) return
+    setGuardandoClases(true)
+    try {
+      const res = await cursosService.sincronizarClasesCurso(
+        id,
+        clasesDraft.map((c) => ({
+          id: c.id,
+          fecha_clase: c.fecha_clase,
+          hora_inicio: c.hora_inicio || curso?.horario?.hora_inicio || "08:00",
+          hora_fin: c.hora_fin || curso?.horario?.hora_fin || "10:00",
+          modulo_id: c.modulo_id,
+        }))
+      )
+      toast.success(res.message || "Cronograma de clases actualizado exitosamente")
+      setModoEdicionClases(false)
+      await cargarTodo()
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Error al actualizar el cronograma de clases"
+      toast.error(msg)
+    } finally {
+      setGuardandoClases(false)
+    }
+  }
 
   const tabs = [
     { key: "info" as Tab, label: "Información", icon: CalendarIcon },
@@ -375,16 +409,75 @@ export function CursoDetailPage() {
                 </section>
               </div>
 
-              {/* Calendario de días de clases del curso (ancho completo / dos columnas) */}
-              <CursoClasesCalendar
-                fechaInicioCurso={curso.fechaInicio}
-                fechaFinCurso={curso.fechaFin}
-                horaInicioCurso={curso.horario?.hora_inicio || curso.horaInicio}
-                horaFinCurso={curso.horario?.hora_fin || curso.horaFin}
-                diasSemana={curso.horario?.diasSemana?.map((d: DiaHorario) => d.dia_semana) || []}
-                clases={clasesCurso}
-                readOnly
-              />
+              {/* Calendario de días de clases del curso */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <HugeiconsIcon icon={CalendarIcon} size={18} style={{ color: COLORS.ACCENT }} />
+                      <span>Cronograma y Horarios de Clases</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {modoEdicionClases
+                        ? "Modo de edición activo: Haz clic sobre cualquier día para agregar clases, ajusta horarios con el lápiz o quita sesiones sin asistencia."
+                        : "Haz clic sobre cualquier clase para ver su tema, estado y registro de asistencia."}
+                    </p>
+                  </div>
+
+                  {(isAdmin || isSecretaria) && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      {modoEdicionClases ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClasesDraft([...clasesCurso])
+                              setModoEdicionClases(false)
+                            }}
+                            disabled={guardandoClases}
+                            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleGuardarClases}
+                            disabled={guardandoClases}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            style={{ backgroundColor: COLORS.ACCENT }}
+                          >
+                            {guardandoClases ? "Guardando..." : "Guardar Cronograma"}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClasesDraft([...clasesCurso])
+                            setModoEdicionClases(true)
+                          }}
+                          className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <HugeiconsIcon icon={Edit01Icon} size={14} style={{ color: COLORS.ACCENT }} />
+                          <span>Editar Clases y Horarios</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <CursoClasesCalendar
+                  fechaInicioCurso={curso.fechaInicio}
+                  fechaFinCurso={curso.fechaFin}
+                  horaInicioCurso={curso.horario?.hora_inicio || curso.horaInicio}
+                  horaFinCurso={curso.horario?.hora_fin || curso.horaFin}
+                  diasSemana={curso.horario?.diasSemana?.map((d: DiaHorario) => d.dia_semana) || []}
+                  clases={modoEdicionClases ? clasesDraft : clasesCurso}
+                  onChangeClases={modoEdicionClases ? setClasesDraft : undefined}
+                  readOnly={!modoEdicionClases}
+                  totalEstudiantes={curso.estudiantes || matriculasMeta.total}
+                />
+              </div>
 
               {/* Observaciones */}
               {curso.observaciones && (

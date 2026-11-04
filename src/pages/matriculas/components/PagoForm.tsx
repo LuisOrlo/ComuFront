@@ -97,7 +97,7 @@ export function PagoForm({
   return (
     <div className="rounded-xl border p-4 sm:p-6 space-y-6" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
       <h2 className="text-sm font-semibold flex items-center gap-2"><HugeiconsIcon icon={CreditCardIcon} size={16} style={{ color: COLORS.ACCENT }} />Método de Pago</h2>
-      <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu método de pago y sube el comprobante con el pago completo o el adelanto para finalizar tu matrícula.</p>
+      <p className="text-sm" style={{ color: COLORS.TEXT_MUTED }}>Selecciona tu método de pago y sube el comprobante con el pago pagado o acordado.</p>
       <div className="space-y-6">
         <div>
           <label className="block text-xs font-medium mb-1.5">Método de pago</label>

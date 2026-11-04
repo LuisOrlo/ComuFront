@@ -44,6 +44,7 @@ const InstructorDetallePage = lazyNamed(() => import("@/pages/instructores/Instr
 const TareasPage = lazyNamed(() => import("@/pages/tareas/TareasPage"), "TareasPage")
 const CuentasPage = lazyNamed(() => import("@/pages/cuentas/CuentasPage"), "CuentasPage")
 const NuevaMatriculaPublicaPage = lazyNamed(() => import("@/pages/matriculas/NuevaMatriculaPublicaPage"), "NuevaMatriculaPublicaPage")
+const MatriculaCursoPublicaPage = lazyNamed(() => import("@/pages/matriculas/MatriculaCursoPublicaPage"), "MatriculaCursoPublicaPage")
 const AprobacionMatriculasPage = lazyNamed(() => import("@/pages/matriculas/AprobacionMatriculasPage"), "AprobacionMatriculasPage")
 const AprobacionSolicitudPage = lazyNamed(() => import("@/pages/matriculas/AprobacionSolicitudPage"), "AprobacionSolicitudPage")
 const AprobacionTallerPage = lazyNamed(() => import("@/pages/matriculas/AprobacionTallerPage"), "AprobacionTallerPage")
@@ -53,6 +54,10 @@ const SolicitudInscripcionDetallePage = lazyNamed(() => import("@/pages/solicitu
 const AulasPage = lazyNamed(() => import("@/pages/servicios/aulas/AulasPage"), "AulasPage")
 const AulasGestionPage = lazyNamed(() => import("@/pages/servicios/aulas/AulasGestionPage"), "AulasGestionPage")
 const HistorialAulasPage = lazyNamed(() => import("@/pages/servicios/aulas/HistorialAulasPage"), "HistorialAulasPage")
+const HistorialSetsPage = lazyNamed(() => import("@/pages/servicios/sets/HistorialSetsPage"), "HistorialSetsPage")
+const SetsAgendaPage = lazyNamed(() => import("@/pages/servicios/sets/SetsAgendaPage"), "SetsAgendaPage")
+const SetsGestionPage = lazyNamed(() => import("@/pages/servicios/sets/SetsGestionPage"), "SetsGestionPage")
+const NuevaReservaSetPage = lazyNamed(() => import("@/pages/servicios/sets/NuevaReservaSetPage"), "NuevaReservaSetPage")
 const EquiposPage = lazyNamed(() => import("@/pages/servicios/equipos/EquiposPage"), "EquiposPage")
 const NuevoEquipoPage = lazyNamed(() => import("@/pages/servicios/equipos/NuevoEquipoPage"), "NuevoEquipoPage")
 const AlquileresListPage = lazyNamed(() => import("@/pages/servicios/equipos/AlquileresListPage"), "AlquileresListPage")
@@ -247,6 +252,12 @@ function AppLayout() {
             <Route path="/servicios/aulas/nueva-reserva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
             <Route path="/servicios/aulas/nueva-reserva/:aulaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
             <Route path="/servicios/aulas/reservas/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaAulaPage /></RoleGuard>} />
+            <Route path="/servicios/sets" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialSetsPage /></RoleGuard>} />
+            <Route path="/servicios/sets/historial" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialSetsPage /></RoleGuard>} />
+            <Route path="/servicios/sets/agenda" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SetsAgendaPage /></RoleGuard>} />
+            <Route path="/servicios/sets/gestion" element={<RoleGuard roles={["Administrador", "Secretaria"]}><SetsGestionPage /></RoleGuard>} />
+            <Route path="/servicios/sets/nueva-reserva" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaSetPage /></RoleGuard>} />
+            <Route path="/servicios/sets/reservas/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevaReservaSetPage /></RoleGuard>} />
             <Route path="/servicios/equipos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><EquiposPage /></RoleGuard>} />
             <Route path="/servicios/equipos/nuevo" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
             <Route path="/servicios/equipos/:id/editar" element={<RoleGuard roles={["Administrador", "Secretaria"]}><NuevoEquipoPage /></RoleGuard>} />
@@ -295,7 +306,7 @@ function AppLayout() {
                 <Route path="cursos-personalizados/:id" element={<RoleGuard roles={["Administrador", "Secretaria"]}><CursoCuentasDetallePage /></RoleGuard>} />
                 <Route path="servicios" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServiciosCuentasPage /></RoleGuard>} />
                 <Route path="servicios/:name" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServicioCuentaDetallePage /></RoleGuard>} />
-                <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador"]}><ServicioPagoPage /></RoleGuard>} />
+                <Route path="servicios/pago/:cuentaId" element={<RoleGuard roles={["Administrador", "Secretaria"]}><ServicioPagoPage /></RoleGuard>} />
               </Route>
             </Route>
             <Route path="/finanzas/movimientos" element={<RoleGuard roles={["Administrador", "Secretaria"]}><HistorialPage /></RoleGuard>} />
@@ -381,6 +392,7 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/matricula/nueva" element={<NuevaMatriculaPublicaPage />} />
+            <Route path="/matricula/curso/:id" element={<MatriculaCursoPublicaPage />} />
             <Route path="/verificar-certificados" element={<VerificarCertificadosPage />} />
             <Route path="/agenda-publica" element={<AgendaPublicaPage />} />
             <Route path="/documentos" element={<DocumentosPublicosPage />} />

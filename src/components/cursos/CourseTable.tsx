@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowRight01Icon, UserIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, UserIcon, Link03Icon } from "@hugeicons/core-free-icons"
+import { toast } from "sonner"
 import { CiudadBadge } from "./CiudadBadge"
 import { ModalidadBadge } from "@/pages/estudiantes/components/Badges"
 import type { Curso } from "@/services/cursos.service"
@@ -31,6 +32,12 @@ export function CourseTable({
   cursos: Curso[]
   onView?: (id: string) => void
 }) {
+  const handleCopyLink = (cursoId: string) => {
+    const url = `${window.location.origin}/matricula/curso/${cursoId}`
+    navigator.clipboard.writeText(url)
+    toast.success("Enlace de matrícula copiado al portapapeles")
+  }
+
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
       <div className="overflow-x-auto">
@@ -53,7 +60,7 @@ export function CourseTable({
                 Aforo y Cupos
               </th>
               <th className="py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">
-                Acción
+                Acciones
               </th>
             </tr>
           </thead>
@@ -189,20 +196,34 @@ export function CourseTable({
                     </div>
                   </td>
 
-                  {/* Acción Ver Detalle */}
+                  {/* Acciones */}
                   <td className="py-4 px-4 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onView?.(c.id)
-                      }}
-                      type="button"
-                      aria-label={`Ver detalle de ${c.nombre}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all shadow-2xs group-hover:bg-[#fd761a] group-hover:text-white cursor-pointer active:scale-95"
-                    >
-                      <span>Ver curso</span>
-                      <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-                    </button>
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleCopyLink(c.id)
+                        }}
+                        type="button"
+                        title="Copiar enlace de inscripción"
+                        aria-label={`Copiar enlace de inscripción de ${c.nombre}`}
+                        className="inline-flex items-center justify-center p-2 rounded-xl bg-slate-100 hover:bg-slate-200 hover:text-slate-900 text-slate-600 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      >
+                        <HugeiconsIcon icon={Link03Icon} size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onView?.(c.id)
+                        }}
+                        type="button"
+                        aria-label={`Ver detalle de ${c.nombre}`}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 bg-slate-100 hover:bg-[#fd761a] hover:text-white text-slate-700 text-[10px] font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                      >
+                        <span>Ver curso</span>
+                        <HugeiconsIcon icon={ArrowRight01Icon} size={11} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )

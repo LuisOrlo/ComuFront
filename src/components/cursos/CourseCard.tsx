@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowRight01Icon, UserIcon, Calendar03Icon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, UserIcon, Calendar03Icon, Link03Icon } from "@hugeicons/core-free-icons"
+import { toast } from "sonner"
 import { CiudadBadge } from "./CiudadBadge"
 import { ModalidadBadge } from "@/pages/estudiantes/components/Badges"
 import type { Curso } from "@/services/cursos.service"
@@ -16,6 +17,12 @@ export function CourseCard({
     100,
     Math.round(((curso.moduloActual || 0) / (curso.totalModulos || 1)) * 100)
   )
+
+  const handleCopyLink = (cursoId: string) => {
+    const url = `${window.location.origin}/matricula/curso/${cursoId}`
+    navigator.clipboard.writeText(url)
+    toast.success("Enlace de matrícula copiado al portapapeles")
+  }
 
   return (
     <article
@@ -148,8 +155,21 @@ export function CourseCard({
           </div>
         </div>
 
-        {/* Botón Ver Curso */}
-        <div className="pt-1 flex justify-end">
+        {/* Acciones */}
+        <div className="pt-1 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleCopyLink(curso.id)
+            }}
+            title="Copiar enlace de inscripción pública"
+            aria-label={`Copiar enlace de inscripción de ${curso.nombre}`}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-[#fd761a] transition-colors cursor-pointer"
+          >
+            <HugeiconsIcon icon={Link03Icon} size={14} />
+            <span>Copiar enlace</span>
+          </button>
           <button
             type="button"
             onClick={() => onView?.(curso.id)}

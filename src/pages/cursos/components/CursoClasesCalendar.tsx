@@ -25,8 +25,12 @@ export interface ClaseProgramada {
   hora_inicio: string // 'HH:mm'
   hora_fin: string    // 'HH:mm'
   asistencia_registrada?: boolean
+  asistencias_count?: number
+  asistencias_total?: number
+  asistencias_presentes?: number
   modulo_id?: string
   observaciones?: string
+  tema?: string
 }
 
 interface CursoClasesCalendarProps {
@@ -39,6 +43,7 @@ interface CursoClasesCalendarProps {
   onChangeClases?: (clases: ClaseProgramada[]) => void
   isEdit?: boolean
   readOnly?: boolean
+  totalEstudiantes?: number
 }
 
 const MESES = [
@@ -71,6 +76,7 @@ export function CursoClasesCalendar({
   onChangeClases,
   isEdit = false,
   readOnly = false,
+  totalEstudiantes,
 }: CursoClasesCalendarProps) {
   // Si estamos en edición y hay clases existentes cargadas
   void isEdit
@@ -121,6 +127,11 @@ export function CursoClasesCalendar({
   const [manualHoraInicio, setManualHoraInicio] = useState(horaInicioCurso || "08:00")
   const [manualHoraFin, setManualHoraFin] = useState(horaFinCurso || "10:00")
   const [showList, setShowList] = useState(false)
+  const [selectedClassInfo, setSelectedClassInfo] = useState<{
+    clase: ClaseProgramada
+    sessionNum: number
+    isPast: boolean
+  } | null>(null)
 
   // Clases ordenadas cronológicamente
   const clasesOrdenadas = useMemo(() => {
@@ -540,10 +551,23 @@ export function CursoClasesCalendar({
             const hasClass = Boolean(cell.claseData)
             const clase = cell.claseData?.clase
             const sessionNum = cell.claseData?.index
-            const isCustomTime =
+
+            const todayStr = toDateString(
+              new Date().getFullYear(),
+              new Date().getMonth(),
+              new Date().getDate()
+            )
+            const isPastClass = Boolean(
               clase &&
-              ((clase.hora_inicio && clase.hora_inicio !== horaInicioCurso) ||
-                (clase.hora_fin && clase.hora_fin !== horaFinCurso))
+                (cell.dateStr < todayStr ||
+                  Boolean(clase.asistencia_registrada) ||
+                  (cell.dateStr === todayStr &&
+                    clase.hora_fin &&
+                    clase.hora_fin <
+                      `${String(new Date().getHours()).padStart(2, "0")}:${String(
+                        new Date().getMinutes()
+                      ).padStart(2, "0")}`))
+            )
 
             return (
               <div
@@ -551,17 +575,25 @@ export function CursoClasesCalendar({
                 onClick={() => {
                   if (!readOnly && !hasClass) {
                     handleAddClase(cell.dateStr)
+                  } else if (readOnly && hasClass && clase) {
+                    setSelectedClassInfo({
+                      clase,
+                      sessionNum: sessionNum || 1,
+                      isPast: isPastClass,
+                    })
                   }
                 }}
                 className={`min-h-24 p-1.5 sm:p-2 flex flex-col justify-between transition-all group relative ${
                   !cell.isCurrentMonth ? "bg-slate-50/50 text-slate-400" : "text-slate-800"
                 } ${
                   hasClass
-                    ? "bg-orange-50/70 border-orange-200 ring-1 ring-orange-200"
+                    ? isPastClass
+                      ? "bg-emerald-50/80 border-emerald-200 ring-1 ring-emerald-200"
+                      : "bg-orange-50/70 border-orange-200 ring-1 ring-orange-200"
                     : readOnly
                     ? "cursor-default"
                     : "hover:bg-slate-50 cursor-pointer"
-                }`}
+                } ${readOnly && hasClass ? "cursor-pointer hover:brightness-98" : ""}`}
               >
                 {/* Day Header (Number & Badges) */}
                 <div className="flex items-center justify-between gap-1">
@@ -570,7 +602,9 @@ export function CursoClasesCalendar({
                       cell.isToday
                         ? "bg-[#fd761a] text-white shadow-2xs"
                         : hasClass
-                        ? "bg-orange-200 text-orange-950 font-extrabold"
+                        ? isPastClass
+                          ? "bg-emerald-600 text-white font-extrabold shadow-2xs"
+                          : "bg-orange-200 text-orange-950 font-extrabold"
                         : "text-slate-700"
                     }`}
                   >
@@ -581,6 +615,21 @@ export function CursoClasesCalendar({
                   <div className="flex items-center gap-1">
                     {!readOnly && hasClass && clase && (
                       <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedClassInfo({
+                              clase,
+                              sessionNum: sessionNum || 1,
+                              isPast: isPastClass,
+                            })
+                          }}
+                          title="Ver tema y detalles de la clase"
+                          className="size-5 rounded flex items-center justify-center bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 shadow-2xs transition-colors cursor-pointer"
+                        >
+                          <Info size={11} />
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => handleOpenEditSession(clase, e)}
@@ -599,6 +648,11 @@ export function CursoClasesCalendar({
                         </button>
                       </>
                     )}
+                    {readOnly && hasClass && clase && (
+                      <span className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 size-5 rounded flex items-center justify-center transition-opacity">
+                        <Info size={12} />
+                      </span>
+                    )}
                     {!readOnly && !hasClass && (
                       <span className="opacity-0 group-hover:opacity-100 text-[#fd761a] size-5 rounded flex items-center justify-center bg-orange-50 transition-opacity">
                         <Plus size={12} strokeWidth={3} />
@@ -610,32 +664,48 @@ export function CursoClasesCalendar({
                 {/* Day Body / Class Details */}
                 {hasClass && clase ? (
                   <div
-                    onClick={(e) => handleOpenEditSession(clase, e)}
-                    className="mt-1.5 p-1.5 rounded-lg bg-white border border-orange-200/90 shadow-2xs flex flex-col gap-0.5 cursor-pointer hover:border-orange-400 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (readOnly) {
+                        setSelectedClassInfo({
+                          clase,
+                          sessionNum: sessionNum || 1,
+                          isPast: isPastClass,
+                        })
+                      } else {
+                        handleOpenEditSession(clase, e)
+                      }
+                    }}
+                    className={`mt-1.5 p-1.5 rounded-lg bg-white shadow-2xs flex flex-col gap-0.5 cursor-pointer transition-colors ${
+                      isPastClass
+                        ? "border border-emerald-300/90 hover:border-emerald-500"
+                        : "border border-orange-200/90 hover:border-orange-400"
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-1 leading-none">
-                      <span className="text-[10px] font-extrabold text-[#fd761a]">
+                      <span
+                        className={`text-[10px] font-extrabold ${
+                          isPastClass ? "text-emerald-800" : "text-[#fd761a]"
+                        }`}
+                      >
                         Sesión #{sessionNum}
                       </span>
-                      {clase.asistencia_registrada && (
-                        <span className="size-3.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center" title="Asistencia registrada">
+                      {isPastClass && (
+                        <span
+                          className="size-3.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center"
+                          title="Clase concluida / asistencia registrada"
+                        >
                           <Check size={9} strokeWidth={3} />
                         </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-1 text-[10px] text-slate-700 font-semibold font-mono">
-                      <Clock size={10} className={isCustomTime ? "text-amber-600" : "text-slate-400"} />
+                      <Clock size={10} className={isPastClass ? "text-emerald-600" : "text-slate-400"} />
                       <span>
                         {clase.hora_inicio || horaInicioCurso || "08:00"} – {clase.hora_fin || horaFinCurso || "10:00"}
                       </span>
                     </div>
-
-                    {isCustomTime && (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-50 rounded px-1 self-start">
-                        Horario esp.
-                      </span>
-                    )}
 
                     {cell.isBeforeCourse && (
                       <span className="text-[9px] font-bold text-blue-700 bg-blue-50 rounded px-1 self-start" title="Clase previa a la fecha de inicio del curso">
@@ -682,16 +752,35 @@ export function CursoClasesCalendar({
               </p>
             ) : (
               clasesOrdenadas.map((c, index) => {
+                const todayStr = toDateString(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  new Date().getDate()
+                )
+                const isPast = Boolean(c.fecha_clase < todayStr || c.asistencia_registrada)
                 const isBefore = Boolean(fechaInicioCurso && c.fecha_clase < fechaInicioCurso)
                 const isAfter = Boolean(fechaFinCurso && c.fecha_clase > fechaFinCurso)
-                const isCustomTime =
-                  (c.hora_inicio && c.hora_inicio !== horaInicioCurso) ||
-                  (c.hora_fin && c.hora_fin !== horaFinCurso)
 
                 return (
-                  <div key={c.fecha_clase} className="py-2 px-1 flex items-center justify-between gap-3 text-xs">
+                  <div
+                    key={c.fecha_clase}
+                    onClick={() => {
+                      setSelectedClassInfo({
+                        clase: c,
+                        sessionNum: index + 1,
+                        isPast,
+                      })
+                    }}
+                    className="py-2 px-1 flex items-center justify-between gap-3 text-xs rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="size-6 rounded-md bg-orange-100 text-[#fd761a] flex items-center justify-center font-bold text-[11px] shrink-0">
+                      <span
+                        className={`size-6 rounded-md flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                          isPast
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-orange-100 text-[#fd761a]"
+                        }`}
+                      >
                         #{index + 1}
                       </span>
                       <div className="flex flex-col min-w-0">
@@ -700,9 +789,10 @@ export function CursoClasesCalendar({
                         </span>
                         <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
                           <span>{c.hora_inicio || horaInicioCurso} – {c.hora_fin || horaFinCurso}</span>
-                          {isCustomTime && (
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1 rounded">
-                              Horario especial
+                          {isPast && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded flex items-center gap-0.5">
+                              <Check size={9} strokeWidth={3} />
+                              <span>Realizada</span>
                             </span>
                           )}
                           {isBefore && (
@@ -719,8 +809,8 @@ export function CursoClasesCalendar({
                       </div>
                     </div>
 
-                    {!readOnly && (
-                      <div className="flex items-center gap-1 shrink-0">
+                    {!readOnly ? (
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => handleOpenEditSession(c)}
@@ -738,6 +828,10 @@ export function CursoClasesCalendar({
                           <Trash2 size={13} />
                         </button>
                       </div>
+                    ) : (
+                      <span className="text-slate-400 hover:text-slate-700 p-1">
+                        <Info size={13} />
+                      </span>
                     )}
                   </div>
                 )
@@ -954,6 +1048,136 @@ export function CursoClasesCalendar({
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-[#fd761a] hover:bg-[#e06512] text-white shadow-sm transition-all cursor-pointer"
               >
                 Agregar clase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: DETALLES DE LA CLASE (INFORMATIVO) ================= */}
+      {selectedClassInfo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setSelectedClassInfo(null)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-slate-200 w-full max-w-md overflow-hidden shadow-2xl p-5 sm:p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Encabezado */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`size-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                    selectedClassInfo.isPast
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-orange-100 text-[#fd761a]"
+                  }`}
+                >
+                  <CalendarIcon size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-900">
+                      Sesión #{selectedClassInfo.sessionNum}
+                    </h4>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                        selectedClassInfo.isPast
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                          : "bg-orange-100 text-orange-800 border border-orange-200"
+                      }`}
+                    >
+                      {selectedClassInfo.isPast ? (
+                        <>
+                          <Check size={10} strokeWidth={3} />
+                          <span>Clase Realizada</span>
+                        </>
+                      ) : (
+                        <span>Clase Programada</span>
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 capitalize mt-0.5">
+                    {formatFechaCompleta(selectedClassInfo.clase.fecha_clase)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedClassInfo(null)}
+                className="size-7 rounded-lg hover:bg-slate-100 text-slate-400 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Cuadrícula de Resumen: Horario y Asistencia */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[11px] font-medium text-slate-500 block mb-1">Horario</span>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 font-mono">
+                  <Clock size={13} className="text-[#fd761a]" />
+                  <span>
+                    {selectedClassInfo.clase.hora_inicio || horaInicioCurso || "08:00"} –{" "}
+                    {selectedClassInfo.clase.hora_fin || horaFinCurso || "10:00"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[11px] font-medium text-slate-500 block mb-1">Asistencia</span>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                  <span
+                    className={`size-2 rounded-full shrink-0 ${
+                      selectedClassInfo.clase.asistencia_registrada
+                        ? "bg-emerald-500"
+                        : "bg-slate-300"
+                    }`}
+                  />
+                  <span className="font-mono text-sm font-bold">
+                    {(() => {
+                      const c = selectedClassInfo.clase
+                      const total = c.asistencias_total || totalEstudiantes || c.asistencias_count || 0
+                      if (c.asistencia_registrada) {
+                        const presentes = c.asistencias_presentes ?? c.asistencias_count ?? 0
+                        return `${total}/${presentes}`
+                      }
+                      return total ? `${total}/0` : "Sin registro"
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tema */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Tema de la clase</span>
+              <p className="text-xs text-slate-800 font-medium">
+                {selectedClassInfo.clase.tema && selectedClassInfo.clase.tema.trim()
+                  ? selectedClassInfo.clase.tema
+                  : "No se ha registrado un tema específico para esta sesión."}
+              </p>
+            </div>
+
+            {/* Observaciones */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Observaciones</span>
+              <p className="text-xs text-slate-700 leading-relaxed">
+                {selectedClassInfo.clase.observaciones && selectedClassInfo.clase.observaciones.trim()
+                  ? selectedClassInfo.clase.observaciones
+                  : "Sin observaciones registradas."}
+              </p>
+            </div>
+
+            {/* Footer con Botón Cerrar */}
+            <div className="flex items-center justify-end pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedClassInfo(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Cerrar
               </button>
             </div>
           </div>

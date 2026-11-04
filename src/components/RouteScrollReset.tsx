@@ -1,28 +1,20 @@
 import { useLayoutEffect } from "react"
 import { useLocation } from "react-router"
+import { scrollPageToTop } from "@/lib/scroll"
 
 /**
  * Reinicia la posición de scroll al cambiar de ruta.
  *
- * En esta app el contenedor que scrollea a nivel de página es <main>
- * (el body mide 100dvh), por lo que window.scrollTo por sí solo no basta.
- * Las rutas públicas (login, matrícula, agenda pública) no usan <main>,
- * así que se usa window como respaldo.
+ * Solo reacciona a cambios de pathname; los cambios de query (por ejemplo
+ * ?tab=pagos) no deben mover la página. Los enlaces con hash conservan su
+ * comportamiento de salto a la sección.
  */
 export function RouteScrollReset() {
   const { pathname, hash } = useLocation()
 
   useLayoutEffect(() => {
-    // Los enlaces con ancla conservan su comportamiento de salto a sección.
     if (hash) return
-
-    const main = document.querySelector("main")
-    if (main instanceof HTMLElement) {
-      main.scrollTop = 0
-      main.scrollLeft = 0
-    }
-
-    window.scrollTo(0, 0)
+    scrollPageToTop()
   }, [pathname, hash])
 
   return null
