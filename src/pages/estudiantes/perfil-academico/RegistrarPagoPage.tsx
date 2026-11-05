@@ -466,7 +466,7 @@ export function RegistrarPagoPage() {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-gray-600">Subir foto del comprobante</p>
-                          <p className="text-xs text-gray-400">Máximo 5MB, JPG o PNG</p>
+                          <p className="text-xs text-gray-400">Máximo 20MB, JPG o PNG</p>
                         </div>
                       </div>
                     )}

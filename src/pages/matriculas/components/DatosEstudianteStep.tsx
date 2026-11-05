@@ -144,7 +144,7 @@ export function DatosEstudianteStep({
 
   const [cedulaTab, setCedulaTab] = useState<"imagen" | "pdf">("imagen")
   const isPdfSelected = Boolean(cedulaFile && (cedulaFile.type === "application/pdf" || cedulaFile.name.toLowerCase().endsWith(".pdf")))
-  const MAX_PDF_BYTES = 5 * 1024 * 1024 // 5 MB
+  const MAX_PDF_BYTES = 20 * 1024 * 1024 // 20 MB
 
   const handleFileProcess = (file: File) => {
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
@@ -158,17 +158,24 @@ export function DatosEstudianteStep({
 
     if (isPdf) {
       setCedulaTab("pdf")
-      // Validación de peso exclusivamente para PDF
       if (file.size > MAX_PDF_BYTES) {
         setErrors(prev => ({
           ...prev,
-          cedulaFile: `El documento PDF supera el tamaño máximo permitido de 5 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB). Por favor comprímalo o elija otro archivo.`
+          cedulaFile: `El documento PDF supera el tamaño máximo permitido de 20 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB). Por favor comprímalo o elija otro archivo.`
         }))
         if (cedulaInputRef.current) cedulaInputRef.current.value = ""
         return
       }
     } else {
       setCedulaTab("imagen")
+      if (file.size > MAX_PDF_BYTES) {
+        setErrors(prev => ({
+          ...prev,
+          cedulaFile: `La imagen supera el tamaño máximo permitido de 20 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB). Por favor elija una imagen más liviana.`
+        }))
+        if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+        return
+      }
     }
 
     setCedulaFile(file)
@@ -318,7 +325,7 @@ export function DatosEstudianteStep({
             <p className="text-[11px] text-gray-500">
               {cedulaTab === "imagen"
                 ? "Suba una foto clara o escaneo de la cédula (JPG, PNG o WEBP)."
-                : "Suba el documento digital de la cédula en PDF (máximo 5 MB)."}
+                : "Suba el documento digital de la cédula en PDF (máximo 20 MB)."}
             </p>
           </div>
           <div className="flex p-0.5 rounded-lg bg-gray-100 border" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
@@ -431,7 +438,7 @@ export function DatosEstudianteStep({
                     PDF
                   </div>
                   <span className="font-medium text-slate-600">Haz clic o arrastra el PDF aquí</span>
-                  <span className="text-[10px] text-gray-400">Tamaño máximo permitido: 5 MB</span>
+                  <span className="text-[10px] text-gray-400">Tamaño máximo permitido: 20 MB</span>
                 </>
               ) : (
                 <>

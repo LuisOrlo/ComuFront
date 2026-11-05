@@ -350,12 +350,12 @@ export function AprobacionSolicitudPage() {
     if (!file || !id) return
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
     if (isPdf) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("El documento PDF no debe superar los 5 MB")
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("El documento PDF no debe superar los 20 MB")
         return
       }
     } else {
-      const error = validarImagen(file, 5)
+      const error = validarImagen(file, 20)
       if (error) { toast.error(error); return }
     }
     setUploadingCedula(true)

@@ -256,8 +256,8 @@ export function InteresadosSection({
         toast.error(`"${file.name}" no es una imagen o PDF válido`)
         continue
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`"${file.name}" excede el límite de 5 MB`)
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error(`"${file.name}" excede el límite de 20 MB`)
         continue
       }
       validFiles.push(file)

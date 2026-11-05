@@ -177,6 +177,13 @@ export function StudentForm({ initialValues = EMPTY_STUDENT_FORM, saving = false
 
   const seleccionarCedula = (file: File | null) => {
     if (cedulaPreview) URL.revokeObjectURL(cedulaPreview)
+    if (file && file.size > 20 * 1024 * 1024) {
+      alert("La copia de cédula no debe superar los 20 MB.")
+      if (cedulaInputRef.current) cedulaInputRef.current.value = ""
+      setArchivoCedula(null)
+      setCedulaPreview(null)
+      return
+    }
     setArchivoCedula(file)
     setCedulaPreview(file ? URL.createObjectURL(file) : null)
   }
@@ -281,7 +288,7 @@ export function StudentForm({ initialValues = EMPTY_STUDENT_FORM, saving = false
                 </div>
               </div>
             )}
-            <p className="mt-1 text-xs text-[#73747b]">Opcional. Imagen JPG, PNG o WEBP de hasta 5 MB.</p>
+            <p className="mt-1 text-xs text-[#73747b]">Opcional. Imagen JPG, PNG o WEBP de hasta 20 MB.</p>
           </div>
         </div>
       </div>

@@ -30,7 +30,7 @@ export function ClientePagoPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) { toast.error("El archivo no debe superar los 5MB"); return }
+    if (file.size > 20 * 1024 * 1024) { toast.error("El archivo no debe superar los 20MB"); return }
     setComprobanteFile(file)
     setComprobantePreview(URL.createObjectURL(file))
   }
@@ -129,7 +129,7 @@ export function ClientePagoPage() {
                     <button type="button" onClick={(e) => { e.stopPropagation(); setComprobanteFile(null); setComprobantePreview(null) }} className="text-xs font-bold text-[#be123c] hover:underline">Quitar</button>
                   </> : <>
                     <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#e5eeff] text-[#fd761a]"><HugeiconsIcon icon={UploadIcon} size={20} /></div>
-                    <div><p className="text-sm font-bold text-[#45464d]">Subir foto del comprobante</p><p className="mt-1 text-xs text-[#73747b]">Máximo 5MB, JPG o PNG</p></div>
+                    <div><p className="text-sm font-bold text-[#45464d]">Subir foto del comprobante</p><p className="mt-1 text-xs text-[#73747b]">Máximo 20MB, JPG o PNG</p></div>
                   </>}
                 </div>
               </div>

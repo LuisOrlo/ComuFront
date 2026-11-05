@@ -1,3 +1,4 @@
+import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon, UserIcon, Link03Icon } from "@hugeicons/core-free-icons"
 import { toast } from "sonner"
@@ -87,9 +88,18 @@ export function CourseTable({
                         }}
                       />
                       <div className="min-w-0 flex-1">
-                        <span className="text-[13px] font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors block leading-snug whitespace-normal break-words">
+                        <Link
+                          to={`/cursos/${c.id}`}
+                          onClick={(e) => {
+                            if (onView && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                              e.preventDefault()
+                              onView(c.id)
+                            }
+                          }}
+                          className="text-[13px] font-bold text-slate-900 hover:text-[#fd761a] transition-colors block leading-snug whitespace-normal break-words cursor-pointer"
+                        >
                           {c.nombre}
-                        </span>
+                        </Link>
                         {c.fechaInicio && (
                           <span
                             className="text-[11px] font-medium text-slate-400 block mt-0.5"
@@ -211,18 +221,21 @@ export function CourseTable({
                       >
                         <HugeiconsIcon icon={Link03Icon} size={14} />
                       </button>
-                      <button
+                      <Link
+                        to={`/cursos/${c.id}`}
                         onClick={(e) => {
                           e.stopPropagation()
-                          onView?.(c.id)
+                          if (onView && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                            e.preventDefault()
+                            onView(c.id)
+                          }
                         }}
-                        type="button"
                         aria-label={`Ver detalle de ${c.nombre}`}
                         className="inline-flex items-center gap-1 rounded-lg px-2 py-1 bg-slate-100 hover:bg-[#fd761a] hover:text-white text-slate-700 text-[10px] font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
                       >
                         <span>Ver curso</span>
                         <HugeiconsIcon icon={ArrowRight01Icon} size={11} />
-                      </button>
+                      </Link>
                     </div>
                   </td>
                 </tr>

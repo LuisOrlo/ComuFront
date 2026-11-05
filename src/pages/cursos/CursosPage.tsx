@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery, keepPreviousData } from "@tanstack/react-query"
-import { useNavigate } from "react-router"
+import { useNavigate, Link } from "react-router"
 import { usePermission } from "@/hooks/usePermission"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -84,13 +84,13 @@ export function CursosPage() {
               </h1>
             </div>
             {isAdmin && (
-              <button
-                onClick={() => navigate("/cursos/nuevo")}
+              <Link
+                to="/cursos/nuevo"
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-[#fd761a] hover:bg-[#e06310] shadow-sm shadow-[#fd761a]/30 transition-all active:scale-95 cursor-pointer select-none"
               >
                 <HugeiconsIcon icon={AddCircleIcon} size={18} />
                 <span>Nuevo Curso</span>
-              </button>
+              </Link>
             )}
           </header>
 

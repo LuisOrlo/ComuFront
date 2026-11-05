@@ -158,8 +158,8 @@ export function EgresoFormPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 3 * 1024 * 1024) {
-      toast.error("El archivo supera los 3MB permitidos")
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("El archivo supera los 20MB permitidos")
       return
     }
     if (!file.type.startsWith("image/")) {
@@ -577,7 +577,7 @@ export function EgresoFormPage() {
                       Haz clic para subir o arrastra la foto del comprobante
                     </span>
                     <span className="text-[11px] text-slate-400 mt-0.5 block">
-                      Formatos JPG, PNG, WEBP · Tamaño máximo de 3MB
+                      Formatos JPG, PNG, WEBP · Tamaño máximo de 20MB
                     </span>
                   </div>
                 </button>

@@ -86,8 +86,8 @@ export function RegistrarPagoInstructorModal({
       return
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("El archivo supera el límite de 5 MB")
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("El archivo supera el límite de 20 MB")
       e.target.value = ""
       return
     }
@@ -402,7 +402,7 @@ export function RegistrarPagoInstructorModal({
               <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-4 transition hover:bg-gray-50 cursor-pointer">
                 <Upload size={18} className="text-gray-400 mb-1" />
                 <span className="text-xs font-bold text-gray-700">Subir imagen del comprobante</span>
-                <span className="text-[10px] text-gray-400 mt-0.5">Formatos: JPG, PNG o WEBP (máx. 5MB)</span>
+                <span className="text-[10px] text-gray-400 mt-0.5">Formatos: JPG, PNG o WEBP (máx. 20MB)</span>
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"

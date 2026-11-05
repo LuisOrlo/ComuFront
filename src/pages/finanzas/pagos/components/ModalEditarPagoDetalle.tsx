@@ -176,8 +176,8 @@ export function ModalEditarPagoDetalle({
       toast.error("Solo se permiten archivos de imagen (JPG, PNG, WEBP)")
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("La imagen no debe superar los 5 MB")
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("La imagen no debe superar los 20 MB")
       return
     }
     setComprobanteFile(file)

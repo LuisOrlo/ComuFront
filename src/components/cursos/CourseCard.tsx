@@ -1,3 +1,4 @@
+import { Link } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowRight01Icon, UserIcon, Calendar03Icon, Link03Icon } from "@hugeicons/core-free-icons"
 import { toast } from "sonner"
@@ -80,9 +81,18 @@ export function CourseCard({
 
           {/* Título */}
           <div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors line-clamp-2 leading-snug">
+            <Link
+              to={`/cursos/${curso.id}`}
+              onClick={(e) => {
+                if (onView && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                  e.preventDefault()
+                  onView(curso.id)
+                }
+              }}
+              className="text-base font-bold text-slate-900 group-hover:text-[#fd761a] transition-colors line-clamp-2 leading-snug block"
+            >
               {curso.nombre}
-            </h3>
+            </Link>
           </div>
 
           {/* Fechas de inicio y fin */}
@@ -170,15 +180,20 @@ export function CourseCard({
             <HugeiconsIcon icon={Link03Icon} size={14} />
             <span>Copiar enlace</span>
           </button>
-          <button
-            type="button"
-            onClick={() => onView?.(curso.id)}
+          <Link
+            to={`/cursos/${curso.id}`}
+            onClick={(e) => {
+              if (onView && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                e.preventDefault()
+                onView(curso.id)
+              }
+            }}
             aria-label={`Ver detalle de ${curso.nombre}`}
             className="inline-flex items-center gap-1 text-xs font-bold text-[#fd761a] hover:underline cursor-pointer"
           >
             <span>Ver curso</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-          </button>
+          </Link>
         </div>
       </div>
     </article>

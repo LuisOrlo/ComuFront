@@ -175,7 +175,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
 
   const step3CanSubmit = useMemo(() => {
     if (!metodoPago) return false
-    if (metodoPago === "transferencia" && !comprobanteFile) return false
+    if (!comprobanteFile) return false
     return Object.keys(paymentErrors).length === 0
   }, [metodoPago, comprobanteFile, paymentErrors])
 
@@ -257,7 +257,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
   const validateStep3 = (): boolean => {
     const errs: Record<string, string> = {}
     if (!metodoPago) errs.metodoPago = "Selecciona un método de pago"
-    if (metodoPago === "transferencia" && !comprobanteFile) errs.comprobante = "Adjunta el comprobante de transferencia"
+    if (!comprobanteFile) errs.comprobante = "Adjunta el comprobante de pago"
     setPaymentErrors(errs)
     setPaymentTouched({ metodoPago: true, comprobante: true })
     return Object.keys(errs).length === 0
@@ -623,13 +623,13 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
               setPaymentErrors(prev => { const n = { ...prev }; delete n.comprobante; return n })
               return
             }
-            const MAX = 5 * 1024 * 1024
+            const MAX = 20 * 1024 * 1024
             if (!file.type.startsWith("image/")) {
               setPaymentErrors(prev => ({ ...prev, comprobante: "Solo se permiten imágenes (JPG, PNG)" }))
               return
             }
             if (file.size > MAX) {
-              setPaymentErrors(prev => ({ ...prev, comprobante: "La imagen no debe superar los 5MB" }))
+              setPaymentErrors(prev => ({ ...prev, comprobante: "La imagen no debe superar los 20MB" }))
               return
             }
             setComprobanteFile(file)
