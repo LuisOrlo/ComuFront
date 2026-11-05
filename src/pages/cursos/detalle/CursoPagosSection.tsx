@@ -37,6 +37,8 @@ interface ModulePayData {
 interface EstudianteFinanciero {
   matricula_id: string
   nombre: string
+  apellidos?: string
+  nombres?: string
   cedula: string
   telefono: string
   ciudad: string
@@ -149,6 +151,44 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
     return map
   }, [matriculas])
 
+  const getEstudiantePartes = (est: EstudianteFinanciero) => {
+    if (est.apellidos && est.apellidos !== "—") {
+      return {
+        apellidos: est.apellidos,
+        nombres: est.nombres !== "—" ? (est.nombres || "") : "",
+      }
+    }
+    const mat = matriculas?.find(m => m.id === est.matricula_id)
+    const estData = mat?.estudiante || mat?.solicitud_inscripcion?.participante_externo
+    if (estData?.apellidos || estData?.nombres) {
+      return {
+        apellidos: estData.apellidos || "",
+        nombres: estData.nombres || "",
+      }
+    }
+    return {
+      apellidos: est.nombre || "",
+      nombres: "",
+    }
+  }
+
+  const getEstudianteDisplayName = (est: EstudianteFinanciero) => {
+    const { apellidos, nombres } = getEstudiantePartes(est)
+    const display = `${apellidos} ${nombres}`.trim()
+    return display || est.nombre || "—"
+  }
+
+  const estudiantesOrdenados = useMemo(() => {
+    return [...estudiantes].sort((a, b) => {
+      const partesA = getEstudiantePartes(a)
+      const partesB = getEstudiantePartes(b)
+      const compAp = (partesA.apellidos || "").localeCompare(partesB.apellidos || "", "es", { sensitivity: "base" })
+      if (compAp !== 0) return compAp
+      return (partesA.nombres || "").localeCompare(partesB.nombres || "", "es", { sensitivity: "base" })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estudiantes, matriculas])
+
   const load = async () => {
     if (!cursoId) return
     setLoading(true)
@@ -171,18 +211,17 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
   }, [cursoId])
 
   const handleDownloadPDF = async () => {
-    if (!estudiantes || estudiantes.length === 0) {
+    if (!estudiantesOrdenados || estudiantesOrdenados.length === 0) {
       toast.error("No hay datos de estudiantes para generar el reporte")
       return
     }
     setGeneratingPDF(true)
     try {
       // Mapear estudiantes organizando apellidos y nombres separados si es posible
-      const pdfEstudiantes = estudiantes.map(e => {
+      const pdfEstudiantes = estudiantesOrdenados.map(e => {
         const mat = matriculas?.find(m => m.id === e.matricula_id)
         const estData = mat?.estudiante || mat?.solicitud_inscripcion?.participante_externo
-        const nombres = estData?.nombres || e.nombre.split(" ").slice(0, 2).join(" ")
-        const apellidos = estData?.apellidos || e.nombre.split(" ").slice(2).join(" ") || ""
+        const partes = getEstudiantePartes(e)
         const estDataTyped = estData as { ciudad?: { nombre?: string } | string } | undefined
         const matTyped = mat as { ciudad?: string } | undefined
         const ciudad = (estDataTyped?.ciudad && typeof estDataTyped.ciudad === "object"
@@ -190,8 +229,8 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
           : (estDataTyped?.ciudad as string) || matTyped?.ciudad || e.ciudad || "—") as string
 
         return {
-          nombres: nombres || e.nombre,
-          apellidos: apellidos || "",
+          nombres: partes.nombres || partes.apellidos,
+          apellidos: partes.apellidos || "",
           ciudad,
           totalPagar: Number(e.total_esperado || 0),
           totalAbonado: Number(e.total_pagado || 0),
@@ -313,7 +352,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
         </div>
 
         <div className="overflow-x-auto">
-          {estudiantes.length === 0 ? (
+          {estudiantesOrdenados.length === 0 ? (
             <div className="p-12 text-center text-sm" style={{ color: TEXT_MUTED }}>Sin estudiantes matriculados</div>
           ) : (
             <table className="w-full text-left border-collapse text-sm">
@@ -321,7 +360,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                 <tr className="border-b bg-[#eff4ff]" style={{ borderColor: BORDER }}>
                   <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-5 py-3.5 w-12" style={{ color: "#45464d" }}>#</th>
                   <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-5 py-3.5" style={{ color: "#45464d" }}>Estudiante</th>
-                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Matrícula (${Number(curso?.precioMatricula ?? estudiantes[0]?.inscripcion?.monto_ajustado ?? 0).toFixed(2)})</th>
+                  <th className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>Matrícula (${Number(curso?.precioMatricula ?? estudiantesOrdenados[0]?.inscripcion?.monto_ajustado ?? 0).toFixed(2)})</th>
                   {modulosOrdenados.map(mod => (
                     <th key={mod.id} className="text-left font-semibold uppercase tracking-wider text-[11px] px-4 py-3.5 whitespace-nowrap" style={{ color: "#45464d" }}>
                       M{mod.numero_orden ?? ""} (${Number(mod.precio_base ?? 0).toFixed(2)})
@@ -332,9 +371,10 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                 </tr>
               </thead>
               <tbody>
-                {estudiantes.map((est, idx) => {
+                {estudiantesOrdenados.map((est, idx) => {
                   const modData = est.modulos || {}
                   const deuda = Math.max(0, (est.total_esperado ?? 0) - (est.total_pagado ?? 0))
+                  const displayName = getEstudianteDisplayName(est)
                   return (
                     <Fragment key={est.matricula_id}>
                       <tr
@@ -342,7 +382,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                         className="border-b hover:bg-[#eff4ff] cursor-pointer transition-colors"
                         style={{ borderColor: BORDER }}>
                         <td className="px-5 py-4 text-xs" style={{ color: "#45464d" }}>#{idx + 1}</td>
-                        <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: "#0b1c30" }}><span className="inline-flex items-center gap-2">{expandido === est.matricula_id ? <ChevronDown size={14} style={{ color: TEXT_MUTED }} /> : <ChevronRight size={14} style={{ color: TEXT_MUTED }} />}{est.nombre}</span></td>
+                        <td className="px-5 py-4 font-semibold whitespace-nowrap" style={{ color: "#0b1c30" }}><span className="inline-flex items-center gap-2">{expandido === est.matricula_id ? <ChevronDown size={14} style={{ color: TEXT_MUTED }} /> : <ChevronRight size={14} style={{ color: TEXT_MUTED }} />}{displayName}</span></td>
                         <td className="px-4 py-4 font-mono" style={{ color: "#0b1c30" }}>
                           <span className="font-semibold" style={{ color: Number(est.inscripcion?.monto_abonado || 0) >= Number(est.inscripcion?.monto_ajustado || 0) && Number(est.inscripcion?.monto_ajustado || 0) > 0 ? "#009668" : "#76777d" }}>${Number(est.inscripcion?.monto_abonado || 0).toFixed(2)}</span>
                         </td>
@@ -369,7 +409,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                         <tr key={`${est.matricula_id}-detalle`}>
                           <td colSpan={modulos.length + 5} className="bg-[#eff4ff] px-6 py-4">
                             <div className="space-y-3 bg-white rounded-xl p-5 shadow-sm">
-                              <div className="flex items-center justify-between"><p className="text-sm font-semibold" style={{ color: CHARCOAL }}>Historial de transacciones · {est.nombre}</p><span className="text-[11px] text-[#45464d]">Desglose por módulo y pagos recibidos</span></div>
+                              <div className="flex items-center justify-between"><p className="text-sm font-semibold" style={{ color: CHARCOAL }}>Historial de transacciones · {displayName}</p><span className="text-[11px] text-[#45464d]">Desglose por módulo y pagos recibidos</span></div>
                               <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: TEXT_MUTED }}>Desglose por Módulo</p>
                               <div className="grid gap-2">
                                 {modulosOrdenados.map(mod => {
@@ -386,7 +426,7 @@ export function CursoPagosSection({ cursoId, cursoNombre, curso, matriculas }: P
                                           </span>
                                           {saldo > 0 && studentIdMap[est.matricula_id] && (
                                             <Link
-                                              to={`/estudiantes/${studentIdMap[est.matricula_id]}/academico/registrar-pago/${est.matricula_id}?curso=${encodeURIComponent(cursoNombre || "")}&nombre=${encodeURIComponent(est.nombre)}&cedula=${encodeURIComponent(est.cedula)}&volver=${encodeURIComponent(`/cursos/${cursoId}?tab=pagos`)}`}
+                                              to={`/estudiantes/${studentIdMap[est.matricula_id]}/academico/registrar-pago/${est.matricula_id}?curso=${encodeURIComponent(cursoNombre || "")}&nombre=${encodeURIComponent(displayName)}&cedula=${encodeURIComponent(est.cedula)}&volver=${encodeURIComponent(`/cursos/${cursoId}?tab=pagos`)}`}
                                               className="text-[10px] font-bold px-2 py-0.5 rounded-md transition-all hover:opacity-80"
                                               style={{ color: "white", backgroundColor: ACCENT }}
                                             >
