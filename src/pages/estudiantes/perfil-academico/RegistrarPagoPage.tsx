@@ -168,7 +168,16 @@ export function RegistrarPagoPage() {
       toast.success("Pago registrado exitosamente")
       navigate(backUrl)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje
+      const responseData = (err as { response?: { data?: { mensaje?: string; ya_procesado?: boolean } } })?.response?.data
+      const status = (err as { response?: { status?: number } })?.response?.status
+
+      if (responseData?.ya_procesado || status === 409) {
+        toast.success("El pago ya fue registrado exitosamente")
+        navigate(backUrl)
+        return
+      }
+
+      const msg = responseData?.mensaje
       toast.error(msg || "Error al registrar pago")
     } finally {
       setSaving(false)
@@ -206,11 +215,13 @@ export function RegistrarPagoPage() {
   const hayMontoExcedido = sorted.some(linea => Number.parseFloat(montos[linea.id] || "0") > linea.monto_ajustado - linea.monto_abonado + 0.001)
   const isMultiple = metodos.length > 1
   const porMetodo = isMultiple && modalidadComprobante === "por_metodo"
+  const metodosActivos = metodos.filter(m => (parseFloat(m.monto) || 0) > 0)
+  const tieneMetodoNoEfectivo = metodosActivos.some(m => m.metodo_pago !== "efectivo")
 
   const tieneComprobante = porMetodo
-    ? metodos.filter(m => (parseFloat(m.monto) || 0) > 0).length > 0 &&
-      metodos.filter(m => (parseFloat(m.monto) || 0) > 0).every(m => !!m.comprobante_file || !!m.comprobante_url)
-    : !!comprobanteFile
+    ? metodosActivos.length > 0 &&
+      metodosActivos.every(m => m.metodo_pago === "efectivo" || !!m.comprobante_file || !!m.comprobante_url)
+    : !tieneMetodoNoEfectivo || !!comprobanteFile
 
   const puedePagar = !saving && montoPagoNum > 0 && !hayMontoExcedido && tieneComprobante
 
@@ -415,6 +426,7 @@ export function RegistrarPagoPage() {
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
                       Comprobante de pago {isMultiple ? "(Comprobante único para todos los métodos)" : ""}
+                      {!tieneMetodoNoEfectivo && <span className="ml-1 text-[11px] font-normal text-slate-400 normal-case">(Opcional para efectivo)</span>}
                     </label>
                     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                     {comprobantePreview ? (

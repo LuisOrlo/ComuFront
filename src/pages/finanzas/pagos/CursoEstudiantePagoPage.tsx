@@ -384,7 +384,13 @@ export function CursoEstudiantePagoPage() {
 
   const metodosBalanceados = totalMontoAPagar > 0 && sumaMetodosCentavos === Math.round(totalMontoAPagar * 100)
 
-  const comprobanteValido = !!comprobanteFile
+  const metodosActivos = metodos.filter((m) => (parseFloat(m.monto) || 0) > 0)
+  const requiereComprobante =
+    metodosActivos.length === 0
+      ? metodos.some((m) => m.metodo_pago !== "efectivo")
+      : metodosActivos.some((m) => m.metodo_pago !== "efectivo")
+
+  const comprobanteValido = !requiereComprobante || !!comprobanteFile
   const formularioValido =
     selectedModulos.size > 0 &&
     !hasAnyModuloError &&
@@ -398,10 +404,10 @@ export function CursoEstudiantePagoPage() {
     if (hasAnyModuloError) return "Corrige los montos que superan el saldo del módulo"
     if (totalMontoAPagar <= 0) return "Ingresa un monto válido mayor a $0"
     if (!metodosBalanceados) return "La suma de los métodos de pago debe coincidir con el total a pagar"
-    if (!comprobanteFile) return "Debes adjuntar una imagen del comprobante de pago"
+    if (requiereComprobante && !comprobanteFile) return "Debes adjuntar una imagen del comprobante de pago"
     if (!fechaPago) return "Selecciona la fecha de pago"
     return ""
-  }, [selectedModulos.size, hasAnyModuloError, totalMontoAPagar, metodosBalanceados, comprobanteFile, fechaPago])
+  }, [selectedModulos.size, hasAnyModuloError, totalMontoAPagar, metodosBalanceados, requiereComprobante, comprobanteFile, fechaPago])
 
   const saldoRestanteCurso = Math.max(0, Math.round((totalSaldoPendiente - totalMontoAPagar) * 100) / 100)
   const pctPagado =
@@ -411,7 +417,7 @@ export function CursoEstudiantePagoPage() {
 
   const handleRegistrar = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!comprobanteFile) {
+    if (requiereComprobante && !comprobanteFile) {
       toast.error("Debes subir el comprobante de pago")
       return
     }
@@ -446,11 +452,13 @@ export function CursoEstudiantePagoPage() {
 
     setSaving(true)
     try {
-      const form = new FormData()
-      form.append("archivo", comprobanteFile)
-
-      const uploadRes = await financeService.uploadComprobantePago(form)
-      const comprobanteUrl = uploadRes?.data?.url || uploadRes?.url || ""
+      let comprobanteUrl: string | null = null
+      if (comprobanteFile) {
+        const form = new FormData()
+        form.append("archivo", comprobanteFile)
+        const uploadRes = await financeService.uploadComprobantePago(form)
+        comprobanteUrl = uploadRes?.data?.url || uploadRes?.url || null
+      }
 
       await financeService.registrarPagosIniciales({
         matricula_id: matriculaId,
@@ -470,7 +478,16 @@ export function CursoEstudiantePagoPage() {
       toast.success("Pago registrado exitosamente")
       navigate(-1)
     } catch (err: any) {
-      toast.error(err?.response?.data?.mensaje || err?.response?.data?.message || "Error al registrar el pago")
+      const responseData = err?.response?.data
+      const status = err?.response?.status
+
+      if (responseData?.ya_procesado || status === 409) {
+        toast.success("El pago ya fue registrado exitosamente")
+        navigate(-1)
+        return
+      }
+
+      toast.error(responseData?.mensaje || responseData?.message || "Error al registrar el pago")
     } finally {
       setSaving(false)
     }
@@ -1082,10 +1099,16 @@ export function CursoEstudiantePagoPage() {
                     </div>
                   )}
 
-                  {!comprobanteValido && (
+                  {requiereComprobante && !comprobanteValido && (
                     <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
                       <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
                       <span>El comprobante de pago es indispensable para validar y asentar el abono.</span>
+                    </p>
+                  )}
+                  {!requiereComprobante && (
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+                      <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
+                      <span>Pago en efectivo: el comprobante es opcional.</span>
                     </p>
                   )}
                 </div>

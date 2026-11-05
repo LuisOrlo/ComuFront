@@ -221,7 +221,8 @@ export function ServicioPagoPage() {
   const { nombre, nombreServicio } = state
   const montoNum = parseFloat(monto || "0")
   const montoValido = !isNaN(montoNum) && montoNum > 0 && montoNum <= saldoActual
-  const comprobanteValido = !!comprobanteFile
+  const requiereComprobante = metodoPago !== "efectivo"
+  const comprobanteValido = !requiereComprobante || !!comprobanteFile
   const formularioValido = montoValido && comprobanteValido && !!fechaPago && !!metodoPago
   const saldoRestante = Math.max(0, Math.round((saldoActual - montoNum) * 100) / 100)
   const abonadoPrevio = Math.max(0, Math.round((montoTotalCuenta - saldoActual) * 100) / 100)
@@ -281,7 +282,7 @@ export function ServicioPagoPage() {
       toast.error(`El monto supera el saldo pendiente ($${saldoActual.toFixed(2)})`)
       return
     }
-    if (!comprobanteFile) {
+    if (requiereComprobante && !comprobanteFile) {
       toast.error("Debes adjuntar el comprobante de pago")
       return
     }
@@ -296,10 +297,13 @@ export function ServicioPagoPage() {
 
     setSaving(true)
     try {
-      const fd = new FormData()
-      fd.append("archivo", comprobanteFile)
-      const res = await financeService.uploadComprobantePago(fd)
-      const comprobanteUrl = res.data?.url || res.url || ""
+      let comprobanteUrl = ""
+      if (comprobanteFile) {
+        const fd = new FormData()
+        fd.append("archivo", comprobanteFile)
+        const res = await financeService.uploadComprobantePago(fd)
+        comprobanteUrl = res.data?.url || res.url || ""
+      }
 
       if (esPagoDirecto) {
         await financeService.pagarServicio(state.tipo, state.servicioId, {
@@ -816,10 +820,16 @@ export function ServicioPagoPage() {
                     </div>
                   )}
 
-                  {!comprobanteValido && (
+                  {requiereComprobante && !comprobanteValido && (
                     <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
                       <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
                       <span>El comprobante de pago es indispensable para la acreditación fiscal de la cuenta.</span>
+                    </p>
+                  )}
+                  {!requiereComprobante && (
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+                      <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
+                      <span>Pago en efectivo: el comprobante es opcional.</span>
                     </p>
                   )}
                 </div>

@@ -465,7 +465,7 @@ export const PagoPreAprobacionSection = forwardRef(function PagoPreAprobacionSec
         const tieneIndividual = list.some((m) => m.comprobante_file || m.comprobante_url)
         if (tieneIndividual) {
           const algunoFalta = list.some(
-            (m) => !m.comprobante_file && !m.comprobante_url && parseFloat(m.monto || "0") > 0
+            (m) => m.metodo_pago !== "efectivo" && !m.comprobante_file && !m.comprobante_url && parseFloat(m.monto || "0") > 0
           )
           if (algunoFalta) return true
         }

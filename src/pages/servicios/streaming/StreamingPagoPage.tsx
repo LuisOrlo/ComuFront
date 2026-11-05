@@ -160,7 +160,8 @@ export function StreamingPagoPage() {
 
   const montoNum = parseFloat(monto || "0")
   const montoValido = !isNaN(montoNum) && montoNum > 0 && montoNum <= saldoActual + 0.001
-  const comprobanteValido = !!comprobanteFile
+  const requiereComprobante = metodoPago !== "efectivo"
+  const comprobanteValido = !requiereComprobante || !!comprobanteFile
   const formularioValido = montoValido && comprobanteValido && !!fechaPago && !!metodoPago
   const saldoRestante = Math.max(0, Math.round((saldoActual - montoNum) * 100) / 100)
   const pctPagado =
@@ -219,7 +220,7 @@ export function StreamingPagoPage() {
       toast.error(`El monto supera el saldo pendiente ($${saldoActual.toFixed(2)})`)
       return
     }
-    if (!comprobanteFile) {
+    if (requiereComprobante && !comprobanteFile) {
       toast.error("Debes adjuntar la foto o captura del comprobante de pago")
       return
     }
@@ -234,11 +235,14 @@ export function StreamingPagoPage() {
 
     setSaving(true)
     try {
-      // Subir archivo al endpoint de finanzas
-      const fd = new FormData()
-      fd.append("archivo", comprobanteFile)
-      const uploadRes = await financeService.uploadComprobantePago(fd)
-      const comprobanteUrl = uploadRes.data?.url || uploadRes.url || ""
+      let comprobanteUrl = ""
+      if (comprobanteFile) {
+        // Subir archivo al endpoint de finanzas
+        const fd = new FormData()
+        fd.append("archivo", comprobanteFile)
+        const uploadRes = await financeService.uploadComprobantePago(fd)
+        comprobanteUrl = uploadRes.data?.url || uploadRes.url || ""
+      }
 
       // Registrar pago del servicio de streaming
       await streamingService.registrarPago(streaming.id, {
@@ -777,10 +781,16 @@ export function StreamingPagoPage() {
                     </div>
                   )}
 
-                  {!comprobanteValido && (
+                  {requiereComprobante && !comprobanteValido && (
                     <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
                       <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
                       <span>El comprobante de pago es indispensable para validar el cobro de la cobertura.</span>
+                    </p>
+                  )}
+                  {!requiereComprobante && (
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+                      <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
+                      <span>Pago en efectivo: el comprobante es opcional.</span>
                     </p>
                   )}
                 </div>

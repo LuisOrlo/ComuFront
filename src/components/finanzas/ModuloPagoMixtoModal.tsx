@@ -185,7 +185,7 @@ export function ModuloPagoMixtoModal({
     if (!esExacto) return
     if (modalidadComprobante === "por_metodo") {
       const sinComprobante = metodos.some(
-        (m) => !m.comprobante_file && !m.comprobante_url && parseFloat(m.monto || "0") > 0
+        (m) => m.metodo_pago !== "efectivo" && !m.comprobante_file && !m.comprobante_url && parseFloat(m.monto || "0") > 0
       )
       if (sinComprobante) {
         return
@@ -197,7 +197,7 @@ export function ModuloPagoMixtoModal({
 
   const faltaComprobante =
     modalidadComprobante === "por_metodo" &&
-    metodos.some((m) => !m.comprobante_file && !m.comprobante_url && parseFloat(m.monto || "0") > 0)
+    metodos.some((m) => m.metodo_pago !== "efectivo" && !m.comprobante_file && !m.comprobante_url && parseFloat(m.monto || "0") > 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -398,6 +398,10 @@ export function ModuloPagoMixtoModal({
                           {item.comprobante_file?.name || "Comprobante cargado"}
                         </span>
                       </div>
+                    ) : item.metodo_pago === "efectivo" ? (
+                      <span className="text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 font-medium flex items-center gap-1">
+                        Comprobante opcional (Efectivo)
+                      </span>
                     ) : (
                       <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-medium flex items-center gap-1">
                         <HugeiconsIcon icon={AlertCircleIcon} size={12} />

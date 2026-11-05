@@ -92,6 +92,10 @@ export function PagoInicialMatriculaModal({
       toast.error("Ingresa un monto para registrar el pago")
       return
     }
+    if (metodoPago !== "efectivo" && !comprobanteFile) {
+      toast.error("Debes adjuntar el comprobante de pago")
+      return
+    }
     setSaving(true)
     try {
       const comprobanteUrl = comprobanteFile ? await toBase64(comprobanteFile) : null
@@ -321,7 +325,9 @@ export function PagoInicialMatriculaModal({
           </div>
 
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">Comprobante de pago</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1 mb-2 block">
+              Comprobante de pago {metodoPago === "efectivo" && <span className="font-normal text-slate-400 normal-case">(Opcional para efectivo)</span>}
+            </label>
             <div
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-4 p-4 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all"

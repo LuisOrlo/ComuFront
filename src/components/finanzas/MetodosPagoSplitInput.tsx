@@ -412,6 +412,10 @@ export function MetodosPagoSplitInput({
                           {item.comprobante_file?.name || "Comprobante cargado"}
                         </span>
                       </div>
+                    ) : item.metodo_pago === "efectivo" ? (
+                      <span className="text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 font-medium flex items-center gap-1">
+                        Comprobante opcional (Efectivo)
+                      </span>
                     ) : (
                       <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 font-medium flex items-center gap-1">
                         <HugeiconsIcon icon={AlertCircleIcon} size={12} />

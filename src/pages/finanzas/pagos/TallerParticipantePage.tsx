@@ -170,7 +170,14 @@ export function TallerParticipantePage() {
 
   const totalEsperadoCentavos = Math.round(montoNum * 100)
   const metodosCoinciden = montoNum > 0 && metodosSumCentavos === totalEsperadoCentavos
-  const comprobanteValido = !!comprobanteFile
+
+  const metodosActivos = metodos.filter((m) => (parseFloat(m.monto) || 0) > 0)
+  const requiereComprobante =
+    metodosActivos.length === 0
+      ? metodos.some((m) => m.metodo_pago !== "efectivo")
+      : metodosActivos.some((m) => m.metodo_pago !== "efectivo")
+
+  const comprobanteValido = !requiereComprobante || !!comprobanteFile
 
   const formularioValido = useMemo(() => {
     return (
@@ -191,12 +198,12 @@ export function TallerParticipantePage() {
     if (montoNum > saldoPendiente + 0.001) {
       return `El monto ingresado ($${montoNum.toFixed(2)}) supera el saldo pendiente ($${saldoPendiente.toFixed(2)}).`
     }
-    if (!comprobanteValido) return "Debes adjuntar una imagen del comprobante de pago antes de continuar."
+    if (requiereComprobante && !comprobanteValido) return "Debes adjuntar una imagen del comprobante de pago antes de continuar."
     if (!metodosCoinciden) {
       return `La suma de los métodos de pago ($${(metodosSumCentavos / 100).toFixed(2)}) no coincide con el total a pagar ($${montoNum.toFixed(2)}).`
     }
     return null
-  }, [saldoPendiente, montoPago, montoNum, comprobanteValido, metodosCoinciden, metodosSumCentavos])
+  }, [saldoPendiente, montoPago, montoNum, requiereComprobante, comprobanteValido, metodosCoinciden, metodosSumCentavos])
 
   const saldoRestanteProyectado = Math.max(
     0,
@@ -868,10 +875,16 @@ export function TallerParticipantePage() {
                     </div>
                   )}
 
-                  {!comprobanteValido && (
+                  {requiereComprobante && !comprobanteValido && (
                     <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
                       <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
                       <span>El comprobante de pago es indispensable para validar y asentar el abono.</span>
+                    </p>
+                  )}
+                  {!requiereComprobante && (
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-1">
+                      <HugeiconsIcon icon={InformationCircleIcon} size={13} className="text-slate-400" />
+                      <span>Pago en efectivo: el comprobante es opcional.</span>
                     </p>
                   )}
                 </div>
