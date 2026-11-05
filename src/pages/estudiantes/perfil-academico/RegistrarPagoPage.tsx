@@ -90,8 +90,9 @@ export function RegistrarPagoPage() {
         id: l.id,
         nombre: l.tipo === "inscripcion" ? "Inscripción / Matrícula" : (l.nombre_modulo || `Módulo ${l.numero_orden}`),
         saldo: Math.max(0, l.monto_ajustado - l.monto_abonado),
+        montoACobrar: Number.parseFloat(montos[l.id] || "0"),
       }))
-  }, [sorted])
+  }, [sorted, montos])
 
   const handleRegistrar = async () => {
     const pagos = sorted
@@ -154,7 +155,7 @@ export function RegistrarPagoPage() {
           comprobante_url: comprobanteUrlGlobal || metodosConUrls[0]?.final_comprobante_url || null,
         })),
         metodos_pago: metodosConUrls.map((m) => ({
-          linea_pago_modulo_id: m.linea_pago_modulo_id,
+          linea_pago_modulo_id: m.linea_pago_modulo_id || null,
           metodo_pago: m.metodo_pago,
           monto: parseFloat(m.monto) || 0,
           comprobante_url: m.final_comprobante_url,
@@ -200,23 +201,6 @@ export function RegistrarPagoPage() {
       return prev
     })
   }, [montoPagoNum])
-
-  useEffect(() => {
-    const tieneAsignaciones = metodos.some(m => !!m.linea_pago_modulo_id)
-    if (tieneAsignaciones) {
-      setMontos(prev => {
-        const nuevosMontos: Record<string, string> = { ...prev }
-        sorted.forEach(l => {
-          const metodosDeLinea = metodos.filter(m => m.linea_pago_modulo_id === l.id)
-          if (metodosDeLinea.length > 0) {
-            const sumLinea = metodosDeLinea.reduce((s, m) => s + (parseFloat(m.monto) || 0), 0)
-            nuevosMontos[l.id] = sumLinea > 0 ? sumLinea.toFixed(2) : ""
-          }
-        })
-        return nuevosMontos
-      })
-    }
-  }, [metodos, sorted])
 
   const cuentaAfectadas = Object.values(montos).filter(value => Number.parseFloat(value) > 0).length
   const hayMontoExcedido = sorted.some(linea => Number.parseFloat(montos[linea.id] || "0") > linea.monto_ajustado - linea.monto_abonado + 0.001)

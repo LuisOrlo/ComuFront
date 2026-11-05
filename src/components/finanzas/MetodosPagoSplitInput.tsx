@@ -80,13 +80,6 @@ export function MetodosPagoSplitInput({
   const esExacto = totalEsperadoCentavos > 0 && diferenciaCentavos === 0
   const esExcedido = diferenciaCentavos < 0
 
-  // Detección automática del concepto activo con fondos a cobrar
-  const conceptosActivos = conceptos?.filter((c) => (c.montoACobrar ?? 0) > 0)
-  const defaultConceptoId =
-    conceptosActivos && conceptosActivos.length === 1
-      ? conceptosActivos[0].id
-      : conceptos?.[0]?.id
-
   // Validación de montos asignados a cada módulo vs monto a cobrar de ese módulo.
   // IMPORTANTE: Esta validación por módulo SOLO aplica cuando hay múltiples métodos (isMultiple).
   // En modo de método único, el método cubre globalmente la transacción distribuida entre los módulos.
@@ -152,7 +145,7 @@ export function MetodosPagoSplitInput({
       id: `${componentId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       metodo_pago: "transferencia",
       monto: faltante > 0 ? faltante.toFixed(2) : "",
-      linea_pago_modulo_id: defaultConceptoId,
+      linea_pago_modulo_id: undefined,
     }
     onChange([...metodos, nuevo])
   }
@@ -171,23 +164,18 @@ export function MetodosPagoSplitInput({
       if (metodos.length === 1) {
         const mitad = Math.floor(totalEsperadoCentavos / 2) / 100
         const resto = (totalEsperadoCentavos - Math.round(mitad * 100)) / 100
-        const primerId = metodos[0].linea_pago_modulo_id || defaultConceptoId
-        const segundoId =
-          conceptosActivos && conceptosActivos.length === 1
-            ? primerId
-            : conceptos?.[1]?.id || primerId
 
         onChange([
           {
             ...metodos[0],
             monto: mitad > 0 ? mitad.toFixed(2) : "",
-            linea_pago_modulo_id: primerId,
+            linea_pago_modulo_id: metodos[0].linea_pago_modulo_id || undefined,
           },
           {
             id: `${componentId}-${Date.now()}-sec`,
             metodo_pago: metodos[0].metodo_pago === "efectivo" ? "transferencia" : "efectivo",
             monto: resto > 0 ? resto.toFixed(2) : "",
-            linea_pago_modulo_id: segundoId,
+            linea_pago_modulo_id: undefined,
           },
         ])
       }
