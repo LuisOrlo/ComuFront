@@ -4,6 +4,7 @@ import { CheckCircle } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { cursosService, type CursoAbierto } from "@/services/cursos.service"
 import { toast } from "sonner"
+import { getFriendlyErrorMessage } from "@/lib/errorUtils"
 import { DatosEstudianteStep, type EstudianteData } from "./DatosEstudianteStep"
 import { PagoForm } from "./PagoForm"
 
@@ -42,6 +43,7 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
     estado_civil: "",
     edad: "",
     nivel_educativo: "",
+    acepta_terminos: false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -72,8 +74,8 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
 
   const step1CanProceed = useMemo(() => {
     const fields: (keyof EstudianteData)[] = ["cedula", "nombres", "apellidos", "telefono", "correo"]
-    const allFilled = fields.every((f) => estudiante[f]?.trim())
-    return allFilled && !!cedulaFile && Object.keys(errors).length === 0
+    const allFilled = fields.every((f) => typeof estudiante[f] === "string" && (estudiante[f] as string).trim().length > 0)
+    return allFilled && !!cedulaFile && Boolean(estudiante.acepta_terminos) && Object.keys(errors).length === 0
   }, [estudiante, cedulaFile, errors])
 
   const step2CanSubmit = useMemo(() => {
@@ -142,7 +144,8 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
 
   const blurEstudiante = async (campo: string) => {
     setTouched((prev) => ({ ...prev, [campo]: true }))
-    const valor = estudiante[campo as keyof EstudianteData]
+    const rawVal = estudiante[campo as keyof EstudianteData]
+    const valor = typeof rawVal === "string" ? rawVal : ""
     const err = validateField(campo, valor)
     setErrors((prev) => {
       const n = { ...prev }
@@ -169,7 +172,8 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
     const newErrors: Record<string, string> = {}
     let valid = true
     fields.forEach((f) => {
-      const err = validateField(f, estudiante[f])
+      const val = typeof estudiante[f] === "string" ? (estudiante[f] as string) : ""
+      const err = validateField(f, val)
       if (err) {
         newErrors[f] = err
         valid = false
@@ -177,6 +181,10 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
     })
     if (!cedulaFile) {
       newErrors.cedulaFile = "Debes adjuntar la cédula (imagen o PDF)"
+      valid = false
+    }
+    if (!estudiante.acepta_terminos) {
+      newErrors.acepta_terminos = "Debe aceptar los términos y condiciones para continuar"
       valid = false
     }
     setErrors(newErrors)
@@ -247,6 +255,7 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
       formData.append("nivel_educativo", estudiante.nivel_educativo)
       formData.append("monto_solicitado", montoDeclarado || "0")
       formData.append("monto_declarado", montoDeclarado || "0")
+      formData.append("acepta_terminos", estudiante.acepta_terminos ? "1" : "0")
       if (comprobanteFile) formData.append("archivo_comprobante", comprobanteFile)
       if (cedulaFile) formData.append("archivo_cedula", cedulaFile)
 
@@ -254,16 +263,7 @@ export function FormularioMatriculaDirecta({ curso, onSuccess }: FormularioMatri
       toast.success("Solicitud de matrícula enviada correctamente")
       onSuccess()
     } catch (err: unknown) {
-      const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data
-      const msg = String(data?.mensaje || data?.message || "Error al enviar la solicitud")
-      const erroresRaw = data?.errores
-      const errorsRaw = data?.errors
-      const detalles = Array.isArray(erroresRaw)
-        ? erroresRaw.join("\n")
-        : errorsRaw
-        ? Object.values(errorsRaw as Record<string, string[]>).flat().join("\n")
-        : ""
-      toast.error(detalles ? `${msg}\n${detalles}` : msg, { duration: 8000 })
+      toast.error(getFriendlyErrorMessage(err, "Error al enviar la solicitud"), { duration: 8000 })
     } finally {
       setLoadingSubmit(false)
     }

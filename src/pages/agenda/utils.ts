@@ -27,7 +27,18 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   RADIO: 'RADIO',
 }
 
-const CLIENT_EVENT_TYPES = new Set(["ALQUILER_AULA", "PODCAST", "STREAMING", "RADIO"])
+export const CLIENT_EVENT_TYPES = new Set(["ALQUILER_AULA", "PODCAST", "STREAMING", "RADIO"])
+export const ACADEMIC_EVENT_TYPES = new Set(["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO", "TALLER", "ASESORIA"])
+
+export type MacroCategoria = "todos" | "academico" | "servicios"
+
+export function isAcademicType(tipo: string): boolean {
+  return ACADEMIC_EVENT_TYPES.has(tipo)
+}
+
+export function isServiceType(tipo: string): boolean {
+  return CLIENT_EVENT_TYPES.has(tipo)
+}
 
 export function getEventPersonLabel(tipoEvento: string): string {
   return CLIENT_EVENT_TYPES.has(tipoEvento) ? "Cliente" : "Docente / Instructor"

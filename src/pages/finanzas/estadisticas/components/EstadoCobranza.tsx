@@ -55,6 +55,7 @@ export function EstadoCobranza({ data }: { data: Cobranza | null }) {
           <ResponsiveContainer
             width="100%"
             height={Math.max(data.distribucion_por_catalogo.length * 48, 160)}
+            minWidth={0}
           >
             <BarChart
               data={data.distribucion_por_catalogo}

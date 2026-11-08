@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useLayoutEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import {
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
   Search,
   Calendar,
   CalendarDays,
@@ -16,17 +17,19 @@ import {
   Info,
   ShieldCheck,
   Sparkles,
-  Trash2,
   ArrowLeft,
   Plus,
-  Copy,
+  AlertTriangle,
 } from "lucide-react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { MapPinIcon, Cancel01Icon, Loading02Icon } from "@hugeicons/core-free-icons"
 import { parseLocalDate } from "@/lib/utils"
-import { tallerService, type HorarioTaller } from "@/services/taller.service"
+import { scrollPageToTop } from "@/lib/scroll"
+import { tallerService, type HorarioTaller, type SesionTaller } from "@/services/taller.service"
 import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { personasService } from "@/services/personas.service"
+import { TallerSesionesCalendar, type SesionFormItem } from "./components/TallerSesionesCalendar"
+import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { toast } from "sonner"
 
 const ECUADOR_CIUDADES = [
@@ -94,6 +97,7 @@ interface FormData {
   hora_fin: string
   capacidad_maxima: string
   precio: string
+  precio_matricula: string
 }
 
 interface HorarioForm {
@@ -115,6 +119,7 @@ const initialState: FormData = {
   hora_fin: "",
   capacidad_maxima: "30",
   precio: "",
+  precio_matricula: "",
 }
 
 interface Persona {
@@ -145,6 +150,20 @@ export function TallerFormPage() {
   const [ciudadModalRegion, setCiudadModalRegion] = useState<Region | null>(null)
   const [ciudadModalSeleccionada, setCiudadModalSeleccionada] = useState<string | null>(null)
   const [savingCiudad, setSavingCiudad] = useState(false)
+  const [mostrarPrecioMatricula, setMostrarPrecioMatricula] = useState(false)
+  const [sesiones, setSesiones] = useState<SesionFormItem[]>([])
+  const [showRegenerationConfirm, setShowRegenerationConfirm] = useState(false)
+
+  // Al cambiar de paso, volver al inicio de la página
+  useLayoutEffect(() => {
+    scrollPageToTop("auto")
+    const rafId = requestAnimationFrame(() => scrollPageToTop("auto"))
+    const timeout = setTimeout(() => scrollPageToTop("auto"), 30)
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearTimeout(timeout)
+    }
+  }, [currentStep])
 
   // Cargar datos en modo edición
   useEffect(() => {
@@ -165,7 +184,9 @@ export function TallerFormPage() {
           hora_fin: taller.hora_fin?.substring(0, 5) || "",
           capacidad_maxima: String(taller.capacidad_maxima || "30"),
           precio: taller.precio != null ? String(taller.precio) : "",
+          precio_matricula: taller.precio_matricula != null ? String(taller.precio_matricula) : "",
         })
+        setMostrarPrecioMatricula(Number(taller.precio_matricula) > 0)
         if (taller.instructor) {
           setInstructorNombre(`${taller.instructor.nombres} ${taller.instructor.apellidos}`)
         }
@@ -181,6 +202,50 @@ export function TallerFormPage() {
               }))
             )
             setDiasSeleccionados(taller.horarios.map((h: HorarioTaller) => h.dia_semana))
+          }
+
+          if (taller.sesiones && taller.sesiones.length > 0) {
+            setSesiones(
+              taller.sesiones.map((s: SesionTaller) => ({
+                id: s.id,
+                fecha_sesion: String(s.fecha_sesion).split("T")[0],
+                hora_inicio: s.hora_inicio?.substring(0, 5) || "09:00",
+                hora_fin: s.hora_fin?.substring(0, 5) || "12:00",
+                aula: s.aula || "",
+                tema: s.tema || "",
+                observaciones: s.observaciones || "",
+                hasAsistencia: taller.asistencias?.some(
+                  (a: { fecha_sesion?: string }) => a.fecha_sesion && String(a.fecha_sesion).split("T")[0] === String(s.fecha_sesion).split("T")[0]
+                ),
+              }))
+            )
+          } else if (taller.horarios && taller.horarios.length > 0) {
+            // Taller legacy sin sesiones guardadas: proyectar para que el usuario pueda revisarlas y guardarlas
+            const fInicio = String(taller.fecha || "").split("T")[0]
+            const fFin = String(taller.fecha_fin || "").split("T")[0]
+            if (fInicio && fFin) {
+              const start = parseLocalDate(fInicio)
+              const end = parseLocalDate(fFin)
+              if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+                const generadas: SesionFormItem[] = []
+                const curr = new Date(start)
+                while (curr.getTime() <= end.getTime()) {
+                  const isoDay = curr.getDay() === 0 ? 7 : curr.getDay()
+                  const matchingHorario = taller.horarios.find((h: HorarioTaller) => h.dia_semana === isoDay)
+                  if (matchingHorario) {
+                    const dateStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, "0")}-${String(curr.getDate()).padStart(2, "0")}`
+                    generadas.push({
+                      fecha_sesion: dateStr,
+                      hora_inicio: matchingHorario.hora_inicio?.substring(0, 5) || "09:00",
+                      hora_fin: matchingHorario.hora_fin?.substring(0, 5) || "12:00",
+                      aula: matchingHorario.aula || "",
+                    })
+                  }
+                  curr.setDate(curr.getDate() + 1)
+                }
+                setSesiones(generadas)
+              }
+            }
           }
         }
       } catch {
@@ -214,10 +279,60 @@ export function TallerFormPage() {
     ciudadesService.getCiudadesTodas().then(setCiudades).catch(() => {})
   }, [])
 
+  const recalcularSesionesPorDias = (
+    dias: number[],
+    fInicio?: string,
+    fFin?: string,
+    hInicio?: string,
+    hFin?: string
+  ) => {
+    const startDateStr = fInicio || form.fecha
+    const endDateStr = fFin || form.fecha_fin
+    const horaIni = hInicio || form.hora_inicio || "09:00"
+    let horaFin = hFin || form.hora_fin || "12:00"
+    if (horaFin <= horaIni) {
+      const [h, m] = horaIni.split(":").map(Number)
+      const nextH = Math.min((isNaN(h) ? 9 : h) + 2, 23)
+      horaFin = `${String(nextH).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`
+    }
+
+    if (!startDateStr || !endDateStr) return
+    const inicio = parseLocalDate(startDateStr)
+    const fin = parseLocalDate(endDateStr)
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime()) || inicio > fin) return
+
+    const generadas: SesionFormItem[] = []
+    const curr = new Date(inicio)
+
+    while (curr.getTime() <= fin.getTime()) {
+      const isoDay = curr.getDay() === 0 ? 7 : curr.getDay()
+      if (dias.includes(isoDay)) {
+        const dateStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, "0")}-${String(curr.getDate()).padStart(2, "0")}`
+        const prev = sesiones.find((s) => s.fecha_sesion === dateStr)
+        const sInicio = prev?.hora_inicio || horaIni
+        let sFin = prev?.hora_fin || horaFin
+        if (sFin <= sInicio) {
+          sFin = horaFin > sInicio ? horaFin : `${String(Math.min(parseInt(sInicio, 10) + 2, 23)).padStart(2, "0")}:00`
+        }
+        generadas.push({
+          fecha_sesion: dateStr,
+          hora_inicio: sInicio,
+          hora_fin: sFin,
+          aula: prev?.aula || "",
+          hasAsistencia: prev?.hasAsistencia || false,
+        })
+      }
+      curr.setDate(curr.getDate() + 1)
+    }
+
+    setSesiones(generadas)
+  }
+
   const toggleDia = (dia: number) => {
+    let nextDays: number[]
     if (diasSeleccionados.includes(dia)) {
       setHorarios((h) => h.filter((x) => x.dia_semana !== dia))
-      setDiasSeleccionados((prev) => prev.filter((d) => d !== dia))
+      nextDays = diasSeleccionados.filter((d) => d !== dia)
     } else {
       setHorarios((h) => [
         ...h,
@@ -228,8 +343,10 @@ export function TallerFormPage() {
           aula: "",
         },
       ])
-      setDiasSeleccionados((prev) => [...prev, dia].sort())
+      nextDays = [...diasSeleccionados, dia].sort()
     }
+    setDiasSeleccionados(nextDays)
+    recalcularSesionesPorDias(nextDays)
   }
 
   const selectWeekdays = () => {
@@ -243,6 +360,7 @@ export function TallerFormPage() {
         aula: "",
       }))
     )
+    recalcularSesionesPorDias(days)
   }
 
   const selectWeekend = () => {
@@ -256,27 +374,13 @@ export function TallerFormPage() {
         aula: "",
       }))
     )
+    recalcularSesionesPorDias(days)
   }
 
   const resetDays = () => {
     setDiasSeleccionados([])
     setHorarios([])
-  }
-
-  const copiarHorarioATodos = (horaInicio: string, horaFin: string) => {
-    if (!horaInicio || !horaFin) return
-    setHorarios((prev) =>
-      prev.map((h) => ({
-        ...h,
-        hora_inicio: horaInicio,
-        hora_fin: horaFin,
-      }))
-    )
-    toast.success("Horario replicado a todos los días seleccionados")
-  }
-
-  const updateHorario = (dia: number, field: "hora_inicio" | "hora_fin" | "aula", value: string) => {
-    setHorarios((prev) => prev.map((h) => (h.dia_semana === dia ? { ...h, [field]: value } : h)))
+    setSesiones([])
   }
 
   const seleccionarInstructor = (p: Persona) => {
@@ -305,12 +409,18 @@ export function TallerFormPage() {
       // Varios días
       if (!form.fecha_fin) return false
       if (parseLocalDate(form.fecha_fin) < parseLocalDate(form.fecha)) return false
-      if (diasSeleccionados.length === 0) return false
-      return horarios.every((h) => h.hora_inicio && h.hora_fin && h.hora_fin > h.hora_inicio)
+      if (sesiones.length === 0) return false
+      // Cada sesión debe tener hora_fin estrictamente mayor a hora_inicio
+      const tieneHorarioInvalido = sesiones.some(
+        (s) => !s.hora_inicio || !s.hora_fin || s.hora_fin <= s.hora_inicio
+      )
+      if (tieneHorarioInvalido) return false
+      return true
     }
     if (step === 3) {
       if (!form.capacidad_maxima || parseInt(form.capacidad_maxima, 10) < 1) return false
       if (form.precio === "" || isNaN(Number(form.precio)) || Number(form.precio) < 0) return false
+      if (form.precio_matricula !== "" && (isNaN(Number(form.precio_matricula)) || Number(form.precio_matricula) < 0)) return false
       if (form.modalidad === "presencial" && (!form.ciudad_id || form.ciudad_id <= 0)) return false
       return true
     }
@@ -318,23 +428,54 @@ export function TallerFormPage() {
   }
 
   const handleNextStep = () => {
+    if (currentStep === 2) {
+      if (!multiDia) {
+        if (!form.fecha || !form.hora_inicio || !form.hora_fin) {
+          toast.error("Por favor completa la fecha y horas del taller")
+          return
+        }
+        if (form.hora_fin <= form.hora_inicio) {
+          toast.error("La hora de finalización debe ser posterior a la de inicio")
+          return
+        }
+      } else {
+        if (!form.fecha || !form.fecha_fin) {
+          toast.error("Por favor completa el rango de fechas del taller")
+          return
+        }
+        if (sesiones.length === 0) {
+          toast.error("Debes seleccionar al menos un día en el calendario para programar sesiones")
+          return
+        }
+        const sesionInvalida = sesiones.find(
+          (s) => !s.hora_inicio || !s.hora_fin || s.hora_fin <= s.hora_inicio
+        )
+        if (sesionInvalida) {
+          toast.error(
+            `La sesión del ${sesionInvalida.fecha_sesion} tiene un horario inválido (${sesionInvalida.hora_inicio} – ${sesionInvalida.hora_fin}). La hora de finalización debe ser posterior a la hora de inicio.`
+          )
+          return
+        }
+      }
+    }
+
     if (!isStepValid(currentStep)) {
       toast.error("Por favor completa los campos obligatorios antes de continuar")
       return
     }
     setCurrentStep((prev) => Math.min(prev + 1, 3))
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    scrollPageToTop("auto")
   }
 
   const handlePrevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    scrollPageToTop("auto")
   }
 
   const handleGoToStep = (targetStep: number) => {
     if (targetStep < currentStep) {
       setCurrentStep(targetStep)
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      scrollPageToTop("auto")
       return
     }
     for (let s = 1; s < targetStep; s++) {
@@ -344,7 +485,7 @@ export function TallerFormPage() {
       }
     }
     setCurrentStep(targetStep)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    scrollPageToTop("auto")
   }
 
   const handleCrearCiudad = async (nombre: string) => {
@@ -369,8 +510,28 @@ export function TallerFormPage() {
     }
   }
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, forceRegenerate = false) => {
     if (e) e.preventDefault()
+    if (multiDia) {
+      if (sesiones.length === 0) {
+        toast.error("Debes seleccionar al menos un día en el calendario para programar sesiones")
+        return
+      }
+      const sesionInvalida = sesiones.find(
+        (s) => !s.hora_inicio || !s.hora_fin || s.hora_fin <= s.hora_inicio
+      )
+      if (sesionInvalida) {
+        toast.error(
+          `La sesión del ${sesionInvalida.fecha_sesion} tiene un horario inválido (${sesionInvalida.hora_inicio} – ${sesionInvalida.hora_fin}). La hora de finalización debe ser posterior a la de inicio.`
+        )
+        return
+      }
+    } else {
+      if (form.hora_inicio && form.hora_fin && form.hora_fin <= form.hora_inicio) {
+        toast.error("La hora de finalización debe ser posterior a la de inicio")
+        return
+      }
+    }
     if (!isStepValid(1) || !isStepValid(2) || !isStepValid(3)) {
       toast.error("Revisa los campos obligatorios antes de guardar")
       return
@@ -381,9 +542,10 @@ export function TallerFormPage() {
       const data: any = {
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim() || undefined,
-        instructor_id: form.instructor_id || undefined,
+        instructor_id: form.instructor_id || null,
         capacidad_maxima: parseInt(form.capacidad_maxima, 10),
         precio: parseFloat(form.precio),
+        precio_matricula: form.precio_matricula !== "" ? parseFloat(form.precio_matricula) : 0,
         modalidad: form.modalidad,
         ciudad_id: form.modalidad === "virtual" ? undefined : form.ciudad_id || undefined,
         fecha: form.fecha,
@@ -395,11 +557,25 @@ export function TallerFormPage() {
         delete data.fecha_fin
       } else {
         data.fecha_fin = form.fecha_fin
+        if (sesiones.length > 0) {
+          data.sesiones = sesiones.map((s) => ({
+            fecha_sesion: s.fecha_sesion,
+            hora_inicio: s.hora_inicio,
+            hora_fin: s.hora_fin,
+            aula: s.aula || undefined,
+            tema: s.tema || undefined,
+            observaciones: s.observaciones || undefined,
+          }))
+          data.hora_inicio = sesiones[0].hora_inicio
+          data.hora_fin = sesiones[0].hora_fin
+        }
         if (horarios.length > 0) {
-          data.hora_inicio = horarios[0].hora_inicio
-          data.hora_fin = horarios[0].hora_fin
           data.horarios = horarios
         }
+      }
+
+      if (forceRegenerate) {
+        data.confirmar_regeneracion_sesiones = true
       }
 
       if (isEdit) {
@@ -411,8 +587,12 @@ export function TallerFormPage() {
       }
       navigate("/talleres")
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { mensaje?: string } } })?.response?.data?.mensaje || "Error al guardar el taller"
+      const axiosData = (err as { response?: { data?: { mensaje?: string; requiere_confirmacion_regeneracion?: boolean } } })?.response?.data
+      if (axiosData?.requiere_confirmacion_regeneracion) {
+        setShowRegenerationConfirm(true)
+        return
+      }
+      const msg = axiosData?.mensaje || "Error al guardar el taller"
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -428,7 +608,8 @@ export function TallerFormPage() {
   const currentStepIsValid = isStepValid(currentStep)
   const numCupos = parseInt(form.capacidad_maxima, 10) || 0
   const precioNum = parseFloat(form.precio) || 0
-  const totalEsperadoCalculado = (numCupos * precioNum).toFixed(2)
+  const matriculaNum = parseFloat(form.precio_matricula) || 0
+  const totalEsperadoCalculado = (numCupos * (precioNum + matriculaNum)).toFixed(2)
 
   if (loading) {
     return (
@@ -816,6 +997,13 @@ export function TallerFormPage() {
                     </div>
                   </div>
 
+                  {form.fecha && form.hora_inicio && form.hora_fin && form.hora_fin <= form.hora_inicio && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-xs text-rose-700 font-semibold">
+                      <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+                      <span>La hora de finalización ({form.hora_fin}) debe ser posterior a la de inicio ({form.hora_inicio}).</span>
+                    </div>
+                  )}
+
                   {form.fecha && form.hora_inicio && form.hora_fin && form.hora_fin > form.hora_inicio && (
                     <div className="p-4 rounded-xl bg-orange-50/70 border border-orange-200 flex items-center justify-between text-xs text-slate-700">
                       <div className="flex items-center gap-2">
@@ -832,7 +1020,7 @@ export function TallerFormPage() {
               ) : (
                 /* Multi Day Layout */
                 <div className="flex flex-col gap-5 pt-2">
-                  {/* Date Range */}
+                  {/* Date Range & Base Time */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-semibold text-slate-700">
@@ -843,7 +1031,13 @@ export function TallerFormPage() {
                         <input
                           type="date"
                           value={form.fecha}
-                          onChange={(e) => setForm((f) => ({ ...f, fecha: e.target.value }))}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setForm((f) => ({ ...f, fecha: val }))
+                            if (diasSeleccionados.length > 0) {
+                              recalcularSesionesPorDias(diasSeleccionados, val, form.fecha_fin)
+                            }
+                          }}
                           className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                         />
                       </div>
@@ -859,15 +1053,73 @@ export function TallerFormPage() {
                           type="date"
                           value={form.fecha_fin}
                           min={form.fecha || undefined}
-                          onChange={(e) => setForm((f) => ({ ...f, fecha_fin: e.target.value }))}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setForm((f) => ({ ...f, fecha_fin: val }))
+                            if (diasSeleccionados.length > 0) {
+                              recalcularSesionesPorDias(diasSeleccionados, form.fecha, val)
+                            }
+                          }}
                           className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
+                  {/* Horario base por defecto */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Hora de inicio general
+                      </label>
+                      <div className="relative">
+                        <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                        <input
+                          type="time"
+                          value={form.hora_inicio}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setForm((f) => ({ ...f, hora_inicio: val }))
+                            if (diasSeleccionados.length > 0) {
+                              recalcularSesionesPorDias(diasSeleccionados, form.fecha, form.fecha_fin, val, form.hora_fin)
+                            }
+                          }}
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Hora de finalización general
+                      </label>
+                      <div className="relative">
+                        <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                        <input
+                          type="time"
+                          value={form.hora_fin}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setForm((f) => ({ ...f, hora_fin: val }))
+                            if (diasSeleccionados.length > 0) {
+                              recalcularSesionesPorDias(diasSeleccionados, form.fecha, form.fecha_fin, form.hora_inicio, val)
+                            }
+                          }}
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {form.hora_inicio && form.hora_fin && form.hora_fin <= form.hora_inicio && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-2 text-xs text-rose-700 font-semibold">
+                      <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+                      <span>La hora de finalización general ({form.hora_fin}) debe ser posterior a la de inicio ({form.hora_inicio}).</span>
+                    </div>
+                  )}
+
                   {/* Day shortcuts & chips */}
-                  <div className="flex flex-col gap-3 pt-2">
+                  <div className="flex flex-col gap-3 pt-1">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
                       <div className="flex items-center gap-2">
                         <Sparkles size={18} className="text-[#fd761a]" />
@@ -932,90 +1184,18 @@ export function TallerFormPage() {
                     </div>
                   </div>
 
-                  {/* Schedules per day */}
-                  {diasSeleccionados.length > 0 && (
-                    <div className="flex flex-col gap-3 pt-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-700">
-                          Horarios por día seleccionado <span className="text-[#fd761a]">*</span>
-                        </label>
-                        {horarios.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => copiarHorarioATodos(horarios[0]?.hora_inicio, horarios[0]?.hora_fin)}
-                            className="inline-flex items-center gap-1.5 text-xs text-[#fd761a] font-semibold hover:underline"
-                          >
-                            <Copy size={13} />
-                            <span>Replicar horario del primer día a todos</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {diasSeleccionados.map((dia, idx) => {
-                          const h = horarios.find((x) => x.dia_semana === dia)
-                          const diaInfo = DIAS_MAP.find((d) => d.num === dia)
-
-                          return (
-                            <div
-                              key={dia}
-                              className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 flex-wrap"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-[120px]">
-                                <span className="w-8 h-8 rounded-lg bg-[#fd761a] text-white flex items-center justify-center font-bold text-xs">
-                                  {diaInfo?.short}
-                                </span>
-                                <span className="text-sm font-bold text-slate-800">{diaInfo?.full}</span>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
-                                  <Clock size={14} className="text-slate-400" />
-                                  <input
-                                    type="time"
-                                    value={h?.hora_inicio || ""}
-                                    onChange={(e) => updateHorario(dia, "hora_inicio", e.target.value)}
-                                    className="text-xs font-semibold text-slate-800 outline-none bg-transparent"
-                                  />
-                                </div>
-                                <span className="text-xs text-slate-400">a</span>
-                                <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
-                                  <Clock size={14} className="text-slate-400" />
-                                  <input
-                                    type="time"
-                                    value={h?.hora_fin || ""}
-                                    onChange={(e) => updateHorario(dia, "hora_fin", e.target.value)}
-                                    className="text-xs font-semibold text-slate-800 outline-none bg-transparent"
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                {idx === 0 && horarios.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => copiarHorarioATodos(h?.hora_inicio || "", h?.hora_fin || "")}
-                                    title="Copiar a los demás días"
-                                    className="p-1.5 text-slate-400 hover:text-[#fd761a] transition-colors"
-                                  >
-                                    <Copy size={16} />
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => toggleDia(dia)}
-                                  className="p-1.5 text-red-400 hover:text-red-600 transition-colors"
-                                  title="Quitar este día"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
+                  {/* CALENDARIO INTERACTIVO DE SESIONES */}
+                  <div className="pt-2">
+                    <TallerSesionesCalendar
+                      fechaInicioTaller={form.fecha}
+                      fechaFinTaller={form.fecha_fin}
+                      horaInicioDefault={form.hora_inicio || "09:00"}
+                      horaFinDefault={form.hora_fin || "12:00"}
+                      diasSemana={diasSeleccionados}
+                      sesiones={sesiones}
+                      onChangeSesiones={setSesiones}
+                    />
+                  </div>
                 </div>
               )}
             </section>
@@ -1032,7 +1212,7 @@ export function TallerFormPage() {
               </div>
 
               <div className="flex flex-col gap-5">
-                {/* 2 Columns: Capacity & Pricing */}
+                {/* 2 Columns: Capacity & Modality */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Capacity */}
                   <div className="flex flex-col gap-1.5">
@@ -1057,53 +1237,6 @@ export function TallerFormPage() {
                     </span>
                   </div>
 
-                  {/* Pricing */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                      <span>
-                        Precio por participante ($ USD) <span className="text-[#fd761a]">*</span>
-                      </span>
-                      <span className="text-xs font-semibold text-[#fd761a]">Arancel taller</span>
-                    </label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        placeholder="0.00"
-                        value={form.precio}
-                        onChange={(e) => setForm((f) => ({ ...f, precio: e.target.value }))}
-                        className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
-                      />
-                    </div>
-                    {/* Live Financial Projection */}
-                    <div className="p-3 rounded-xl bg-orange-50/70 border border-orange-200/90 flex flex-col gap-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-600">
-                          {precioNum === 0
-                            ? "Taller de acceso gratuito"
-                            : `Cálculo: ${numCupos} cupos × $${precioNum.toFixed(2)} USD`}
-                        </span>
-                        <span className="font-semibold text-slate-700">
-                          {precioNum === 0 ? "Gratuito" : `$${precioNum.toFixed(2)} / participante`}
-                        </span>
-                      </div>
-                      <div className="pt-2 border-t border-orange-200/70 flex items-center justify-between">
-                        <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <DollarSign size={14} className="text-[#fd761a]" />
-                          Total esperado a recaudar:
-                        </span>
-                        <span className="text-xs font-bold text-[#fd761a]">
-                          ${totalEsperadoCalculado} USD
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Modality Segmented Selector & City Dropdown */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   {/* Modality */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-semibold text-slate-700">
@@ -1136,56 +1269,196 @@ export function TallerFormPage() {
                       </button>
                     </div>
                   </div>
+                </div>
 
-                  {/* Sede / Ciudad */}
-                  {form.modalidad === "presencial" ? (
+                {/* Sede / Ciudad (si es presencial) */}
+                {form.modalidad === "presencial" ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Sede / Ciudad <span className="text-[#fd761a]">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCiudadModal(true)
+                          setCiudadModalSeleccionada(null)
+                          setCiudadModalRegion(null)
+                        }}
+                        className="text-xs text-[#fd761a] font-bold hover:underline flex items-center gap-1"
+                      >
+                        <Plus size={14} /> Nueva sede
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                      <select
+                        value={form.ciudad_id}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            ciudad_id: e.target.value ? parseInt(e.target.value, 10) : 0,
+                          }))
+                        }
+                        className="w-full pl-10 pr-8 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all cursor-pointer"
+                      >
+                        <option value="0">Seleccionar sede / ciudad...</option>
+                        {ciudades.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700">Campus Virtual</label>
+                    <div className="h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+                      <Monitor size={16} className="text-[#fd761a]" />
+                      <span>Impartición remota mediante enlace de videoconferencia (Zoom / Meet).</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sección de Precios y Aranceles */}
+                <div className="pt-3 border-t border-slate-100 flex flex-col gap-4">
+                  <div className="flex flex-col gap-0.5">
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Aranceles &amp; Precios del Taller
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Configura el costo por participante y opcionalmente una cuota de inscripción o matrícula.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Pricing */}
                     <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-700">
-                          Sede / Ciudad <span className="text-[#fd761a]">*</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowCiudadModal(true)
-                            setCiudadModalSeleccionada(null)
-                            setCiudadModalRegion(null)
-                          }}
-                          className="text-xs text-[#fd761a] font-bold hover:underline flex items-center gap-1"
-                        >
-                          <Plus size={14} /> Nueva sede
-                        </button>
-                      </div>
+                      <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                        <span>
+                          Precio por participante ($ USD) <span className="text-[#fd761a]">*</span>
+                        </span>
+                        <span className="text-xs font-semibold text-[#fd761a]">Arancel taller</span>
+                      </label>
                       <div className="relative">
-                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
-                        <select
-                          value={form.ciudad_id}
-                          onChange={(e) =>
-                            setForm((f) => ({
-                              ...f,
-                              ciudad_id: e.target.value ? parseInt(e.target.value, 10) : 0,
-                            }))
-                          }
-                          className="w-full pl-10 pr-8 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all cursor-pointer"
-                        >
-                          <option value="0">Seleccionar sede / ciudad...</option>
-                          {ciudades.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.nombre}
-                            </option>
-                          ))}
-                        </select>
+                        <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="0.00"
+                          value={form.precio}
+                          onChange={(e) => setForm((f) => ({ ...f, precio: e.target.value }))}
+                          className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                        />
+                      </div>
+                      {/* Live Financial Projection */}
+                      <div className="p-3 rounded-xl bg-orange-50/70 border border-orange-200/90 flex flex-col gap-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600">
+                            {precioNum === 0
+                              ? "Taller de acceso gratuito"
+                              : `Cálculo: ${numCupos} cupos × $${precioNum.toFixed(2)} USD`}
+                          </span>
+                          <span className="font-semibold text-slate-700">
+                            {precioNum === 0 ? "Gratuito" : `$${(numCupos * precioNum).toFixed(2)} USD`}
+                          </span>
+                        </div>
+                        {matriculaNum > 0 && (
+                          <div className="flex items-center justify-between text-blue-700">
+                            <span className="text-slate-600">
+                              Inscripción: {numCupos} cupos × ${matriculaNum.toFixed(2)} USD
+                            </span>
+                            <span className="font-semibold text-blue-700">
+                              +${(numCupos * matriculaNum).toFixed(2)} USD
+                            </span>
+                          </div>
+                        )}
+                        <div className="pt-2 border-t border-orange-200/70 flex items-center justify-between">
+                          <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <DollarSign size={14} className="text-[#fd761a]" />
+                            Total esperado a recaudar:
+                          </span>
+                          <span className="text-xs font-bold text-[#fd761a]">
+                            ${totalEsperadoCalculado} USD
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-slate-700">Campus Virtual</label>
-                      <div className="h-11 px-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
-                        <Monitor size={16} className="text-[#fd761a]" />
-                        <span>Impartición remota mediante enlace de videoconferencia (Zoom / Meet).</span>
+
+                    {/* Registration Fee (Precio de inscripción / matrícula) */}
+                    {!(mostrarPrecioMatricula || Number(form.precio_matricula) > 0) ? (
+                      <button
+                        type="button"
+                        onClick={() => setMostrarPrecioMatricula(true)}
+                        aria-expanded={false}
+                        aria-controls="precio-matricula-panel"
+                        className="group flex h-full min-h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-5 text-center transition-colors hover:border-[#fd761a] hover:bg-orange-50/40 focus:outline-none focus:ring-2 focus:ring-[#fd761a] focus:ring-offset-1"
+                      >
+                        <span className="flex size-8 items-center justify-center rounded-full bg-white text-slate-400 ring-1 ring-slate-200 transition-colors group-hover:text-[#fd761a] group-hover:ring-[#fd761a]/40">
+                          <Plus className="size-4" />
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700 group-hover:text-[#fd761a]">
+                          {Number(form.precio_matricula) > 0
+                            ? `Cuota de inscripción: $${Number(form.precio_matricula).toFixed(2)} USD · Editar`
+                            : "Agregar precio de inscripción / matrícula"}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {Number(form.precio_matricula) > 0 ? "Por participante" : "Opcional · por participante"}
+                        </span>
+                      </button>
+                    ) : (
+                      <div
+                        id="precio-matricula-panel"
+                        className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200"
+                      >
+                        <label className="text-xs font-semibold text-slate-700 flex items-center justify-between gap-2">
+                          <span>Precio de inscripción / matrícula ($ USD)</span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-blue-600">Por participante</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMostrarPrecioMatricula(false)
+                                setForm((f) => ({ ...f, precio_matricula: "" }))
+                              }}
+                              aria-expanded={true}
+                              aria-controls="precio-matricula-panel"
+                              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                            >
+                              <ChevronUp className="size-3" />
+                              Ocultar
+                            </button>
+                          </span>
+                        </label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 size-4 pointer-events-none" />
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="0.00"
+                            value={form.precio_matricula}
+                            onChange={(e) => setForm((f) => ({ ...f, precio_matricula: e.target.value }))}
+                            className="w-full pl-10 pr-4 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs font-bold focus:bg-white focus:ring-2 focus:ring-[#fd761a] focus:border-transparent outline-none transition-all"
+                          />
+                        </div>
+
+                        {/* Registration Fee Summary */}
+                        <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between text-xs">
+                          <span className="text-slate-700">Matrícula por participante:</span>
+                          <span className="font-bold text-blue-700">
+                            ${Number(form.precio_matricula) > 0 ? Number(form.precio_matricula).toFixed(2) : "0.00"} USD
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-500">
+                          Cuota inicial de inscripción o matrícula asignada al taller para cada participante (opcional).
+                        </p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Completion Final Badge */}
@@ -1401,6 +1674,22 @@ export function TallerFormPage() {
           </div>
         )
       })()}
+
+      <ConfirmationModal
+        isOpen={showRegenerationConfirm}
+        title="Regenerar sesiones con asistencia"
+        message="Los cambios de programación reemplazarán las sesiones actuales del taller. Las asistencias ya registradas podrían verse afectadas. Confirma únicamente si deseas proceder con este cambio."
+        confirmText="Regenerar y guardar"
+        cancelText="Volver a revisar"
+        isDangerous
+        isLoading={saving}
+        icon="danger"
+        onConfirm={() => {
+          setShowRegenerationConfirm(false)
+          void handleSubmit(undefined, true)
+        }}
+        onCancel={() => setShowRegenerationConfirm(false)}
+      />
     </div>
   )
 }

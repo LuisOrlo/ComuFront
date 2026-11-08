@@ -3,7 +3,6 @@ import FullCalendar from "@fullcalendar/react"
 import dayGridPlugin from "@fullcalendar/daygrid"
 import timeGridPlugin from "@fullcalendar/timegrid"
 import interactionPlugin from "@fullcalendar/interaction"
-import listPlugin from "@fullcalendar/list"
 import type { EventClickArg, EventContentArg } from "@fullcalendar/core"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -20,7 +19,6 @@ import {
 import { AgendaFilterRibbon } from "./components/AgendaFilterRibbon"
 import { AgendaDrawer, type DaySelection } from "./components/AgendaDrawer"
 import { AgendaWeekView } from "./components/AgendaWeekView"
-import { AgendaListView } from "./components/AgendaListView"
 import { AgendaDayView } from "./components/AgendaDayView"
 import {
   EVENT_TYPES,
@@ -29,19 +27,21 @@ import {
   getWeekDays,
   getWeekNumber,
   toLocalDateStr,
+  type MacroCategoria,
+  isAcademicType,
+  isServiceType,
 } from "./utils"
 
 const VIEWS = [
   { key: "dayGridMonth", label: "Mes" },
   { key: "timeGridWeek", label: "Semana" },
   { key: "timeGridDay", label: "Día" },
-  { key: "listWeek", label: "Lista" },
 ]
 
 export function AgendaPublicaPage() {
   const calendarRef = useRef<FullCalendar>(null)
+  const [macroCategory, setMacroCategory] = useState<MacroCategoria>("todos")
   const [activeTypes, setActiveTypes] = useState<string[]>([])
-  const [eventCount, setEventCount] = useState(0)
   const [availableTypes, setAvailableTypes] = useState<TipoDisponible[]>([])
   const [currentRawEvents, setCurrentRawEvents] = useState<AgendaEvent[]>([])
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
@@ -50,49 +50,34 @@ export function AgendaPublicaPage() {
   const [currentTitle, setCurrentTitle] = useState("")
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
 
   const [activeDate, setActiveDate] = useState<Date>(new Date())
+
+  // Criterio unificado de filtrado: Macro-categoría + Píldoras activas
+  const matchesFilter = useCallback(
+    (ev: AgendaEvent) => {
+      if (macroCategory === "academico" && !isAcademicType(ev.tipo_evento)) return false
+      if (macroCategory === "servicios" && !isServiceType(ev.tipo_evento)) return false
+      if (activeTypes.length > 0 && !activeTypes.includes(ev.tipo_evento)) return false
+      return true
+    },
+    [macroCategory, activeTypes]
+  )
 
   // Eventos filtrados para el día activo en la vista Día
   const activeDayStr = useMemo(() => toLocalDateStr(activeDate), [activeDate])
   const activeDayEvents = useMemo(() => {
-    const query = search.trim().toLowerCase()
     return currentRawEvents
-      .filter((ev) => {
-        if (ev.fecha !== activeDayStr) return false
-        if (activeTypes.length > 0 && !activeTypes.includes(ev.tipo_evento)) return false
-        if (!query) return true
-        return (
-          ev.titulo?.toLowerCase().includes(query) ||
-          ev.instructor_nombre?.toLowerCase().includes(query) ||
-          ev.aula_nombre?.toLowerCase().includes(query) ||
-          ev.nombre_instancia?.toLowerCase().includes(query) ||
-          ev.ciudad_nombre?.toLowerCase().includes(query)
-        )
-      })
+      .filter((ev) => ev.fecha === activeDayStr && matchesFilter(ev))
       .sort((a, b) => (a.hora_inicio || "").localeCompare(b.hora_inicio || ""))
-  }, [currentRawEvents, activeDayStr, search, activeTypes])
+  }, [currentRawEvents, activeDayStr, matchesFilter])
 
-  // Días y eventos calculados para la semana activa (Semana y Lista)
+  // Días y eventos calculados para la semana activa (Semana)
   const weekDays = useMemo(() => {
     const baseDays = getWeekDays(activeDate)
-    const query = search.trim().toLowerCase()
-
     return baseDays.map((day) => {
       const dayEvents = currentRawEvents
-        .filter((ev) => {
-          if (ev.fecha !== day.dateStr) return false
-          if (activeTypes.length > 0 && !activeTypes.includes(ev.tipo_evento)) return false
-          if (!query) return true
-          return (
-            ev.titulo?.toLowerCase().includes(query) ||
-            ev.instructor_nombre?.toLowerCase().includes(query) ||
-            ev.aula_nombre?.toLowerCase().includes(query) ||
-            ev.nombre_instancia?.toLowerCase().includes(query) ||
-            ev.ciudad_nombre?.toLowerCase().includes(query)
-          )
-        })
+        .filter((ev) => ev.fecha === day.dateStr && matchesFilter(ev))
         .sort((a, b) => (a.hora_inicio || "").localeCompare(b.hora_inicio || ""))
 
       return {
@@ -100,7 +85,7 @@ export function AgendaPublicaPage() {
         events: dayEvents,
       }
     })
-  }, [activeDate, currentRawEvents, search, activeTypes])
+  }, [activeDate, currentRawEvents, matchesFilter])
 
   // Redimensionar FullCalendar al volver a la vista Mes
   useEffect(() => {
@@ -121,6 +106,26 @@ export function AgendaPublicaPage() {
     return counts
   }, [currentRawEvents])
 
+  // Conteo de eventos por macro-categoría (Todos, Académico, Servicios)
+  const countsByMacro = useMemo(() => {
+    let academico = 0
+    let servicios = 0
+    for (const ev of currentRawEvents) {
+      if (isAcademicType(ev.tipo_evento)) academico++
+      else if (isServiceType(ev.tipo_evento)) servicios++
+    }
+    return {
+      todos: currentRawEvents.length,
+      academico,
+      servicios,
+    }
+  }, [currentRawEvents])
+
+  const handleMacroCategoryChange = useCallback((newMacro: MacroCategoria) => {
+    setMacroCategory(newMacro)
+    setActiveTypes([])
+  }, [])
+
   const handleToggleType = useCallback((tipo: string) => {
     setActiveTypes((prev) => {
       if (prev.includes(tipo)) {
@@ -134,10 +139,10 @@ export function AgendaPublicaPage() {
     setActiveTypes([])
   }, [])
 
-  // Refetch en FullCalendar cuando cambian los tipos activos o la búsqueda
+  // Refetch en FullCalendar cuando cambian los filtros
   useEffect(() => {
     calendarRef.current?.getApi()?.refetchEvents()
-  }, [activeTypes, search])
+  }, [macroCategory, activeTypes])
 
   const fetchEvents = useCallback(
     async (
@@ -155,28 +160,12 @@ export function AgendaPublicaPage() {
           fecha_fin: fechaFin,
           per_page: 500,
         }
-        if (activeTypes.length > 0) {
-          params.tipos = activeTypes
-        }
+
         const response = await agendaPublicaService.getAllEvents(params as AgendaEventParams)
         setCurrentRawEvents(response.data)
         setAvailableTypes(response.tipos_disponibles)
 
-        // Filtrado por texto si hay búsqueda rápida
-        const query = search.trim().toLowerCase()
-        const filteredData = query
-          ? response.data.filter((ev) => {
-              return (
-                ev.titulo?.toLowerCase().includes(query) ||
-                ev.instructor_nombre?.toLowerCase().includes(query) ||
-                ev.aula_nombre?.toLowerCase().includes(query) ||
-                ev.nombre_instancia?.toLowerCase().includes(query) ||
-                ev.ciudad_nombre?.toLowerCase().includes(query)
-              )
-            })
-          : response.data
-
-        setEventCount(filteredData.length)
+        const filteredData = response.data.filter(matchesFilter)
 
         const fullCalendarEvents = filteredData.map((event) => {
           const startDate = new Date(`${event.fecha}T${event.hora_inicio}`)
@@ -207,7 +196,7 @@ export function AgendaPublicaPage() {
         setLoading(false)
       }
     },
-    [activeTypes, search]
+    [matchesFilter]
   )
 
   const handleEventClick = useCallback((arg: EventClickArg) => {
@@ -219,7 +208,7 @@ export function AgendaPublicaPage() {
   const handleDateClick = useCallback(
     (arg: { date: Date; dateStr: string }) => {
       setActiveDate(arg.date)
-      const dayEvents = currentRawEvents.filter((ev) => ev.fecha === arg.dateStr)
+      const dayEvents = currentRawEvents.filter((ev) => ev.fecha === arg.dateStr && matchesFilter(ev))
 
       if (dayEvents.length === 1) {
         setSelectedDay(null)
@@ -233,7 +222,7 @@ export function AgendaPublicaPage() {
         })
       }
     },
-    [currentRawEvents]
+    [currentRawEvents, matchesFilter]
   )
 
   const handleNavigate = useCallback((dir: "prev" | "next" | "today") => {
@@ -252,7 +241,7 @@ export function AgendaPublicaPage() {
         calApi.gotoDate(next)
         return next
       })
-    } else if (currentView === "timeGridWeek" || currentView === "listWeek") {
+    } else if (currentView === "timeGridWeek") {
       setActiveDate((prev) => {
         const next = new Date(prev)
         next.setDate(next.getDate() + (dir === "prev" ? -7 : 7))
@@ -275,7 +264,12 @@ export function AgendaPublicaPage() {
   const renderEventContent = useCallback((eventInfo: EventContentArg) => {
     const ev = eventInfo.event.extendedProps as AgendaEvent
     const styles = getEventStyles(ev.tipo_evento)
-    const timeText = eventInfo.timeText
+
+    // Formatear intervalo de hora completo: "10:00 - 12:00"
+    const formatTimeShort = (t?: string | null) => (t ? t.substring(0, 5) : "")
+    const timeDisplay = ev.hora_inicio && ev.hora_fin
+      ? `${formatTimeShort(ev.hora_inicio)} - ${formatTimeShort(ev.hora_fin)}`
+      : (eventInfo.timeText || "")
 
     return (
       <div
@@ -286,14 +280,19 @@ export function AgendaPublicaPage() {
           color: styles.text,
         }}
       >
-        <div className="flex items-center justify-between gap-1 leading-none">
-          {timeText && (
-            <span className="text-[9px] sm:text-[10px] font-extrabold tracking-tight truncate" style={{ color: styles.color }}>
-              {timeText}
+        <div className="flex items-center justify-between gap-1 leading-none min-w-0">
+          {timeDisplay && (
+            <span
+              className="text-[9px] sm:text-[10px] font-extrabold tracking-tight truncate whitespace-nowrap"
+              style={{ color: styles.color }}
+            >
+              {timeDisplay}
             </span>
           )}
           {["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(ev.tipo_evento) && (
-            <span className="hidden sm:inline-block text-[9px] font-bold uppercase opacity-80">{ev.tipo_label}</span>
+            <span className="hidden sm:inline-block text-[9px] font-bold uppercase opacity-80 shrink-0">
+              {ev.tipo_label}
+            </span>
           )}
         </div>
         <span className="text-[10px] sm:text-[11px] font-bold truncate leading-tight">
@@ -315,16 +314,14 @@ export function AgendaPublicaPage() {
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                   Cronograma de Actividades
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shrink-0">
-                  Acceso Libre
-                </span>
+                
                 {loading && (
                   <div className="size-4 rounded-full border-2 border-orange-200 border-t-[#fd761a] animate-spin ml-1" />
                 )}
               </div>
             </div>
 
-            {/* CONTROLES DE FECHA Y SELECTOR DE VISTAS */}
+            {/* CONTROLES DE FECHA Y SELECTOR DE VISTAS (Mes, Semana, Día) */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2 sm:gap-2.5 w-full xl:w-auto">
               <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
                 {/* Navegación temporal: < Hoy > */}
@@ -358,15 +355,15 @@ export function AgendaPublicaPage() {
                   <span className="text-xs sm:text-sm font-bold capitalize truncate">
                     {currentView === "timeGridDay"
                       ? new Intl.DateTimeFormat("es-EC", { weekday: "short", day: "numeric", month: "long", year: "numeric" }).format(activeDate)
-                      : currentView === "timeGridWeek" || currentView === "listWeek"
+                      : currentView === "timeGridWeek"
                         ? `Semana ${getWeekNumber(activeDate)} · ${weekDays[0]?.dayNumber || ""} al ${weekDays[6]?.dayNumber || ""} de ${MONTHS[activeDate.getMonth()]?.toLowerCase()} de ${activeDate.getFullYear()}`
                         : currentTitle || "Calendario"}
                   </span>
                 </div>
               </div>
 
-              {/* Selector de Vistas: Mes | Semana | Día | Lista */}
-              <div className="grid grid-cols-4 sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs gap-0.5 w-full sm:w-auto">
+              {/* Selector de Vistas: Mes | Semana | Día */}
+              <div className="grid grid-cols-3 sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shadow-2xs gap-0.5 w-full sm:w-auto">
                 {VIEWS.map((view) => (
                   <button
                     key={view.key}
@@ -380,7 +377,7 @@ export function AgendaPublicaPage() {
                     }}
                     aria-label={`Vista de ${view.label.toLowerCase()}`}
                     aria-pressed={currentView === view.key}
-                    className={`px-2 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                    className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
                       currentView === view.key
                         ? "bg-slate-900 text-white shadow-xs"
                         : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
@@ -393,14 +390,14 @@ export function AgendaPublicaPage() {
             </div>
           </section>
 
-          {/* CINTA DE FILTROS POR CATEGORÍA Y BUSCADOR */}
+          {/* CINTA DE FILTROS POR CATEGORÍA */}
           <AgendaFilterRibbon
+            macroCategory={macroCategory}
+            onMacroCategoryChange={handleMacroCategoryChange}
             activeTypes={activeTypes}
             tipos={availableTypes}
-            eventCount={eventCount}
             countsByType={countsByType}
-            search={search}
-            onSearchChange={setSearch}
+            countsByMacro={countsByMacro}
             onToggle={handleToggleType}
             onClearAll={handleClearAll}
             periodTitle={currentTitle}
@@ -442,17 +439,6 @@ export function AgendaPublicaPage() {
                       events,
                     })
                   }
-                }}
-              />
-            )}
-
-            {/* VISTA LISTA DEDICADA */}
-            {currentView === "listWeek" && (
-              <AgendaListView
-                weekDays={weekDays}
-                onSelectEvent={(ev) => {
-                  setSelectedDay(null)
-                  setSelectedEvent(ev)
                 }}
               />
             )}
@@ -574,7 +560,7 @@ export function AgendaPublicaPage() {
 
               <FullCalendar
                 ref={calendarRef}
-                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView={currentView}
                 headerToolbar={false}
                 events={fetchEvents}
@@ -615,11 +601,7 @@ export function AgendaPublicaPage() {
                     titleFormat: { year: "numeric", month: "long", day: "numeric", weekday: "long" },
                     slotDuration: "00:30:00",
                   },
-                  listWeek: {
-                    titleFormat: { year: "numeric", month: "long", day: "numeric" },
-                  },
                 }}
-                noEventsContent="No hay actividades programadas para este período."
               />
             </div>
 

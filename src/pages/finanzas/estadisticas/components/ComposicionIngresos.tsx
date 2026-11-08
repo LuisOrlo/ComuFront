@@ -47,7 +47,7 @@ export function ComposicionIngresos({
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center pt-2">
         {/* Donut Chart with Center Metric */}
         <div className="sm:col-span-5 flex flex-col items-center justify-center relative min-h-[220px]">
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={220} minWidth={0}>
             <PieChart>
               <Pie
                 data={distribucion}

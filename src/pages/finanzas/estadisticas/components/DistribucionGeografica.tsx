@@ -19,7 +19,7 @@ export function DistribucionGeografica({ data }: { data: CiudadesTopItem[] }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-1">
         <div className="lg:col-span-7">
-          <ResponsiveContainer width="100%" height={Math.max(data.length * 40, 220)}>
+          <ResponsiveContainer width="100%" height={Math.max(data.length * 40, 220)} minWidth={0}>
             <BarChart data={data} layout="vertical" margin={{ left: 60, right: 20 }}>
               <XAxis
                 type="number"

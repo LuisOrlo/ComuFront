@@ -57,7 +57,7 @@ export function PatronesCobro({
           </div>
 
           <div className="relative size-28 my-auto">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <PieChart>
                 <Pie
                   data={metodos}
@@ -128,7 +128,7 @@ export function PatronesCobro({
 
           {dias.length > 0 ? (
             <div className="w-full h-36">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={dias} margin={{ top: 15, right: 5, left: -20, bottom: 0 }}>
                   <XAxis
                     dataKey="dia"

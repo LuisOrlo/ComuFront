@@ -58,7 +58,7 @@ export function CatalogoDetallePage() {
 
         <div className="rounded-2xl border bg-white p-5" style={{ borderColor: COLORS.BORDER_SUBTLE }}>
           <h3 className="text-xs font-bold uppercase tracking-wider opacity-40 mb-3">Evolución mensual</h3>
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={280} minWidth={0}>
             <LineChart data={data.evolucion_mensual}>
               <XAxis dataKey={(d: { mes: string }) => d.mes?.substring(5)} tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />

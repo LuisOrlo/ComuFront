@@ -27,6 +27,9 @@ import {
   getWeekDays,
   getWeekNumber,
   toLocalDateStr,
+  type MacroCategoria,
+  isAcademicType,
+  isServiceType,
 } from "./utils"
 
 const VIEWS = [
@@ -38,8 +41,8 @@ const VIEWS = [
 
 export function AgendaPage() {
   const calendarRef = useRef<FullCalendar>(null)
+  const [macroCategory, setMacroCategory] = useState<MacroCategoria>("todos")
   const [activeTypes, setActiveTypes] = useState<string[]>([])
-  const [eventCount, setEventCount] = useState(0)
   const [availableTypes, setAvailableTypes] = useState<TipoDisponible[]>([])
   const [currentRawEvents, setCurrentRawEvents] = useState<AgendaEvent[]>([])
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
@@ -49,49 +52,34 @@ export function AgendaPage() {
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
-  const [search, setSearch] = useState("")
 
   const [activeDate, setActiveDate] = useState<Date>(new Date())
+
+  // Criterio unificado de filtrado: Macro-categoría + Píldoras activas
+  const matchesFilter = useCallback(
+    (ev: AgendaEvent) => {
+      if (macroCategory === "academico" && !isAcademicType(ev.tipo_evento)) return false
+      if (macroCategory === "servicios" && !isServiceType(ev.tipo_evento)) return false
+      if (activeTypes.length > 0 && !activeTypes.includes(ev.tipo_evento)) return false
+      return true
+    },
+    [macroCategory, activeTypes]
+  )
 
   // Eventos filtrados para el día activo en la vista Día
   const activeDayStr = useMemo(() => toLocalDateStr(activeDate), [activeDate])
   const activeDayEvents = useMemo(() => {
-    const query = search.trim().toLowerCase()
     return currentRawEvents
-      .filter((ev) => {
-        if (ev.fecha !== activeDayStr) return false
-        if (activeTypes.length > 0 && !activeTypes.includes(ev.tipo_evento)) return false
-        if (!query) return true
-        return (
-          ev.titulo?.toLowerCase().includes(query) ||
-          ev.instructor_nombre?.toLowerCase().includes(query) ||
-          ev.aula_nombre?.toLowerCase().includes(query) ||
-          ev.nombre_instancia?.toLowerCase().includes(query) ||
-          ev.ciudad_nombre?.toLowerCase().includes(query)
-        )
-      })
+      .filter((ev) => ev.fecha === activeDayStr && matchesFilter(ev))
       .sort((a, b) => (a.hora_inicio || "").localeCompare(b.hora_inicio || ""))
-  }, [currentRawEvents, activeDayStr, search, activeTypes])
+  }, [currentRawEvents, activeDayStr, matchesFilter])
 
   // Días y eventos calculados para la semana activa (Semana y Lista)
   const weekDays = useMemo(() => {
     const baseDays = getWeekDays(activeDate)
-    const query = search.trim().toLowerCase()
-
     return baseDays.map((day) => {
       const dayEvents = currentRawEvents
-        .filter((ev) => {
-          if (ev.fecha !== day.dateStr) return false
-          if (activeTypes.length > 0 && !activeTypes.includes(ev.tipo_evento)) return false
-          if (!query) return true
-          return (
-            ev.titulo?.toLowerCase().includes(query) ||
-            ev.instructor_nombre?.toLowerCase().includes(query) ||
-            ev.aula_nombre?.toLowerCase().includes(query) ||
-            ev.nombre_instancia?.toLowerCase().includes(query) ||
-            ev.ciudad_nombre?.toLowerCase().includes(query)
-          )
-        })
+        .filter((ev) => ev.fecha === day.dateStr && matchesFilter(ev))
         .sort((a, b) => (a.hora_inicio || "").localeCompare(b.hora_inicio || ""))
 
       return {
@@ -99,7 +87,7 @@ export function AgendaPage() {
         events: dayEvents,
       }
     })
-  }, [activeDate, currentRawEvents, search, activeTypes])
+  }, [activeDate, currentRawEvents, matchesFilter])
 
 
   // Redimensionar FullCalendar al volver a la vista Mes
@@ -121,6 +109,26 @@ export function AgendaPage() {
     return counts
   }, [currentRawEvents])
 
+  // Conteo de eventos por macro-categoría (Todos, Académico, Servicios)
+  const countsByMacro = useMemo(() => {
+    let academico = 0
+    let servicios = 0
+    for (const ev of currentRawEvents) {
+      if (isAcademicType(ev.tipo_evento)) academico++
+      else if (isServiceType(ev.tipo_evento)) servicios++
+    }
+    return {
+      todos: currentRawEvents.length,
+      academico,
+      servicios,
+    }
+  }, [currentRawEvents])
+
+  const handleMacroCategoryChange = useCallback((newMacro: MacroCategoria) => {
+    setMacroCategory(newMacro)
+    setActiveTypes([])
+  }, [])
+
   const handleToggleType = useCallback((tipo: string) => {
     setActiveTypes((prev) => {
       if (prev.includes(tipo)) {
@@ -135,10 +143,10 @@ export function AgendaPage() {
     setActiveTypes([])
   }, [])
 
-  // Refetch en FullCalendar cuando cambian los tipos activos o la búsqueda
+  // Refetch en FullCalendar cuando cambian los filtros
   useEffect(() => {
     calendarRef.current?.getApi()?.refetchEvents()
-  }, [activeTypes, search])
+  }, [macroCategory, activeTypes])
 
   const fetchEvents = useCallback(
     async (
@@ -163,21 +171,7 @@ export function AgendaPage() {
         setCurrentRawEvents(response.data)
         setAvailableTypes(response.tipos_disponibles)
 
-        // Filtrado por texto si hay búsqueda rápida
-        const query = search.trim().toLowerCase()
-        const filteredData = query
-          ? response.data.filter((ev) => {
-              return (
-                ev.titulo?.toLowerCase().includes(query) ||
-                ev.instructor_nombre?.toLowerCase().includes(query) ||
-                ev.aula_nombre?.toLowerCase().includes(query) ||
-                ev.nombre_instancia?.toLowerCase().includes(query) ||
-                ev.ciudad_nombre?.toLowerCase().includes(query)
-              )
-            })
-          : response.data
-
-        setEventCount(filteredData.length)
+        const filteredData = response.data.filter(matchesFilter)
 
         const fullCalendarEvents = filteredData.map((event) => {
           const startDate = new Date(`${event.fecha}T${event.hora_inicio}`)
@@ -208,7 +202,7 @@ export function AgendaPage() {
         setLoading(false)
       }
     },
-    [activeTypes, search]
+    [activeTypes, matchesFilter]
   )
 
   // Manejar clic en un evento específico: abre el drawer con su detalle
@@ -222,7 +216,7 @@ export function AgendaPage() {
   const handleDateClick = useCallback(
     (arg: { date: Date; dateStr: string }) => {
       setActiveDate(arg.date)
-      const dayEvents = currentRawEvents.filter((ev) => ev.fecha === arg.dateStr)
+      const dayEvents = currentRawEvents.filter((ev) => ev.fecha === arg.dateStr && matchesFilter(ev))
 
       if (dayEvents.length === 1) {
         setSelectedDay(null)
@@ -236,7 +230,7 @@ export function AgendaPage() {
         })
       }
     },
-    [currentRawEvents]
+    [currentRawEvents, matchesFilter]
   )
 
   const handleExportPDF = useCallback(async () => {
@@ -491,14 +485,14 @@ export function AgendaPage() {
             </div>
           </header>
 
-          {/* CINTA DE FILTROS POR CATEGORÍA Y BUSCADOR (de code.html) */}
+          {/* CINTA DE FILTROS POR MACRO-CATEGORÍA Y CATEGORÍA (de code.html) */}
           <AgendaFilterRibbon
+            macroCategory={macroCategory}
+            onMacroCategoryChange={handleMacroCategoryChange}
             activeTypes={activeTypes}
             tipos={availableTypes}
-            eventCount={eventCount}
             countsByType={countsByType}
-            search={search}
-            onSearchChange={setSearch}
+            countsByMacro={countsByMacro}
             onToggle={handleToggleType}
             onClearAll={handleClearAll}
             periodTitle={currentTitle}

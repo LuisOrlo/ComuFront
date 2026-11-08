@@ -137,7 +137,13 @@ export function CursoFormPage() {
 
   // Al cambiar de paso, volver al inicio de la página.
   useLayoutEffect(() => {
-    scrollPageToTop()
+    scrollPageToTop("auto")
+    const rafId = requestAnimationFrame(() => scrollPageToTop("auto"))
+    const timeout = setTimeout(() => scrollPageToTop("auto"), 30)
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearTimeout(timeout)
+    }
   }, [currentStep])
 
   const [form, setForm] = useState({
@@ -648,16 +654,19 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         sincronizarPreciosPaso4a5()
       }
       setCurrentStep((prev) => Math.min(prev + 1, 5))
+      scrollPageToTop("auto")
     }
   }
 
   const handlePrevStep = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1))
+    scrollPageToTop("auto")
   }
 
   const handleGoToStep = (targetStep: number) => {
     if (targetStep < currentStep) {
       setCurrentStep(targetStep)
+      scrollPageToTop("auto")
       return
     }
     // To jump forward, all steps in between must be valid
@@ -671,6 +680,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       sincronizarPreciosPaso4a5()
     }
     setCurrentStep(targetStep)
+    scrollPageToTop("auto")
   }
 
   const handleSubmit = async (confirmarRegeneracion = false) => {

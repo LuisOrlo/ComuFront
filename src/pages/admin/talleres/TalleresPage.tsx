@@ -153,28 +153,28 @@ export function TalleresPage() {
           </header>
 
           {/* Tarjetas KPI de Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             {/* KPI 1: Próximos */}
             <div
               onClick={() => setTab("proximos")}
-              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+              className={`p-3 sm:p-3.5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
                 tab === "proximos"
                   ? "border-amber-500 ring-2 ring-amber-500/15"
                   : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
                   Próximos
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <HugeiconsIcon icon={CalendarIcon} size={18} />
+                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <HugeiconsIcon icon={CalendarIcon} size={14} />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-amber-700 mt-2">
+              <div className="text-xl sm:text-2xl font-bold text-amber-700 mt-1.5">
                 {stats.proximos}
               </div>
-              <span className="text-[11px] text-[#45464d] mt-1 block">
+              <span className="text-[10px] text-[#45464d] mt-0.5 block">
                 Por realizarse
               </span>
             </div>
@@ -182,42 +182,42 @@ export function TalleresPage() {
             {/* KPI 2: Completados */}
             <div
               onClick={() => setTab("pasados")}
-              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+              className={`p-3 sm:p-3.5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
                 tab === "pasados"
                   ? "border-emerald-500 ring-2 ring-emerald-500/15"
                   : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                   Completados
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={18} />
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-emerald-700 mt-2">
+              <div className="text-xl sm:text-2xl font-bold text-emerald-700 mt-1.5">
                 {stats.completados}
               </div>
-              <span className="text-[11px] text-[#45464d] mt-1 block">
+              <span className="text-[10px] text-[#45464d] mt-0.5 block">
                 Talleres finalizados
               </span>
             </div>
 
             {/* KPI 3: Inscritos */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white shadow-xs border border-[#c6c6cd]/25">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-white shadow-xs border border-[#c6c6cd]/25">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#2563eb]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#2563eb]">
                   Inscritos
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-[#eff4ff] text-[#2563eb] flex items-center justify-center">
-                  <HugeiconsIcon icon={UserGroupIcon} size={18} />
+                <div className="w-7 h-7 rounded-lg bg-[#eff4ff] text-[#2563eb] flex items-center justify-center">
+                  <HugeiconsIcon icon={UserGroupIcon} size={14} />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#0b1c30] mt-2">
+              <div className="text-xl sm:text-2xl font-bold text-[#0b1c30] mt-1.5">
                 {stats.total_inscritos}
               </div>
-              <span className="text-[11px] text-[#45464d] mt-1 block">
+              <span className="text-[10px] text-[#45464d] mt-0.5 block">
                 Total estudiantes
               </span>
             </div>
@@ -225,24 +225,24 @@ export function TalleresPage() {
             {/* KPI 4: Total General */}
             <div
               onClick={() => setTab("todos")}
-              className={`p-4 sm:p-5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
+              className={`p-3 sm:p-3.5 rounded-2xl bg-white shadow-xs border transition-all cursor-pointer ${
                 tab === "todos"
                   ? "border-[#fd761a] ring-2 ring-[#fd761a]/15"
                   : "border-[#c6c6cd]/25 hover:border-[#c6c6cd]/50"
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#76777d]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#76777d]">
                   Total Talleres
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-[#eff4ff] text-[#0b1c30] flex items-center justify-center">
-                  <HugeiconsIcon icon={BookOpenIcon} size={18} />
+                <div className="w-7 h-7 rounded-lg bg-[#eff4ff] text-[#0b1c30] flex items-center justify-center">
+                  <HugeiconsIcon icon={BookOpenIcon} size={14} />
                 </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-[#0b1c30] mt-2">
+              <div className="text-xl sm:text-2xl font-bold text-[#0b1c30] mt-1.5">
                 {stats.total}
               </div>
-              <span className="text-[11px] text-[#45464d] mt-1 block">
+              <span className="text-[10px] text-[#45464d] mt-0.5 block">
                 Catálogo histórico
               </span>
             </div>
@@ -378,10 +378,8 @@ export function TalleresPage() {
                     <thead>
                       <tr className="bg-[#eff4ff] border-b border-[#c6c6cd]/30 text-[11px] font-bold uppercase tracking-wider text-[#45464d]">
                         <th className="py-3.5 px-5">Taller / Programa</th>
-                        <th className="py-3.5 px-4">Instructor</th>
                         <th className="py-3.5 px-4">Fecha y Horario</th>
                         <th className="py-3.5 px-4">Modalidad</th>
-                        <th className="py-3.5 px-4">Precio</th>
                         <th className="py-3.5 px-4">Capacidad / Cupos</th>
                         <th className="py-3.5 px-4">Estado</th>
                         <th className="py-3.5 px-5 text-right">Acción</th>
@@ -422,23 +420,6 @@ export function TalleresPage() {
                               </div>
                             </td>
 
-                            {/* Columna: Instructor */}
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              {t.instructor ? (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-[#45464d]">
-                                    {t.instructor.nombres?.[0]}
-                                    {t.instructor.apellidos?.[0]}
-                                  </div>
-                                  <span className="font-semibold text-xs text-[#0b1c30]">
-                                    {t.instructor.nombres} {t.instructor.apellidos}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-[#76777d] italic">No asignado</span>
-                              )}
-                            </td>
-
                             {/* Columna: Fecha y Horario */}
                             <td className="py-3.5 px-4 whitespace-nowrap">
                               <div className="space-y-0.5">
@@ -469,13 +450,6 @@ export function TalleresPage() {
                                 <ModalidadBadge modalidad={t.modalidad} />
                                 {t.ciudad?.nombre && <CiudadBadge ciudad={t.ciudad.nombre} />}
                               </div>
-                            </td>
-
-                            {/* Columna: Precio */}
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              <span className="font-bold text-xs sm:text-sm text-[#0b1c30]">
-                                ${Number(t.precio || 0).toFixed(2)}
-                              </span>
                             </td>
 
                             {/* Columna: Capacidad y Ocupación */}

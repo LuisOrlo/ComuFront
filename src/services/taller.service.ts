@@ -3,6 +3,17 @@ import type { DatosAsistenciaPDF } from "@/lib/generarAsistenciaPDF"
 
 const PREFIX = "/academic"
 
+export interface SesionTaller {
+  id?: string
+  taller_id?: string
+  fecha_sesion: string
+  hora_inicio: string
+  hora_fin: string
+  aula?: string | null
+  tema?: string | null
+  observaciones?: string | null
+}
+
 export interface Taller {
   id: string
   nombre: string
@@ -18,11 +29,13 @@ export interface Taller {
   ciudad?: { id: number; nombre: string }
   capacidad_maxima?: number
   precio?: number
+  precio_matricula?: number
   estado: string
   inscripciones_count?: number
   inscripciones?: InscripcionTaller[]
   asistencias?: AsistenciaTaller[]
   horarios?: HorarioTaller[]
+  sesiones?: SesionTaller[]
   created_at?: string
 }
 

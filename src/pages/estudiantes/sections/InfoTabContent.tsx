@@ -490,6 +490,28 @@ export function InfoTabContent({
                   {formatDate(data.actualizado_en)}
                 </dd>
               </div>
+              <div className="flex flex-col sm:col-span-2 pt-3 border-t border-slate-100">
+                <dt className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Consentimiento de Datos
+                </dt>
+                <dd className="mt-1 flex items-center flex-wrap gap-2">
+                  {perfil?.terminos_aceptados ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} />
+                      <span>Términos y condiciones aceptados</span>
+                      {perfil?.fecha_terminos_aceptados && (
+                        <span className="text-emerald-600/80 font-normal">
+                          • {formatDate(perfil.fecha_terminos_aceptados)}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                      <span>No registrado</span>
+                    </span>
+                  )}
+                </dd>
+              </div>
             </dl>
 
             {/* Cuadro de Notas de Coordinación Académica (de code.html líneas 302-313) */}

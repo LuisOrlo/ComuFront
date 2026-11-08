@@ -152,7 +152,7 @@ export function AgendaDrawer({
         <div className="w-screen max-w-md md:max-w-lg bg-white shadow-2xl border-l border-slate-200 flex flex-col justify-between overflow-hidden animate-in slide-in-from-right duration-300">
           {/* Si tenemos un evento seleccionado: MOSTRAR DETALLE DEL EVENTO */}
           {data ? (
-            <div className="flex-1 flex flex-col overflow-y-auto">
+            <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden">
               {/* Franja superior decorativa del tipo de evento */}
               <div
                 className="h-2 w-full transition-colors shrink-0"
@@ -160,9 +160,9 @@ export function AgendaDrawer({
               />
 
               {/* Header del Panel */}
-              <div className="p-4 sm:p-6 border-b border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white">
+              <div className="p-4 sm:p-6 border-b border-slate-200/80 bg-gradient-to-b from-slate-50/80 to-white min-w-0">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 min-w-0 flex-1">
                     <div className="flex items-center flex-wrap gap-2">
                       {/* Badge de Categoría / Servicio */}
                       <span
@@ -191,7 +191,7 @@ export function AgendaDrawer({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {daySelection && daySelection.events.length > 1 && (
                       <button
                         onClick={() => onSelectEvent(null as unknown as AgendaEvent)}
@@ -212,8 +212,8 @@ export function AgendaDrawer({
                 </div>
 
                 {/* Título Principal */}
-                <div className="mt-4 space-y-2">
-                  <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-snug tracking-tight">
+                <div className="mt-4 space-y-2 min-w-0">
+                  <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-snug tracking-tight break-words">
                     {["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(data.tipo_evento) && data.nombre_instancia
                       ? (data.tipo_evento === "CLASE_CURSO" ? `Clase: ${data.nombre_instancia}` : data.nombre_instancia)
                       : data.titulo}
@@ -222,7 +222,7 @@ export function AgendaDrawer({
                   {/* Estado con punto animado */}
                   <div className="flex items-center gap-2 pt-0.5">
                     <span
-                      className={`size-2.5 rounded-full inline-block ${
+                      className={`size-2.5 rounded-full inline-block shrink-0 ${
                         data.estado === "cancelado"
                           ? "bg-rose-500"
                           : data.estado === "completado"
@@ -238,70 +238,55 @@ export function AgendaDrawer({
               </div>
 
               {/* Contenido / Tarjetas Bento de Metadatos (Estilo Reserva Detalle) */}
-              <div className="p-4 sm:p-6 space-y-4">
-                {/* 2 Bento Metric Cards Superiores */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Card 1: Horario & Duración */}
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <HugeiconsIcon icon={Clock01Icon} size={14} className="text-blue-500" />
-                        Horario de Sesión
+              <div className="p-4 sm:p-6 space-y-4 min-w-0">
+                {/* Tarjeta Unificada de Fecha y Horario (100% responsiva, sin scroll horizontal) */}
+                <div className="w-full min-w-0 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3.5 overflow-hidden">
+                  {/* Fila 1: Fecha con mini calendario gráfico */}
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="size-12 rounded-xl bg-orange-50 border border-orange-200/70 text-[#fd761a] flex flex-col items-center justify-center shrink-0 shadow-2xs">
+                      <span className="text-[9px] font-black tracking-wider leading-none uppercase">
+                        {formatMonthShort(data.fecha)}
                       </span>
-                      {duration && (
-                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-md">
-                          {duration}
-                        </span>
-                      )}
+                      <span className="text-lg font-black leading-tight mt-0.5">
+                        {formatDayNumber(data.fecha)}
+                      </span>
                     </div>
-                    <p className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                      {formatTime(data.hora_inicio)} — {formatTime(data.hora_fin)}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Franja reservada
-                    </p>
-                  </div>
 
-                  {/* Card 2: Fecha Programada */}
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <HugeiconsIcon icon={Calendar03Icon} size={14} className="text-indigo-500" />
-                        Fecha en Agenda
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                        <HugeiconsIcon icon={Calendar03Icon} size={12} className="text-indigo-500 shrink-0" />
+                        Fecha Programada
                       </span>
-                      <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                      <p className="text-xs sm:text-sm font-black text-slate-900 capitalize truncate mt-0.5">
+                        {formatDate(data.fecha)}
+                      </p>
+                      <span className="text-[10px] font-semibold text-slate-400 block mt-0.5">
                         {data.fecha}
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-slate-900 capitalize truncate">
-                      {formatDate(data.fecha)}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Día programado
-                    </p>
                   </div>
-                </div>
 
-                {/* Tarjeta de Fecha Destacada tipo Calendario */}
-                <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-4">
-                  <div className="size-14 rounded-2xl bg-orange-50 border border-orange-200/70 text-[#fd761a] flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[10px] font-black tracking-wider leading-none">
-                      {formatMonthShort(data.fecha)}
-                    </span>
-                    <span className="text-xl font-black leading-tight">
-                      {formatDayNumber(data.fecha)}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Detalle de Fecha y Bloque
-                    </span>
-                    <span className="text-sm font-bold text-slate-800 capitalize truncate block">
-                      {formatDate(data.fecha)}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-500 block mt-0.5">
-                      Horario {formatTime(data.hora_inicio)} a {formatTime(data.hora_fin)} {duration ? `(${duration})` : ""}
-                    </span>
+                  {/* Fila 2: Franja horaria y duración integrada */}
+                  <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 bg-slate-50/60 -mx-4 -mb-4 px-4 py-2.5 rounded-b-2xl min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <HugeiconsIcon icon={Clock01Icon} size={14} className="text-blue-500 shrink-0" />
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden xs:inline">
+                        Horario:
+                      </span>
+                      <span className="text-xs sm:text-sm font-black text-slate-900 tracking-tight truncate">
+                        {formatTime(data.hora_inicio)} — {formatTime(data.hora_fin)}
+                      </span>
+                    </div>
+
+                    {duration ? (
+                      <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md shrink-0">
+                        {duration}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                        Franja reservada
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -329,21 +314,27 @@ export function AgendaDrawer({
 
                 {/* Tarjeta de Docente / Instructor o Cliente */}
                 {data.instructor_nombre && (
-                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3.5">
-                    <div className="size-11 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-black text-sm shrink-0">
+                  <div className="w-full min-w-0 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-3.5">
+                    <div className="size-10 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs shrink-0">
                       {data.instructor_nombre.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                         {getEventPersonLabel(data.tipo_evento)}
                       </span>
-                      <span className="text-sm font-bold text-slate-900 block truncate">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 truncate mt-0.5">
                         {data.instructor_nombre}
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-medium block">
-                        {data.tipo_evento === "STREAMING"
-                          ? "Cliente contratante del servicio"
-                          : "Responsable / titular del registro"}
+                      </p>
+                      <span className="text-[11px] text-slate-500 font-medium block truncate">
+                        {["CLASE_CURSO", "CURSO", "CURSO_PERSONALIZADO"].includes(data.tipo_evento)
+                          ? "Docente a cargo de la sesión"
+                          : data.tipo_evento === "TALLER"
+                            ? "Instructor del taller"
+                            : data.tipo_evento === "ASESORIA"
+                              ? "Asesor / Instructor"
+                              : data.tipo_evento === "STREAMING"
+                                ? "Cliente contratante del servicio"
+                                : "Titular / Solicitante de la reserva"}
                       </span>
                     </div>
                   </div>
@@ -575,7 +566,7 @@ export function AgendaDrawer({
             </div>
           ) : (
             /* Vista alternativa: Lista de eventos del DÍA SELECCIONADO */
-            <div className="flex-1 flex flex-col overflow-y-auto">
+            <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0">
               <div className="p-6 border-b border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-black text-slate-900 capitalize">

@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { UserIcon, ImageAdd02Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
 import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
+import { TerminosCondicionesModal } from "./TerminosCondicionesModal"
 
 export interface EstudianteData {
   tipo_id: "cedula" | "dni"
@@ -17,6 +18,7 @@ export interface EstudianteData {
   estado_civil: string
   edad: string
   nivel_educativo: string
+  acepta_terminos?: boolean
 }
 
 interface DatosEstudianteStepProps {
@@ -75,6 +77,7 @@ export function DatosEstudianteStep({
 }: DatosEstudianteStepProps) {
   const [ciudadOpen, setCiudadOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [showTerminosModal, setShowTerminosModal] = useState(false)
   const cedulaInputRef = useRef<HTMLInputElement>(null)
   const ciudadInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -480,6 +483,75 @@ export function DatosEstudianteStep({
         )}
         {errors.cedulaFile && <p className="text-[11px] mt-1 text-red-500 font-medium">{errors.cedulaFile}</p>}
       </div>
+
+      {/* Sección de Términos y Condiciones / LOPDP */}
+      <div className="pt-1">
+        <div
+          className={`p-3.5 sm:p-4 rounded-xl border transition-colors ${
+            errors.acepta_terminos
+              ? "bg-red-50/60 border-red-300"
+              : "bg-slate-50/70 border-slate-200/80"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="acepta_terminos_checkbox"
+              checked={Boolean(estudiante.acepta_terminos)}
+              onChange={(e) => {
+                const checked = e.target.checked
+                setEstudiante((prev) => ({ ...prev, acepta_terminos: checked }))
+                if (checked) {
+                  setErrors((prev) => {
+                    const n = { ...prev }
+                    delete n.acepta_terminos
+                    return n
+                  })
+                }
+              }}
+              className="mt-0.5 size-4 rounded text-[#fd761a] border-slate-300 focus:ring-[#fd761a] cursor-pointer shrink-0"
+            />
+            <div className="flex-1 text-xs leading-snug">
+              <label
+                htmlFor="acepta_terminos_checkbox"
+                className="font-medium text-slate-700 cursor-pointer select-none"
+              >
+                He leído y acepto los{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowTerminosModal(true)}
+                  className="font-bold underline text-[#fd761a] hover:text-[#ea580c] transition-colors inline cursor-pointer"
+                >
+                  Términos de Servicio y el uso de mis Datos Personales
+                </button>{" "}
+                para fines académicos y de verificación.
+              </label>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Conforme a la Ley Orgánica de Protección de Datos Personales. Tu información no será compartidas con terceros.
+              </p>
+              {errors.acepta_terminos && (
+                <p className="text-[11px] text-red-500 font-semibold mt-1.5">
+                  {errors.acepta_terminos}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <TerminosCondicionesModal
+        isOpen={showTerminosModal}
+        onClose={() => setShowTerminosModal(false)}
+        onAccept={() => {
+          setEstudiante((prev) => ({ ...prev, acepta_terminos: true }))
+          setErrors((prev) => {
+            const n = { ...prev }
+            delete n.acepta_terminos
+            return n
+          })
+        }}
+      />
+
       <div className="flex justify-end pt-2">
         <button 
           onClick={onNext} 

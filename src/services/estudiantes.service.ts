@@ -26,6 +26,8 @@ export interface Estudiante {
     estado_civil?: string
     edad?: number
     nivel_educativo?: string
+    terminos_aceptados?: boolean
+    fecha_terminos_aceptados?: string | null
   } | null
   creado_en?: string
   actualizado_en?: string
