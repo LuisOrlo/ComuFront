@@ -23,8 +23,8 @@ import {
   X,
   PanelRightClose,
   PanelRightOpen,
-  MessageSquare,
   BookOpen,
+  AlertCircle,
 } from "lucide-react"
 import { parseLocalDate } from "@/lib/utils"
 import type { EstudianteCurso, ClaseItem } from "@/services/instructor.service"
@@ -180,18 +180,15 @@ export function CursoAsistenciaWorkspace({
   const [claseFiltro, setClaseFiltro] = useState<FiltroEstado>("todas")
   const [expandedModulos, setExpandedModulos] = useState<Record<string, boolean>>({})
 
-  // Control para mostrar/ocultar observaciones de la clase
-  const [showObservaciones, setShowObservaciones] = useState(() => Boolean(claseObservaciones.trim()))
+  // Validación obligatoria de tema y observaciones
+  const puedeGuardar = Boolean(claseTema.trim() && claseObservaciones.trim())
 
   // Búsqueda de estudiantes en el listado
   const [estudianteSearch, setEstudianteSearch] = useState("")
 
   useEffect(() => {
     setEstudianteSearch("")
-    if (claseObservaciones.trim()) {
-      setShowObservaciones(true)
-    }
-  }, [selectedClase?.id, claseObservaciones])
+  }, [selectedClase?.id])
 
   // Modal para editar fecha/hora (solo admin)
   const [editClase, setEditClase] = useState<ClaseItem | null>(null)
@@ -431,56 +428,30 @@ export function CursoAsistenciaWorkspace({
               </div>
             </div>
 
-            {/* Aviso informativo sutil de 1 sola línea */}
+            {/* Aviso informativo de estado */}
             {selectedClase.asistencia_registrada ? (
-              <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-emerald-50/70 border border-emerald-100 text-emerald-800 text-xs">
-                <div className="flex items-center gap-1.5 truncate">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span className="truncate">
-                    <strong>Asistencia guardada.</strong> Puedes modificar cualquier estado y volver a guardar.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowObservaciones((prev) => !prev)}
-                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-                >
-                  <MessageSquare className="w-3 h-3" />
-                  {showObservaciones
-                    ? "Ocultar notas"
-                    : claseObservaciones.trim()
-                    ? "Ver notas"
-                    : "+ Observación"}
-                </button>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50/70 border border-emerald-100 text-emerald-800 text-xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">
+                  <strong>Asistencia guardada.</strong> Puedes modificar cualquier estado y volver a guardar.
+                </span>
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-blue-50/60 border border-blue-100 text-[#0b1c30] text-xs">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50/60 border border-blue-100 text-[#0b1c30] text-xs">
                 <span className="text-[#45464d] text-xs truncate">
-                  Por defecto todos inician como <strong>Presente</strong>. Marca los ausentes y guarda.
+                  Por defecto todos inician como <strong>Presente</strong>. Marca los ausentes y llena los campos obligatorios para guardar.
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowObservaciones((prev) => !prev)}
-                  className="text-[11px] font-semibold text-[#fd761a] hover:text-[#9d4300] flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-                >
-                  <MessageSquare className="w-3 h-3" />
-                  {showObservaciones
-                    ? "Ocultar notas"
-                    : claseObservaciones.trim()
-                    ? "Ver notas"
-                    : "+ Observación"}
-                </button>
               </div>
             )}
 
-            {/* Tema visto en clase y Observaciones */}
+            {/* Tema visto en clase y Observaciones (Ambos Obligatorios) */}
             <div className="space-y-2 pt-1">
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs text-[#0b1c30] font-semibold">
                   <span className="flex items-center gap-1.5 text-[11px] text-[#45464d]">
                     <BookOpen className="w-3.5 h-3.5 text-[#fd761a]" />
                     <span>Tema visto en clase</span>
-                    <span className="text-[10px] text-[#76777d] font-normal hidden sm:inline">(contenido o unidad abordada)</span>
+                    <span className="text-[10px] text-red-500 font-bold">* Obligatorio</span>
                   </span>
                   <span className="text-[10px] text-[#76777d]">{claseTema.length}/200</span>
                 </div>
@@ -490,30 +461,37 @@ export function CursoAsistenciaWorkspace({
                   onChange={(e) => setClaseTema(e.target.value)}
                   maxLength={200}
                   placeholder="Ej: Unidad 2: Introducción a verbos irregulares y pronunciación..."
-                  className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#fd761a] transition-all shadow-xs"
+                  className={`w-full px-3 py-1.5 rounded-lg bg-white border text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none transition-all shadow-xs ${
+                    !claseTema.trim()
+                      ? "border-amber-300 focus:border-red-400 focus:ring-1 focus:ring-red-400/20"
+                      : "border-[#e5eeff] focus:ring-1 focus:ring-[#fd761a]"
+                  }`}
                 />
               </div>
 
-              {/* Observaciones colapsables */}
-              {showObservaciones && (
-                <div className="space-y-1 pt-0.5">
-                  <div className="flex items-center justify-between text-xs text-[#0b1c30] font-semibold">
-                    <span className="flex items-center gap-1 text-[11px] text-[#76777d]">
-                      <Edit3 className="w-3 h-3" />
-                      Observaciones o notas de la sesión (opcional)
-                    </span>
-                    <span className="text-[10px] text-[#76777d]">{claseObservaciones.length}/250</span>
-                  </div>
-                  <textarea
-                    value={claseObservaciones}
-                    onChange={(e) => setClaseObservaciones(e.target.value)}
-                    maxLength={250}
-                    rows={2}
-                    placeholder="Escribe comentarios u observaciones relevantes sobre esta sesión..."
-                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#e5eeff] text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#fd761a] transition-all resize-none shadow-xs"
-                  />
+              {/* Observaciones SIEMPRE VISIBLES */}
+              <div className="space-y-1 pt-0.5">
+                <div className="flex items-center justify-between text-xs text-[#0b1c30] font-semibold">
+                  <span className="flex items-center gap-1 text-[11px] text-[#45464d]">
+                    <Edit3 className="w-3 h-3 text-[#fd761a]" />
+                    <span>Observaciones o notas de la sesión</span>
+                    <span className="text-[10px] text-red-500 font-bold">* Obligatorio</span>
+                  </span>
+                  <span className="text-[10px] text-[#76777d]">{claseObservaciones.length}/250</span>
                 </div>
-              )}
+                <textarea
+                  value={claseObservaciones}
+                  onChange={(e) => setClaseObservaciones(e.target.value)}
+                  maxLength={250}
+                  rows={2}
+                  placeholder="Escribe comentarios u observaciones relevantes sobre esta sesión..."
+                  className={`w-full px-3 py-1.5 rounded-lg bg-white border text-xs text-[#0b1c30] placeholder:text-[#76777d] focus:outline-none transition-all resize-none shadow-xs ${
+                    !claseObservaciones.trim()
+                      ? "border-amber-300 focus:border-red-400 focus:ring-1 focus:ring-red-400/20"
+                      : "border-[#e5eeff] focus:ring-1 focus:ring-[#fd761a]"
+                  }`}
+                />
+              </div>
             </div>
           </div>
 
@@ -652,13 +630,15 @@ export function CursoAsistenciaWorkspace({
               <button
                 type="button"
                 onClick={() => handleGuardar(false)}
-                disabled={saving || (selectedClase.asistencia_registrada && !hayCambiosPendientes)}
+                disabled={saving || !puedeGuardar || (selectedClase.asistencia_registrada && !hayCambiosPendientes)}
                 title={
-                  selectedClase.asistencia_registrada && !hayCambiosPendientes
+                  !puedeGuardar
+                    ? "Completa el tema y las observaciones obligatorias para guardar"
+                    : selectedClase.asistencia_registrada && !hayCambiosPendientes
                     ? "No hay cambios pendientes por guardar"
                     : undefined
                 }
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#0b1c30] text-white hover:bg-[#131b2e] text-xs font-bold transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#0b1c30] text-white hover:bg-[#131b2e] text-xs font-bold transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -677,8 +657,13 @@ export function CursoAsistenciaWorkspace({
               <button
                 type="button"
                 onClick={() => handleGuardar(true)}
-                disabled={saving}
-                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#fd761a] hover:bg-[#9d4300] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50"
+                disabled={saving || !puedeGuardar}
+                title={
+                  !puedeGuardar
+                    ? "Completa el tema y las observaciones obligatorias para guardar"
+                    : undefined
+                }
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#fd761a] hover:bg-[#9d4300] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -697,7 +682,14 @@ export function CursoAsistenciaWorkspace({
               </button>
             </div>
 
-            {siguienteClasePendiente && (
+            {!puedeGuardar && (
+              <p className="text-[11px] text-amber-700 font-medium flex items-center justify-center sm:justify-end gap-1.5 pt-0.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                <span>Llena el tema y las observaciones de la sesión para habilitar el guardado.</span>
+              </p>
+            )}
+
+            {puedeGuardar && siguienteClasePendiente && (
               <p className="text-[10px] leading-tight text-[#76777d] text-center sm:text-right">
                 Abre clase del {getFechaLarga(siguienteClasePendiente.clase.fecha_clase)}
               </p>

@@ -343,6 +343,16 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
   // Guardar asistencia
   const handleGuardar = async (continuarSiguiente: boolean = false) => {
     if (!selectedClase) return
+
+    if (!claseTema.trim()) {
+      toast.error("El tema visto en clase es obligatorio")
+      return
+    }
+    if (!claseObservaciones.trim()) {
+      toast.error("Las observaciones de la sesión son obligatorias")
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -723,28 +733,29 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                             )}
                           </div>
 
-                          {/* Tema visto */}
-                          <div className="p-2.5 rounded-lg bg-[#eff4ff]/50 border border-[#e5eeff] space-y-1">
-                            <span className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider text-[#fd761a]">
-                              <BookOpen className="w-3 h-3" />
-                              Tema visto
-                            </span>
-                            <p className="text-xs font-semibold text-[#0b1c30]">
-                              {clase.tema ? (
-                                clase.tema
-                              ) : (
-                                <span className="text-[#76777d] font-normal italic">Sin tema registrado</span>
-                              )}
-                            </p>
-                          </div>
-
-                          {/* Observación si existe */}
-                          {clase.observaciones && (
-                            <div className="text-xs text-[#45464d] flex items-start gap-1.5">
-                              <MessageSquare className="w-3.5 h-3.5 text-[#76777d] shrink-0 mt-0.5" />
-                              <span className="italic">"{clase.observaciones}"</span>
+                          {/* Tema y Observación */}
+                          <div className="p-2.5 rounded-lg bg-[#eff4ff]/50 border border-[#e5eeff] space-y-1.5 text-xs">
+                            <div className="flex items-start gap-1.5">
+                              <span className="font-bold text-[#0b1c30] shrink-0">Tema:</span>
+                              <span className="text-[#0b1c30]">
+                                {clase.tema ? (
+                                  clase.tema
+                                ) : (
+                                  <span className="text-[#76777d] italic">Sin tema registrado</span>
+                                )}
+                              </span>
                             </div>
-                          )}
+                            <div className="flex items-start gap-1.5 text-[#45464d] pt-1 border-t border-[#e5eeff]/60">
+                              <span className="font-bold shrink-0">Observación:</span>
+                              <span>
+                                {clase.observaciones ? (
+                                  clase.observaciones
+                                ) : (
+                                  <span className="text-[#76777d] italic">Sin observación registrada</span>
+                                )}
+                              </span>
+                            </div>
+                          </div>
 
                           <button
                             type="button"
@@ -846,42 +857,56 @@ export function CursoAsistenciaSection({ cursoId, cursoNombre, modulos }: Props)
                               )}
                             </td>
                             <td className="py-3.5 px-4">
-                              <div className="max-w-sm space-y-1.5">
+                              <div className="max-w-md space-y-1.5">
                                 {/* Tema visto */}
-                                <div className="flex items-start gap-1.5">
+                                <div className="flex items-start gap-1.5 text-xs">
                                   <BookOpen
                                     className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
                                       clase.tema ? "text-[#fd761a]" : "text-[#76777d]"
                                     }`}
                                   />
-                                  {clase.tema ? (
-                                    <span
-                                      className="font-semibold text-xs text-[#0b1c30] line-clamp-2"
-                                      title={clase.tema}
-                                    >
-                                      {clase.tema}
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className={`text-xs text-[#76777d] ${
-                                        clase.asistencia_registrada ? "italic" : ""
-                                      }`}
-                                    >
-                                      {clase.asistencia_registrada ? "Sin tema registrado" : "Pendiente"}
-                                    </span>
-                                  )}
+                                  <div className="line-clamp-2">
+                                    <strong className="font-bold text-[#0b1c30]">Tema: </strong>
+                                    {clase.tema ? (
+                                      <span className="text-[#0b1c30]" title={clase.tema}>
+                                        {clase.tema}
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className={`text-[#76777d] ${
+                                          clase.asistencia_registrada ? "italic" : ""
+                                        }`}
+                                      >
+                                        {clase.asistencia_registrada ? "Sin tema registrado" : "Pendiente"}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {/* Observación */}
-                                {clase.observaciones && (
-                                  <div
-                                    className="flex items-start gap-1.5 text-xs text-[#45464d]"
-                                    title={clase.observaciones}
-                                  >
-                                    <MessageSquare className="w-3 h-3 text-[#76777d] shrink-0 mt-0.5" />
-                                    <span className="line-clamp-2">{clase.observaciones}</span>
+                                <div className="flex items-start gap-1.5 text-xs">
+                                  <MessageSquare
+                                    className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                                      clase.observaciones ? "text-slate-600" : "text-[#76777d]"
+                                    }`}
+                                  />
+                                  <div className="line-clamp-2">
+                                    <strong className="font-bold text-[#45464d]">Observación: </strong>
+                                    {clase.observaciones ? (
+                                      <span className="text-[#45464d]" title={clase.observaciones}>
+                                        {clase.observaciones}
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className={`text-[#76777d] ${
+                                          clase.asistencia_registrada ? "italic" : ""
+                                        }`}
+                                      >
+                                        {clase.asistencia_registrada ? "Sin observación registrada" : "Pendiente"}
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3.5 px-4 text-right whitespace-nowrap">
