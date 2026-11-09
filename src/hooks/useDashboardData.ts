@@ -7,7 +7,7 @@ function today(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil" }).format(new Date())
 }
 
-export function useDashboardData() {
+export function useDashboardData(unidadNegocio: "todos" | "academia" | "servicios" = "todos") {
   const [resumenQuery, estadisticasQuery, cursosQuery, agendaQuery, notificacionesQuery, cuentasQuery] = useQueries({
     queries: [
       {
@@ -16,8 +16,8 @@ export function useDashboardData() {
         staleTime: 5 * 60 * 1000,
       },
       {
-        queryKey: ["dashboard", "estadisticas"],
-        queryFn: () => financeService.getEstadisticas({}),
+        queryKey: ["dashboard", "estadisticas", unidadNegocio],
+        queryFn: () => financeService.getEstadisticas({ unidad_negocio: unidadNegocio }),
         staleTime: 5 * 60 * 1000,
       },
       {
@@ -50,10 +50,18 @@ export function useDashboardData() {
   const notificaciones = notificacionesQuery.data
   const cuentasPendientes = cuentasQuery.data?.data ?? []
 
+  const totalServicios = estadisticas?.actividad_servicios?.reduce((acc: number, s: { cantidad?: number }) => acc + (s.cantidad || 0), 0) ?? 0
+  const clientesServicios = estadisticas?.top_estudiantes?.length ?? 0
+  const matriculasActivas = cursos.reduce((acc, c) => acc + c.estudiantes, 0)
+  const cursosEnProgreso = cursos.filter((c) => c.estado === "en_progreso").length
+
   const kpis = {
-    matriculasActivas: cursos.reduce((acc, c) => acc + c.estudiantes, 0),
+    matriculasActivas,
     ingresosDelMes: estadisticas?.metricas?.ingresos ?? 0,
-    cursosEnProgreso: cursos.filter((c) => c.estado === "en_progreso").length,
+    cursosEnProgreso,
+    totalServicios,
+    clientesServicios,
+    vsPeriodoAnterior: estadisticas?.metricas?.vs_periodo_anterior,
     pagosPendientes: resumen?.total_pendiente ?? 0,
   }
 
@@ -106,6 +114,7 @@ export function useDashboardData() {
     ocupacionCursos,
     agendaDelDia: agenda,
     actividadReciente: Array.isArray(notificaciones?.recientes) ? notificaciones.recientes : [],
+    actividadServicios: estadisticas?.actividad_servicios ?? [],
     pendientes: notificaciones?.pendientes ?? 0,
     loading,
     error,

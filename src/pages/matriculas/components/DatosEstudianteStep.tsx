@@ -231,8 +231,18 @@ export function DatosEstudianteStep({
         </div>
         <div>
           <label className="block text-xs font-medium mb-1.5">Correo Electrónico</label>
-          <input type="text" value={estudiante.correo} onChange={e => updateEstudiante("correo", e.target.value)} onBlur={() => blurEstudiante("correo")} placeholder={placeholders.correo}
-            className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none" style={{ borderColor: touched.correo && errors.correo ? "#ef4444" : COLORS.BORDER_SUBTLE }} />
+          <input
+            type="email"
+            value={estudiante.correo}
+            onChange={e => updateEstudiante("correo", e.target.value)}
+            onBlur={() => blurEstudiante("correo")}
+            placeholder={placeholders.correo}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            className="w-full px-3.5 py-2.5 rounded-lg text-sm border outline-none"
+            style={{ borderColor: touched.correo && errors.correo ? "#ef4444" : COLORS.BORDER_SUBTLE }}
+          />
           {touched.correo && errors.correo && <p className="text-[11px] mt-1 text-red-500">{errors.correo}</p>}
         </div>
       </div>

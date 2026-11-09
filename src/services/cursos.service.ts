@@ -70,6 +70,7 @@ export interface CursoAbierto {
   es_personalizado?: boolean
   precio_base?: number
   precio_matricula?: number
+  recordatorios_config?: Record<string, unknown>
   es_activo: boolean
   modalidad?: "presencial" | "virtual"
   ciudad_id?: number

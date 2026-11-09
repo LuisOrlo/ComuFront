@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   PaymentIcon,
@@ -12,6 +13,7 @@ import {
 import { cn } from "@/lib/utils"
 import { fixImageUrl } from "../../AprobacionUtils"
 import { PagoPreAprobacionTallerSection, type PagoTallerPreAprobacionRef } from "../../PagoPreAprobacionTallerSection"
+import { ModalEditarPagoTaller } from "./ModalEditarPagoTaller"
 
 interface TallerPagoTabProps {
   selected: any
@@ -34,6 +36,7 @@ interface TallerPagoTabProps {
   pagoRef: React.RefObject<PagoTallerPreAprobacionRef | null>
   precioBase: number
   getTallerNombre: () => string
+  onRefresh?: () => void
 }
 
 export function TallerPagoTab({
@@ -57,8 +60,12 @@ export function TallerPagoTab({
   pagoRef,
   precioBase,
   getTallerNombre,
+  onRefresh,
 }: TallerPagoTabProps) {
+  const [modalEditarPagoAbierto, setModalEditarPagoAbierto] = useState(false)
   const monto = Number(selected.monto_pagado) || 0
+  const precioEfectivo = Number(selected.precio_ajustado ?? selected.cuenta_por_cobrar?.monto_total ?? selected.cuentaPorCobrar?.monto_total ?? precioBase)
+  const transacciones = selected.cuenta_por_cobrar?.transacciones || selected.cuentaPorCobrar?.transacciones || []
 
   const rawMetodo = (selected.metodo_pago || "").toLowerCase()
   const tipoPagoNormalizado = rawMetodo === "efectivo" ? "efectivo" : rawMetodo ? "transferencia" : ""
@@ -375,7 +382,7 @@ export function TallerPagoTab({
             ref={pagoRef}
             inscripcionId={selected.id}
             precioBase={precioBase}
-            montoInicial={monto}
+            montoInicial={0}
             tipoPagoInicial={tipoPagoInicial}
             metodoInicial={tipoPagoNormalizado || "efectivo"}
             onSaved={undefined}
@@ -389,17 +396,64 @@ export function TallerPagoTab({
               Resumen de pago del taller
             </span>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setModalEditarPagoAbierto(true)}
+                type="button"
+                className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#fd761a] transition-all shadow-2xs cursor-pointer hover:border-[#fd761a]/40"
+              >
+                <HugeiconsIcon icon={PencilEdit01Icon} size={14} />
+                <span>Editar Pago</span>
+              </button>
               <span
                 className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                  monto >= precioBase
+                  monto >= precioEfectivo
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-amber-50 text-amber-700 border-amber-200"
                 }`}
               >
-                {monto >= precioBase ? "Taller pagado completo" : "Pago parcial"}
+                {monto >= precioEfectivo ? "Taller pagado completo" : "Pago parcial"}
               </span>
             </div>
           </div>
+
+          {transacciones.length > 1 && (
+            <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-200/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                  <HugeiconsIcon icon={PaymentIcon} size={15} className="text-purple-600" />
+                  Desglose de métodos de pago registrados
+                </span>
+                <span className="text-[11px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                  {transacciones.length} métodos
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+                {transacciones.map((t: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-purple-100 text-xs shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      <span className="font-semibold text-slate-800 capitalize">{t.metodo_pago}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-extrabold text-slate-900">
+                        ${Number(t.monto).toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+                      </span>
+                      {t.comprobante_url && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedImageUrl(fixImageUrl(t.comprobante_url))}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          title="Ver foto de comprobante"
+                        >
+                          Ver foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 text-[10px] font-bold uppercase tracking-wider pb-2 border-b border-slate-200 text-slate-400">
             <span>Concepto</span>
@@ -410,9 +464,16 @@ export function TallerPagoTab({
           </div>
 
           <div className="grid grid-cols-[1.5fr_0.8fr_0.9fr_0.8fr_0.7fr] gap-3 items-center text-sm py-2 font-mono">
-            <span className="truncate font-semibold font-sans text-slate-900">{getTallerNombre()}</span>
+            <div className="truncate">
+              <span className="truncate font-semibold font-sans text-slate-900 block">{getTallerNombre()}</span>
+              {precioEfectivo !== precioBase && (
+                <span className="text-[10px] font-sans text-orange-600 block">
+                  Precio pactado {selected.motivo_ajuste ? `(${selected.motivo_ajuste})` : ""}
+                </span>
+              )}
+            </div>
             <span className="text-right text-slate-700 font-mono">
-              ${precioBase.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
+              ${precioEfectivo.toLocaleString("es-EC", { minimumFractionDigits: 2 })}
             </span>
             <span
               className={cn(
@@ -425,25 +486,25 @@ export function TallerPagoTab({
             <span
               className={cn(
                 "text-right font-mono font-medium",
-                precioBase - monto > 0 ? "text-amber-600" : "text-emerald-600"
+                precioEfectivo - monto > 0 ? "text-amber-600" : "text-emerald-600"
               )}
             >
-              {precioBase - monto > 0
-                ? `$${(precioBase - monto).toLocaleString("es-EC", { minimumFractionDigits: 2 })}`
+              {precioEfectivo - monto > 0
+                ? `$${(precioEfectivo - monto).toLocaleString("es-EC", { minimumFractionDigits: 2 })}`
                 : "—"}
             </span>
             <div className="flex justify-end font-sans">
               <span
                 className={cn(
                   "text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full transition-colors",
-                  monto >= precioBase
+                  monto >= precioEfectivo
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                     : monto > 0
                       ? "bg-amber-50 text-amber-700 border border-amber-200"
                       : "bg-rose-50 text-rose-700 border border-rose-200"
                 )}
               >
-                {monto >= precioBase ? "Pagado" : monto > 0 ? "Parcial" : "Pendiente"}
+                {monto >= precioEfectivo ? "Pagado" : monto > 0 ? "Parcial" : "Pendiente"}
               </span>
             </div>
           </div>
@@ -454,9 +515,9 @@ export function TallerPagoTab({
                 Total Ingresado
               </span>
               <span className="text-xs font-medium text-emerald-700 block mt-0.5">
-                {monto >= precioBase
+                {monto >= precioEfectivo
                   ? "Cobro completo del taller verificado"
-                  : `Cobro parcial · Saldo pendiente $${(precioBase - monto).toFixed(2)}`}
+                  : `Cobro parcial · Saldo pendiente $${(precioEfectivo - monto).toFixed(2)}`}
               </span>
             </div>
             <span className="text-xl font-black font-mono text-emerald-900">
@@ -464,6 +525,20 @@ export function TallerPagoTab({
             </span>
           </div>
         </div>
+      )}
+
+      {/* Modal de edición de pago post-aprobación */}
+      {modalEditarPagoAbierto && selected?.id && (
+        <ModalEditarPagoTaller
+          open={modalEditarPagoAbierto}
+          onClose={() => setModalEditarPagoAbierto(false)}
+          inscripcionId={selected.id}
+          selected={selected}
+          onSuccess={() => {
+            setModalEditarPagoAbierto(false)
+            onRefresh?.()
+          }}
+        />
       )}
     </div>
   )

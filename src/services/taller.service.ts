@@ -31,6 +31,7 @@ export interface Taller {
   precio?: number
   precio_matricula?: number
   estado: string
+  recordatorios_config?: Record<string, unknown>
   inscripciones_count?: number
   inscripciones?: InscripcionTaller[]
   asistencias?: AsistenciaTaller[]
@@ -62,6 +63,7 @@ export interface InscripcionTaller {
   direccion?: string
   estado_civil?: string
   edad?: number
+  nivel_educativo?: string
   fecha_inscripcion: string
   estado: string
   tipo_pago?: string
@@ -200,6 +202,13 @@ export const tallerService = {
     return res.data
   },
 
+  async uploadComprobante(file: File): Promise<{ url: string }> {
+    const form = new FormData()
+    form.append("archivo", file)
+    const res = await apiMultipart.post("/upload/comprobante", form)
+    return res.data?.data || res.data
+  },
+
   async subirCedula(id: string, file: File) {
     const form = new FormData()
     form.append("archivo", file)
@@ -209,6 +218,29 @@ export const tallerService = {
 
   async verificarPago(id: string, data?: Record<string, unknown>) {
     const res = await api.post(`${PREFIX}/inscripciones-talleres/${id}/verificar-pago`, data || {})
+    return res.data
+  },
+
+  async actualizarPagoInscripcion(
+    id: string,
+    data: {
+      monto_pagado: number
+      precio_ajustado?: number
+      motivo_ajuste?: string
+      tipo_pago?: string
+      metodo_pago?: string
+      fecha_pago?: string
+      grupo_pago_id?: string
+      metodos_pago?: Array<{
+        metodo_pago: string
+        monto: number
+        referencia_pago?: string
+        comprobante_url?: string | null
+        fecha_pago?: string
+      }>
+    }
+  ) {
+    const res = await api.patch(`${PREFIX}/inscripciones-talleres/${id}/actualizar-pago`, data)
     return res.data
   },
 

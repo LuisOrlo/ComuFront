@@ -19,6 +19,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { MonthFilterPopover } from "@/components/finanzas/MonthFilterPopover"
 import { cn } from "@/lib/utils"
+import { Building2, GraduationCap, Clapperboard } from "lucide-react"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { useNavigate } from "react-router"
@@ -67,6 +68,7 @@ export function HistorialPage() {
   const [fechaHasta, setFechaHasta] = useState("")
   const [metodoFilter, setMetodoFilter] = useState("todos")
   const [tipoFilter, setTipoFilter] = useState("todos")
+  const [unidadFilter, setUnidadFilter] = useState("todos")
 
   // Multi select
   const [multiSelectMode, setMultiSelectMode] = useState(false)
@@ -96,6 +98,7 @@ export function HistorialPage() {
         if (search) params.search = search
         if (metodoFilter !== "todos") params.metodo_pago = metodoFilter
         if (tipoFilter !== "todos") params.tipo_movimiento = tipoFilter
+        if (unidadFilter !== "todos") params.unidad_negocio = unidadFilter
         const res = await financeService.getHistorial(params)
         if (controller.signal.aborted) return
 
@@ -111,7 +114,7 @@ export function HistorialPage() {
     }
     run()
     return () => controller.abort()
-  }, [page, fechaDesde, fechaHasta, search, metodoFilter, tipoFilter])
+  }, [page, fechaDesde, fechaHasta, search, metodoFilter, tipoFilter, unidadFilter])
 
   // Debounce search
   useEffect(() => {
@@ -185,7 +188,6 @@ export function HistorialPage() {
       const q = metodoFilter.toLowerCase()
       list = list.filter((t) => {
         const mp = (t.metodo_pago || "").toLowerCase()
-        if (q === "mixto") return mp === "mixto" || (t.desglose_metodos && t.desglose_metodos.length > 1)
         if (q === "transferencia") return mp.includes("transfer") || mp.includes("deposito")
         return mp.includes(q)
       })
@@ -224,7 +226,7 @@ export function HistorialPage() {
   }, [groupedForDisplay])
 
   const hasActiveFilters = Boolean(
-    mes || anio || fechaDesde || fechaHasta || search || searchInput || metodoFilter !== "todos" || tipoFilter !== "todos"
+    mes || anio || fechaDesde || fechaHasta || search || searchInput || metodoFilter !== "todos" || tipoFilter !== "todos" || unidadFilter !== "todos"
   )
 
   // Auto-expand groups: when filtering, expand all matching groups; otherwise expand the first group
@@ -284,6 +286,7 @@ export function HistorialPage() {
     setSearchInput("")
     setMetodoFilter("todos")
     setTipoFilter("todos")
+    setUnidadFilter("todos")
   }
 
   // Bulk Delete
@@ -370,106 +373,66 @@ export function HistorialPage() {
           </div>
         </div>
 
-        {/* 2. FILTER TOOLBAR CARD */}
-        <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-            {/* 1. Input de Búsqueda rápida */}
-            <div className="relative flex-1 min-w-[240px] sm:min-w-[280px]">
-              <HugeiconsIcon
-                icon={Search01Icon}
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              />
-              <input
-                id="search-input"
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Buscar por cédula o nombre del cliente..."
-                className="w-full h-10 pl-9 pr-9 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
-              />
-              {searchInput && (
-                <button
-                  onClick={() => {
-                    setSearchInput("")
-                    setSearch("")
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 cursor-pointer"
-                  type="button"
-                  title="Limpiar búsqueda"
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* 2. Mes y Año Popover */}
-            <MonthFilterPopover
-              mes={mes}
-              anio={anio}
-              onChange={(m, a, rango) => {
-                setMes(m)
-                setAnio(a)
-                setFechaDesde(rango.fecha_desde || "")
-                setFechaHasta(rango.fecha_hasta || "")
-              }}
-            />
-
-            {/* 3. Método de pago Dropdown */}
-            <div className="relative w-full sm:w-48">
-              <select
-                value={metodoFilter}
-                onChange={(e) => setMetodoFilter(e.target.value)}
-                aria-label="Filtrar por método de pago"
-                className="w-full h-10 pl-3 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
-              >
-                <option value="todos">Todos los métodos</option>
-                <option value="transferencia">Transferencia bancaria</option>
-                <option value="efectivo">Efectivo</option>
-                <option value="tarjeta">Tarjeta</option>
-                <option value="mixto">Pago mixto / múltiple</option>
-              </select>
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                size={15}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              />
-            </div>
-
-            {/* 4. Tipo de movimiento Dropdown */}
-            <div className="relative w-full sm:w-40">
-              <select
-                value={tipoFilter}
-                onChange={(e) => setTipoFilter(e.target.value)}
-                aria-label="Filtrar por tipo"
-                className="w-full h-10 pl-3 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
-              >
-                <option value="todos">Todos los tipos</option>
-                <option value="ingreso">Ingresos</option>
-                <option value="egreso">Egresos</option>
-              </select>
-              <HugeiconsIcon
-                icon={ArrowDown01Icon}
-                size={15}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              />
-            </div>
-
-            {/* 5. Botón Limpiar Filtros */}
-            {hasActiveFilters && (
+        {/* 2. FILTER & BUSINESS UNIT TOOLBAR */}
+        <div className="space-y-3">
+          {/* Row 1: Segmented Control Unidad de Negocio + Acciones de Selección Múltiple */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Segmented Control: Unidad de Negocio */}
+            <div className="inline-flex items-center p-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-2xs">
               <button
-                onClick={handleClearFilters}
                 type="button"
-                className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 transition-colors shadow-2xs cursor-pointer shrink-0"
-                title="Restablecer todos los filtros"
+                onClick={() => {
+                  setUnidadFilter("todos")
+                  setPage(1)
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                  unidadFilter === "todos"
+                    ? "bg-slate-900 text-white shadow-xs dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800"
+                )}
               >
-                <HugeiconsIcon icon={Cancel01Icon} size={14} />
-                <span className="hidden sm:inline">Limpiar filtros</span>
+                <Building2 size={15} />
+                <span>Toda la empresa</span>
               </button>
-            )}
 
-            {/* 6. Botones de Selección Múltiple */}
-            <div className="flex items-center gap-2 ml-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setUnidadFilter("academia")
+                  setPage(1)
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                  unidadFilter === "academia"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800"
+                )}
+              >
+                <GraduationCap size={15} />
+                <span>Academia & Cursos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUnidadFilter("servicios")
+                  setPage(1)
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                  unidadFilter === "servicios"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800"
+                )}
+              >
+                <Clapperboard size={15} />
+                <span>Servicios & Producción</span>
+              </button>
+            </div>
+
+            {/* Acciones de Selección Múltiple */}
+            <div className="flex items-center gap-2 self-start sm:self-center">
               {multiSelectMode && selectedIds.size > 0 && (
                 <button
                   onClick={handleBulkDelete}
@@ -488,7 +451,7 @@ export function HistorialPage() {
                   "h-10 px-3.5 inline-flex items-center gap-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
                   multiSelectMode
                     ? "bg-[#fd761a]/10 text-[#fd761a] border-[#fd761a]/30 shadow-xs"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                    : "bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-200/80 dark:border-slate-800"
                 )}
               >
                 <HugeiconsIcon
@@ -500,7 +463,109 @@ export function HistorialPage() {
               </button>
             </div>
           </div>
-        </section>
+
+          {/* Row 2: Secondary Filter Toolbar Card */}
+          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-xs">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3">
+              {/* 1. Input de Búsqueda rápida */}
+              <div className="relative flex-1 min-w-[200px]">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  size={15}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+                <input
+                  id="search-input"
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Buscar por cédula o nombre del cliente..."
+                  className="w-full h-10 pl-9 pr-9 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all"
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => {
+                      setSearchInput("")
+                      setSearch("")
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                    type="button"
+                    title="Limpiar búsqueda"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* 2. Filtros agrupados */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                {/* Mes y Año Popover */}
+                <MonthFilterPopover
+                  mes={mes}
+                  anio={anio}
+                  onChange={(m, a, rango) => {
+                    setMes(m)
+                    setAnio(a)
+                    setFechaDesde(rango.fecha_desde || "")
+                    setFechaHasta(rango.fecha_hasta || "")
+                  }}
+                />
+
+                {/* Método de pago Dropdown */}
+                <div className="relative min-w-[150px] sm:w-44">
+                  <select
+                    value={metodoFilter}
+                    onChange={(e) => setMetodoFilter(e.target.value)}
+                    aria-label="Filtrar por método de pago"
+                    className="w-full h-10 pl-3 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
+                  >
+                    <option value="todos">Todos los métodos</option>
+                    <option value="transferencia">Transferencia bancaria</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="tarjeta">Tarjeta</option>
+                  </select>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={15}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  />
+                </div>
+
+                {/* Tipo de movimiento Dropdown */}
+                <div className="relative min-w-[130px] sm:w-36">
+                  <select
+                    value={tipoFilter}
+                    onChange={(e) => setTipoFilter(e.target.value)}
+                    aria-label="Filtrar por tipo"
+                    className="w-full h-10 pl-3 pr-8 appearance-none text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/90 dark:border-slate-700 outline-none focus:border-[#fd761a] focus:ring-2 focus:ring-[#fd761a]/15 transition-all cursor-pointer"
+                  >
+                    <option value="todos">Todos los tipos</option>
+                    <option value="ingreso">Ingresos</option>
+                    <option value="egreso">Egresos</option>
+                  </select>
+                  <HugeiconsIcon
+                    icon={ArrowDown01Icon}
+                    size={15}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  />
+                </div>
+
+                {/* Botón Limpiar Filtros */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={handleClearFilters}
+                    type="button"
+                    className="h-10 px-3 inline-flex items-center gap-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60 transition-colors shadow-2xs cursor-pointer shrink-0"
+                    title="Restablecer todos los filtros"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                    <span className="hidden sm:inline">Limpiar filtros</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
 
         {/* 3. MOVEMENTS STATEMENT CONTAINER */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">

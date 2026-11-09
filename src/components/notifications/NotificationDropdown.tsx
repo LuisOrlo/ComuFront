@@ -1,8 +1,8 @@
-import { useEffect, useRef, useMemo } from "react"
+import { useEffect, useRef, useMemo, useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router"
 import { LazyMotion, domAnimation, m, AnimatePresence } from "motion/react"
-import { Bell, GraduationCap } from "lucide-react"
+import { Bell, GraduationCap, CheckCheck } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { cursosService, type NotificacionesResponse } from "@/services/cursos.service"
 
@@ -36,6 +36,27 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
   const loading = notificationsQuery.isLoading || notificationsQuery.isFetching
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const [limpias, setLimpias] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("notificaciones_limpias") || "[]")
+    } catch {
+      return []
+    }
+  })
+
+  // Sincronizar si cambia en otra pestaña o componente
+  useEffect(() => {
+    const sync = () => {
+      try {
+        setLimpias(JSON.parse(localStorage.getItem("notificaciones_limpias") || "[]"))
+      } catch {
+        // Ignorar error al sincronizar
+      }
+    }
+    window.addEventListener("notificaciones_limpias_changed", sync)
+    return () => window.removeEventListener("notificaciones_limpias_changed", sync)
+  }, [])
+
   const gruposPendientes = useMemo(() => {
     if (!data?.recientes) return []
     return data.recientes
@@ -43,6 +64,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
         ...grupo,
         items: grupo.items.filter(
           (item) =>
+            !limpias.includes(String(item.id)) &&
             item.subtipo !== "matricula" &&
             !item.aprobado &&
             item.estado !== "matricula_creada" &&
@@ -50,7 +72,26 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
         ),
       }))
       .filter((grupo) => grupo.items.length > 0)
-  }, [data])
+  }, [data, limpias])
+
+  const limpiarAlSalir = useCallback(() => {
+    const idsVisibles = gruposPendientes.flatMap((g) => g.items.map((i) => String(i.id)))
+    if (idsVisibles.length > 0) {
+      const nuevo = Array.from(new Set([...limpias, ...idsVisibles]))
+      setLimpias(nuevo)
+      try {
+        localStorage.setItem("notificaciones_limpias", JSON.stringify(nuevo))
+        window.dispatchEvent(new Event("notificaciones_limpias_changed"))
+      } catch {
+        // Ignorar error de cuota al guardar notificaciones limpias
+      }
+    }
+  }, [gruposPendientes, limpias])
+
+  const handleCerrar = useCallback(() => {
+    limpiarAlSalir()
+    onClose()
+  }, [limpiarAlSalir, onClose])
 
   useEffect(() => {
     if (!isOpen) return
@@ -65,12 +106,12 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
         anchorRef.current &&
         !anchorRef.current.contains(e.target as Node)
       ) {
-        onClose()
+        handleCerrar()
       }
     }
 
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") handleCerrar()
     }
 
     if (isOpen) {
@@ -81,7 +122,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleEscape)
     }
-  }, [isOpen, onClose, anchorRef])
+  }, [isOpen, handleCerrar, anchorRef])
 
   return (
     <LazyMotion features={domAnimation}>
@@ -101,14 +142,27 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
               <Bell size={16} style={{ color: COLORS.ACCENT }} />
               <h3 className="text-sm font-bold" style={{ color: COLORS.CHARCOAL }}>Notificaciones</h3>
             </div>
-            {pendientesCount > 0 && (
-              <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-                style={{ backgroundColor: COLORS.ACCENT }}
-              >
-                {pendientesCount} pendiente{pendientesCount !== 1 ? "s" : ""}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {gruposPendientes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={limpiarAlSalir}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition-colors px-2 py-0.5 rounded-lg hover:bg-slate-100"
+                  title="Limpiar todas las notificaciones vistas"
+                >
+                  <CheckCheck size={14} className="text-emerald-600" />
+                  <span>Limpiar</span>
+                </button>
+              )}
+              {pendientesCount > 0 && (
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                  style={{ backgroundColor: COLORS.ACCENT }}
+                >
+                  {pendientesCount} pendiente{pendientesCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="max-h-[420px] overflow-y-auto">
@@ -144,7 +198,7 @@ export function NotificationDropdown({ isOpen, onClose, anchorRef, pendientesCou
                   <Link
                     key={item.id}
                     to={`/matriculas?tab=${item.tipo === "taller" ? "talleres" : "cursos"}&id=${item.id}`}
-                    onClick={onClose}
+                    onClick={handleCerrar}
                     className="flex items-start gap-3 px-4 py-3 border-b transition-colors hover:bg-gray-50/60"
                     style={{ borderColor: COLORS.BORDER_SUBTLE }}
                   >

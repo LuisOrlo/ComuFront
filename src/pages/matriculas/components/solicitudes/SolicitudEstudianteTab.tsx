@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   UserIcon,
@@ -15,7 +15,8 @@ import {
   MapsLocation01Icon,
 } from "@hugeicons/core-free-icons"
 import { EF } from "../../AprobacionHelpers"
-import { ESTADO_CIVIL_OPTIONS, NIVEL_EDUCATIVO_OPTIONS } from "../../AprobacionUtils"
+import { ESTADO_CIVIL_OPTIONS, NIVEL_EDUCATIVO_OPTIONS, CIUDAD_OPTIONS } from "../../AprobacionUtils"
+import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
 import { CiudadBadge } from "../../../estudiantes/components/Badges"
 import { toast } from "sonner"
 
@@ -52,6 +53,14 @@ export function SolicitudEstudianteTab({
 
   const datos = selected.solicitante?.datos || {}
   const celularLimpio = (datos.celular || datos.telefono || "").replace(/\D/g, "")
+
+  const ciudadOptions = useMemo(() => {
+    const currentVal = datos.ciudad ? String(datos.ciudad).trim() : ""
+    if (currentVal && !ECUADOR_CITIES.some((c) => c.toLowerCase() === currentVal.toLowerCase())) {
+      return [{ value: currentVal, label: currentVal }, ...CIUDAD_OPTIONS]
+    }
+    return CIUDAD_OPTIONS
+  }, [datos.ciudad])
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
@@ -301,6 +310,8 @@ export function SolicitudEstudianteTab({
               field="ciudad"
               data={datos}
               customDisplay={<CiudadBadge ciudad={datos.ciudad ? String(datos.ciudad).toUpperCase() : ""} />}
+              options={ciudadOptions}
+              searchable
               editField={editField}
               editVal={editVal}
               onEdit={startEdit}

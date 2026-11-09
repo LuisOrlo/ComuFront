@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router"
-import { lazy, Suspense, useState, useRef } from "react"
+import { lazy, Suspense, useState, useRef, useEffect, useMemo } from "react"
 import type { ComponentType } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { AuthProvider, useAuth } from "@/context/AuthContext"
@@ -146,6 +146,7 @@ import { cursosService } from "@/services/cursos.service"
 import { Toaster } from "sonner"
 
 import { BackToTopButton } from "@/components/BackToTopButton"
+import { FloatingRecordatorios } from "@/components/notifications/FloatingRecordatorios"
 import { RouteScrollReset } from "@/components/RouteScrollReset"
 
 function DashboardRouter() {
@@ -165,7 +166,44 @@ function AppLayout() {
     queryFn: () => cursosService.getNotificaciones({ solo_pendientes: true }),
     staleTime: 0,
   })
-  const pendientesCount = notificationsQuery.data?.pendientes ?? 0
+
+  const [limpias, setLimpias] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("notificaciones_limpias") || "[]")
+    } catch {
+      return []
+    }
+  })
+
+  useEffect(() => {
+    const handler = () => {
+      try {
+        setLimpias(JSON.parse(localStorage.getItem("notificaciones_limpias") || "[]"))
+      } catch {
+        // Ignorar error al parsear notificaciones
+      }
+    }
+    window.addEventListener("notificaciones_limpias_changed", handler)
+    return () => window.removeEventListener("notificaciones_limpias_changed", handler)
+  }, [])
+
+  const rawPendientes = useMemo(() => {
+    const grupos = notificationsQuery.data?.recientes ?? []
+    return grupos.flatMap((g) => g.items).filter(
+      (item) =>
+        item.subtipo !== "matricula" &&
+        !item.aprobado &&
+        item.estado !== "matricula_creada" &&
+        item.estado !== "aprobado"
+    )
+  }, [notificationsQuery.data?.recientes])
+
+  const pendientesCount = useMemo(() => {
+    if (rawPendientes.length > 0) {
+      return rawPendientes.filter((i) => !limpias.includes(String(i.id))).length
+    }
+    return Math.max(0, (notificationsQuery.data?.pendientes ?? 0) - limpias.length)
+  }, [rawPendientes, limpias, notificationsQuery.data?.pendientes])
   const [showNotifications, setShowNotifications] = useState(false)
   const bellRef = useRef<HTMLButtonElement>(null)
 
@@ -200,6 +238,7 @@ function AppLayout() {
         />
         <main className="flex-1 overflow-y-auto">
           <BackToTopButton />
+          <FloatingRecordatorios />
           <Routes>
             <Route path="/" element={<DashboardRouter />} />
 

@@ -64,6 +64,8 @@ export function validarImagen(file: File, maxSizeMB: number): string | null {
   return null
 }
 
+import { ECUADOR_CITIES } from "@/data/ciudades-ecuador"
+
 export const ESTADO_CIVIL_OPTIONS = [
   { value: "soltero", label: "Soltero(a)" },
   { value: "casado", label: "Casado(a)" },
@@ -81,3 +83,8 @@ export const NIVEL_EDUCATIVO_OPTIONS = [
   { value: "superior", label: "Superior" },
   { value: "otro", label: "Otro" },
 ]
+
+export const CIUDAD_OPTIONS = ECUADOR_CITIES.map((c) => ({
+  value: c,
+  label: c,
+}))

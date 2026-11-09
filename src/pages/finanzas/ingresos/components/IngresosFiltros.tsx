@@ -13,10 +13,31 @@ interface FiltrosProps {
   }
   onChange: (f: any) => void
   analytics?: { metodo_top?: string } | null
+  unidadNegocio?: "todos" | "academia" | "servicios"
 }
 
-const CATEGORIAS = [
-  { key: "", label: "Todas las categorías" },
+const CATEGORIAS_ACADEMIA = [
+  { key: "", label: "Todas las categorías (Academia)" },
+  { key: "cursos", label: "Cursos Regulares" },
+  { key: "cursos_personalizados", label: "Cursos Personalizados" },
+  { key: "talleres", label: "Talleres y Workshops" },
+]
+
+const CATEGORIAS_SERVICIOS = [
+  { key: "", label: "Todas las categorías (Servicios)" },
+  { key: "podcast", label: "Podcast" },
+  { key: "aulas", label: "Alquiler de Aulas" },
+  { key: "sets", label: "Alquiler de Sets" },
+  { key: "equipos", label: "Alquiler de Equipos" },
+  { key: "radio", label: "Radio" },
+  { key: "edicion", label: "Edición de Video" },
+  { key: "streaming", label: "Streaming" },
+  { key: "produccion", label: "Producción Audiovisual" },
+  { key: "asesorias", label: "Asesorías" },
+]
+
+const CATEGORIAS_TODOS = [
+  { key: "", label: "Todas las categorías (Empresa)" },
   { key: "cursos", label: "Cursos" },
   { key: "cursos_personalizados", label: "Cursos personalizados" },
   { key: "talleres", label: "Talleres" },
@@ -31,9 +52,16 @@ const CATEGORIAS = [
   { key: "asesorias", label: "Asesorías" },
 ]
 
-export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) {
+export function IngresosFiltros({ filtros, onChange, analytics, unidadNegocio = "todos" }: FiltrosProps) {
   const [open, setOpen] = useState(true)
   const [localSearch, setLocalSearch] = useState(filtros.search)
+
+  const listaCategorias =
+    unidadNegocio === "academia"
+      ? CATEGORIAS_ACADEMIA
+      : unidadNegocio === "servicios"
+      ? CATEGORIAS_SERVICIOS
+      : CATEGORIAS_TODOS
 
   useEffect(() => {
     setLocalSearch(filtros.search)
@@ -52,7 +80,7 @@ export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) 
 
   if (filtros.categoria) {
     badges.push({
-      label: CATEGORIAS.find((c) => c.key === filtros.categoria)?.label || filtros.categoria,
+      label: CATEGORIAS_TODOS.find((c) => c.key === filtros.categoria)?.label || filtros.categoria,
       onClear: () => onChange({ ...filtros, categoria: "" }),
     })
   }
@@ -173,7 +201,7 @@ export function IngresosFiltros({ filtros, onChange, analytics }: FiltrosProps) 
                   onChange={(e) => onChange({ ...filtros, categoria: e.target.value })}
                   className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#fd761a]/20 focus:border-[#fd761a] transition-all appearance-none pr-8 cursor-pointer"
                 >
-                  {CATEGORIAS.map((c) => (
+                  {listaCategorias.map((c) => (
                     <option key={c.key} value={c.key}>
                       {c.label}
                     </option>

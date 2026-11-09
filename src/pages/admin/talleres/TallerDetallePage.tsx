@@ -13,27 +13,23 @@ import {
   Money01Icon,
   CheckmarkCircle01Icon,
   Search01Icon,
-  Download04Icon,
   PaymentIcon,
   ClockIcon,
   UserIcon,
   LocationIcon,
   CapIcon,
 } from "@hugeicons/core-free-icons"
-import { Building2, Sparkles, Plus, ChevronDown, ChevronUp, X, CheckCircle2, ExternalLink } from "lucide-react"
+import { Building2, Sparkles, ChevronDown, ChevronUp, CheckCircle2, ExternalLink } from "lucide-react"
 import { COLORS } from "@/lib/constants"
-import { tallerService, type Taller, type InscripcionTaller, type AsistenciaEstudiante } from "@/services/taller.service"
+import { tallerService, type Taller, type InscripcionTaller } from "@/services/taller.service"
 import {
-  generarListadoAsistenciaPDF,
-  generarReporteAsistenciaPDF,
   generarListadoParticipantesPDF,
-  type EstudianteReporte,
   type ParticipanteReporte,
 } from "@/lib/generarAsistenciaPDF"
-import { ESTADO_ASISTENCIA_BADGE } from "@/lib/constants"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { InteresadosSection } from "@/components/interesados/InteresadosSection"
+import { TallerAsistenciaSection } from "./components/TallerAsistenciaSection"
 import { toast } from "sonner"
 
 const estadoConfig: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -67,22 +63,8 @@ export function TallerDetallePage() {
   const [expandedEstudiantes, setExpandedEstudiantes] = useState<Record<string, boolean>>({})
   const [estudiantesConPagos, setEstudiantesConPagos] = useState<any[]>([])
   const [mostrarTodasTransacciones, setMostrarTodasTransacciones] = useState(false)
-  const [detalleAsistencias, setDetalleAsistencias] = useState<Record<string, AsistenciaEstudiante[]>>({})
-  const [cargandoDetalleAsistencia, setCargandoDetalleAsistencia] = useState(false)
-  const [editandoSesionId, setEditandoSesionId] = useState<string | null>(null)
-  const [editsLocal, setEditsLocal] = useState<Record<string, { estado: string; observaciones: string }>>({})
   const [showDeleteTallerConfirm, setShowDeleteTallerConfirm] = useState(false)
   const [deletingTaller, setDeletingTaller] = useState(false)
-
-  // Estados para modal de tomar asistencia libre (cualquier día)
-  const [showAsistenciaModal, setShowAsistenciaModal] = useState(false)
-  const [asistenciaModalFecha, setAsistenciaModalFecha] = useState("")
-  const [asistenciaModalObs, setAsistenciaModalObs] = useState("")
-  const [asistenciaModalEstudiantes, setAsistenciaModalEstudiantes] = useState<Record<string, { asistio: boolean; estado: string; observaciones: string }>>({})
-  const [asistenciaModalEsEdicion, setAsistenciaModalEsEdicion] = useState(false)
-  const [asistenciaModalSesionId, setAsistenciaModalSesionId] = useState<string | null>(null)
-  const [guardandoAsistenciaModal, setGuardandoAsistenciaModal] = useState(false)
-  const [cargandoModalAsistencia, setCargandoModalAsistencia] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -227,34 +209,6 @@ export function TallerDetallePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, tab, refreshKey])
 
-  useEffect(() => {
-    if (!id || tab !== "asistencia") return
-    if (!taller?.asistencias?.length) return
-
-    const cargarDetalles = async () => {
-      setCargandoDetalleAsistencia(true)
-      const resultados: Record<string, AsistenciaEstudiante[]> = {}
-
-      await Promise.all(
-        taller.asistencias!.map(async (a) => {
-          try {
-            const res = await tallerService.listarAsistenciaEstudiantes(id!, a.id)
-            const data = (res as any).estudiantes || []
-            resultados[a.id] = data
-          } catch {
-            resultados[a.id] = []
-          }
-        })
-      )
-
-      setDetalleAsistencias(resultados)
-      setCargandoDetalleAsistencia(false)
-    }
-
-    cargarDetalles()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, tab, refreshKey])
-
   const handleDeleteInscripcion = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -283,87 +237,6 @@ export function TallerDetallePage() {
       setDeletingTaller(false)
     }
   }
-
-  const iniciarEdicionAsistencia = (sesionId: string) => {
-    const estudiantes = detalleAsistencias[sesionId]
-    if (!estudiantes) return
-    setEditandoSesionId(sesionId)
-    const initial: Record<string, { estado: string; observaciones: string }> = {}
-    estudiantes.forEach((e) => {
-      const key = e.inscripcion_taller_id || `ext-${e.participante_externo_id}`
-      initial[key] = {
-        estado: e.estado || (e.asistio ? "presente" : "ausente"),
-        observaciones: e.observaciones || "",
-      }
-    })
-    setEditsLocal(initial)
-  }
-
-  const handleCambiarEstado = (estudianteKey: string, estado: string) => {
-    setEditsLocal((prev) => ({
-      ...prev,
-      [estudianteKey]: { ...prev[estudianteKey], estado },
-    }))
-  }
-
-  const guardarEdicionAsistencia = async (sesionId: string) => {
-    if (!id) return
-    const estudiantes = detalleAsistencias[sesionId]
-    if (!estudiantes) return
-    try {
-      const payload = {
-        estudiantes: estudiantes.map((e) => {
-          const key = e.inscripcion_taller_id || `ext-${e.participante_externo_id}`
-          const edit = editsLocal[key]
-          return {
-            inscripcion_taller_id: e.inscripcion_taller_id,
-            participante_externo_id: e.participante_externo_id,
-            asistio: edit?.estado === "presente" || edit?.estado === "tardanza",
-            estado: edit?.estado || "presente",
-            observaciones: edit?.observaciones || null,
-          }
-        }),
-      }
-      await tallerService.registrarAsistenciaEstudiantes(id, sesionId, payload)
-      toast.success("Asistencia actualizada")
-      setEditandoSesionId(null)
-      setEditsLocal({})
-      const [updatedTaller, res] = await Promise.all([
-        tallerService.obtener(id),
-        tallerService.listarAsistenciaEstudiantes(id, sesionId),
-      ])
-      setTaller(updatedTaller)
-      const data = (res as any).estudiantes || []
-      setDetalleAsistencias((prev) => ({ ...prev, [sesionId]: data }))
-    } catch {
-      toast.error("Error al guardar cambios")
-    }
-  }
-
-  const cancelarEdicionAsistencia = () => {
-    setEditandoSesionId(null)
-    setEditsLocal({})
-  }
-
-  const getEstudianteName = (e: AsistenciaEstudiante) => {
-    if (e.inscripcion_taller) {
-      return `${e.inscripcion_taller.nombres} ${e.inscripcion_taller.apellidos}`
-    }
-    return "—"
-  }
-
-  const getEstudianteCedula = (e: AsistenciaEstudiante) =>
-    e.inscripcion_taller?.cedula ?? "—"
-
-  const getEstudianteCiudad = (e: AsistenciaEstudiante) =>
-    e.inscripcion_taller?.ciudad ?? "—"
-
-  const ESTADO_OPCIONES = [
-    { value: "presente", label: "Presente", color: "#10b981" },
-    { value: "tardanza", label: "Tardanza", color: "#f59e0b" },
-    { value: "ausente", label: "Ausente", color: "#ef4444" },
-    { value: "justificado", label: "Justificado", color: "#3b82f6" },
-  ]
 
   const formatFecha = (f?: string) => {
     if (!f) return "—"
@@ -464,144 +337,6 @@ export function TallerDetallePage() {
       ...prev,
       [participanteId]: !prev[participanteId],
     }))
-  }
-
-  const cargarDatosParaModal = async (fecha: string) => {
-    setCargandoModalAsistencia(true)
-    setAsistenciaModalFecha(fecha)
-    const sesionExistente = (taller?.asistencias || []).find(
-      (a) => String(a.fecha_sesion).split("T")[0] === fecha
-    )
-
-    if (sesionExistente) {
-      setAsistenciaModalEsEdicion(true)
-      setAsistenciaModalSesionId(sesionExistente.id)
-      setAsistenciaModalObs(sesionExistente.observaciones || "")
-      try {
-        const res = await tallerService.listarAsistenciaEstudiantes(id!, sesionExistente.id)
-        const list = (res as any).estudiantes || []
-        const mapped: Record<string, { asistio: boolean; estado: string; observaciones: string }> = {}
-        list.forEach((e: any) => {
-          const k = e.inscripcion_taller_id || `ext-${e.participante_externo_id}`
-          mapped[k] = {
-            asistio: e.asistio,
-            estado: e.estado || (e.asistio ? "presente" : "ausente"),
-            observaciones: e.observaciones || "",
-          }
-        })
-        setAsistenciaModalEstudiantes(mapped)
-      } catch {
-        // Fallback
-      }
-    } else {
-      setAsistenciaModalEsEdicion(false)
-      setAsistenciaModalSesionId(null)
-      setAsistenciaModalObs("")
-      const initial: Record<string, { asistio: boolean; estado: string; observaciones: string }> = {}
-      inscritosActivos.forEach((ins) => {
-        initial[ins.id] = { asistio: true, estado: "presente", observaciones: "" }
-      })
-      setAsistenciaModalEstudiantes(initial)
-    }
-    setCargandoModalAsistencia(false)
-  }
-
-  const abrirModalAsistencia = async (fechaParam?: string) => {
-    let fechaTarget = fechaParam || ""
-    if (!fechaTarget) {
-      if (taller?.sesiones && taller.sesiones.length > 0) {
-        const fechasConAsistencia = new Set(
-          (taller.asistencias || []).map((a) => String(a.fecha_sesion).split("T")[0])
-        )
-        const primeraPendiente = taller.sesiones.find(
-          (s) => !fechasConAsistencia.has(String(s.fecha_sesion).split("T")[0])
-        )
-        fechaTarget = primeraPendiente
-          ? String(primeraPendiente.fecha_sesion).split("T")[0]
-          : new Date().toISOString().split("T")[0]
-      } else if (taller?.fecha) {
-        fechaTarget = String(taller.fecha).split("T")[0]
-      } else {
-        fechaTarget = new Date().toISOString().split("T")[0]
-      }
-    }
-
-    await cargarDatosParaModal(fechaTarget)
-    setShowAsistenciaModal(true)
-  }
-
-  const handleModalStatusChange = (inscId: string, estado: string) => {
-    setAsistenciaModalEstudiantes((prev) => ({
-      ...prev,
-      [inscId]: {
-        ...prev[inscId],
-        estado,
-        asistio: estado === "presente" || estado === "tardanza",
-      },
-    }))
-  }
-
-  const handleModalObsChange = (inscId: string, obs: string) => {
-    setAsistenciaModalEstudiantes((prev) => ({
-      ...prev,
-      [inscId]: {
-        ...prev[inscId],
-        observaciones: obs,
-      },
-    }))
-  }
-
-  const handleModalMarcarTodos = (estado: string) => {
-    const asistio = estado === "presente" || estado === "tardanza"
-    setAsistenciaModalEstudiantes((prev) => {
-      const next = { ...prev }
-      Object.keys(next).forEach((k) => {
-        next[k] = { ...next[k], estado, asistio }
-      })
-      return next
-    })
-  }
-
-  const handleGuardarModalAsistencia = async () => {
-    if (!id || !asistenciaModalFecha) {
-      toast.error("Selecciona una fecha válida")
-      return
-    }
-    setGuardandoAsistenciaModal(true)
-    try {
-      const estudiantesPayload = inscritosActivos.map((ins) => {
-        const st = asistenciaModalEstudiantes[ins.id]
-        return {
-          inscripcion_taller_id: ins.id,
-          asistio: st?.asistio ?? true,
-          estado: st?.estado || "presente",
-          observaciones: st?.observaciones || null,
-        }
-      })
-
-      if (asistenciaModalEsEdicion && asistenciaModalSesionId) {
-        await tallerService.registrarAsistenciaEstudiantes(id, asistenciaModalSesionId, {
-          estudiantes: estudiantesPayload,
-        })
-        toast.success("Asistencia actualizada correctamente")
-      } else {
-        await tallerService.registrarAsistencia(id, {
-          taller_id: id,
-          fecha_sesion: asistenciaModalFecha,
-          observaciones: asistenciaModalObs || null,
-          estudiantes: estudiantesPayload,
-        })
-        toast.success("Asistencia registrada correctamente")
-      }
-
-      setShowAsistenciaModal(false)
-      setRefreshKey((k) => k + 1)
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Error al registrar asistencia"
-      toast.error(msg)
-    } finally {
-      setGuardandoAsistenciaModal(false)
-    }
   }
 
   return (
@@ -806,7 +541,7 @@ export function TallerDetallePage() {
                                     {yaTieneAsistencia ? (
                                       <button
                                         type="button"
-                                        onClick={() => abrirModalAsistencia(String(s.fecha_sesion).split("T")[0])}
+                                        onClick={() => setTab("asistencia")}
                                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors shrink-0"
                                         title="Ver o editar la asistencia de esta sesión"
                                       >
@@ -816,7 +551,7 @@ export function TallerDetallePage() {
                                     ) : canManageAsistencia ? (
                                       <button
                                         type="button"
-                                        onClick={() => abrirModalAsistencia(String(s.fecha_sesion).split("T")[0])}
+                                        onClick={() => setTab("asistencia")}
                                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-[#9d4300] hover:bg-orange-200 transition-colors shrink-0"
                                         title="Tomar asistencia para esta sesión"
                                       >
@@ -1579,237 +1314,12 @@ export function TallerDetallePage() {
 
           {/* ================= TAB: ASISTENCIA ================= */}
           {tab === "asistencia" && (
-            <div className="space-y-6">
-              {/* Header de controles de asistencia */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h3 className="text-base font-bold text-[#0b1c30]">Sesiones de Asistencia</h3>
-                  <p className="text-xs text-slate-500">
-                    Control y pase de lista para cualquier día o sesión del taller.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  {canManageAsistencia && (
-                    <button
-                      type="button"
-                      onClick={() => abrirModalAsistencia()}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-orange-600 transition-all shadow-2xs"
-                    >
-                      <Plus size={14} />
-                      Tomar Asistencia
-                    </button>
-                  )}
-                  {inscripciones.length > 0 && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const data = await tallerService.getAsistenciaPDFData(taller?.id || "")
-                          await generarListadoAsistenciaPDF({ ...data, tipo: "taller" })
-                          toast.success("Listado descargado")
-                        } catch {
-                          toast.error("Error al generar PDF")
-                        }
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all shadow-2xs"
-                    >
-                      <HugeiconsIcon icon={Download04Icon} size={14} />
-                      Descargar Listado Completo
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {taller.asistencias && taller.asistencias.length > 0 ? (
-                <div className="space-y-5">
-                  {cargandoDetalleAsistencia ? (
-                    <div className="bg-white rounded-2xl border border-[#e5eeff] p-16 text-center text-xs text-slate-400">
-                      Cargando detalles de asistencia...
-                    </div>
-                  ) : (
-                    taller.asistencias.map((sesion) => {
-                      const estudiantes = detalleAsistencias[sesion.id] || []
-                      const editando = editandoSesionId === sesion.id
-                      const pct = sesion.capacidad_registrada > 0
-                        ? Math.round((sesion.asistentes / sesion.capacidad_registrada) * 100)
-                        : 0
-
-                      return (
-                        <div key={sesion.id} className="bg-white rounded-2xl border border-[#e5eeff] shadow-xs overflow-hidden">
-                          <div className="p-5 sm:p-6 border-b border-[#e5eeff] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="space-y-2">
-                              <p className="text-base font-bold text-[#0b1c30]">
-                                {formatFecha(sesion.fecha_sesion)}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                                  <HugeiconsIcon icon={UserGroupIcon} size={14} className="text-[#fd761a]" />
-                                  <span>
-                                    <strong className="text-slate-900">{sesion.asistentes}</strong> /{" "}
-                                    {sesion.capacidad_registrada} asistentes
-                                  </span>
-                                </div>
-                                <span
-                                  className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                                    pct >= 70
-                                      ? "bg-emerald-100 text-emerald-800"
-                                      : pct >= 50
-                                      ? "bg-amber-100 text-amber-800"
-                                      : "bg-rose-100 text-rose-800"
-                                  }`}
-                                >
-                                  {pct}% asistencia
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                onClick={() => {
-                                  const reporte: EstudianteReporte[] = estudiantes.map((e) => ({
-                                    nombres: e.inscripcion_taller?.nombres || "—",
-                                    apellidos: e.inscripcion_taller?.apellidos || "—",
-                                    cedula: e.inscripcion_taller?.cedula || "—",
-                                    ciudad: e.inscripcion_taller?.ciudad || "—",
-                                    asistio: e.asistio,
-                                  }))
-                                  const instructorName = taller?.instructor
-                                    ? `${taller.instructor.nombres} ${taller.instructor.apellidos}`
-                                    : undefined
-                                  generarReporteAsistenciaPDF(
-                                    taller?.nombre || "",
-                                    formatFecha(sesion.fecha_sesion),
-                                    reporte,
-                                    instructorName
-                                  )
-                                    .then(() => toast.success("Reporte descargado"))
-                                    .catch(() => toast.error("Error al generar PDF"))
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all shadow-2xs"
-                              >
-                                <HugeiconsIcon icon={Download04Icon} size={13} />
-                                Descargar Reporte
-                              </button>
-                              {canManageAsistencia && !editando && (
-                                <button
-                                  onClick={() => iniciarEdicionAsistencia(sesion.id)}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-orange-600 transition-all shadow-2xs"
-                                >
-                                  <HugeiconsIcon icon={Edit01Icon} size={13} />
-                                  Editar
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {sesion.observaciones && (
-                            <div className="px-6 py-3 bg-amber-50/40 border-b border-[#e5eeff] text-xs text-amber-900">
-                              <span className="font-bold">Observaciones: </span>
-                              {sesion.observaciones}
-                            </div>
-                          )}
-
-                          <div className="overflow-x-auto">
-                            {estudiantes.length === 0 ? (
-                              <div className="p-8 text-center text-xs text-slate-400">
-                                Sin participantes registrados en esta sesión.
-                              </div>
-                            ) : (
-                              <table className="w-full text-xs text-left">
-                                <thead>
-                                  <tr className="border-b border-[#e5eeff] bg-slate-50 text-slate-600">
-                                    <th className="px-6 py-3 font-bold uppercase tracking-wider text-[10px]">Nombres</th>
-                                    <th className="px-4 py-3 font-bold uppercase tracking-wider text-[10px]">Apellidos</th>
-                                    <th className="px-4 py-3 font-bold uppercase tracking-wider text-[10px]">Cédula</th>
-                                    <th className="px-4 py-3 font-bold uppercase tracking-wider text-[10px]">Ciudad</th>
-                                    <th className="px-6 py-3 font-bold uppercase tracking-wider text-[10px] text-right">Estado</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#e5eeff]">
-                                  {estudiantes.map((est) => {
-                                    const key = est.inscripcion_taller_id || `ext-${est.participante_externo_id}`
-                                    const edit = editando ? editsLocal[key] : undefined
-                                    const estadoActual = edit?.estado || est.estado || (est.asistio ? "presente" : "ausente")
-                                    const badge = ESTADO_ASISTENCIA_BADGE[estadoActual] || ESTADO_ASISTENCIA_BADGE.ausente
-
-                                    return (
-                                      <tr key={est.id} className="hover:bg-slate-50/50">
-                                        <td className="px-6 py-3 font-semibold text-[#0b1c30]">
-                                          {getEstudianteName(est)}
-                                        </td>
-                                        <td className="px-4 py-3 text-[#0b1c30]">
-                                          {est.inscripcion_taller?.apellidos || "—"}
-                                        </td>
-                                        <td className="px-4 py-3 text-slate-500">{getEstudianteCedula(est)}</td>
-                                        <td className="px-4 py-3 text-slate-500">{getEstudianteCiudad(est)}</td>
-                                        <td className="px-6 py-3 text-right">
-                                          {editando ? (
-                                            <select
-                                              value={estadoActual}
-                                              onChange={(e) => handleCambiarEstado(key, e.target.value)}
-                                              className="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold outline-none bg-white"
-                                            >
-                                              {ESTADO_OPCIONES.map((op) => (
-                                                <option key={op.value} value={op.value}>
-                                                  {op.label}
-                                                </option>
-                                              ))}
-                                            </select>
-                                          ) : (
-                                            <span
-                                              className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                                              style={{ backgroundColor: badge.bg, color: badge.text }}
-                                            >
-                                              {badge.label}
-                                            </span>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    )
-                                  })}
-                                </tbody>
-                              </table>
-                            )}
-                          </div>
-
-                          {editando && (
-                            <div className="px-6 py-3.5 border-t border-[#e5eeff] bg-slate-50 flex items-center justify-end gap-2.5">
-                              <button
-                                onClick={cancelarEdicionAsistencia}
-                                className="px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                onClick={() => guardarEdicionAsistencia(sesion.id)}
-                                className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-orange-600 transition-all shadow-2xs"
-                              >
-                                Guardar Cambios
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl border border-[#e5eeff] p-16 text-center text-slate-400">
-                  <p className="text-base font-bold text-slate-700">No hay registros de asistencia aún</p>
-                  <p className="text-xs mt-1 text-slate-500">Puedes tomar la asistencia para cualquier fecha o sesión del taller.</p>
-                  {canManageAsistencia && (
-                    <button
-                      type="button"
-                      onClick={() => abrirModalAsistencia()}
-                      className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-orange-600 transition-all shadow-sm"
-                    >
-                      <Plus size={14} />
-                      Tomar Primera Asistencia
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            <TallerAsistenciaSection
+              taller={taller}
+              inscritosActivos={inscritosActivos}
+              canManageAsistencia={canManageAsistencia}
+              onTallerUpdated={(updated) => setTaller(updated)}
+            />
           )}
 
           {/* ================= TAB: INTERESADOS ================= */}
@@ -1852,223 +1362,6 @@ export function TallerDetallePage() {
         onConfirm={handleDeleteTaller}
         onCancel={() => setShowDeleteTallerConfirm(false)}
       />
-
-      {/* Modal Tomar Asistencia Libre */}
-      {showAsistenciaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-[#e5eeff] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-[#e5eeff] flex items-center justify-between bg-slate-50/70">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#fd761a]">
-                  Control de Asistencia
-                </span>
-                <h3 className="text-base font-bold text-[#0b1c30]">
-                  {asistenciaModalEsEdicion ? "Actualizar Asistencia de la Sesión" : "Tomar Asistencia del Taller"}
-                </h3>
-                <p className="text-xs text-slate-500">{taller.nombre}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAsistenciaModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {/* Aviso si la fecha ya está registrada */}
-              {asistenciaModalEsEdicion && (
-                <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-amber-600 shrink-0" />
-                  <span>
-                    Esta fecha ya cuenta con asistencia registrada en el sistema. Los cambios que realices actualizarán el registro existente.
-                  </span>
-                </div>
-              )}
-
-              {/* Selector de Fecha & Observaciones */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      Fecha de la sesión (Cualquier día) *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => cargarDatosParaModal(new Date().toISOString().split("T")[0])}
-                      className="text-[10px] font-bold text-[#fd761a] hover:underline"
-                    >
-                      Hoy
-                    </button>
-                  </div>
-                  {taller.sesiones && taller.sesiones.length > 0 ? (
-                    <div className="space-y-1.5">
-                      <select
-                        value={asistenciaModalFecha}
-                        onChange={(e) => cargarDatosParaModal(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-[#fd761a]"
-                      >
-                        <option value="">Selecciona sesión programada o ingresa fecha abajo...</option>
-                        {taller.sesiones.map((s, idx) => {
-                          const ya = (taller.asistencias || []).some(
-                            (a) => String(a.fecha_sesion).split("T")[0] === String(s.fecha_sesion).split("T")[0]
-                          )
-                          return (
-                            <option key={s.id || idx} value={String(s.fecha_sesion).split("T")[0]}>
-                              {formatFecha(s.fecha_sesion)} ({formatHora(s.hora_inicio)} - {formatHora(s.hora_fin)})
-                              {s.tema ? ` - ${s.tema}` : ` - Sesión #${idx + 1}`}
-                              {ya ? " (Ya registrada)" : ""}
-                            </option>
-                          )
-                        })}
-                      </select>
-                      <input
-                        type="date"
-                        value={asistenciaModalFecha}
-                        onChange={(e) => cargarDatosParaModal(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl text-xs border border-slate-200 bg-slate-50/70 outline-none focus:bg-white focus:ring-2 focus:ring-[#fd761a]"
-                      />
-                    </div>
-                  ) : (
-                    <input
-                      type="date"
-                      value={asistenciaModalFecha}
-                      onChange={(e) => cargarDatosParaModal(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-[#fd761a]"
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Observaciones (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={asistenciaModalObs}
-                    onChange={(e) => setAsistenciaModalObs(e.target.value)}
-                    placeholder="Tema visto, novedades..."
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-[#fd761a]"
-                  />
-                </div>
-              </div>
-
-              {/* Acciones masivas */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <span className="font-semibold text-slate-600">
-                  Participantes ({inscritosActivos.length}):
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleModalMarcarTodos("presente")}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors"
-                  >
-                    Todos Presente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleModalMarcarTodos("ausente")}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-100 text-rose-800 hover:bg-rose-200 transition-colors"
-                  >
-                    Todos Ausente
-                  </button>
-                </div>
-              </div>
-
-              {/* Lista de participantes */}
-              {cargandoModalAsistencia ? (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  Cargando información de participantes...
-                </div>
-              ) : inscritosActivos.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  No hay participantes activos en este taller.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {inscritosActivos.map((ins) => {
-                    const current = asistenciaModalEstudiantes[ins.id] || { estado: "presente", observaciones: "" }
-                    return (
-                      <div
-                        key={ins.id}
-                        className="p-3 rounded-xl border border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-300 transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="size-8 rounded-full bg-[#ffdbca] text-[#9d4300] font-bold text-xs flex items-center justify-center shrink-0">
-                            {`${ins.nombres?.charAt(0) || ""}${ins.apellidos?.charAt(0) || ""}`.toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-[#0b1c30] truncate">
-                              {ins.nombres} {ins.apellidos}
-                            </p>
-                            <p className="text-[10px] text-slate-400 truncate">
-                              C.I: {ins.cedula || "—"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex p-0.5 rounded-lg bg-slate-100 border border-slate-200">
-                            {[
-                              { id: "presente", label: "P", title: "Presente", active: "bg-emerald-600 text-white" },
-                              { id: "ausente", label: "A", title: "Ausente", active: "bg-rose-600 text-white" },
-                              { id: "tardanza", label: "T", title: "Tardanza", active: "bg-amber-600 text-white" },
-                              { id: "justificado", label: "J", title: "Justificado", active: "bg-blue-600 text-white" },
-                            ].map((st) => (
-                              <button
-                                key={st.id}
-                                type="button"
-                                title={st.title}
-                                onClick={() => handleModalStatusChange(ins.id, st.id)}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all ${
-                                  current.estado === st.id ? st.active : "text-slate-500 hover:text-slate-800"
-                                }`}
-                              >
-                                {st.label}
-                              </button>
-                            ))}
-                          </div>
-
-                          <input
-                            type="text"
-                            placeholder="Nota..."
-                            value={current.observaciones || ""}
-                            onChange={(e) => handleModalObsChange(ins.id, e.target.value)}
-                            className="w-24 sm:w-28 px-2 py-1 rounded-lg text-[11px] border border-slate-200 bg-slate-50 outline-none focus:bg-white focus:ring-1 focus:ring-[#fd761a]"
-                          />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-[#e5eeff] bg-slate-50 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowAsistenciaModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={guardandoAsistenciaModal || inscritosActivos.length === 0}
-                onClick={handleGuardarModalAsistencia}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-orange-600 transition-all shadow-sm disabled:opacity-50"
-              >
-                {guardandoAsistenciaModal ? "Guardando..." : asistenciaModalEsEdicion ? "Actualizar Asistencia" : "Guardar Asistencia"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

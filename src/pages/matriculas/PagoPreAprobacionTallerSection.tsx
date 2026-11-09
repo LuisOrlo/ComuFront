@@ -1,11 +1,10 @@
-import { useState, useCallback, useImperativeHandle, forwardRef } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { PaymentIcon } from "@hugeicons/core-free-icons"
+import { useState, useCallback, useImperativeHandle, forwardRef, useRef } from "react"
+import { CreditCard } from "lucide-react"
 import { COLORS } from "@/lib/constants"
 import { tallerService } from "@/services/taller.service"
 import { toast } from "sonner"
 import { AjustePrecioPanel } from "./components/solicitudes/AjustePrecioPanel"
-import { MetodosPagoSplitInput, type MetodoPagoItem } from "@/components/finanzas/MetodosPagoSplitInput"
+import { MetodosPagoSplitInput, type MetodoPagoItem, type ModalidadComprobante } from "@/components/finanzas/MetodosPagoSplitInput"
 
 export type PagoTallerPreAprobacionRef = {
   submit: () => Promise<boolean>
@@ -19,7 +18,7 @@ export type PagoTallerPreAprobacionRef = {
 interface PagoPreAprobacionTallerSectionProps {
   inscripcionId: string
   precioBase: number
-  montoInicial: number
+  montoInicial?: number
   tipoPagoInicial: string
   metodoInicial: string
   onSaved?: (data: { monto_pagado: number; tipo_pago: string; metodo_pago: string }) => void
@@ -28,22 +27,25 @@ interface PagoPreAprobacionTallerSectionProps {
 export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobacionTallerSection({
   inscripcionId,
   precioBase,
-  montoInicial,
+  montoInicial = 0,
   tipoPagoInicial,
   metodoInicial,
   onSaved,
 }: PagoPreAprobacionTallerSectionProps, ref) {
   const [precioEfectivo, setPrecioEfectivo] = useState(precioBase)
-  const [monto, setMonto] = useState(String(montoInicial || precioBase || 0))
+  const [monto, setMonto] = useState(String(montoInicial || 0))
   const [tipoPago, setTipoPago] = useState(tipoPagoInicial || "abono")
   const [grupoPagoId] = useState(() => crypto.randomUUID())
+  const [modalidadComprobante, setModalidadComprobante] = useState<ModalidadComprobante>("unico")
   const [metodos, setMetodos] = useState<MetodoPagoItem[]>(() => [
     {
       id: "taller-pago-1",
       metodo_pago: (metodoInicial === "transferencia" || metodoInicial === "deposito" || metodoInicial === "tarjeta") ? metodoInicial : "efectivo",
-      monto: String(montoInicial || precioBase || 0),
+      monto: String(montoInicial || 0),
     },
   ])
+  const metodosRef = useRef<MetodoPagoItem[]>(metodos)
+  metodosRef.current = metodos
   const [saving, setSaving] = useState(false)
 
   const [ajuste, setAjuste] = useState<{ expandido: boolean; motivo: string }>({
@@ -79,12 +81,42 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
       return false
     }
 
+    if (modalidadComprobante === "por_metodo") {
+      const faltaComprobante = metodos.some(
+        (m) => m.metodo_pago !== "efectivo" && !m.comprobante_file && !m.comprobante_url && (parseFloat(m.monto) || 0) > 0
+      )
+      if (faltaComprobante) {
+        toast.error("Hay métodos de pago que requieren su comprobante adjunto")
+        return false
+      }
+    }
+
     setSaving(true)
     try {
+      let metodosActualizados = [...metodos]
+      const tieneArchivos = metodosActualizados.some((m) => m.comprobante_file && !m.comprobante_url)
+      if (tieneArchivos) {
+        try {
+          const uploadPromises = metodosActualizados.map(async (m) => {
+            if (m.comprobante_file && !m.comprobante_url) {
+              const res = await tallerService.uploadComprobante(m.comprobante_file)
+              return { ...m, comprobante_url: res.url }
+            }
+            return m
+          })
+          metodosActualizados = await Promise.all(uploadPromises)
+          setMetodos(metodosActualizados)
+          metodosRef.current = metodosActualizados
+        } catch {
+          toast.error("Error al subir uno de los comprobantes del pago mixto")
+          return false
+        }
+      }
+
       const data: { monto_pagado: number; tipo_pago: string; metodo_pago: string; monto_ajustado?: number; precio_ajustado?: number; motivo_ajuste?: string } = {
         monto_pagado: montoNum,
         tipo_pago: tipoPago,
-        metodo_pago: metodos[0]?.metodo_pago || "efectivo",
+        metodo_pago: metodosActualizados[0]?.metodo_pago || "efectivo",
       }
       if (precioEfectivo !== precioBase) {
         data.monto_ajustado = precioEfectivo
@@ -99,16 +131,16 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
     } finally {
       setSaving(false)
     }
-  }, [inscripcionId, monto, tipoPago, metodos, precioEfectivo, precioBase, ajuste, onSaved])
+  }, [inscripcionId, monto, tipoPago, metodos, modalidadComprobante, precioEfectivo, precioBase, ajuste, onSaved])
 
   useImperativeHandle(ref, () => ({
     submit,
     getMonto: () => parseFloat(monto) || 0,
     getTipoPago: () => tipoPago,
-    getMetodoPago: () => metodos[0]?.metodo_pago || "efectivo",
-    getMetodosPago: () => metodos,
+    getMetodoPago: () => metodosRef.current[0]?.metodo_pago || "efectivo",
+    getMetodosPago: () => metodosRef.current,
     getGrupoPagoId: () => grupoPagoId,
-  }), [submit, monto, tipoPago, metodos, grupoPagoId])
+  }), [submit, monto, tipoPago, grupoPagoId])
 
   const montoNum = parseFloat(monto) || 0
   const esCompleto = montoNum >= precioEfectivo
@@ -116,7 +148,7 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <HugeiconsIcon icon={PaymentIcon} size={14} style={{ color: COLORS.ACCENT }} />
+        <CreditCard size={14} style={{ color: COLORS.ACCENT }} />
         <h4 className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.TEXT_MUTED }}>
           Registro de pago del Taller
         </h4>
@@ -168,6 +200,7 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
               step="0.01"
               value={monto}
               onChange={e => handleMontoChange(e.target.value)}
+              onFocus={e => { if (e.target.value === "0") e.target.select() }}
               onWheel={e => (e.target as HTMLElement).blur()}
               disabled={saving}
               className="w-full pl-8 pr-4 py-2.5 border rounded-xl text-sm font-mono outline-none focus:border-blue-500 transition-all bg-white"
@@ -196,6 +229,9 @@ export const PagoPreAprobacionTallerSection = forwardRef(function PagoPreAprobac
             metodos={metodos}
             onChange={setMetodos}
             disabled={saving}
+            permitirComprobantePorMetodo={true}
+            modalidadComprobante={modalidadComprobante}
+            onModalidadComprobanteChange={setModalidadComprobante}
           />
         </div>
       </div>

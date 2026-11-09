@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useNavigate, useParams } from "react-router-dom"
 import {
@@ -38,6 +38,8 @@ import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { toast } from "sonner"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { CursoClasesCalendar, type ClaseProgramada } from "./components/CursoClasesCalendar"
+import { RecordatoriosConfigSection } from "@/components/form/RecordatoriosConfigSection"
+import type { RecordatoriosConfig } from "@/services/recordatorios.service"
 
 const ACCENT = COLORS.ACCENT
 
@@ -163,6 +165,7 @@ export function CursoFormPage() {
     dias_semana: [] as number[],
     modulos: [] as Modulo[],
   })
+  const [recordatoriosConfig, setRecordatoriosConfig] = useState<RecordatoriosConfig | undefined>(undefined)
 
 function toDateInputValue(date: Date): string {
   const y = date.getFullYear()
@@ -273,6 +276,9 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
           })
 
           setMostrarPrecioMatricula(Number(raw.precio_matricula) > 0)
+          if (raw.recordatorios_config) {
+            setRecordatoriosConfig(raw.recordatorios_config as RecordatoriosConfig)
+          }
 
           const existingClases: ClaseProgramada[] = []
           if (Array.isArray(raw.modulos)) {
@@ -323,15 +329,27 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
     }
   }, [form.fecha_fin, isEdit, form.modulos])
 
+  const prevModalidadRef = useRef(form.modalidad)
+  const prevCatalogoRef = useRef(form.catalogo_curso_id)
+
   useEffect(() => {
     if (form.catalogo_curso_id && !isEdit) {
-      const tipoDelCatalogo = selectedCatalogo?.categoria || "regular"
-      const capacidadAutomatica = tipoDelCatalogo === "regular" && form.modalidad === "presencial" ? 18 : 99
-      if (form.capacidad_maxima !== capacidadAutomatica) {
-        setForm((prev) => ({ ...prev, capacidad_maxima: capacidadAutomatica }))
+      const modalidadCambio = prevModalidadRef.current !== form.modalidad
+      const catalogoCambio = prevCatalogoRef.current !== form.catalogo_curso_id
+      prevModalidadRef.current = form.modalidad
+      prevCatalogoRef.current = form.catalogo_curso_id
+
+      if (modalidadCambio || catalogoCambio) {
+        if (form.modalidad === "presencial") {
+          setForm((prev) => ({ ...prev, capacidad_maxima: 18 }))
+        } else if (modalidadCambio) {
+          setForm((prev) => ({ ...prev, capacidad_maxima: prev.capacidad_maxima === 18 ? 99 : (prev.capacidad_maxima || 99) }))
+        } else {
+          setForm((prev) => ({ ...prev, capacidad_maxima: prev.capacidad_maxima || 99 }))
+        }
       }
     }
-  }, [selectedCatalogo?.categoria, form.modalidad, isEdit, form.catalogo_curso_id, selectedCatalogo, form.capacidad_maxima])
+  }, [form.modalidad, form.catalogo_curso_id, isEdit])
 
   const updateField = (f: string, v: string | number | number[] | Modulo[]) => {
     setForm((p) => ({ ...p, [f]: v }))
@@ -489,7 +507,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       return form.dias_semana.length > 0 || clasesProgramadas.length > 0
     }
     if (step === 4) {
-      const maxCap = form.modalidad === "presencial" ? 18 : 99
+      const maxCap = form.modalidad === "presencial" ? 18 : 100
       if (!form.capacidad_maxima || form.capacidad_maxima < 1 || form.capacidad_maxima > maxCap) return false
       if (form.precio_base === "" || isNaN(Number(form.precio_base)) || Number(form.precio_base) < 0) return false
       if (form.precio_matricula !== "" && (isNaN(Number(form.precio_matricula)) || Number(form.precio_matricula) < 0)) return false
@@ -532,12 +550,12 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         newErrors.dias_semana = "Selecciona al menos un día de clase"
       }
     } else if (step === 4) {
-      const maxCap = form.modalidad === "presencial" ? 18 : 99
+      const maxCap = form.modalidad === "presencial" ? 18 : 100
       if (!form.capacidad_maxima || form.capacidad_maxima < 1 || form.capacidad_maxima > maxCap) {
         newErrors.capacidad_maxima =
           form.modalidad === "presencial"
             ? "La capacidad máxima para cursos presenciales es de 18 estudiantes"
-            : "La capacidad debe estar entre 1 y 99 estudiantes"
+            : "La capacidad debe estar entre 1 y 100 estudiantes"
       }
       if (form.precio_base === "" || isNaN(Number(form.precio_base)) || Number(form.precio_base) < 0) {
         newErrors.precio_base = "El precio base por módulo es obligatorio"
@@ -719,6 +737,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         modalidad: form.modalidad,
         ciudad_id: form.modalidad === "presencial" && form.ciudad_id ? form.ciudad_id : undefined,
         observaciones: form.observaciones || undefined,
+        recordatorios_config: recordatoriosConfig || undefined,
         dias_semana: form.dias_semana.length > 0 ? form.dias_semana : undefined,
         clases: clasesProgramadas.length > 0
           ? clasesProgramadas.map((c) => ({
@@ -757,6 +776,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
         queryClient.invalidateQueries({ queryKey: ["cursos"] }),
         queryClient.invalidateQueries({ queryKey: ["cursos-abiertos"] }),
         queryClient.invalidateQueries({ queryKey: ["catalogos"] }),
+        queryClient.invalidateQueries({ queryKey: ["recordatorios"] }),
       ])
       navigate("/cursos")
     } catch (err) {
@@ -1508,7 +1528,7 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                       Capacidad máxima de estudiantes <span className="text-[#fd761a]">*</span>
                     </span>
                     <span className="text-xs font-normal text-slate-400">
-                      {form.modalidad === "presencial" ? "Máx: 18 aula" : "Máx: 99 virtual"}
+                      {form.modalidad === "presencial" ? "Máx: 18 aula" : "Virtual: personalizable (hasta 100)"}
                     </span>
                   </label>
                   <div className="relative">
@@ -1519,20 +1539,32 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                       }`}
                       type="number"
                       min={1}
-                      max={form.modalidad === "presencial" ? 18 : 99}
-                      value={form.capacidad_maxima}
+                      max={form.modalidad === "presencial" ? 18 : 100}
+                      value={form.capacidad_maxima || ""}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => {
-                        let val = parseInt(e.target.value) || 1
+                        const raw = e.target.value
+                        if (raw === "") {
+                          updateField("capacidad_maxima", "")
+                          return
+                        }
+                        let val = parseInt(raw, 10)
+                        if (isNaN(val)) return
                         if (form.modalidad === "presencial" && val > 18) val = 18
-                        if (val > 99) val = 99
+                        if (val > 100) val = 100
                         updateField("capacidad_maxima", val)
+                      }}
+                      onBlur={() => {
+                        if (!form.capacidad_maxima || Number(form.capacidad_maxima) < 1) {
+                          updateField("capacidad_maxima", form.modalidad === "presencial" ? 18 : 99)
+                        }
                       }}
                     />
                   </div>
                   <span className="text-[11px] text-slate-500">
                     {form.modalidad === "presencial"
                       ? "Capacidad máxima para cursos presenciales: 18 estudiantes."
-                      : "Aforo operativo para cursos en modalidad online o virtual."}
+                      : "Aforo personalizable para cursos virtuales (hasta 100 estudiantes)."}
                   </span>
                   {getError("capacidad_maxima") && (
                     <p className="text-xs text-red-500 mt-0.5">{getError("capacidad_maxima")}</p>
@@ -1824,6 +1856,15 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                     onChange={(e) => updateField("observaciones", e.target.value)}
                   />
                 </div>
+
+                {/* Recordatorios y Avisos Section */}
+                <RecordatoriosConfigSection
+                  tipo="curso"
+                  value={recordatoriosConfig}
+                  onChange={setRecordatoriosConfig}
+                  fechaInicioReferencia={form.fecha_inicio}
+                  fechaFinReferencia={form.fecha_fin}
+                />
               </div>
             </section>
           )}
@@ -2061,16 +2102,17 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-600 pt-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200/80">
-                        <div className="flex items-center gap-2">
-                          <span>Arancel de este módulo:</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600 pt-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200/80">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-slate-700">Precio de este módulo:</span>
                           <input
                             type="number"
                             min={0}
                             step="0.01"
-                            className="w-20 px-2 h-7 rounded-lg border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#fd761a] outline-none"
+                            className="w-24 px-2 h-7 rounded-lg border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-[#fd761a] outline-none"
                             placeholder={String(form.precio_base || "0.00")}
                             value={mod.precio_base ?? form.precio_base}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -2086,6 +2128,9 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                             }
                           />
                           <span className="text-slate-400 font-medium">USD</span>
+                          <span className="text-[11px] text-slate-400 italic">
+                            (Si agregas decimales usa coma ",")
+                          </span>
                         </div>
 
                         {selectedDocente ? (

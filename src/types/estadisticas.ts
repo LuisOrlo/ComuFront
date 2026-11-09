@@ -90,6 +90,7 @@ export interface TopEstudiante {
 
 export interface EstadisticasResponse {
   periodo: { desde: string; hasta: string }
+  unidad_negocio?: string
   metricas: Metricas
   ingresos_vs_egresos: MesFinanciero[]
   distribucion_categorias: DistribucionCategoria[]

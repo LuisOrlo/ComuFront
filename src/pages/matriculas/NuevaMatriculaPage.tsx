@@ -14,6 +14,7 @@ import { estudiantesService } from "@/services/estudiantes.service"
 import { cursosPersonalizadosService, type CursoPersonalizado } from "@/services/cursosPersonalizados.service"
 import { toast } from "sonner"
 import { getFriendlyErrorMessage } from "@/lib/errorUtils"
+import { validarEmail } from "@/lib/utils"
 import { StepIndicator } from "./components/StepIndicator"
 import { ModalidadStep } from "./components/ModalidadStep"
 import { CiudadStep } from "./components/CiudadStep"
@@ -187,7 +188,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     if (campo === "telefono") return valor.replace(/[^0-9]/g, "").slice(0, 10)
     if (campo === "cedula" && estudiante.tipo_id === "cedula") return valor.replace(/[^0-9]/g, "").slice(0, 10)
     if (campo === "cedula") return valor.slice(0, 20).toUpperCase()
-    if (campo === "correo") return valor
+    if (campo === "correo") return valor.trim().toLowerCase()
     if (campo === "estado_civil") return valor
     if (campo === "nivel_educativo") return valor
     if (campo === "ciudad") return valor.replace(/[0-9]/g, "").toUpperCase()
@@ -291,7 +292,7 @@ export function NuevaMatriculaPage({ isPublic, adminMode, onSuccess }: { isPubli
     }
     if ((campo === "nombres" || campo === "apellidos") && valor && valor.length < 2) return "Mínimo 2 caracteres"
     if (campo === "telefono" && valor && !/^\d{10}$/.test(valor)) return "El teléfono debe tener 10 dígitos"
-    if (campo === "correo" && valor && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "Correo inválido"
+    if (campo === "correo") return validarEmail(valor)
     if (campo === "ciudad" && valor && /\d/.test(valor)) return "La ciudad no debe contener números"
     if (campo === "edad" && valor) {
       const edadNum = Number(valor)

@@ -8,12 +8,10 @@ import {
   ArrowLeft01Icon,
   ArrowLeft02Icon,
   ArrowRight02Icon,
-  ArrowRight01Icon,
   UserIcon,
   BookOpenIcon,
   PaymentIcon,
   Image01Icon,
-  DashboardSquareIcon,
   Alert02Icon,
 } from "@hugeicons/core-free-icons"
 import { tallerService } from "@/services/taller.service"
@@ -30,12 +28,10 @@ import { CiudadBadge, ModalidadBadge } from "../estudiantes/components/Badges"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
-import { formatDate } from "@/lib/utils"
 
-type TabId = "resumen" | "participante" | "taller" | "pago" | "documento"
+type TabId = "participante" | "taller" | "pago" | "documento"
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
-  { id: "resumen", label: "Resumen", icon: DashboardSquareIcon },
   { id: "participante", label: "Participante", icon: UserIcon },
   { id: "taller", label: "Taller", icon: BookOpenIcon },
   { id: "pago", label: "Pago", icon: PaymentIcon },
@@ -80,7 +76,7 @@ export function AprobacionTallerPage() {
 
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabId>("resumen")
+  const [activeTab, setActiveTab] = useState<TabId>("participante")
 
   const [adjacent, setAdjacent] = useState<{
     prev_id: string | null; next_id: string | null; first_id: string | null
@@ -236,6 +232,8 @@ export function AprobacionTallerPage() {
         metodos_pago: metodosPago.map((m) => ({
           metodo_pago: m.metodo_pago,
           monto: parseFloat(m.monto) || 0,
+          referencia_pago: m.referencia_pago || undefined,
+          comprobante_url: m.comprobante_url || undefined,
         })),
         grupo_pago_id: grupoPagoId,
       })
@@ -300,8 +298,6 @@ export function AprobacionTallerPage() {
   const isRechazado = selected.estado === "retirado"
   const yaProcesada = isAprobado || isRechazado
   const cedulaUrl = selected.cedula_url ? fixImageUrl(selected.cedula_url) : null
-  const compUrl = selected.comprobante_url ? fixImageUrl(selected.comprobante_url) : null
-  const montoPagado = Number(selected.monto_pagado || 0)
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-slate-50/50 text-slate-900 antialiased selection:bg-[#fd761a] selection:text-white">
@@ -426,291 +422,6 @@ export function AprobacionTallerPage() {
 
       {/* 3. Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-8">
-        {activeTab === "resumen" && (
-          <div className="space-y-4 sm:space-y-5">
-            {/* Top Banner Notice */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-                  Resumen de la inscripción
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Verificación de participante, asignación lectiva y validación de arancel
-                </p>
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 border border-orange-200/60 text-xs font-semibold text-orange-800 self-start sm:self-auto">
-                <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} className="text-orange-600" />
-                <span>Listo para validación de pago y cupo oficial</span>
-              </div>
-            </div>
-
-            {/* 4 Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Card 1: Participante */}
-              <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
-                        <HugeiconsIcon icon={UserIcon} size={17} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">Participante</h3>
-                        <span className="text-[11px] text-slate-400">Datos personales</span>
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Verificado
-                    </span>
-                  </div>
-
-                  <dl className="py-2.5 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Nombre:</dt>
-                      <dd className="font-bold text-slate-900 truncate max-w-[200px] text-right">
-                        {selected.nombres || "—"} {selected.apellidos || ""}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Cédula:</dt>
-                      <dd className="font-mono font-semibold text-slate-800">
-                        {selected.cedula || "—"}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Edad:</dt>
-                      <dd className="text-slate-800 font-medium">
-                        {selected.edad ? `${selected.edad} años` : "—"}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Ubicación:</dt>
-                      <dd>
-                        <CiudadBadge ciudad={selected.ciudad} />
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setActiveTab("participante")}
-                    type="button"
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/80 transition-colors cursor-pointer"
-                  >
-                    <span>Ver información completa</span>
-                    <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 2: Taller */}
-              <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-[#fd761a]">
-                        <HugeiconsIcon icon={BookOpenIcon} size={17} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">Taller</h3>
-                        <span className="text-[11px] text-slate-400">Oferta formativa</span>
-                      </div>
-                    </div>
-                    <ModalidadBadge modalidad={selected.taller?.modalidad} />
-                  </div>
-
-                  <dl className="py-2.5 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Taller:</dt>
-                      <dd className="font-bold text-slate-900 text-right truncate max-w-[200px]">
-                        {getTallerNombre()}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Fecha:</dt>
-                      <dd className="text-slate-800 font-medium">
-                        {selected.taller?.fecha ? formatDate(selected.taller.fecha) : "—"}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Sede:</dt>
-                      <dd>
-                        <CiudadBadge ciudad={selected.taller?.ciudad?.nombre || selected.ciudad} />
-                      </dd>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <dt className="text-slate-500 font-medium">Arancel oficial:</dt>
-                      <dd className="font-bold text-slate-900 font-mono">
-                        ${precioBase.toFixed(2)} USD
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setActiveTab("taller")}
-                    type="button"
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/80 transition-colors cursor-pointer"
-                  >
-                    <span>Ver detalles del taller</span>
-                    <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 3: Pago */}
-              <div className="bg-white rounded-xl border border-orange-200/90 p-4 shadow-2xs flex flex-col justify-between relative overflow-hidden">
-                <div>
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center text-[#fd761a]">
-                        <HugeiconsIcon icon={PaymentIcon} size={17} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">Estado de pago</h3>
-                        <span className="text-[11px] font-medium text-amber-700">
-                          {isAprobado ? "Aprobado en contabilidad" : "Se valida formalmente al aprobar"}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-orange-50 border border-orange-200 text-[#9d4300]">
-                      {isAprobado ? "Verificado" : "Pendiente"}
-                    </span>
-                  </div>
-
-                  <div className="py-2.5 space-y-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">Método de pago:</span>
-                      <span className="font-semibold text-slate-900 uppercase text-[11px]">
-                        {selected.metodo_pago || "Efectivo / Transferencia"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500 font-medium">Fecha declarada:</span>
-                      <span className="text-slate-800 text-xs font-mono">
-                        {selected.fecha_pago ? formatDate(selected.fecha_pago) : "—"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center bg-orange-50/70 p-2 rounded-lg border border-orange-100">
-                      <span className="font-bold text-orange-950 text-xs">Monto declarado:</span>
-                      <span className="text-sm sm:text-base font-black text-[#fd761a] font-mono">
-                        ${montoPagado > 0 ? montoPagado.toFixed(2) : precioBase.toFixed(2)} USD
-                      </span>
-                    </div>
-                    {compUrl && (
-                      <div className="flex items-center justify-between text-xs pt-0.5">
-                        <span className="text-slate-500 font-medium">Comprobante adjunto:</span>
-                        <button
-                          type="button"
-                          onClick={() => setExpandedImageUrl(compUrl)}
-                          className="font-bold text-[#fd761a] hover:underline cursor-pointer"
-                        >
-                          Ver comprobante
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setActiveTab("pago")}
-                    type="button"
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#9d4300] text-xs font-bold border border-orange-200/80 transition-colors cursor-pointer"
-                  >
-                    <span>Revisar y verificar pago</span>
-                    <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 4: Cédula de Identidad */}
-              <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-all">
-                <div>
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
-                        <HugeiconsIcon icon={Image01Icon} size={17} />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900">Cédula de Identidad</h3>
-                        <span className="text-[11px] text-slate-400">Documento fotográfico</span>
-                      </div>
-                    </div>
-                    {cedulaUrl ? (
-                      <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={12} />
-                        Adjunta
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-slate-100 text-slate-600">
-                        Sin adjunto
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Photo preview */}
-                  <div className="my-2.5 p-2 bg-slate-950 rounded-lg flex items-center gap-3 text-white overflow-hidden shadow-inner">
-                    {cedulaUrl ? (
-                      <div
-                        onClick={() => setExpandedImageUrl(cedulaUrl)}
-                        className="w-20 h-14 rounded-md bg-slate-900 border border-slate-700 overflow-hidden shrink-0 cursor-pointer relative group"
-                      >
-                        <img
-                          src={cedulaUrl}
-                          alt="Cédula de identidad"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-white transition-opacity">
-                          Ampliar
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-20 h-14 rounded-md bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
-                        <HugeiconsIcon icon={Image01Icon} size={20} />
-                      </div>
-                    )}
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-100 truncate">
-                        {cedulaUrl ? "cedula_participante.jpg" : "Sin documento cargado"}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        {cedulaUrl ? "Documento fotográfico JPG / PNG" : "Pendiente de adjuntar"}
-                      </p>
-                      {cedulaUrl && (
-                        <span className="inline-block mt-0.5 text-[10px] text-emerald-400 font-medium">
-                          ✓ Imagen legible para verificación
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400">
-                    Cotejo visual de datos filiatorios con el participante registrado en el taller.
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => {
-                      if (cedulaUrl) setExpandedImageUrl(cedulaUrl)
-                      else setActiveTab("documento")
-                    }}
-                    type="button"
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/80 transition-colors cursor-pointer"
-                  >
-                    <span>{cedulaUrl ? "Ver imagen en visor" : "Gestionar documento"}</span>
-                    <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === "participante" && (
           <TallerParticipanteTab
             selected={selected}
@@ -750,6 +461,7 @@ export function AprobacionTallerPage() {
             pagoRef={pagoRef}
             precioBase={precioBase}
             getTallerNombre={getTallerNombre}
+            onRefresh={fetchDetail}
           />
         )}
 

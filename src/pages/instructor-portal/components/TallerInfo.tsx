@@ -1,43 +1,38 @@
 import { HugeiconsIcon } from "@hugeicons/react"
-import { UserIcon, Calendar03Icon, ClockIcon, Money01Icon, UserGroupIcon, Note03Icon } from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
+import {
+  Calendar03Icon,
+  ClockIcon,
+  UserGroupIcon,
+  Location01Icon,
+} from "@hugeicons/core-free-icons"
+import { Building2, Sparkles } from "lucide-react"
+import { ModalidadBadge, EstadoBadge, CiudadBadge } from "@/pages/estudiantes/components/Badges"
 import type { Taller } from "@/services/taller.service"
-
-const ACCENT = COLORS.ACCENT
-const CHARCOAL = COLORS.CHARCOAL
-const TEXT_MUTED = COLORS.TEXT_MUTED
-const BORDER = COLORS.BORDER_SUBTLE
 
 function formatFecha(f?: string): string {
   if (!f) return "—"
   try {
-    const d = new Date(f.substring(0, 10) + "T12:00:00")
+    const d = new Date(f.includes("T") ? f : f + "T00:00:00")
     const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
     return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`
-  } catch { return f }
+  } catch {
+    return f
+  }
 }
 
 function formatHora(h?: string): string {
   return h ? h.substring(0, 5) : "—"
 }
 
-function generarDiasDelRango(fechaInicio: string, fechaFin: string, horaInicio?: string, horaFin?: string) {
-  const dias = []
-  const start = new Date(fechaInicio + "T12:00:00")
-  const end = new Date(fechaFin + "T12:00:00")
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dias.push({
-      id: d.toISOString(),
-      dia_semana: d.getDay() === 0 ? 7 : d.getDay(),
-      hora_inicio: horaInicio,
-      hora_fin: horaFin,
-    })
+function getCiudadNombre(t?: Taller | null): string {
+  if (!t) return ""
+  if (typeof t.ciudad === "object" && t.ciudad !== null) {
+    return t.ciudad.nombre || ""
   }
-  return dias
-}
-
-const DIAS_NOMBRE: Record<number, string> = {
-  1: "Lun", 2: "Mar", 3: "Mie", 4: "Jue", 5: "Vie", 6: "Sab", 7: "Dom",
+  if (typeof t.ciudad === "string") {
+    return t.ciudad
+  }
+  return ""
 }
 
 interface Props {
@@ -46,98 +41,173 @@ interface Props {
 }
 
 export function TallerInfo({ taller, inscritosActivos }: Props) {
+  const capacidad = taller.capacidad_maxima || 0
+  const cuposDisponibles = Math.max(0, capacidad - inscritosActivos)
+  const pctOcupacion = capacidad > 0 ? Math.round((inscritosActivos / capacidad) * 100) : 0
+  const esMultiDia = Boolean(taller.fecha_fin && taller.fecha_fin !== taller.fecha)
+
   return (
-    <div className="space-y-5">
-      <div className="bg-white rounded-xl border p-6" style={{ borderColor: BORDER }}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 10%, transparent)` }}>
-              <HugeiconsIcon icon={UserIcon} size={16} style={{ color: ACCENT }} />
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Columna Izquierda: Información Académica (2 cols) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Card 1: Resumen General y Ubicación */}
+          <section className="bg-white p-5 sm:p-6 rounded-2xl border border-[#e5eeff] shadow-xs space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-[#e5eeff]">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-[#0b1c30]">
+                  Información de la Jornada
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Datos de modalidad, ubicación y parámetros de impartición
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <ModalidadBadge modalidad={taller.modalidad} />
+                <EstadoBadge estado={taller.estado} />
+              </div>
             </div>
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>Instructor</p>
-              <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                {taller.instructor ? `${taller.instructor.nombres} ${taller.instructor.apellidos}` : "—"}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="size-9 rounded-xl bg-orange-50 text-[#fd761a] flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={Calendar03Icon} size={16} />
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
+                    {esMultiDia ? "Período de Ejecución" : "Fecha del Taller"}
+                  </span>
+                  <p className="text-sm font-bold text-[#0b1c30] mt-0.5">
+                    {formatFecha(taller.fecha)}
+                    {esMultiDia ? ` hasta ${formatFecha(taller.fecha_fin || undefined)}` : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={ClockIcon} size={16} />
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
+                    Horario Oficial
+                  </span>
+                  <p className="text-sm font-bold text-[#0b1c30] mt-0.5 font-mono">
+                    {formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="size-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={Location01Icon} size={16} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
+                    Ciudad / Sede
+                  </span>
+                  <div className="mt-1">
+                    <CiudadBadge ciudad={getCiudadNombre(taller) || "Presencial"} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="size-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Building2 size={16} />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
+                    Modalidad / Entorno
+                  </span>
+                  <p className="text-xs font-bold text-[#0b1c30] mt-0.5 truncate">
+                    {taller.modalidad === "virtual"
+                      ? "Campus Virtual / Enlace en línea"
+                      : "Sede Presencial Institucional"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Card 2: Descripción del Taller */}
+          <section className="bg-white p-5 sm:p-6 rounded-2xl border border-[#e5eeff] shadow-xs space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-[#e5eeff]">
+              <h3 className="text-sm font-bold text-[#0b1c30]">
+                Descripción del Taller
+              </h3>
+            </div>
+
+            {taller.descripcion ? (
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                {taller.descripcion}
               </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 10%, transparent)` }}>
-              <HugeiconsIcon icon={Calendar03Icon} size={16} style={{ color: ACCENT }} />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>Fecha</p>
-              <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                {formatFecha(taller.fecha)}{taller.fecha_fin ? ` - ${formatFecha(taller.fecha_fin)}` : ""}
+            ) : (
+              <p className="text-xs text-slate-400 italic">
+                No se ha registrado una descripción detallada para este taller.
               </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 10%, transparent)` }}>
-              <HugeiconsIcon icon={ClockIcon} size={16} style={{ color: ACCENT }} />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>Horario</p>
-              <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                {formatHora(taller.hora_inicio)} - {formatHora(taller.hora_fin)}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 10%, transparent)` }}>
-              <HugeiconsIcon icon={Note03Icon} size={16} style={{ color: ACCENT }} />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>Modalidad</p>
-              <p className="text-sm font-semibold capitalize" style={{ color: CHARCOAL }}>{taller.modalidad || "—"}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 10%, transparent)` }}>
-              <HugeiconsIcon icon={Money01Icon} size={16} style={{ color: ACCENT }} />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>Precio</p>
-              <p className="text-sm font-bold" style={{ color: CHARCOAL }}>${Number(taller.precio || 0).toFixed(2)}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <div className="size-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${ACCENT} 10%, transparent)` }}>
-              <HugeiconsIcon icon={UserGroupIcon} size={16} style={{ color: ACCENT }} />
-            </div>
-            <div>
-              <p className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>Capacidad</p>
-              <p className="text-sm font-semibold" style={{ color: CHARCOAL }}>
-                {inscritosActivos}/{taller.capacidad_maxima || "0"}
-              </p>
-            </div>
-          </div>
+            )}
+          </section>
         </div>
 
-        {taller.fecha_fin && (
-          <div className="mt-5 pt-5 border-t" style={{ borderColor: BORDER }}>
-            <p className="text-[11px] font-medium mb-3" style={{ color: TEXT_MUTED }}>Horarios por día</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(taller.horarios && taller.horarios.length > 0
-                ? taller.horarios
-                : generarDiasDelRango(taller.fecha!, taller.fecha_fin!, taller.hora_inicio, taller.hora_fin)
-              ).map((h: { id: string; dia_semana: number; hora_inicio?: string; hora_fin?: string; aula?: string }) => (
-                <div key={h.id} className="px-3 py-2 rounded-lg border text-xs" style={{ borderColor: BORDER }}>
-                  <span className="font-semibold" style={{ color: ACCENT }}>{DIAS_NOMBRE[h.dia_semana] || h.dia_semana}</span>
-                  <span className="ml-2" style={{ color: CHARCOAL }}>{formatHora(h.hora_inicio)} - {formatHora(h.hora_fin)}</span>
-                  {h.aula && <span className="ml-2" style={{ color: TEXT_MUTED }}>({h.aula})</span>}
+        {/* Columna Derecha: Capacidad de Participantes */}
+        <div className="space-y-6">
+          {/* Card: Capacidad y Ocupación */}
+          <section className="bg-white p-5 sm:p-6 rounded-2xl border border-[#e5eeff] shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#e5eeff]">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-xl bg-orange-50 text-[#fd761a] flex items-center justify-center">
+                  <HugeiconsIcon icon={UserGroupIcon} size={16} />
                 </div>
-              ))}
+                <h3 className="text-sm font-bold text-[#0b1c30]">
+                  Cupo de Alumnos
+                </h3>
+              </div>
+              <span
+                className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
+                  cuposDisponibles === 0
+                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                    : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                }`}
+              >
+                {cuposDisponibles === 0 ? "Cupo Lleno" : `${cuposDisponibles} disponibles`}
+              </span>
             </div>
-          </div>
-        )}
 
-        {taller.descripcion && (
-          <div className="mt-5 pt-5 border-t" style={{ borderColor: BORDER }}>
-            <p className="text-[11px] font-medium mb-1" style={{ color: TEXT_MUTED }}>Descripción</p>
-            <p className="text-sm leading-relaxed" style={{ color: CHARCOAL }}>{taller.descripcion}</p>
-          </div>
-        )}
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500 font-medium">Inscritos Activos:</span>
+                <span className="text-2xl font-black text-[#0b1c30] font-mono">
+                  {inscritosActivos}
+                  <span className="text-sm text-slate-400 font-normal"> / {capacidad || "—"}</span>
+                </span>
+              </div>
+
+              {/* Barra de progreso */}
+              <div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5 font-medium">
+                  <span>Porcentaje de cupo</span>
+                  <span className="font-bold text-slate-800 font-mono">{pctOcupacion}%</span>
+                </div>
+                <div className="w-full h-2.5 rounded-full bg-[#e5eeff] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      pctOcupacion >= 100 ? "bg-rose-500" : "bg-[#fd761a]"
+                    }`}
+                    style={{ width: `${Math.min(100, pctOcupacion)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 text-xs text-slate-500 flex items-center gap-2">
+                <Sparkles size={14} className="text-[#fd761a] shrink-0" />
+                <span>
+                  Los alumnos confirmados tienen su registro y asistencia disponible en las pestañas superiores.
+                </span>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   )

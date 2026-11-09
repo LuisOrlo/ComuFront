@@ -140,7 +140,7 @@ export function IngresosTabla({ data, loading, page, lastPage, onPageChange }: P
               <span className="text-xs font-semibold text-slate-900 truncate" title={concepto}>
                 {concepto}
               </span>
-              {item.modulos_count && item.modulos_count > 1 && (
+              {Boolean(item.modulos_count && item.modulos_count > 1 && item.modulos_detalle?.length) && (
                 <span
                   className="text-[11px] text-slate-500 truncate mt-0.5"
                   title={item.modulos_detalle?.map((m) => m.modulo_nombre).join(" · ")}

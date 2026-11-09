@@ -29,6 +29,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { ModalEditarPagoDetalle } from "./components/ModalEditarPagoDetalle"
+import { ModalEditarPagoTaller } from "@/pages/matriculas/components/solicitudes/ModalEditarPagoTaller"
 import { cn, getStorageUrl } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
@@ -59,6 +60,14 @@ function formatFecha(fecha?: string | null) {
   }
 }
 
+interface ComprobanteItem {
+  url: string
+  metodo_pago?: string | null
+  monto?: number | string | null
+  referencia_pago?: string | null
+  label: string
+}
+
 export function PagoDetallePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -76,16 +85,22 @@ export function PagoDetallePage() {
   const [activeComprobanteIdx, setActiveComprobanteIdx] = useState(0)
 
   const rawComprobantes: string[] = useMemo(() => {
+    if (Array.isArray(data?.comprobantes_detalle) && data.comprobantes_detalle.length > 0) {
+      const urls = data.comprobantes_detalle.map((cd: any) => cd.url).filter(Boolean)
+      if (urls.length > 0) return urls
+    }
     if (Array.isArray(data?.comprobantes) && data.comprobantes.length > 0) {
       return data.comprobantes as string[]
     }
     if (Array.isArray(data?.desglose_metodos)) {
       const urls: string[] = []
-      data.desglose_metodos.forEach((dm: { comprobantes?: string[] }) => {
+      data.desglose_metodos.forEach((dm: { comprobantes?: string[]; comprobante_url?: string }) => {
         if (Array.isArray(dm.comprobantes)) {
           dm.comprobantes.forEach((u: string) => {
             if (u && !urls.includes(u)) urls.push(u)
           })
+        } else if (dm.comprobante_url && !urls.includes(dm.comprobante_url)) {
+          urls.push(dm.comprobante_url)
         }
       })
       if (urls.length > 0) return urls
@@ -93,7 +108,43 @@ export function PagoDetallePage() {
     return data?.comprobante_url ? [data.comprobante_url as string] : []
   }, [data])
 
-  const activeComprobanteUrl = rawComprobantes[activeComprobanteIdx] || data?.comprobante_url
+  const comprobantesItems: ComprobanteItem[] = useMemo(() => {
+    if (Array.isArray(data?.comprobantes_detalle) && data.comprobantes_detalle.length > 0) {
+      return data.comprobantes_detalle.map((cd: any, idx: number) => ({
+        url: cd.url,
+        metodo_pago: cd.metodo_pago,
+        monto: cd.monto,
+        referencia_pago: cd.referencia_pago,
+        label: `${cd.metodo_pago ? cd.metodo_pago.charAt(0).toUpperCase() + cd.metodo_pago.slice(1) : `Comprobante #${idx + 1}`}${cd.monto ? ` ($${Number(cd.monto).toFixed(2)})` : ""}`,
+      }))
+    }
+    if (Array.isArray(data?.desglose_metodos) && data.desglose_metodos.length > 0) {
+      const items: any[] = []
+      data.desglose_metodos.forEach((dm: any) => {
+        const u = dm.comprobante_url || (Array.isArray(dm.comprobantes) && dm.comprobantes[0])
+        if (u) {
+          items.push({
+            url: u,
+            metodo_pago: dm.metodo_pago,
+            monto: dm.monto,
+            referencia_pago: dm.referencia_pago || (Array.isArray(dm.referencias) && dm.referencias[0]),
+            label: `${dm.metodo_pago ? dm.metodo_pago.charAt(0).toUpperCase() + dm.metodo_pago.slice(1) : "Comprobante"}${dm.monto ? ` ($${Number(dm.monto).toFixed(2)})` : ""}`,
+          })
+        }
+      })
+      if (items.length > 0) return items
+    }
+    return rawComprobantes.map((url, idx) => ({
+      url,
+      metodo_pago: null,
+      monto: null,
+      referencia_pago: null,
+      label: `Comprobante #${idx + 1}`,
+    }))
+  }, [data, rawComprobantes])
+
+  const activeComprobanteItem = comprobantesItems[activeComprobanteIdx]
+  const activeComprobanteUrl = activeComprobanteItem?.url || rawComprobantes[activeComprobanteIdx] || data?.comprobante_url
 
   const load = useCallback(async () => {
     if (!id) return
@@ -352,6 +403,13 @@ export function PagoDetallePage() {
 
   const StatusIcon = estadoConfig.icon
 
+  const isTaller = Boolean(
+    data?.taller_nombre ||
+    data?.cuenta_por_cobrar?.inscripcion_taller ||
+    data?.cuenta_por_cobrar?.inscripcion_taller_id
+  )
+  const inscripcionTallerId = data?.cuenta_por_cobrar?.inscripcion_taller?.id || data?.cuenta_por_cobrar?.inscripcion_taller_id
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Top Navigation Bar: Breadcrumbs & Action Toolbar */}
@@ -576,29 +634,66 @@ export function PagoDetallePage() {
                 </span>
                 {data.es_mixto && data.desglose_metodos?.length > 0 ? (
                   <div className="space-y-2 mt-1.5">
-                    {data.desglose_metodos.map((dm: any, i: number) => (
-                      <div
-                        key={dm.id || i}
-                        className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4 text-[#fd761a]" />
-                          <div>
-                            <span className="font-bold text-slate-800 capitalize block">
-                              {dm.metodo_pago}
-                            </span>
-                            {dm.referencia_pago && (
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                Ref: {dm.referencia_pago}
+                    {data.desglose_metodos.map((dm: any, i: number) => {
+                      const compUrl = dm.comprobante_url || (Array.isArray(dm.comprobantes) && dm.comprobantes[0]) || null
+                      const tieneComp = Boolean(compUrl)
+                      const compIdx = tieneComp ? rawComprobantes.indexOf(compUrl) : -1
+                      const refStr = dm.referencia_pago || (Array.isArray(dm.referencias) && dm.referencias[0]) || null
+                      const esSeleccionado = compIdx === activeComprobanteIdx && tieneComp
+
+                      return (
+                        <div
+                          key={dm.id || i}
+                          className={cn(
+                            "flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors",
+                            esSeleccionado
+                              ? "bg-orange-50/70 border-orange-200"
+                              : "bg-slate-50 border-slate-100"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CreditCard className="w-4 h-4 text-[#fd761a] shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-800 capitalize block truncate">
+                                {dm.metodo_pago}
                               </span>
+                              {refStr && (
+                                <span className="text-[10px] text-slate-400 font-mono block truncate">
+                                  Ref: {refStr}
+                                </span>
+                              )}
+                              {!tieneComp && dm.metodo_pago === "efectivo" && (
+                                <span className="text-[10px] text-slate-400 italic block">
+                                  Liquidado en efectivo (sin comprobante)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-extrabold text-slate-900 font-mono">
+                              ${Number(dm.monto || 0).toFixed(2)} USD
+                            </span>
+                            {tieneComp && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (compIdx >= 0) {
+                                    setActiveComprobanteIdx(compIdx)
+                                  } else {
+                                    openLightbox(getStorageUrl(compUrl))
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                                title="Ver comprobante de este método"
+                              >
+                                <Paperclip className="w-3 h-3" />
+                                <span>Ver foto</span>
+                              </button>
                             )}
                           </div>
                         </div>
-                        <span className="font-extrabold text-slate-900 font-mono">
-                          ${Number(dm.monto || 0).toFixed(2)} USD
-                        </span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-slate-900 font-medium capitalize">
@@ -760,14 +855,14 @@ export function PagoDetallePage() {
             </div>
 
             {/* Switcher si hay múltiples comprobantes en el grupo */}
-            {rawComprobantes.length > 1 && (
+            {comprobantesItems.length > 1 && (
               <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-                  Archivos ({rawComprobantes.length}):
+                  Archivos ({comprobantesItems.length}):
                 </span>
-                {rawComprobantes.map((url, i) => (
+                {comprobantesItems.map((item: ComprobanteItem, i: number) => (
                   <button
-                    key={url || i}
+                    key={item.url || i}
                     type="button"
                     onClick={() => setActiveComprobanteIdx(i)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
@@ -777,9 +872,25 @@ export function PagoDetallePage() {
                     }`}
                   >
                     <Paperclip className="w-3 h-3" />
-                    <span>Comprobante #{i + 1}</span>
+                    <span>{item.label}</span>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Badge de método activo cuando hay varios métodos */}
+            {activeComprobanteItem?.metodo_pago && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50/60 border border-orange-100 text-xs">
+                <span className="font-semibold text-orange-900">
+                  Comprobante asociado a:{" "}
+                  <strong className="capitalize">{activeComprobanteItem.metodo_pago}</strong>
+                  {activeComprobanteItem.monto ? ` · $${Number(activeComprobanteItem.monto).toFixed(2)} USD` : ""}
+                </span>
+                {activeComprobanteItem.referencia_pago && (
+                  <span className="text-[10px] text-orange-700 font-mono">
+                    (Ref: {activeComprobanteItem.referencia_pago})
+                  </span>
+                )}
               </div>
             )}
 
@@ -991,12 +1102,33 @@ export function PagoDetallePage() {
 
       {/* Modal de Edición de Pago */}
       {data && (
-        <ModalEditarPagoDetalle
-          open={editModalOpen}
-          onClose={() => setEditModalOpen(false)}
-          data={data}
-          onSuccess={load}
-        />
+        isTaller && inscripcionTallerId ? (
+          <ModalEditarPagoTaller
+            open={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            inscripcionId={inscripcionTallerId}
+            selected={{
+              ...data.cuenta_por_cobrar?.inscripcion_taller,
+              id: inscripcionTallerId,
+              taller: data.cuenta_por_cobrar?.inscripcion_taller?.taller || { nombre: data.taller_nombre || data.curso_nombre },
+              cuenta_por_cobrar: {
+                ...data.cuenta_por_cobrar,
+                transacciones: data.transacciones || data.cuenta_por_cobrar?.transacciones || [],
+              },
+            }}
+            onSuccess={() => {
+              setEditModalOpen(false)
+              load()
+            }}
+          />
+        ) : (
+          <ModalEditarPagoDetalle
+            open={editModalOpen}
+            onClose={() => setEditModalOpen(false)}
+            data={data}
+            onSuccess={load}
+          />
+        )
       )}
     </div>
   )

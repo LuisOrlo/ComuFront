@@ -168,6 +168,15 @@ export const authService = {
     }
   },
 
+  async logoutAll(): Promise<void> {
+    try {
+      await api.post("/auth/cerrar-todas-sesiones")
+    } finally {
+      localStorage.removeItem("auth_token")
+      localStorage.removeItem("user_persona_id")
+    }
+  },
+
   getToken(): string | null {
     return localStorage.getItem("auth_token")
   },

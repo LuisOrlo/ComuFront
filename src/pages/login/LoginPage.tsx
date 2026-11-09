@@ -32,11 +32,17 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const cleanUsername = username.trim()
+    if (!cleanUsername) {
+      setError("Por favor ingresa tu nombre de usuario.")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      await login(username, password)
+      await login(cleanUsername, password)
     } catch (err: unknown) {
       let msg = "Usuario o contraseña incorrectos"
       if (typeof err === "object" && err !== null && "response" in err) {
@@ -200,6 +206,10 @@ export function LoginPage() {
                   value={username}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
                   required
+                  maxLength={100}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   autoComplete="username"
                   className="pl-10 h-12 rounded-xl border-[--border] bg-transparent"
                   style={
@@ -235,6 +245,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   required
+                  maxLength={255}
                   autoComplete="current-password"
                   className="pl-10 pr-10 h-12 rounded-xl border-[--border] bg-transparent"
                 />

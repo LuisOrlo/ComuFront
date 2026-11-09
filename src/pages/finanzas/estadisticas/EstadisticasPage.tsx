@@ -15,7 +15,8 @@ import { EstadoCobranza } from "./components/EstadoCobranza"
 import { ActividadServicios } from "./components/ActividadServicios"
 import { PatronesCobro } from "./components/PatronesCobro"
 import type { EstadisticasResponse } from "@/types/estadisticas"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Building2, GraduationCap, Clapperboard } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 function getDefaultDesde(periodo: string): string {
   const now = new Date()
@@ -32,6 +33,7 @@ function getDefaultDesde(periodo: string): string {
 
 export function EstadisticasPage() {
   const [periodo, setPeriodo] = useState("este_mes")
+  const [unidadNegocio, setUnidadNegocio] = useState<"todos" | "academia" | "servicios">("todos")
   const [customDesde, setCustomDesde] = useState("")
   const [customHasta, setCustomHasta] = useState("")
   const [fetchDesde, setFetchDesde] = useState(getDefaultDesde("este_mes"))
@@ -57,8 +59,8 @@ export function EstadisticasPage() {
   }
 
   const { data, isLoading, error, refetch } = useQuery<EstadisticasResponse>({
-    queryKey: ["estadisticas", fetchDesde, fetchHasta],
-    queryFn: () => financeService.getEstadisticas({ desde: fetchDesde, hasta: fetchHasta }),
+    queryKey: ["estadisticas", fetchDesde, fetchHasta, unidadNegocio],
+    queryFn: () => financeService.getEstadisticas({ desde: fetchDesde, hasta: fetchHasta, unidad_negocio: unidadNegocio }),
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
     retry: 1,
@@ -140,6 +142,7 @@ export function EstadisticasPage() {
   }
 
   const m = data.metricas
+  const totalServicios = data.actividad_servicios?.reduce((acc, s) => acc + (s.cantidad || 0), 0) || 0
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50/50 pb-16">
@@ -158,9 +161,56 @@ export function EstadisticasPage() {
 
       {/* MAIN BODY CONTENT */}
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* MACRO-TABS: UNIDADES DE NEGOCIO */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="inline-flex items-center p-1 bg-white border border-slate-200/80 rounded-2xl shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setUnidadNegocio("todos")}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                unidadNegocio === "todos"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+              )}
+            >
+              <Building2 size={15} />
+              <span>Consolidado</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setUnidadNegocio("academia")}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                unidadNegocio === "academia"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+              )}
+            >
+              <GraduationCap size={15} />
+              <span>Academia & Formación</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setUnidadNegocio("servicios")}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                unidadNegocio === "servicios"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+              )}
+            >
+              <Clapperboard size={15} />
+              <span>Servicios & Productora</span>
+            </button>
+          </div>
+        </div>
+
         {/* SECTION 1 — RESUMEN FINANCIERO (HORIZONTAL KPI STRIP) */}
         <div ref={registerRef("resumen")}>
-          <ResumenEjecutivo m={m} />
+          <ResumenEjecutivo m={m} unidad={unidadNegocio} serviciosCount={totalServicios} />
         </div>
 
         {/* SECTION 2 — FLUJO FINANCIERO */}
@@ -186,37 +236,58 @@ export function EstadisticasPage() {
           </div>
         </div>
 
-        {/* SECTION 5 — RENDIMIENTO ACADÉMICO POR MODALIDAD */}
-        <div ref={registerRef("modalidad")}>
-          <ComparativaModalidad data={data.modalidad} />
-        </div>
-
-        {/* SECTION 6 & 7 — ESTUDIANTES TOP Y ESTADO DE COBRANZA (2-COLUMN GRID) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div ref={registerRef("retencion")} className="lg:col-span-6">
-            <RetencionFidelizacion topEstudiantes={data.top_estudiantes} />
+        {/* SECTION 5 — RENDIMIENTO ACADÉMICO POR MODALIDAD (SOLO ACADEMIA Y CONSOLIDADO) */}
+        {unidadNegocio !== "servicios" && data.modalidad && (
+          <div ref={registerRef("modalidad")}>
+            <ComparativaModalidad data={data.modalidad} />
           </div>
+        )}
 
-          <div ref={registerRef("cobranza")} className="lg:col-span-6">
-            <EstadoCobranza data={data.cobranza} />
+        {/* SECTION 6 & 7 — RETENCIÓN / CLIENTES Y COBRANZA */}
+        {unidadNegocio === "servicios" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div ref={registerRef("servicios")} className="lg:col-span-7">
+              <ActividadServicios data={data.actividad_servicios} />
+            </div>
+            <div ref={registerRef("retencion")} className="lg:col-span-5">
+              <RetencionFidelizacion topEstudiantes={data.top_estudiantes} unidad={unidadNegocio} />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div ref={registerRef("retencion")} className="lg:col-span-6">
+              <RetencionFidelizacion topEstudiantes={data.top_estudiantes} unidad={unidadNegocio} />
+            </div>
+            <div ref={registerRef("cobranza")} className="lg:col-span-6">
+              <EstadoCobranza data={data.cobranza} />
+            </div>
+          </div>
+        )}
 
-        {/* SECTION 8 — RENDIMIENTO POR CATÁLOGO */}
-        <div ref={registerRef("catalogo")}>
-          <RendimientoCatalogo data={data.catalogos_top} />
-        </div>
+        {/* SECTION 8 — RENDIMIENTO POR CATÁLOGO (SOLO ACADEMIA Y CONSOLIDADO) */}
+        {unidadNegocio !== "servicios" && data.catalogos_top && (
+          <div ref={registerRef("catalogo")}>
+            <RendimientoCatalogo data={data.catalogos_top} />
+          </div>
+        )}
 
-        {/* SECTION 9 & 10 — DISTRIBUCIÓN GEOGRÁFICA Y ACTIVIDAD DE SERVICIOS (2-COLUMN GRID) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div ref={registerRef("geografica")} className="lg:col-span-7">
+        {/* SECTION 9 & 10 — DISTRIBUCIÓN GEOGRÁFICA Y ACTIVIDAD DE SERVICIOS */}
+        {unidadNegocio === "todos" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div ref={registerRef("geografica")} className="lg:col-span-7">
+              <DistribucionGeografica data={data.ciudades_top} />
+            </div>
+            <div ref={registerRef("servicios")} className="lg:col-span-5">
+              <ActividadServicios data={data.actividad_servicios} />
+            </div>
+          </div>
+        )}
+
+        {unidadNegocio === "academia" && (
+          <div ref={registerRef("geografica")}>
             <DistribucionGeografica data={data.ciudades_top} />
           </div>
-
-          <div ref={registerRef("servicios")} className="lg:col-span-5">
-            <ActividadServicios data={data.actividad_servicios} />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )

@@ -36,7 +36,15 @@ function VariacionPill({ value }: { value: number | string | null }) {
   )
 }
 
-export function ResumenEjecutivo({ m }: { m: Metricas }) {
+export function ResumenEjecutivo({
+  m,
+  unidad = "todos",
+  serviciosCount = 0,
+}: {
+  m: Metricas
+  unidad?: string
+  serviciosCount?: number
+}) {
   const format = (v: number) =>
     "$" +
     Math.abs(v).toLocaleString("es-EC", {
@@ -45,6 +53,9 @@ export function ResumenEjecutivo({ m }: { m: Metricas }) {
     })
   const balanceSigno = m.balance >= 0 ? "+" : "\u2212"
 
+  const esServicios = unidad === "servicios"
+  const esAcademia = unidad === "academia"
+
   return (
     <section className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
@@ -52,7 +63,7 @@ export function ResumenEjecutivo({ m }: { m: Metricas }) {
         <div className="p-5 flex flex-col justify-between space-y-3 bg-white">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              INGRESOS
+              {esServicios ? "INGRESOS SERVICIOS" : esAcademia ? "INGRESOS ACADEMIA" : "INGRESOS"}
             </span>
             <span className="size-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
               <HugeiconsIcon icon={ArrowDown01Icon} size={15} />
@@ -89,7 +100,9 @@ export function ResumenEjecutivo({ m }: { m: Metricas }) {
                 {format(m.egresos)}
               </span>
             </div>
-            <p className="text-xs text-slate-500">Gasto operativo y desembolsos</p>
+            <p className="text-xs text-slate-500">
+              {unidad !== "todos" ? "Gasto consolidado global" : "Gasto operativo y desembolsos"}
+            </p>
           </div>
         </div>
 
@@ -137,11 +150,11 @@ export function ResumenEjecutivo({ m }: { m: Metricas }) {
           </div>
         </div>
 
-        {/* Col 4: Estudiantes Matriculados */}
+        {/* Col 4: Estudiantes Matriculados / Servicios Realizados */}
         <div className="p-5 flex flex-col justify-between space-y-3 bg-white">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              ESTUDIANTES MATRICULADOS
+              {esServicios ? "SERVICIOS REALIZADOS" : "ESTUDIANTES MATRICULADOS"}
             </span>
             <span className="size-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200/60">
               <HugeiconsIcon icon={UserGroupIcon} size={15} />
@@ -150,13 +163,15 @@ export function ResumenEjecutivo({ m }: { m: Metricas }) {
           <div className="space-y-1">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight tabular-nums">
-                {m.estudiantes_matriculados}
+                {esServicios ? serviciosCount : m.estudiantes_matriculados}
               </span>
               <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                Activos
+                {esServicios ? "Ejecutados" : "Activos"}
               </span>
             </div>
-            <p className="text-xs text-slate-500">Matrículas e inscripciones vigentes</p>
+            <p className="text-xs text-slate-500">
+              {esServicios ? "Reservas y servicios contratados" : "Matrículas e inscripciones vigentes"}
+            </p>
           </div>
         </div>
       </div>

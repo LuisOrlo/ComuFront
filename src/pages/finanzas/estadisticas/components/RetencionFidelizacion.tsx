@@ -13,20 +13,30 @@ function getInitials(name?: string) {
 
 export function RetencionFidelizacion({
   topEstudiantes,
+  unidad = "todos",
 }: {
   topEstudiantes: TopEstudiante[]
+  unidad?: string
 }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   if (!topEstudiantes?.length) return null
 
+  const esServicios = unidad === "servicios"
+
   return (
     <section className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100">
         <div>
-          <h2 className="text-base font-bold text-slate-900 tracking-tight">Estudiantes</h2>
-          <p className="text-xs text-slate-500">Top 10 alumnos por volumen de facturación</p>
+          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+            {esServicios ? "Clientes de Servicios" : "Estudiantes"}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {esServicios
+              ? `Top ${topEstudiantes.length} clientes por facturación en servicios`
+              : `Top ${topEstudiantes.length} alumnos por volumen de facturación`}
+          </p>
         </div>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-[#fd761a] bg-orange-50 border border-orange-200/60">
           <HugeiconsIcon icon={Award01Icon} size={15} />
@@ -39,7 +49,7 @@ export function RetencionFidelizacion({
           <thead>
             <tr className="bg-slate-100/80 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
               <th className="py-2.5 px-3 rounded-l-lg w-12 text-center">#</th>
-              <th className="py-2.5 px-3">Estudiante</th>
+              <th className="py-2.5 px-3">{esServicios ? "Cliente / Empresa" : "Estudiante"}</th>
               <th className="py-2.5 px-3 text-right rounded-r-lg">Total ingresos</th>
             </tr>
           </thead>

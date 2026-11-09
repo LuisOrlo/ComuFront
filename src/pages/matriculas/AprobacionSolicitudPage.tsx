@@ -12,7 +12,6 @@ import {
   BookOpenIcon,
   PaymentIcon,
   Image01Icon,
-  DashboardSquareIcon,
   Alert02Icon,
 } from "@hugeicons/core-free-icons"
 import { cursosService, type CursoAbierto } from "@/services/cursos.service"
@@ -21,7 +20,6 @@ import { validarImagen } from "./AprobacionUtils"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { RejectModal } from "@/components/RejectModal"
 import { ImageZoom } from "./ImageZoom"
-import { SolicitudResumenTab } from "./components/solicitudes/SolicitudResumenTab"
 import { SolicitudEstudianteTab } from "./components/solicitudes/SolicitudEstudianteTab"
 import { SolicitudCursoTab } from "./components/solicitudes/SolicitudCursoTab"
 import { SolicitudPagoTab } from "./components/solicitudes/SolicitudPagoTab"
@@ -32,10 +30,9 @@ import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 
-type TabId = "resumen" | "estudiante" | "curso" | "pago" | "documento"
+type TabId = "estudiante" | "curso" | "pago" | "documento"
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
-  { id: "resumen", label: "Resumen", icon: DashboardSquareIcon },
   { id: "estudiante", label: "Estudiante", icon: UserIcon },
   { id: "curso", label: "Curso", icon: BookOpenIcon },
   { id: "pago", label: "Pago", icon: PaymentIcon },
@@ -79,7 +76,7 @@ export function AprobacionSolicitudPage() {
 
   const [selected, setSelected] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabId>("resumen")
+  const [activeTab, setActiveTab] = useState<TabId>("estudiante")
 
   const [adjacent, setAdjacent] = useState<{
     prev_id: string | null; next_id: string | null; first_id: string | null
@@ -703,20 +700,6 @@ export function AprobacionSolicitudPage() {
 
       {/* 3. Main Content Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8">
-        {activeTab === "resumen" && (
-          <SolicitudResumenTab
-            selected={selected}
-            getCursoNombre={getCursoNombre}
-            setExpandedImageUrl={setExpandedImageUrl}
-            cursoCatalogo={cursoCatalogo}
-            cursoPrecio={cursoPrecio}
-            cursoModalidad={cursoModalidad}
-            cursoCiudad={cursoCiudad}
-            cursoHorario={cursoHorario}
-            onSelectTab={(t) => setActiveTab(t)}
-          />
-        )}
-
         {activeTab === "estudiante" && (
           <SolicitudEstudianteTab
             selected={selected}

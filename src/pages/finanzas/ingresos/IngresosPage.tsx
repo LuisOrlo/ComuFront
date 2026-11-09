@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback, useEffect } from "react"
-import { FileDown } from "lucide-react"
+import { FileDown, Building2, GraduationCap, Clapperboard } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { financeService } from "@/services/finance.service"
 import { toast } from "sonner"
 import { IngresosKPIs } from "./components/IngresosKPIs"
@@ -20,6 +21,7 @@ export function IngresosPage() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [page, setPage] = useState(1)
   const [lastPage, setLastPage] = useState(1)
+  const [unidadNegocio, setUnidadNegocio] = useState<"todos" | "academia" | "servicios">("todos")
   const [filtros, setFiltros] = useState({
     categoria: "",
     metodo_pago: "",
@@ -32,6 +34,7 @@ export function IngresosPage() {
     setLoading(true)
     try {
       const params: any = { per_page: 25, page }
+      if (unidadNegocio !== "todos") params.unidad_negocio = unidadNegocio
       if (filtros.categoria) params.categoria = filtros.categoria
       if (filtros.metodo_pago) params.metodo_pago = filtros.metodo_pago
       if (filtros.search) params.search = filtros.search
@@ -50,7 +53,13 @@ export function IngresosPage() {
     } finally {
       setLoading(false)
     }
-  }, [filtros, page])
+  }, [filtros, page, unidadNegocio])
+
+  const handleUnidadChange = (nuevaUnidad: "todos" | "academia" | "servicios") => {
+    setUnidadNegocio(nuevaUnidad)
+    setFiltros(prev => ({ ...prev, categoria: "" }))
+    setPage(1)
+  }
 
   const handleFiltrosChange = useCallback((newFiltros: any) => {
     setFiltros(newFiltros)
@@ -91,8 +100,89 @@ export function IngresosPage() {
           </div>
         </div>
 
+        {/* Selector de Unidad de Negocio (Macro-Filtro de Empresa) */}
+        <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs w-fit">
+          <button
+            type="button"
+            onClick={() => handleUnidadChange("todos")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              unidadNegocio === "todos"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+            )}
+          >
+            <Building2 size={15} />
+            <span>Consolidado</span>
+            {totales.total != null && (
+              <span
+                className={cn(
+                  "ml-1 text-[11px] px-2 py-0.5 rounded-full font-semibold",
+                  unidadNegocio === "todos"
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-100 text-slate-700"
+                )}
+              >
+                ${Number(totales.total || 0).toLocaleString("es-EC", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleUnidadChange("academia")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              unidadNegocio === "academia"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+            )}
+          >
+            <GraduationCap size={15} />
+            <span>Academia & Formación</span>
+            {totales.academia_total != null && (
+              <span
+                className={cn(
+                  "ml-1 text-[11px] px-2 py-0.5 rounded-full font-semibold",
+                  unidadNegocio === "academia"
+                    ? "bg-white/20 text-white"
+                    : "bg-blue-50 text-blue-700"
+                )}
+              >
+                ${Number(totales.academia_total || 0).toLocaleString("es-EC", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleUnidadChange("servicios")}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+              unidadNegocio === "servicios"
+                ? "bg-[#fd761a] text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+            )}
+          >
+            <Clapperboard size={15} />
+            <span>Servicios & Productora</span>
+            {totales.servicios_total != null && (
+              <span
+                className={cn(
+                  "ml-1 text-[11px] px-2 py-0.5 rounded-full font-semibold",
+                  unidadNegocio === "servicios"
+                    ? "bg-white/20 text-white"
+                    : "bg-orange-50 text-[#fd761a]"
+                )}
+              >
+                ${Number(totales.servicios_total || 0).toLocaleString("es-EC", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* 1. Métricas Resumen Bento KPIs */}
-        <IngresosKPIs totales={totales} />
+        <IngresosKPIs totales={totales} unidadNegocio={unidadNegocio} />
 
         {/* 2. Sección Analítica con Gráficos y Métodos */}
         <IngresosGraficos
@@ -106,6 +196,7 @@ export function IngresosPage() {
           filtros={filtros}
           onChange={handleFiltrosChange}
           analytics={analytics}
+          unidadNegocio={unidadNegocio}
         />
 
         {/* 4. Tabla Detallada de Ingresos con Paginación */}

@@ -30,6 +30,9 @@ import { ciudadesService, type Ciudad } from "@/services/ciudades.service"
 import { personasService } from "@/services/personas.service"
 import { TallerSesionesCalendar, type SesionFormItem } from "./components/TallerSesionesCalendar"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
+import { RecordatoriosConfigSection } from "@/components/form/RecordatoriosConfigSection"
+import type { RecordatoriosConfig } from "@/services/recordatorios.service"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 const ECUADOR_CIUDADES = [
@@ -153,6 +156,8 @@ export function TallerFormPage() {
   const [mostrarPrecioMatricula, setMostrarPrecioMatricula] = useState(false)
   const [sesiones, setSesiones] = useState<SesionFormItem[]>([])
   const [showRegenerationConfirm, setShowRegenerationConfirm] = useState(false)
+  const [recordatoriosConfig, setRecordatoriosConfig] = useState<RecordatoriosConfig | undefined>(undefined)
+  const queryClient = useQueryClient()
 
   // Al cambiar de paso, volver al inicio de la página
   useLayoutEffect(() => {
@@ -187,6 +192,9 @@ export function TallerFormPage() {
           precio_matricula: taller.precio_matricula != null ? String(taller.precio_matricula) : "",
         })
         setMostrarPrecioMatricula(Number(taller.precio_matricula) > 0)
+        if (taller.recordatorios_config) {
+          setRecordatoriosConfig(taller.recordatorios_config as RecordatoriosConfig)
+        }
         if (taller.instructor) {
           setInstructorNombre(`${taller.instructor.nombres} ${taller.instructor.apellidos}`)
         }
@@ -578,6 +586,10 @@ export function TallerFormPage() {
         data.confirmar_regeneracion_sesiones = true
       }
 
+      if (recordatoriosConfig) {
+        data.recordatorios_config = recordatoriosConfig
+      }
+
       if (isEdit) {
         await tallerService.actualizar(id!, data)
         toast.success("Taller actualizado exitosamente")
@@ -585,6 +597,7 @@ export function TallerFormPage() {
         await tallerService.crear(data)
         toast.success("Taller creado exitosamente")
       }
+      queryClient.invalidateQueries({ queryKey: ["recordatorios"] })
       navigate("/talleres")
     } catch (err: unknown) {
       const axiosData = (err as { response?: { data?: { mensaje?: string; requiere_confirmacion_regeneracion?: boolean } } })?.response?.data
@@ -1460,6 +1473,15 @@ export function TallerFormPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Recordatorios y Avisos Section */}
+                <RecordatoriosConfigSection
+                  tipo="taller"
+                  value={recordatoriosConfig}
+                  onChange={setRecordatoriosConfig}
+                  fechaInicioReferencia={form.fecha}
+                  fechaFinReferencia={form.fecha_fin}
+                />
 
                 {/* Completion Final Badge */}
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between mt-2 flex-wrap gap-2">

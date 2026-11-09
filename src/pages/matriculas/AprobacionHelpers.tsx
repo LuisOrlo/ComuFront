@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Edit01Icon } from "@hugeicons/core-free-icons"
 import { COLORS } from "@/lib/constants"
@@ -79,6 +79,7 @@ export function EF({
   maxLength,
   uppercase = true,
   customDisplay,
+  searchable = false,
 }: {
   icon: any
   label: string
@@ -99,8 +100,22 @@ export function EF({
   maxLength?: number
   uppercase?: boolean
   customDisplay?: React.ReactNode
+  searchable?: boolean
 }) {
   const [error, setError] = useState<string | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!searchOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setSearchOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [searchOpen])
 
   const raw =
     data?.perfil_estudiante?.[field] ??
@@ -188,9 +203,57 @@ export function EF({
             {label}:
           </span>
 
-          {options && options.length > 0 ? (
+          {searchable && options && options.length > 0 ? (
+            <div ref={searchContainerRef} className="relative flex-1">
+              <input
+                type="text"
+                value={editVal}
+                onChange={(e) => {
+                  setError(null)
+                  onChange(e.target.value)
+                  setSearchOpen(true)
+                }}
+                onFocus={() => setSearchOpen(true)}
+                placeholder={`Buscar ${label.toLowerCase()}...`}
+                className="w-full px-3 py-2 text-sm border rounded-lg outline-none bg-white shadow-xs focus:ring-2 focus:ring-blue-200 transition-shadow uppercase font-medium"
+                style={{ borderColor: error ? "oklch(0.5 0.15 20)" : COLORS.ACCENT }}
+                autoFocus
+                disabled={saving}
+              />
+              {searchOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1">
+                  {(() => {
+                    const filtered = options.filter(
+                      (opt) => !editVal || opt.label.toLowerCase().includes(editVal.toLowerCase())
+                    )
+                    if (filtered.length === 0) {
+                      return <div className="px-3.5 py-2 text-xs text-slate-400">Sin resultados</div>
+                    }
+                    return filtered.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          onChange(opt.value)
+                          setError(null)
+                          setSearchOpen(false)
+                        }}
+                        className="w-full text-left px-3.5 py-1.5 text-xs font-medium hover:bg-slate-100 text-slate-800 transition-colors uppercase flex items-center justify-between cursor-pointer"
+                      >
+                        <span>{opt.label}</span>
+                        {opt.value.toLowerCase() === editVal.toLowerCase() && (
+                          <span className="text-[10px] text-orange-600 font-bold">✓</span>
+                        )}
+                      </button>
+                    ))
+                  })()}
+                </div>
+              )}
+            </div>
+          ) : options && options.length > 0 ? (
             <select
-              value={editVal}
+              value={options.find((o) => o.value.toLowerCase() === editVal.toLowerCase())?.value || editVal}
               onChange={(e) => {
                 setError(null)
                 onChange(e.target.value)
