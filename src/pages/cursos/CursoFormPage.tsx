@@ -22,7 +22,6 @@ import {
   Info,
   ShieldCheck,
   Sparkles,
-  AlertTriangle,
   RefreshCw,
   BookOpen,
 } from "lucide-react"
@@ -316,19 +315,6 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
     }
   }, [form.catalogo_curso_id, numModulosDefault, form.fecha_inicio, form.fecha_fin, isEdit, calcularFechasModulos])
 
-  useEffect(() => {
-    if (form.modulos.length > 0 && form.fecha_fin && !isEdit) {
-      const lastModuleIndex = form.modulos.length - 1
-      if (form.modulos[lastModuleIndex].fecha_fin !== form.fecha_fin) {
-        setForm((prev) => {
-          const updated = [...prev.modulos]
-          updated[lastModuleIndex] = { ...updated[lastModuleIndex], fecha_fin: prev.fecha_fin }
-          return { ...prev, modulos: updated }
-        })
-      }
-    }
-  }, [form.fecha_fin, isEdit, form.modulos])
-
   const prevModalidadRef = useRef(form.modalidad)
   const prevCatalogoRef = useRef(form.catalogo_curso_id)
 
@@ -421,16 +407,6 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
     }))
   }
 
-  const hayDesalineacionFechas = useMemo(() => {
-    if (!form.fecha_inicio || !form.fecha_fin || form.modulos.length === 0) return false
-    return form.modulos.some(
-      (m) =>
-        (m.fecha_inicio && m.fecha_inicio < form.fecha_inicio) ||
-        (m.fecha_fin && m.fecha_fin > form.fecha_fin) ||
-        (m.fecha_inicio && m.fecha_fin && m.fecha_inicio > m.fecha_fin)
-    )
-  }, [form.fecha_inicio, form.fecha_fin, form.modulos])
-
   const ajustarFechasModulosAlCurso = () => {
     if (!form.fecha_inicio || !form.fecha_fin) {
       toast.error("El curso debe tener fecha de inicio y fecha de fin válidas")
@@ -519,8 +495,6 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       return form.modulos.every((m) => {
         if (!m.nombre.trim() || !m.fecha_inicio || !m.fecha_fin) return false
         if (m.fecha_inicio > m.fecha_fin) return false
-        if (form.fecha_inicio && m.fecha_inicio < form.fecha_inicio) return false
-        if (form.fecha_fin && m.fecha_fin > form.fecha_fin) return false
         return true
       })
     }
@@ -574,16 +548,12 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
           if (!mod.nombre.trim()) newErrors[`modulo_${idx}_nombre`] = "El nombre del módulo es obligatorio"
           if (!mod.fecha_inicio) {
             newErrors[`modulo_${idx}_inicio`] = "Fecha de inicio requerida"
-          } else if (form.fecha_inicio && mod.fecha_inicio < form.fecha_inicio) {
-            newErrors[`modulo_${idx}_inicio`] = `No puede ser anterior al inicio del curso (${form.fecha_inicio})`
           }
 
           if (!mod.fecha_fin) {
             newErrors[`modulo_${idx}_fin`] = "Fecha de fin requerida"
           } else if (mod.fecha_inicio && mod.fecha_fin < mod.fecha_inicio) {
             newErrors[`modulo_${idx}_fin`] = "La fecha de fin debe ser posterior a la de inicio"
-          } else if (form.fecha_fin && mod.fecha_fin > form.fecha_fin) {
-            newErrors[`modulo_${idx}_fin`] = `No puede ser posterior al fin del curso (${form.fecha_fin})`
           }
         })
       }
@@ -707,18 +677,15 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
       return
     }
 
-    // Validar coherencia estricta de fechas entre curso y módulos
+    // Validar coherencia lógica interna de fechas en cada módulo
     if (form.modulos.length > 0) {
       const tieneErrorFechas = form.modulos.some(
-        (m) =>
-          (form.fecha_fin && m.fecha_fin && m.fecha_fin > form.fecha_fin) ||
-          (form.fecha_inicio && m.fecha_inicio && m.fecha_inicio < form.fecha_inicio) ||
-          (m.fecha_inicio && m.fecha_fin && m.fecha_inicio > m.fecha_fin)
+        (m) => m.fecha_inicio && m.fecha_fin && m.fecha_inicio > m.fecha_fin
       )
       if (tieneErrorFechas) {
         setCurrentStep(5)
         validateStep(5)
-        toast.error("La fecha de fin del curso no puede ser anterior a la fecha de fin de sus módulos. Revisa las fechas en el Paso 5.")
+        toast.error("La fecha de fin de cada módulo debe ser posterior o igual a su fecha de inicio. Revisa las fechas en el Paso 5.")
         return
       }
     }
@@ -1919,31 +1886,6 @@ function calcularClasesModulo(fechaInicioStr?: string, fechaFinStr?: string, dia
                   </button>
                 )}
               </div>
-
-              {/* Warning Banner if desaligned */}
-              {hayDesalineacionFechas && (
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="text-amber-600 size-5 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-xs font-bold text-amber-900 block">
-                        Fechas desalineadas con el período del curso
-                      </span>
-                      <p className="text-xs text-amber-800 mt-0.5">
-                        Uno o más módulos tienen fechas fuera del rango del curso (inicio: {form.fecha_inicio}, fin: {form.fecha_fin}). Pulsa el botón para alinearlas de inmediato.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={ajustarFechasModulosAlCurso}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition-colors cursor-pointer shadow-xs active:scale-95"
-                  >
-                    <RefreshCw size={13} />
-                    Ajustar automáticamente
-                  </button>
-                </div>
-              )}
 
               {getError("modulos") && (
                 <p className="text-xs text-red-500 font-medium">{getError("modulos")}</p>
