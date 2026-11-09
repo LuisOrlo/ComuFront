@@ -1,28 +1,25 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react"
 import { useNavigate } from "react-router"
-import { motion, AnimatePresence } from "motion/react"
-import { HugeiconsIcon } from "@hugeicons/react"
 import {
-  Clock01Icon,
-  ArrowDown01Icon,
-  UserIcon,
-  LibraryIcon,
-  CheckmarkCircle04Icon,
-  Search01Icon,
-  Cancel01Icon,
-  Edit01Icon,
-  Calendar03Icon,
-  Add01Icon,
-  SchoolIcon,
-  Door01Icon,
-  Layers01Icon,
-  ArrowReloadHorizontalIcon,
-} from "@hugeicons/core-free-icons"
-import { COLORS } from "@/lib/constants"
+  Clock,
+  ChevronDown,
+  CircleCheckBig,
+  Search,
+  X,
+  CalendarDays,
+  Plus,
+  School,
+  DoorOpen,
+  Layers,
+  RefreshCw,
+  CircleX,
+  EllipsisVertical,
+  RotateCcw,
+} from "lucide-react"
 import { cn, formatCalendarDate, todayInEcuador } from "@/lib/utils"
 import { aulasService, type Aula, type ReservaAula } from "@/services/aulas.service"
 import { toast } from "sonner"
-import { DetalleAulaModal } from "./components/DetalleAulaModal"
+import { DetalleAulaDrawer } from "./components/DetalleAulaDrawer"
 import { ConfirmationModal } from "@/components/ConfirmationModal"
 import { clearAvailabilityCache } from "@/lib/availabilityCache"
 
@@ -50,16 +47,47 @@ const ESTADO_CONFIG: Record<
   },
   completado: {
     label: "Completado",
-    bg: "bg-emerald-50 border-emerald-200/70",
-    dot: "bg-emerald-600",
-    text: "text-emerald-800",
+    bg: "bg-slate-100 border-slate-200/80",
+    dot: "bg-slate-400",
+    text: "text-slate-600",
   },
   cancelado: {
     label: "Cancelado",
     bg: "bg-red-50 border-red-200/70",
     dot: "bg-red-500",
-    text: "text-red-800",
+    text: "text-red-700",
   },
+}
+
+const FILTROS_ESTADO: Record<string, (reserva: ReservaAula) => boolean> = {
+  todos: () => true,
+  activos: (reserva) => ["reservado", "confirmado", "en_progreso"].includes(reserva.estado),
+  reservados: (reserva) => ["reservado", "confirmado"].includes(reserva.estado),
+  en_curso: (reserva) => reserva.estado === "en_progreso",
+  completados: (reserva) => reserva.estado === "completado",
+  cancelados: (reserva) => reserva.estado === "cancelado",
+}
+
+const AVATAR_STYLES = [
+  "bg-slate-900 text-white",
+  "bg-[#ffdbca] text-[#783200]",
+  "bg-[#dae2fd] text-[#131b2e]",
+  "bg-[#fcdeb5] text-[#574425]",
+  "bg-[#e5eeff] text-[#0b1c30]",
+]
+
+function getInitials(nombre: string): string {
+  const parts = nombre.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  const first = parts[0]?.[0] ?? ""
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : ""
+  return (first + last).toUpperCase() || "?"
+}
+
+function getAvatarStyle(seed: string): string {
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0
+  return AVATAR_STYLES[Math.abs(hash) % AVATAR_STYLES.length]
 }
 
 function getDurationText(horaInicio?: string, horaFin?: string): string {
@@ -73,6 +101,8 @@ function getDurationText(horaInicio?: string, horaFin?: string): string {
   return Number.isInteger(hrs) ? `${hrs}h` : `${hrs.toFixed(1)}h`
 }
 
+const CARD_SHADOW = "shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]"
+
 export function HistorialAulasPage() {
   const navigate = useNavigate()
   const [reservas, setReservas] = useState<ReservaAula[]>([])
@@ -81,9 +111,12 @@ export function HistorialAulasPage() {
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [estadoFilter, setEstadoFilter] = useState("todos")
+  const [pagoFilter, setPagoFilter] = useState<"todos" | "pagado" | "pendiente">("todos")
+  const [sortOrder, setSortOrder] = useState<"recientes" | "antiguos" | "monto">("recientes")
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const searchRef = useRef<HTMLInputElement>(null)
 
-  // Modal de detalle
+  // Panel lateral de detalle
   const [selectedReserva, setSelectedReserva] = useState<ReservaAula | null>(null)
   const [detalleModalOpen, setDetalleModalOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<ReservaAula | null>(null)
@@ -138,6 +171,17 @@ export function HistorialAulasPage() {
     return () => clearTimeout(timer)
   }, [searchInput])
 
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", handleShortcut)
+    return () => window.removeEventListener("keydown", handleShortcut)
+  }, [])
+
   const getAulaObj = useCallback(
     (aulaId: string) => {
       return aulas.find((x) => x.id === aulaId)
@@ -166,85 +210,123 @@ export function HistorialAulasPage() {
       const q = search.toLowerCase()
       list = list.filter((r) => {
         const nombre = getClienteNombre(r).toLowerCase()
-        const aula = getAulaNombre(r.aula_id).toLowerCase()
-        return nombre.includes(q) || aula.includes(q)
+        return nombre.includes(q)
       })
     }
 
-    if (estadoFilter === "activos") {
-      list = list.filter(
-        (r) => r.estado === "reservado" || r.estado === "confirmado" || r.estado === "en_progreso",
-      )
-    } else if (estadoFilter !== "todos") {
-      list = list.filter((r) => r.estado === estadoFilter)
+    const matcher = FILTROS_ESTADO[estadoFilter]
+    if (matcher) list = list.filter(matcher)
+
+    if (pagoFilter !== "todos") {
+      list = list.filter((r) => {
+        const cuenta = r.cuenta_por_cobrar
+        const saldo = cuenta ? Number(cuenta.saldo_pendiente) : Number(r.precio_total) || 0
+        const isPagado =
+          cuenta?.estado === "pagado" ||
+          saldo <= 0 ||
+          (cuenta && Number(cuenta.monto_abonado) >= Number(r.precio_total))
+        return pagoFilter === "pagado" ? isPagado : !isPagado
+      })
     }
 
-    return list.sort((a, b) => {
-      const dateDiff = (b.fecha_reserva || "").localeCompare(a.fecha_reserva || "")
-      if (dateDiff !== 0) return dateDiff
-      return (b.hora_inicio || "").localeCompare(a.hora_inicio || "")
+    return [...list].sort((a, b) => {
+      if (sortOrder === "monto") return Number(b.precio_total || 0) - Number(a.precio_total || 0)
+      const keyA = `${a.fecha_reserva || ""} ${a.hora_inicio || ""}`
+      const keyB = `${b.fecha_reserva || ""} ${b.hora_inicio || ""}`
+      return sortOrder === "antiguos" ? keyA.localeCompare(keyB) : keyB.localeCompare(keyA)
     })
-  }, [reservas, search, estadoFilter, getAulaNombre, getClienteNombre])
+  }, [reservas, search, estadoFilter, pagoFilter, sortOrder, getClienteNombre])
 
   const stats = useMemo(() => {
-    return {
-      total: reservas.length,
-      activos: reservas.filter(
-        (r) => r.estado === "reservado" || r.estado === "confirmado" || r.estado === "en_progreso",
-      ).length,
-      completados: reservas.filter((r) => r.estado === "completado").length,
-      cancelados: reservas.filter((r) => r.estado === "cancelado").length,
-    }
+    const total = reservas.length
+    const activos = reservas.filter((r) => ["reservado", "confirmado", "en_progreso"].includes(r.estado)).length
+    const reservados = reservas.filter((r) => ["reservado", "confirmado"].includes(r.estado)).length
+    const enCurso = reservas.filter((r) => r.estado === "en_progreso").length
+    const completados = reservas.filter((r) => r.estado === "completado").length
+    const cancelados = reservas.filter((r) => r.estado === "cancelado").length
+    return { total, activos, reservados, enCurso, completados, cancelados }
   }, [reservas])
+
+  const periodoLabel = useMemo(() => {
+    const label = new Date()
+      .toLocaleDateString("es-EC", { month: "short", year: "numeric" })
+      .replace(".", "")
+    return label.charAt(0).toUpperCase() + label.slice(1)
+  }, [])
+
+  const pctCompletados = stats.total ? Math.round((stats.completados / stats.total) * 100) : 0
+  const pctCancelados = stats.total ? Math.round((stats.cancelados / stats.total) * 100) : 0
 
   const statCards = [
     {
       key: "todos",
-      label: "TOTAL ALQUILERES",
+      label: "Total alquileres",
       value: stats.total,
-      subtitle: "Periodo actual",
-      icon: Layers01Icon,
-      iconBg: "bg-slate-100 text-slate-600",
+      badge: (
+        <span className="rounded bg-[#FFF7ED] px-1.5 py-0.5 text-[11px] font-semibold text-[#9d4300]">
+          {periodoLabel}
+        </span>
+      ),
+      icon: Layers,
+      iconBg: "bg-[#FFF7ED] text-[#9d4300]",
     },
     {
       key: "activos",
-      label: "ACTIVAS / EN CURSO",
+      label: "Activas / En curso",
       value: stats.activos,
-      subtitle: (
-        <span className="inline-flex items-center gap-1 text-[11px] text-[#9d4300] bg-[#ffdbca]/60 px-2 py-0.5 rounded-full font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#fd761a]" />
-          En progreso
+      badge: (
+        <span className="inline-flex items-center gap-1 rounded bg-[#ECFDF5] px-1.5 py-0.5 text-[11px] font-semibold text-[#10B981]">
+          <span className="size-1.5 animate-pulse rounded-full bg-[#10B981]" />
+          En curso
         </span>
       ),
-      icon: Clock01Icon,
-      iconBg: "bg-[#ffdbca] text-[#9d4300]",
+      icon: Clock,
+      iconBg: "bg-[#ECFDF5] text-[#10B981]",
     },
     {
-      key: "completado",
-      label: "COMPLETADOS",
+      key: "completados",
+      label: "Completadas",
       value: stats.completados,
-      subtitle: "Finalizadas",
-      icon: CheckmarkCircle04Icon,
-      iconBg: "bg-emerald-50 text-emerald-700",
+      badge: (
+        <span className="text-xs font-medium text-slate-500">
+          {stats.total ? `${pctCompletados}% del total` : "Sin registros"}
+        </span>
+      ),
+      icon: CircleCheckBig,
+      iconBg: "bg-slate-100 text-slate-500",
     },
     {
-      key: "cancelado",
-      label: "CANCELADOS",
+      key: "cancelados",
+      label: "Canceladas",
       value: stats.cancelados,
-      subtitle: "Canceladas",
-      icon: Cancel01Icon,
-      iconBg: "bg-red-50 text-red-600",
+      badge: (
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500">
+          {pctCancelados}% tasa cancel.
+        </span>
+      ),
+      icon: CircleX,
+      iconBg: "bg-slate-100 text-slate-500",
     },
+  ]
+
+  const filterTabs = [
+    { key: "todos", label: "Todos", count: stats.total },
+    { key: "reservados", label: "Reservados", count: stats.reservados },
+    { key: "en_curso", label: "En curso", count: stats.enCurso },
+    { key: "completados", label: "Completados", count: stats.completados },
+    { key: "cancelados", label: "Cancelados", count: stats.cancelados },
   ]
 
   const groupedByDate = useMemo(() => {
     const groups: Record<string, ReservaAula[]> = {}
     filtered.forEach((r) => {
-      const dateKey = formatCalendarDate(r.fecha_reserva, {
-        year: "numeric",
-        month: "long",
+      const label = formatCalendarDate(r.fecha_reserva, {
+        weekday: "long",
         day: "numeric",
-      }).toUpperCase()
+        month: "long",
+        year: "numeric",
+      })
+      const dateKey = label.charAt(0).toUpperCase() + label.slice(1)
       if (!groups[dateKey]) groups[dateKey] = []
       groups[dateKey].push(r)
     })
@@ -311,16 +393,21 @@ export function HistorialAulasPage() {
     }
   }
 
+  const limpiarFiltros = () => {
+    setSearchInput("")
+    setSearch("")
+    setEstadoFilter("todos")
+    setPagoFilter("todos")
+    setSortOrder("recientes")
+  }
+
   const hoyEcuador = todayInEcuador()
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full min-h-[450px] bg-[#f8f9ff]">
+      <div className="flex h-full min-h-[450px] items-center justify-center bg-[#f8fafc]">
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="animate-spin size-8 border-[3px] border-t-transparent rounded-full"
-            style={{ borderColor: COLORS.ACCENT }}
-          />
+          <div className="size-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-[#fd761a]" />
           <p className="text-xs font-semibold text-slate-500">Cargando historial de alquileres...</p>
         </div>
       </div>
@@ -328,51 +415,58 @@ export function HistorialAulasPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#f8f9ff] text-slate-800 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 flex flex-col gap-6">
-        {/* Header de Página (Alineación exacta con code.html) */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex flex-col">
-            <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
-              SERVICIOS
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
+    <div className="min-h-full bg-[#f8fafc] pb-16 text-slate-800">
+      <div className="flex w-full flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header de página */}
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="min-w-0">
+            
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Alquiler de Aulas
             </h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Supervisa reservas, disponibilidad de espacios y facturación de sesiones.
+            </p>
           </div>
 
-          {/* Action Cluster (Height 40px aligned) */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => navigate("/servicios/aulas/gestion")}
-              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-3.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-95",
+                CARD_SHADOW,
+              )}
               type="button"
             >
-              <HugeiconsIcon icon={SchoolIcon} size={17} className="text-slate-500" />
+              <School size={16} className="text-slate-500" />
               <span>Gestión de Aulas</span>
             </button>
             <button
-              onClick={() => navigate("/servicios/aulas/nueva-reserva")}
-              className="h-10 px-4 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              onClick={() => navigate("/servicios/aulas/agenda")}
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-lg bg-white px-3.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50 active:scale-95",
+                CARD_SHADOW,
+              )}
               type="button"
             >
-              <HugeiconsIcon icon={Add01Icon} size={17} className="text-slate-500" />
-              <span>Nueva Reserva</span>
+              <CalendarDays size={16} className="text-slate-500" />
+              <span>Agenda</span>
             </button>
             <button
-              onClick={() => navigate("/servicios/aulas/agenda")}
-              className="h-10 px-5 rounded-xl bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
+              onClick={() => navigate("/servicios/aulas/nueva-reserva")}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#fd761a] px-4 text-xs font-bold text-white shadow-[0_2px_8px_rgba(253,118,26,0.25)] transition-all hover:bg-[#ea580c] active:scale-95"
               type="button"
             >
-              <HugeiconsIcon icon={Calendar03Icon} size={17} />
-              <span>Agenda</span>
+              <Plus size={16} />
+              <span>Nueva reserva</span>
             </button>
           </div>
         </div>
 
-        {/* Summary Metrics (4-Column Bento Card Array) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Tira de KPIs */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {statCards.map((card) => {
+            const Icon = card.icon
             const isActive = estadoFilter === card.key
             return (
               <button
@@ -380,160 +474,227 @@ export function HistorialAulasPage() {
                 type="button"
                 onClick={() => setEstadoFilter(isActive ? "todos" : card.key)}
                 className={cn(
-                  "p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between h-[108px] text-left transition-all hover:shadow-md cursor-pointer active:scale-[0.99]",
-                  isActive ? "ring-2 ring-[#fd761a]/30 border-[#fd761a]" : "",
+                  "flex cursor-pointer items-center justify-between gap-2 rounded-xl bg-white p-3 text-left transition-all hover:shadow-md active:scale-[0.99]",
+                  CARD_SHADOW,
+                  isActive && "ring-2 ring-[#fd761a]/25",
                 )}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {card.label}
                   </span>
-                  <div
-                    className={cn(
-                      "size-7 rounded-lg flex items-center justify-center shrink-0",
-                      card.iconBg,
-                    )}
-                  >
-                    <HugeiconsIcon icon={card.icon} size={16} />
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-2xl font-bold tabular-nums tracking-tight text-slate-900">
+                      {card.value}
+                    </span>
+                    {card.badge}
                   </div>
                 </div>
-                <div className="flex items-baseline justify-between mt-1">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
-                    {card.value}
-                  </span>
-                  {typeof card.subtitle === "string" ? (
-                    <span className="text-xs text-slate-500 font-medium">{card.subtitle}</span>
-                  ) : (
-                    card.subtitle
-                  )}
+                <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", card.iconBg)}>
+                  <Icon size={19} />
                 </div>
               </button>
             )
           })}
         </div>
 
-        {/* History Workspace Module */}
-        <div className="flex flex-col gap-4 mt-2">
-          {/* History Section Header & Filter Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-1">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-slate-900">Historial de Alquileres</h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700 text-xs font-semibold">
-                {filtered.length}
-              </span>
+        {/* Barra de filtros */}
+        <div className={cn("space-y-3 rounded-xl border border-slate-200/80 bg-white p-3.5", CARD_SHADOW)}>
+          {/* Fila superior: Buscador + Controles de Pago, Orden y Limpiar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs md:max-w-sm">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Buscar por cliente..."
+                className="h-9 w-full rounded-lg border border-slate-200/80 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-[#fd761a]/15"
+              />
+              {searchInput ? (
+                <button
+                  onClick={() => {
+                    setSearchInput("")
+                    setSearch("")
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:text-slate-700"
+                  title="Limpiar búsqueda"
+                  type="button"
+                >
+                  <X size={14} />
+                </button>
+              ) : null}
             </div>
 
-            {/* Filter Controls (40px Height) */}
-            <div className="flex items-center gap-2.5">
-              {/* Search Field */}
-              <div className="h-10 bg-white border border-slate-200 rounded-xl px-3.5 flex items-center gap-2 shadow-xs w-full sm:w-72 focus-within:ring-2 focus-within:ring-[#fd761a]/25 focus-within:border-[#fd761a] transition-all">
-                <HugeiconsIcon icon={Search01Icon} size={16} className="text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Buscar cliente o aula…"
-                  className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                />
-                {searchInput && (
-                  <button
-                    onClick={() => {
-                      setSearchInput("")
-                      setSearch("")
-                    }}
-                    className="text-slate-400 hover:text-slate-700 p-0.5"
-                    title="Limpiar búsqueda"
-                  >
-                    <HugeiconsIcon icon={Cancel01Icon} size={13} />
-                  </button>
-                )}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50 pl-3 pr-8 text-xs text-slate-600 transition-colors hover:bg-slate-100/70">
+                <span className="font-medium text-slate-400">Pago:</span>
+                <select
+                  value={pagoFilter}
+                  onChange={(e) => setPagoFilter(e.target.value as typeof pagoFilter)}
+                  className="cursor-pointer appearance-none bg-transparent font-semibold text-slate-800 outline-none"
+                >
+                  <option value="todos">Todos los pagos</option>
+                  <option value="pagado">Pagados</option>
+                  <option value="pendiente">Pendientes</option>
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-2.5 text-slate-400" />
               </div>
 
-              {/* Quick Refresh Button */}
-              <button
-                onClick={loadData}
-                className="h-10 w-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors shadow-xs shrink-0 active:scale-95 cursor-pointer"
-                title="Actualizar datos"
-                type="button"
-              >
-                <HugeiconsIcon icon={ArrowReloadHorizontalIcon} size={16} />
-              </button>
+              <div className="relative flex h-9 items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50 pl-3 pr-8 text-xs text-slate-600 transition-colors hover:bg-slate-100/70">
+                <span className="font-medium text-slate-400">Orden:</span>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+                  className="cursor-pointer appearance-none bg-transparent font-semibold text-slate-800 outline-none"
+                >
+                  <option value="recientes">Más recientes</option>
+                  <option value="antiguos">Más antiguos</option>
+                  <option value="monto">Mayor monto</option>
+                </select>
+                <ChevronDown size={14} className="pointer-events-none absolute right-2.5 text-slate-400" />
+              </div>
+
+              {(search || estadoFilter !== "todos" || pagoFilter !== "todos" || sortOrder !== "recientes") && (
+                <button
+                  onClick={limpiarFiltros}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                  type="button"
+                >
+                  <RotateCcw size={13} />
+                  <span>Limpiar</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Group by Date Card Assembly */}
+          {/* Fila inferior: Pestañas de estado con badges bien espaciadas */}
+          <div className="border-t border-slate-100 pt-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              {filterTabs.map((tab) => {
+                const isActive = estadoFilter === tab.key
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setEstadoFilter(tab.key)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer",
+                      isActive
+                        ? "bg-slate-900 font-semibold text-white shadow-xs"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : tab.key === "en_curso" && tab.count > 0
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-slate-200/80 text-slate-600",
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla de reservas */}
+        <div className={cn("overflow-hidden rounded-xl bg-white", CARD_SHADOW)}>
+          <div className="flex items-center justify-between gap-3 bg-slate-50/80 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-bold text-slate-900">Historial de reservas</span>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-500 shadow-xs">
+                {filtered.length} registradas
+              </span>
+            </div>
+            <button
+              onClick={loadData}
+              className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-slate-700"
+              title="Actualizar datos"
+              type="button"
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
+
           {filtered.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-14 text-center space-y-3 shadow-xs">
-              <div className="size-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-                <HugeiconsIcon icon={SchoolIcon} size={28} />
+            <div className="space-y-3 p-14 text-center">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                <School size={28} />
               </div>
-              <p className="font-bold text-sm text-slate-800">
+              <p className="text-sm font-bold text-slate-800">
                 {search ? `Sin resultados para "${search}"` : "No hay reservaciones registradas"}
               </p>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="mx-auto max-w-sm text-xs text-slate-500">
                 Prueba modificando la búsqueda o realiza una nueva reserva desde el botón superior.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {groupedByDate.map(([date, items]) => {
-                const isOpen = expandedGroups[date] !== false
-                const dayTotal = getGroupTotal(items)
+            <>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-white text-[11px] uppercase tracking-wider text-slate-400">
+                      <th className="py-2.5 pl-4 pr-2 font-semibold">Cliente / Aula</th>
+                      <th className="px-3 py-2.5 font-semibold">Fecha y horario</th>
+                      <th className="px-2 py-2.5 font-semibold">Estado</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Total</th>
+                      <th className="px-3 py-2.5 font-semibold">Pago</th>
+                      <th className="w-10 py-2.5 pl-1 pr-4" />
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs text-slate-800">
+                    {groupedByDate.map(([date, items]) => {
+                      const isOpen = expandedGroups[date] !== false
+                      const dayTotal = getGroupTotal(items)
 
-                return (
-                  <div
-                    key={date}
-                    className="rounded-xl overflow-hidden shadow-xs bg-white border border-slate-200/90"
-                  >
-                    {/* Date Group Header Bar */}
-                    <div
-                      onClick={() => toggleGroup(date)}
-                      className="bg-slate-50/80 px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 transition-colors select-none border-b border-slate-100"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <motion.div animate={{ rotate: isOpen ? 0 : -90 }} transition={{ duration: 0.15 }}>
-                          <HugeiconsIcon icon={ArrowDown01Icon} size={15} className="text-slate-400" />
-                        </motion.div>
-                        <div className="size-6 rounded-md bg-slate-200/70 flex items-center justify-center text-slate-600">
-                          <HugeiconsIcon icon={Calendar03Icon} size={14} />
-                        </div>
-                        <span className="text-xs uppercase tracking-wider text-slate-900 font-bold">
-                          {date}
-                        </span>
-                        <span className="inline-block size-1 rounded-full bg-slate-300" />
-                        <span className="text-xs text-slate-500">
-                          {items.length} {items.length === 1 ? "reserva" : "reservas"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="bg-white px-3 py-1 rounded-md shadow-2xs border border-slate-200/70 flex items-center gap-1.5">
-                          <span className="text-[11px] text-slate-500 font-medium">Total día:</span>
-                          <span className="text-xs text-slate-900 font-bold">
-                            ${dayTotal.toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                      return (
+                        <Fragment key={date}>
+                          <tr className="border-b border-slate-100 bg-slate-50/80">
+                            <td colSpan={6} className="px-4 py-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleGroup(date)}
+                                className="flex w-full items-center justify-between gap-3 text-left"
+                              >
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <ChevronDown
+                                    size={14}
+                                    className={cn(
+                                      "shrink-0 text-slate-400 transition-transform",
+                                      !isOpen && "-rotate-90",
+                                    )}
+                                  />
+                                  <CalendarDays size={14} className="shrink-0 text-[#fd761a]" />
+                                  <span className="truncate text-xs font-bold text-slate-900">{date}</span>
+                                  <span className="shrink-0 text-[11px] text-slate-500">
+                                    {items.length} {items.length === 1 ? "reserva" : "reservas"}
+                                  </span>
+                                </div>
+                                <span className="shrink-0 font-mono text-[11px] text-slate-500">
+                                  ${dayTotal.toFixed(2)} total
+                                </span>
+                              </button>
+                            </td>
+                          </tr>
 
-                    {/* Reservation Rows Container */}
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: "auto" }}
-                          exit={{ height: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="flex flex-col divide-y divide-slate-100">
-                            {items.map((r) => {
+                          {isOpen &&
+                            items.map((r) => {
                               const estado = ESTADO_CONFIG[r.estado] || ESTADO_CONFIG.reservado
                               const clienteNombre = getClienteNombre(r)
                               const aula = getAulaObj(r.aula_id)
                               const aulaNombre = aula?.nombre || getAulaNombre(r.aula_id)
                               const duration = getDurationText(r.hora_inicio, r.hora_fin)
+                              const isSelected = detalleModalOpen && selectedReserva?.id === r.id
 
-                              // Estado de pago
                               const cuenta = r.cuenta_por_cobrar
                               const saldo = cuenta
                                 ? Number(cuenta.saldo_pendiente)
@@ -546,225 +707,234 @@ export function HistorialAulasPage() {
                                 !isPagado && cuenta && Number(cuenta.monto_abonado) > 0
 
                               return (
-                                <div
+                                <tr
                                   key={r.id}
-                                  className="px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors duration-150 group"
+                                  onClick={() => handleOpenDetalle(r)}
+                                  className={cn(
+                                    "cursor-pointer border-b border-slate-100 transition-colors last:border-b-0 hover:bg-slate-50/70",
+                                    isSelected && "bg-orange-50/60 shadow-[inset_3px_0_0_0_#fd761a]",
+                                  )}
                                 >
-                                  {/* Left Column: Classroom & Client Profile Details */}
-                                  <div className="flex items-center gap-3.5 min-w-0">
-                                    <div
-                                      className={cn(
-                                        "size-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition-colors",
-                                        r.persona_id
-                                          ? "bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white"
-                                          : "bg-[#ffdbca]/50 text-[#9d4300] border border-[#ffdbca] group-hover:bg-[#fd761a] group-hover:text-white",
-                                      )}
-                                    >
-                                      <HugeiconsIcon
-                                        icon={r.persona_id ? UserIcon : LibraryIcon}
-                                        size={20}
-                                      />
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenDetalle(r)}
-                                          className="text-[15px] leading-snug font-semibold text-slate-900 group-hover:text-[#fd761a] truncate transition-colors text-left cursor-pointer"
-                                        >
-                                          {clienteNombre}
-                                        </button>
-                                      </div>
-                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
-                                        <span className="inline-flex items-center gap-1">
-                                          <HugeiconsIcon
-                                            icon={SchoolIcon}
-                                            size={14}
-                                            className="text-[#fd761a]"
-                                          />
-                                          <strong className="font-medium text-slate-800">
-                                            {aulaNombre}
-                                          </strong>
-                                          {aula?.capacidad ? ` · Capacidad ${aula.capacidad} pers.` : ""}
-                                        </span>
-                                        <span className="inline-block size-1 rounded-full bg-slate-300" />
-                                        <span className="inline-flex items-center gap-1">
-                                          <HugeiconsIcon
-                                            icon={Clock01Icon}
-                                            size={14}
-                                            className="text-slate-400"
-                                          />
-                                          {r.hora_inicio?.substring(0, 5)} – {r.hora_fin?.substring(0, 5)}
-                                          {duration ? ` (${duration})` : ""}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Middle Column: Status Badge & Financial Amount */}
-                                  <div className="flex items-center gap-6 self-start lg:self-center shrink-0">
-                                    <div className="flex flex-col items-start lg:items-end gap-1">
-                                      <div className="relative">
-                                        <select
-                                          value={r.estado}
-                                          onChange={(e) => handleCambiarEstado(r.id, e.target.value as ReservaAula["estado"])}
-                                          disabled={updatingEstadoId === r.id}
-                                          className={cn(
-                                            "appearance-none inline-flex items-center pl-2.5 pr-6 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border cursor-pointer transition-all shadow-2xs outline-none",
-                                            estado.bg,
-                                            estado.text,
-                                            updatingEstadoId === r.id && "opacity-50 pointer-events-none"
-                                          )}
-                                          title="Cambiar estado de la reserva"
-                                        >
-                                          <option value="reservado">Reservado</option>
-                                          <option value="confirmado">Confirmado</option>
-                                          <option value="en_progreso">En progreso</option>
-                                          <option value="completado">Completado</option>
-                                          <option value="cancelado">Cancelado</option>
-                                        </select>
-                                        {updatingEstadoId === r.id ? (
-                                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                        ) : (
-                                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-[9px]">▼</span>
-                                        )}
-                                      </div>
-                                      <span
+                                  <td className="py-3 pl-4 pr-2">
+                                    <div className="flex items-center gap-2.5">
+                                      <div
                                         className={cn(
-                                          "text-[11px] font-medium",
-                                          isPagado
-                                            ? "text-emerald-700"
-                                            : isAbonado
-                                              ? "text-amber-700"
-                                              : "text-slate-500",
+                                          "flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                                          getAvatarStyle(r.id),
                                         )}
                                       >
-                                        {isPagado
-                                          ? "Pagado"
-                                          : isAbonado
-                                            ? `Abono $${Number(cuenta?.monto_abonado).toFixed(2)} · Saldo $${saldo.toFixed(2)}`
-                                            : "Pago pendiente"}
+                                        {getInitials(clienteNombre)}
+                                      </div>
+                                      <div className="flex min-w-0 flex-col">
+                                        <span className="truncate font-semibold text-slate-900">
+                                          {clienteNombre}
+                                        </span>
+                                        <span className="truncate text-[11px] text-slate-500">
+                                          {aulaNombre}
+                                          {aula?.capacidad ? ` · ${aula.capacidad} pers.` : ""}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td className="whitespace-nowrap px-3 py-3">
+                                    <div className="flex flex-col">
+                                      <span className="font-medium text-slate-900">
+                                        {formatCalendarDate(r.fecha_reserva, {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        })}
+                                      </span>
+                                      <span className="text-[11px] text-slate-500">
+                                        {r.hora_inicio?.substring(0, 5)} - {r.hora_fin?.substring(0, 5)}
+                                        {duration ? ` (${duration})` : ""}
                                       </span>
                                     </div>
+                                  </td>
 
-                                    <div className="flex flex-col items-end shrink-0 pl-2">
-                                      <span className="text-base font-bold text-slate-900 tracking-tight">
-                                        ${Number(r.precio_total).toLocaleString("es-EC", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  <td className="whitespace-nowrap px-2 py-3">
+                                    <span
+                                      className="relative inline-flex items-center"
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      <span
+                                        className={cn(
+                                          "pointer-events-none absolute left-2 size-1.5 rounded-full",
+                                          estado.dot,
+                                          r.estado === "en_progreso" && "animate-pulse",
+                                        )}
+                                      />
+                                      <select
+                                        value={r.estado}
+                                        onChange={(e) =>
+                                          handleCambiarEstado(r.id, e.target.value as ReservaAula["estado"])
+                                        }
+                                        disabled={updatingEstadoId === r.id}
+                                        title="Cambiar estado de la reserva"
+                                        className={cn(
+                                          "cursor-pointer appearance-none rounded-full border py-0.5 pl-5 pr-6 text-[10px] font-semibold uppercase tracking-wider outline-none transition-all",
+                                          estado.bg,
+                                          estado.text,
+                                          updatingEstadoId === r.id && "pointer-events-none opacity-50",
+                                        )}
+                                      >
+                                        <option value="reservado">Reservado</option>
+                                        <option value="confirmado">Confirmado</option>
+                                        <option value="en_progreso">En progreso</option>
+                                        <option value="completado">Completado</option>
+                                        <option value="cancelado">Cancelado</option>
+                                      </select>
+                                      {updatingEstadoId === r.id ? (
+                                        <span className="absolute right-1.5 top-1/2 size-2.5 -translate-y-1/2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                      ) : (
+                                        <ChevronDown
+                                          size={11}
+                                          className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 opacity-50"
+                                        />
+                                      )}
+                                    </span>
+                                  </td>
+
+                                  <td className="whitespace-nowrap px-3 py-3 text-right">
+                                    <div className="flex flex-col items-end">
+                                      <span className="font-bold tabular-nums text-slate-900">
+                                        ${Number(r.precio_total).toLocaleString("es-EC", {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        })}
                                       </span>
-                                      <span className="text-[11px] text-slate-400 font-medium">
+                                      <span className="text-[10px] text-slate-500">
                                         {aula?.precio_hora
-                                          ? `$${Number(aula.precio_hora).toFixed(0)}/sesión base`
+                                          ? `$${Number(aula.precio_hora).toFixed(0)}/h`
                                           : duration || "Tarifa plana"}
                                       </span>
                                     </div>
-                                  </div>
+                                  </td>
 
-                                  {/* Right Column: Hierarchical Operational Actions */}
-                                  <div className="flex items-center gap-2 self-end lg:self-center shrink-0 pt-2 lg:pt-0">
-                                    <button
-                                      onClick={() => handleOpenDetalle(r)}
-                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                                      type="button"
-                                    >
-                                      Detalles
-                                    </button>
-                                    <button
-                                      onClick={() => navigate(`/servicios/aulas/reservas/${r.id}/editar`)}
-                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-                                      type="button"
-                                    >
-                                      <HugeiconsIcon icon={Edit01Icon} size={14} />
-                                      <span>Editar</span>
-                                    </button>
+                                  <td className="whitespace-nowrap px-3 py-3">
                                     {isPagado ? (
-                                      <button
-                                        onClick={() => handlePago(r)}
-                                        className="px-3.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                                        type="button"
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                                        title="Pago confirmado"
                                       >
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                                        <span>Ver pagos</span>
-                                      </button>
+                                        <CircleCheckBig size={12} />
+                                        Pagado
+                                      </span>
+                                    ) : isAbonado ? (
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                                        title={`Abono $${Number(cuenta?.monto_abonado).toFixed(2)} · Saldo $${saldo.toFixed(2)}`}
+                                      >
+                                        <Clock size={11} />
+                                        Abonado
+                                      </span>
                                     ) : (
-                                      <button
-                                        onClick={() => handlePago(r)}
-                                        className="px-3.5 py-1.5 rounded-lg bg-[#fd761a] hover:opacity-95 text-white text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                                        type="button"
+                                      <span
+                                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600"
+                                        title="Pago pendiente"
                                       >
-                                        <HugeiconsIcon icon={CheckmarkCircle04Icon} size={14} />
-                                        <span>Registrar pago</span>
-                                      </button>
+                                        <Clock size={11} />
+                                        Pendiente
+                                      </span>
                                     )}
-                                  </div>
-                                </div>
+                                  </td>
+
+                                  <td className="py-3 pl-1 pr-4 text-center">
+                                    <button
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        handleOpenDetalle(r)
+                                      }}
+                                      className="flex size-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                      title="Ver detalle"
+                                      type="button"
+                                    >
+                                      <EllipsisVertical size={17} />
+                                    </button>
+                                  </td>
+                                </tr>
                               )
                             })}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )
-              })}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-              {/* Footnote / Audit Metadata Bar */}
-              <div className="px-5 py-3 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-500 text-xs shadow-2xs">
-                <span className="font-medium">
-                  Mostrando {filtered.length} de {reservas.length} reservaciones programadas
+              <div className="flex flex-col items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row">
+                <span>
+                  Mostrando <span className="font-semibold text-slate-900">{filtered.length}</span> de{" "}
+                  {reservas.length} reservas registradas
                 </span>
                 <div className="flex items-center gap-1.5 font-medium">
                   <span>Datos sincronizados</span>
-                  <HugeiconsIcon icon={Clock01Icon} size={13} className="text-slate-400" />
+                  <Clock size={13} className="text-slate-400" />
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
-        {/* Quick Room Availability & Occupancy Insights Strip */}
+        {/* Disponibilidad de aulas */}
         {aulas.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-            {aulas.slice(0, 3).map((aula) => {
-              const reservasHoyAula = reservas.filter(
-                (r) =>
-                  r.aula_id === aula.id &&
-                  r.fecha_reserva === hoyEcuador &&
-                  r.estado !== "cancelado",
-              )
+          <section className="mt-2">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-900">Disponibilidad de aulas</h2>
+              <span className="text-[11px] font-medium text-slate-500">Hoy</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {aulas.slice(0, 3).map((aula) => {
+                const reservasHoyAula = reservas.filter(
+                  (r) =>
+                    r.aula_id === aula.id &&
+                    r.fecha_reserva === hoyEcuador &&
+                    r.estado !== "cancelado",
+                )
 
-              return (
-                <div
-                  key={aula.id}
-                  className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3.5 hover:border-slate-300 transition-colors"
-                >
-                  <div className="size-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
-                    <HugeiconsIcon icon={Door01Icon} size={20} />
+                return (
+                  <div
+                    key={aula.id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl bg-white p-3 transition-colors hover:bg-slate-50/60",
+                      CARD_SHADOW,
+                    )}
+                  >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <DoorOpen size={19} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-xs font-bold text-slate-900">{aula.nombre}</span>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            reservasHoyAula.length > 0
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-emerald-50 text-emerald-700",
+                          )}
+                        >
+                          {reservasHoyAula.length > 0 ? "Ocupada" : "Disponible"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                        {aula.capacidad ? `Cap. ${aula.capacidad} · ` : ""}
+                        {reservasHoyAula.length > 0
+                          ? `${reservasHoyAula.length} reserva(s) hoy`
+                          : `$${Number(aula.precio_hora || 0).toFixed(0)}/h`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-slate-900 truncate">
-                      {aula.nombre}
-                      {aula.capacidad ? ` · Cap. ${aula.capacidad}` : ""}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[11px] font-medium truncate mt-0.5",
-                        reservasHoyAula.length > 0 ? "text-amber-700" : "text-emerald-700",
-                      )}
-                    >
-                      {reservasHoyAula.length > 0
-                        ? `${reservasHoyAula.length} reserva(s) hoy`
-                        : `Disponible · $${Number(aula.precio_hora || 0).toFixed(0)}/sesión`}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </section>
         )}
       </div>
 
-      {/* Modal de Detalle de Alquiler de Aula */}
-      <DetalleAulaModal
+      {/* Panel lateral de detalle de alquiler */}
+      <DetalleAulaDrawer
         isOpen={detalleModalOpen}
         onClose={() => setDetalleModalOpen(false)}
         reserva={selectedReserva}

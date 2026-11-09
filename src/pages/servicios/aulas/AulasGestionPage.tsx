@@ -203,16 +203,8 @@ export function AulasGestionPage() {
       <header className="shrink-0 px-4 sm:px-6 lg:px-8 py-5 border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              <span style={{ color: COLORS.ACCENT }}>Servicios</span>
-              <span className="text-slate-300">/</span>
-              <Link to="/servicios/aulas" className="hover:text-slate-600 transition-colors">
-                Aulas
-              </Link>
-              <span className="text-slate-300">/</span>
-              <span className="text-slate-700">Catálogo de Espacios</span>
-            </div>
-            <div className="flex items-center gap-3 mt-1.5">
+           
+            <div className="flex items-center gap-3 mt-1.3">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 Gestión de Aulas
               </h1>

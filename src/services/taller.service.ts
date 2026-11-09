@@ -244,6 +244,11 @@ export const tallerService = {
     return res.data
   },
 
+  async transferirACurso(id: string, data: { curso_abierto_id: string }): Promise<{ mensaje: string; solicitud_id: string; data?: unknown }> {
+    const res = await api.post(`${PREFIX}/inscripciones-talleres/${id}/transferir-a-curso`, data)
+    return res.data
+  },
+
   async eliminarInscripcion(id: string) {
     const res = await api.delete(`${PREFIX}/inscripciones-talleres/${id}`)
     return res.data

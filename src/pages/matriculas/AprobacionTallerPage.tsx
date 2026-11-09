@@ -436,7 +436,7 @@ export function AprobacionTallerPage() {
         )}
 
         {activeTab === "taller" && (
-          <TallerTallerTab selected={selected} />
+          <TallerTallerTab selected={selected} onRefresh={fetchDetail} />
         )}
 
         {activeTab === "pago" && (
