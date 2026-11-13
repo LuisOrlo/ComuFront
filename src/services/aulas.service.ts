@@ -87,7 +87,7 @@ export const aulasService = {
     return data.data
   },
 
-  createReserva: async (reserva: Partial<ReservaAula>) => {
+  createReserva: async (reserva: Partial<ReservaAula> & { pago?: unknown }) => {
     const { data } = await api.post<{ data: ReservaAula }>("/academic/servicios/reservas-aulas", reserva)
     return data.data
   },
@@ -96,6 +96,7 @@ export const aulasService = {
     persona_id?: string | null
     cliente_externo_id?: string | null
     reservas: Array<Record<string, unknown>>
+    pago?: unknown
   }) => {
     const { data } = await api.post<{ data: ReservaAula[] }>("/academic/servicios/reservas-aulas/lote", payload)
     return data.data

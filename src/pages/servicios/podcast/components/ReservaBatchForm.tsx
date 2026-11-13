@@ -32,6 +32,7 @@ import { personasService, type Persona } from "@/services/personas.service"
 import { clientesService, type ClienteExterno } from "@/services/clientes.service"
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
+import { SeccionPagoInicialServicio, type PagoInicialData } from "@/components/servicios/SeccionPagoInicialServicio"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -141,6 +142,7 @@ export function ReservaBatchForm({
   const [showNuevoCliente, setShowNuevoCliente] = useState(false)
   const [reservas, setReservas] = useState<Draft[]>([blank()])
   const [saving, setSaving] = useState(false)
+  const [pagoData, setPagoData] = useState<PagoInicialData | null>(null)
   const clienteRef = useRef<HTMLDivElement>(null)
 
   // Carga de paquetes y personal institucional operativo (excluyendo admin y secretaria)
@@ -362,7 +364,12 @@ export function ReservaBatchForm({
 
     setSaving(true)
     try {
-      await podcastService.createReservasBatch({
+      const payload: {
+        persona_id?: string | null
+        cliente_externo_id?: string | null
+        reservas: Array<Record<string, unknown>>
+        pago?: PagoInicialData
+      } = {
         persona_id: cliente.tipo === "persona" ? cliente.id : null,
         cliente_externo_id: cliente.tipo === "cliente_externo" ? cliente.id : null,
         reservas: reservas.map((r) => {
@@ -390,7 +397,13 @@ export function ReservaBatchForm({
             })),
           }
         }),
-      })
+      }
+
+      if (pagoData) {
+        payload.pago = pagoData
+      }
+
+      await podcastService.createReservasBatch(payload)
 
       toast.success(
         `${reservas.length} reserva${reservas.length === 1 ? "" : "s"} registrada${reservas.length === 1 ? "" : "s"} exitosamente`
@@ -1253,6 +1266,15 @@ export function ReservaBatchForm({
                 <span>Agregar otra sesión o fecha de podcast al lote</span>
               </button>
             </div>
+
+            {/* Sección Opcional de Pago Inicial en Lote */}
+            <SeccionPagoInicialServicio
+              precioTotalNeto={totals.sumTotal}
+              onChange={setPagoData}
+              disabled={saving}
+              isBatch={true}
+              labelServicio="Podcast"
+            />
           </div>
 
           {/* Columna Derecha: Resumen de Liquidación Consolidada (4 cols) */}

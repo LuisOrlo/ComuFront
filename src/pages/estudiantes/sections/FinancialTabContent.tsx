@@ -354,6 +354,7 @@ export function FinancialTabContent({ data, loading, onRefresh }: FinancialTabCo
                                   montoSaldo: cuenta.saldo_pendiente,
                                   montoTotal: cuenta.monto_total,
                                   concepto: cuenta.concepto,
+                                  returnUrl: `/estudiantes/${estudianteId}/academico?tab=financiero`,
                                 },
                               })
                             }

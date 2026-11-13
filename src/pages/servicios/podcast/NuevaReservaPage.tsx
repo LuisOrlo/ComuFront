@@ -37,6 +37,7 @@ import { clientesService, type ClienteExterno } from "@/services/clientes.servic
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 import { ReservaBatchForm } from "./components/ReservaBatchForm"
+import { SeccionPagoInicialServicio, type PagoInicialData } from "@/components/servicios/SeccionPagoInicialServicio"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -67,6 +68,7 @@ export function NuevaReservaIndividualPage() {
   const [titulo, setTitulo] = useState("")
   const [notas, setNotas] = useState("")
   const [saving, setSaving] = useState(false)
+  const [pagoData, setPagoData] = useState<PagoInicialData | null>(null)
   const [estadoOriginal, setEstadoOriginal] = useState<ReservaPodcast["estado"]>("pendiente")
   const [loadingReserva, setLoadingReserva] = useState(isEdit)
   const [horarioOriginal, setHorarioOriginal] = useState<{ fecha: string; horaInicio: string; horaFin: string } | null>(null)
@@ -475,6 +477,9 @@ export function NuevaReservaIndividualPage() {
         await podcastService.updateReserva(id, payload)
         toast.success("Reserva de podcast actualizada exitosamente")
       } else {
+        if (pagoData) {
+          payload.pago = pagoData
+        }
         await podcastService.createReserva(payload)
         toast.success("Reserva de podcast creada exitosamente")
       }
@@ -1348,6 +1353,16 @@ export function NuevaReservaIndividualPage() {
                 </p>
               )}
             </div>
+
+            {/* Sección Opcional de Pago Inicial / Abono */}
+            {!isEdit && (
+              <SeccionPagoInicialServicio
+                precioTotalNeto={precioTotal}
+                onChange={setPagoData}
+                disabled={saving}
+                labelServicio="Podcast"
+              />
+            )}
           </div>
 
           {/* Columna Derecha: Resumen de Liquidación y Confirmación (4 cols sticky) */}

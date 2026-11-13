@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useNavigate, useSearchParams } from "react-router"
+import { useNavigate, useSearchParams, useLocation } from "react-router"
 import { motion, AnimatePresence } from "motion/react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -90,6 +90,7 @@ function getWeekDays(monday: Date) {
 
 export function AlquileresListPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [alquileres, setAlquileres] = useState<AlquilerEquipo[]>([])
   const [vencidos, setVencidos] = useState<AlquilerEquipo[]>([])
@@ -902,6 +903,7 @@ export function AlquileresListPage() {
                                                 montoTotal: Number(a.precio_total) || 0,
                                                 montoSaldo: saldo || 0,
                                                 nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
+                                                returnUrl: location.pathname + location.search,
                                               },
                                             })
                                           }
@@ -923,6 +925,7 @@ export function AlquileresListPage() {
                                                 montoTotal: Number(a.precio_total) || 0,
                                                 montoSaldo: saldo || 0,
                                                 nombreServicio: a.equipo?.nombre || "Alquiler de Equipo",
+                                                returnUrl: location.pathname + location.search,
                                               },
                                             })
                                           }

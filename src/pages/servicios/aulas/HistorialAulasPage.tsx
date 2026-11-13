@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useLocation } from "react-router"
 import {
   Clock,
   ChevronDown,
@@ -105,6 +105,7 @@ const CARD_SHADOW = "shadow-[0_1px_3px_0_rgba(15,23,42,0.04)]"
 
 export function HistorialAulasPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [reservas, setReservas] = useState<ReservaAula[]>([])
   const [aulas, setAulas] = useState<Aula[]>([])
   const [loading, setLoading] = useState(true)
@@ -370,6 +371,7 @@ export function HistorialAulasPage() {
           ? Number(r.cuenta_por_cobrar.saldo_pendiente)
           : Number(r.precio_total) || 0,
         nombreServicio: `Alquiler de Aula ${aulaNombre}`,
+        returnUrl: location.pathname + location.search,
       },
     })
   }

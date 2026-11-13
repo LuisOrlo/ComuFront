@@ -140,11 +140,10 @@ export function MetodosPagoSplitInput({
 
   const handleAgregarMetodo = () => {
     if (metodos.length >= 5) return
-    const faltante = Math.max(0, diferenciaCentavos / 100)
     const nuevo: MetodoPagoItem = {
       id: `${componentId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       metodo_pago: "transferencia",
-      monto: faltante > 0 ? faltante.toFixed(2) : "",
+      monto: "",
       linea_pago_modulo_id: undefined,
     }
     onChange([...metodos, nuevo])
@@ -162,19 +161,16 @@ export function MetodosPagoSplitInput({
   const handleToggleMultiple = (enable: boolean) => {
     if (enable) {
       if (metodos.length === 1) {
-        const mitad = Math.floor(totalEsperadoCentavos / 2) / 100
-        const resto = (totalEsperadoCentavos - Math.round(mitad * 100)) / 100
-
         onChange([
           {
             ...metodos[0],
-            monto: mitad > 0 ? mitad.toFixed(2) : "",
+            monto: "",
             linea_pago_modulo_id: metodos[0].linea_pago_modulo_id || undefined,
           },
           {
             id: `${componentId}-${Date.now()}-sec`,
             metodo_pago: metodos[0].metodo_pago === "efectivo" ? "transferencia" : "efectivo",
-            monto: resto > 0 ? resto.toFixed(2) : "",
+            monto: "",
             linea_pago_modulo_id: undefined,
           },
         ])

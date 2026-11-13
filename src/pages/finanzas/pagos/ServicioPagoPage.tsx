@@ -324,7 +324,7 @@ export function ServicioPagoPage() {
         })
       }
       toast.success("Pago registrado exitosamente")
-      navigate("/finanzas/pagos/cuentas/servicios")
+      handleRetornar()
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.response?.data?.mensaje || "Error al registrar el pago")
     } finally {
@@ -332,7 +332,34 @@ export function ServicioPagoPage() {
     }
   }
 
-  const trxId = (state?.cuentaId || state?.servicioId || "REC").substring(0, 8).toUpperCase()
+  const handleRetornar = () => {
+    if (state?.returnUrl && typeof state.returnUrl === "string") {
+      navigate(state.returnUrl)
+      return
+    }
+
+    // Fallbacks por tipo si no vino returnUrl
+    const fallbacks: Record<string, string> = {
+      aula: "/servicios/aulas",
+      podcast: "/servicios/podcast",
+      radio: "/servicios/radio",
+      set: "/servicios/sets",
+      edicion: "/servicios/edicion-video",
+      equipo: "/servicios/equipos",
+    }
+
+    if (state?.tipo && fallbacks[state.tipo]) {
+      navigate(fallbacks[state.tipo])
+      return
+    }
+
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+
+    navigate("/finanzas/pagos/cuentas/servicios")
+  }
 
   return (
     <div className="w-full min-h-screen bg-slate-50/50 pb-16">
@@ -341,15 +368,13 @@ export function ServicioPagoPage() {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={handleRetornar}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#fd761a] transition-colors py-1 group cursor-pointer"
           >
             <HugeiconsIcon icon={ArrowLeft02Icon} size={16} className="transition-transform group-hover:-translate-x-0.5" />
-            <span>Volver a Pagos y Cobros</span>
+            <span>{state?.returnUrl || state?.tipo ? "Volver al servicio" : "Volver a Pagos y Cobros"}</span>
           </button>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider hidden sm:inline-block">
-            ID Operación: #{trxId}
-          </span>
+          
         </div>
 
         {/* Client / Concept Header & 4-Column Financial Summary Strip */}

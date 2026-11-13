@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft02Icon,
@@ -102,6 +102,7 @@ function computeDuracion(inicio?: string, fin?: string) {
 
 export function ReservaPodcastDetallePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
 
@@ -824,6 +825,7 @@ export function ReservaPodcastDetallePage() {
                         reserva.titulo ||
                         paquete?.nombre ||
                         "Reserva de Cabina de Podcast",
+                      returnUrl: location.pathname + location.search,
                     },
                   },
                 )

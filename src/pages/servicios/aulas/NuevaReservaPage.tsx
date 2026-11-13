@@ -23,6 +23,7 @@ import { clientesService, type ClienteExterno } from "@/services/clientes.servic
 import { NuevoClienteModal } from "@/components/clientes/NuevoClienteModal"
 import { toast } from "sonner"
 import { ReservaBatchForm } from "./components/ReservaBatchForm"
+import { SeccionPagoInicialServicio, type PagoInicialData } from "@/components/servicios/SeccionPagoInicialServicio"
 
 interface ClienteOption {
   tipo: "persona" | "cliente_externo"
@@ -61,6 +62,7 @@ export function NuevaReservaIndividualPage() {
   const clienteRef = useRef<HTMLDivElement>(null)
 
   const [saving, setSaving] = useState(false)
+  const [pagoData, setPagoData] = useState<PagoInicialData | null>(null)
 
   // Descuentos
   const [descuentoTipo, setDescuentoTipo] = useState<"fijo" | "porcentaje">("fijo")
@@ -386,6 +388,9 @@ export function NuevaReservaIndividualPage() {
         await aulasService.updateReserva(id, payload)
         toast.success("Reserva actualizada exitosamente")
       } else {
+        if (pagoData) {
+          payload.pago = pagoData
+        }
         await aulasService.createReserva(payload)
         toast.success("Reserva creada exitosamente")
       }
@@ -1074,6 +1079,16 @@ export function NuevaReservaIndividualPage() {
                 </p>
               )}
             </div>
+
+            {/* Sección Opcional de Pago Inicial / Abono */}
+            {!isEdit && (
+              <SeccionPagoInicialServicio
+                precioTotalNeto={precioTotal}
+                onChange={setPagoData}
+                disabled={saving}
+                labelServicio="Aula"
+              />
+            )}
           </div>
 
           {/* Columna Derecha: Resumen de Reserva y Confirmación (4 cols sticky) */}

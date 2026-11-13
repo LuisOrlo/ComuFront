@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react"
-import { useNavigate, useSearchParams } from "react-router"
+import { useNavigate, useSearchParams, useLocation } from "react-router"
 import {
   Clock,
   ChevronDown,
@@ -93,6 +93,7 @@ function getDurationText(horaInicio?: string, horaFin?: string): string {
 
 export function HistorialPodcastPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [reservas, setReservas] = useState<ReservaPodcast[]>([])
   const [paquetes, setPaquetes] = useState<PaquetePodcast[]>([])
@@ -346,13 +347,7 @@ export function HistorialPodcastPage() {
         {/* Header de página */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Servicios
-              </span>
-              <span className="text-slate-300">/</span>
-              <span className="font-bold text-[#9d4300]">Cabina de Podcast</span>
-            </div>
+            
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Cabina de Podcast
             </h1>
@@ -792,6 +787,7 @@ export function HistorialPodcastPage() {
                                                 montoTotal: Number(r.precio_total) || 0,
                                                 montoSaldo: saldo || 0,
                                                 nombreServicio: r.titulo || r.paquete?.nombre || "Podcast",
+                                                returnUrl: location.pathname + location.search,
                                               },
                                             })
                                           }
@@ -813,6 +809,7 @@ export function HistorialPodcastPage() {
                                                 montoTotal: Number(r.precio_total) || 0,
                                                 montoSaldo: saldo || 0,
                                                 nombreServicio: r.titulo || r.paquete?.nombre || "Podcast",
+                                                returnUrl: location.pathname + location.search,
                                               },
                                             })
                                           }

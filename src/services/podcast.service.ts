@@ -80,7 +80,7 @@ export const podcastService = {
     return data.data
   },
 
-  createReserva: async (reserva: Partial<ReservaPodcast>) => {
+  createReserva: async (reserva: Partial<ReservaPodcast> & { pago?: unknown }) => {
     const { data } = await api.post<{ data: ReservaPodcast }>("/academic/servicios/reservas-podcast", reserva)
     return data.data
   },
@@ -89,6 +89,7 @@ export const podcastService = {
     persona_id?: string | null
     cliente_externo_id?: string | null
     reservas: Array<Record<string, unknown>>
+    pago?: unknown
   }) => {
     const { data } = await api.post<{ data: ReservaPodcast[] }>("/academic/servicios/reservas-podcast/lote", payload)
     return data.data

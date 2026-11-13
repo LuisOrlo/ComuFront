@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useLocation } from "react-router"
 import { ArrowLeft, ArrowRight, Plus } from "lucide-react"
 import { setsService, type SetItem, type ReservaSet } from "@/services/sets.service"
 import { DetalleSetModal } from "./components/DetalleSetModal"
@@ -23,6 +23,7 @@ function fmtDate(d: Date) {
 
 export function SetsAgendaPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [fechaRef, setFechaRef] = useState<Date>(() => new Date())
   const [sets, setSets] = useState<SetItem[]>([])
   const [selectedSetId, setSelectedSetId] = useState<string>("todos")
@@ -256,6 +257,7 @@ export function SetsAgendaPage() {
                     montoTotal: total,
                     montoSaldo: saldo,
                     nombreServicio: `Alquiler de Set ${selectedReserva.set?.nombre || ""}`,
+                    returnUrl: location.pathname + location.search,
                   },
                 })
               }

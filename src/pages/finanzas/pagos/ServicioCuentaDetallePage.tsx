@@ -174,13 +174,14 @@ export function ServicioCuentaDetallePage() {
   const contacto = getClienteContacto(entry)
 
   const handleRegistrarPago = () => {
+    const returnUrl = location.pathname + location.search
     if (cuentaId) {
       navigate(`/finanzas/pagos/cuentas/servicios/pago/${cuentaId}`, {
-        state: { cuentaId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio },
+        state: { cuentaId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio, returnUrl },
       })
     } else if (infoServicio) {
       navigate(`/finanzas/pagos/cuentas/servicios/pago/${infoServicio.servicioId}`, {
-        state: { tipo: infoServicio.tipo, servicioId: infoServicio.servicioId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio },
+        state: { tipo: infoServicio.tipo, servicioId: infoServicio.servicioId, nombre: cliente, montoTotal: total, montoSaldo: saldo, nombreServicio, returnUrl },
       })
     }
   }

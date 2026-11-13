@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router"
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon, Home02Icon, Calendar03Icon, UserIcon,
@@ -35,6 +35,7 @@ function formatFechaLarga(f?: string) {
 
 export function AlquilerDetallePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const backHref = `/servicios/equipos/alquileres${(() => { const p = new URLSearchParams(); const e = searchParams.get("estado"); const s = searchParams.get("search"); if (e) p.set("estado", e); if (s) p.set("search", s); const qs = p.toString(); return qs ? `?${qs}` : "" })()}`
@@ -332,7 +333,7 @@ export function AlquilerDetallePage() {
                   </button>
                 )}
                 {saldo > 0 && (
-                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${alquiler.id}`, { state: { tipo: "equipo", servicioId: alquiler.id, nombre: clienteNombre, montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${alquiler.equipo?.nombre || "Equipo"}` } })} className="flex-1 py-3 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50 active:scale-[0.98]"
+                  <button onClick={() => navigate(`/finanzas/pagos/cuentas/servicios/pago/${alquiler.id}`, { state: { tipo: "equipo", servicioId: alquiler.id, nombre: clienteNombre, montoTotal: total || 0, montoSaldo: saldo || 0, nombreServicio: `Alquiler de ${alquiler.equipo?.nombre || "Equipo"}`, returnUrl: location.pathname + location.search } })} className="flex-1 py-3 rounded-xl text-sm font-bold border transition-all hover:bg-gray-50 active:scale-[0.98]"
                     style={{ borderColor: COLORS.ACCENT, color: COLORS.ACCENT }}>
                     <HugeiconsIcon icon={CheckmarkCircle04Icon} size={16} className="inline mr-1.5" />
                     Registrar pago (${saldo.toFixed(2)})

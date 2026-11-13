@@ -234,7 +234,7 @@ export function ModuloPagoMixtoModal({
           <div className="p-3.5 rounded-xl border border-blue-200/80 bg-blue-50/50 flex items-center justify-between">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 block">
-                Monto total a cubrir en este concepto
+                Monto total a cubrir
               </span>
               <span className="text-xs text-blue-600/80 block mt-0.5">
                 La suma de los métodos debe igualar este valor
