@@ -75,10 +75,7 @@ export function DocumentosPublicosPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/Logo_PDF.png" alt="Logo" className="h-10 sm:h-12 w-auto object-contain" />
-            <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
-            <span className="text-xs sm:text-sm font-semibold text-gray-700 tracking-tight hidden sm:block">
-              Portal Institucional
-            </span>
+            
           </div>
 
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100">
@@ -100,7 +97,7 @@ export function DocumentosPublicosPage() {
               Repositorio de Documentos Públicos
             </h1>
             <p className="text-sm sm:text-base text-gray-500 mt-2 max-w-xl mx-auto">
-              Accede a los archivos, reglamentos y guías oficiales en formato PDF. Visualízalos en línea o descárgalos libremente.
+              Accede a los archivos, reglamentos y guías oficiales.
             </p>
           </motion.div>
 
@@ -276,7 +273,7 @@ export function DocumentosPublicosPage() {
 
       {/* Footer */}
       <footer className="w-full bg-white border-t border-gray-100 py-6 text-center text-xs text-gray-400 mt-auto">
-        <p>© {new Date().getFullYear()} Plataforma Institucional. Todos los derechos reservados.</p>
+        <p>© {new Date().getFullYear()} Comunikate Academy. Todos los derechos reservados.</p>
       </footer>
 
       {/* Visor PDF integrado */}

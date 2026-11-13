@@ -8,7 +8,6 @@ import {
   Book02Icon,
   ArrowRight01Icon,
   ArrowLeft01Icon,
-  GraduationCapIcon,
   Location01Icon,
   NoteIcon,
   UserGroupIcon,
@@ -135,7 +134,6 @@ export function AgendaDrawer({
   const plazasDisponibles = hasCapacidad ? Math.max(0, capacidad - participantes) : null
 
   const isCurso = data?.tipo_evento === "CLASE_CURSO" || Boolean(data?.referencia_id && data?.tipo_evento?.includes("CURSO"))
-  const isTaller = data?.tipo_evento === "TALLER"
 
   const observaciones = (data?.detalle?.observaciones || data?.detalle?.descripcion) as string | undefined
   const precio = (data?.detalle?.precio_total ?? data?.detalle?.precio) as number | string | undefined
@@ -636,26 +634,9 @@ export function AgendaDrawer({
 
           {/* Footer del Panel: Acciones */}
           <div className="p-4 sm:p-5 border-t border-slate-200 bg-white flex items-center justify-between gap-3">
-            {/* Si es modo público y es un curso o taller: Invitación a matrícula */}
-            {isPublic ? (
-              data && (isCurso || isTaller) ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose()
-                    navigate("/matricula/nueva")
-                  }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#fd761a] hover:bg-[#e06310] shadow-sm shadow-[#fd761a]/30 transition-all cursor-pointer"
-                >
-                  <HugeiconsIcon icon={GraduationCapIcon} size={16} />
-                  <span>Inscribirme en este programa</span>
-                </button>
-              ) : (
-                <div />
-              )
-            ) : (
-              /* Modo privado autenticado: Acciones a los detalles específicos */
-              data ? (
+            {/* Modo privado autenticado: Acciones a los detalles específicos */}
+            {!isPublic &&
+              (data ? (
                 <div className="flex-1 flex items-center gap-2">
                   {isCurso && data.referencia_id && (
                     <button

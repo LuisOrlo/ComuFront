@@ -365,9 +365,7 @@ export function SolicitudCursoTab(props: SolicitudCursoTabProps) {
               <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
                 {getCursoNombre()}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Programa formativo integral con certificación avalada Comunikate
-              </p>
+             
             </div>
 
             <div className="text-left md:text-right bg-white p-4 rounded-xl border border-slate-200 shadow-xs shrink-0 min-w-[170px]">

@@ -60,16 +60,14 @@ export function TallerTallerTab({ selected, onRefresh }: TallerTallerTabProps) {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-orange-100 text-orange-800 uppercase tracking-wider">
-                  Taller Práctico Intensivo
+                  Taller
                 </span>
                 <ModalidadBadge modalidad={taller?.modalidad} />
               </div>
               <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
                 {taller?.nombre || "Taller formativo"}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Programa de especialización rápida avalado por la academia
-              </p>
+              
             </div>
 
             <div className="text-left md:text-right bg-white p-4 rounded-xl border border-slate-200 shadow-xs shrink-0">
